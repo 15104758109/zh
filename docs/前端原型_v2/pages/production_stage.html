@@ -1,0 +1,815 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Narrative Engine - 生产阶段</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+        <!-- Tailwind CSS & DaisyUI v4 via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="../common/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="../common/sidebar.css">
+    <script src="../common/theme.js"></script>
+    <script src="./new_book_wizard_data.js"></script>
+    <script src="../common/header.js"></script>
+
+<style>
+/* 继承自全局 theme.css 共享主题样式 */
+        /* 顶栏 fixed h-16(4rem)，用 padding-top 在 main-content 内部留出顶栏空间 */
+        /* box-sizing: border-box 已全局设定，padding 内缩内容区，不增加总高度 */
+        .main-content {
+          padding-top: 4rem !important;
+          margin-top: 0 !important;
+        }
+        /* 顶栏随侧栏折叠隐藏 */
+        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
+        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
+        .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
+        .header-tab:hover { opacity: 0.85; }
+        .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        .settings-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-base-300); cursor: pointer; transition: background 0.2s ease; flex-shrink: 0; }
+        .settings-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.2s ease; }
+        .settings-switch.on { background: var(--color-accent); }
+        .settings-switch.on::after { transform: translateX(16px); }
+        .settings-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; cursor: pointer; transition: all 0.15s ease; }
+        .settings-btn:hover { background: var(--color-accent); color: white; }
+
+</style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-base-200 text-base-content font-body-md overflow-hidden h-screen flex selection:bg-primary/30 selection:text-base-content">
+<a href="#main-content" class="skip-link">跳到主内容</a>
+
+<nav class="sidebar-glass" aria-label="主菜单">
+  <div class="sidebar-brand">
+    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
+    <div class="sidebar-text">
+      <div class="brand-title">纵横</div>
+      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
+    </div>
+  </div>
+  <div class="sidebar-separator" aria-hidden="true"></div>
+  <ul class="menu sidebar-menu" id="sidebarMenu">
+    <li><a href="workbench.html" aria-label="总控设置面板"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
+    <li><a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
+    <li><a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行" class="active"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
+    <li><a href="audit_stage.html" aria-label="审计阶段：正文审计、主编裁决"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
+    <li><a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
+  </ul>
+  <footer class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">U</div>
+      <span class="sidebar-text sidebar-user-name">用户</span>
+    </div>
+  </footer>
+</nav>
+
+<!-- TopNavBar -->
+        <!-- TopNavBar -->
+        <!-- TopNavBar -->
+    <header class="header-glass h-16 fixed top-0 right-0 z-[60] flex justify-between items-center px-6 bg-base-100">
+        <div class="flex items-center gap-4 h-full">
+            <nav class="flex h-full items-center ml-2">
+                <!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
+                                <div class="header-tabs">
+                    <a href="production_stage.html" class="header-tab active">套路展开</a>
+                    <a href="multi_agent_deduction.html" class="header-tab">多代理推演</a>
+                    <a href="audit_review.html" class="header-tab">结果审核</a>
+                </div>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- 当前书籍标识 -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-content/10 text-[11px] font-medium text-base-content/80">
+                <span class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></span>
+                <span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+                <span id="header-book-name"></span>
+            </div>
+            <button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">notifications</span>
+            </button>
+            
+            <!-- 快捷设置齿轮与弹窗 -->
+            <div class="relative flex items-center">
+                <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                </button>
+                <!-- Quick Settings Popover -->
+                        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
+                    <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
+                </div>
+                <div class="flex flex-col gap-2 mb-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
+                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
+                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
+                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-base-content/5">
+                    <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        应用当前配置
+                    </button>
+                </div>
+            </div>
+
+            <div class="h-8 w-[1px] bg-base-content/5 mx-1"></div>
+            
+        </div>
+    </header>
+
+<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
+</button>
+<main class="main-content" id="main-content">
+
+<!-- Main Content Area -->
+
+
+
+
+<div class="flex-1 flex gap-6 min-h-0">
+<!-- Center Canvas: Decomposition Flow & Nodes -->
+<div class="flex-1 flex flex-col gap-2 overflow-y-auto pr-2 pb-12 custom-scrollbar">
+<!-- L1A Selector & Emotion Chart Row -->
+<div class="flex gap-6">
+<!-- L1A 选择 (左) -->
+<div class="w-[260px] shrink-0 p-5 rounded-3xl bg-base-100 border border-base-content/5 shadow-sm relative overflow-hidden flex flex-col max-h-[240px]">
+<div class="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
+<div class="relative z-10 flex flex-col flex-1">
+<div class="flex items-center gap-1.5 mb-4">
+<span class="material-symbols-outlined text-primary text-[14px]">layers</span>
+<h2 class="font-bold text-base-content opacity-85 text-xs flex items-center gap-1.5">L1A 选择</h2>
+</div>
+<div class="relative w-full" id="l1a-dropdown-container">
+<div class="flex items-center bg-base-content/40 border border-base-content/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-primary/40 shadow-sm hover:shadow-md transition-all" onclick="toggleL1aDropdown()" id="l1a-dropdown-trigger">
+<span class="font-code-sm font-bold text-primary text-sm" id="l1a-current-label">L1A-07</span>
+<span class="text-[10px] text-base-content opacity-50 ml-2 truncate" id="l1a-current-title">霓虹迷局的反向渗透</span>
+<span class="material-symbols-outlined text-base-content opacity-60 text-[16px] ml-auto">expand_more</span>
+</div>
+<div class="hidden absolute top-6 left-0 right-0 mt-1 glass-panel bg-cyber-surface/95 rounded-lg shadow-2xl z-50 max-h-[220px] overflow-y-auto custom-scrollbar" id="l1a-dropdown">
+<div class="sticky top-0 bg-cyber-surface px-3 py-1.5 border-b border-dashed border-base-content/10 text-[9px] text-base-content opacity-60/50 font-label-caps">L1A 列表 (共102项)</div>
+<div class="p-1">
+<div class="px-3 py-2 rounded text-xs cursor-pointer hover:bg-base-content/5 flex items-center gap-2 l1a-option text-secondary" data-id="05" onclick="selectL1aOption('05','L1A-05','数据帝国的裂痕','done',this)"><span class="font-code-sm text-xs w-14 shrink-0">L1A-05</span><span class="truncate text-xs">数据帝国的裂痕</span><span class="material-symbols-outlined text-secondary text-[14px] ml-auto shrink-0">check_circle</span></div>
+<div class="px-3 py-2 rounded text-xs cursor-pointer hover:bg-base-content/5 flex items-center gap-2 l1a-option text-secondary" data-id="06" onclick="selectL1aOption('06','L1A-06','深渊信号的反制计划','done',this)"><span class="font-code-sm text-xs w-14 shrink-0">L1A-06</span><span class="truncate text-xs">深渊信号的反制计划</span><span class="material-symbols-outlined text-secondary text-[14px] ml-auto shrink-0">check_circle</span></div>
+<div class="px-3 py-2 rounded text-xs cursor-pointer hover:bg-base-content/5 flex items-center gap-2 l1a-option text-primary bg-primary/10" data-id="07" onclick="selectL1aOption('07','L1A-07','霓虹迷局的反向渗透','active',this)"><span class="font-code-sm text-xs w-14 shrink-0">L1A-07</span><span class="truncate text-xs">霓虹迷局的反向渗透</span><span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse ml-auto shrink-0"></span></div>
+<div class="px-3 py-2 rounded text-xs cursor-not-allowed flex items-center gap-2 l1a-option text-base-content opacity-60/30" data-id="08"><span class="font-code-sm text-xs w-14 shrink-0">L1A-08</span><span class="truncate text-xs">源阀计划的真相</span><span class="text-[9px] text-base-content opacity-60/30 ml-auto shrink-0">待完成</span><span class="material-symbols-outlined text-base-content opacity-60/20 text-[14px] shrink-0">lock</span></div>
+<div class="px-3 py-2 rounded text-xs cursor-not-allowed flex items-center gap-2 l1a-option text-base-content opacity-60/20" data-id="09"><span class="font-code-sm text-xs w-14 shrink-0">L1A-09</span><span class="truncate text-xs">新秩序的暗涌</span><span class="material-symbols-outlined text-base-content opacity-60/20 text-[14px] ml-auto shrink-0">lock</span></div>
+<div class="px-3 py-2 rounded text-xs cursor-not-allowed flex items-center gap-2 l1a-option text-base-content opacity-60/20" data-id="10"><span class="font-code-sm text-xs w-14 shrink-0">L1A-10</span><span class="truncate text-xs">血月协议的反击</span><span class="material-symbols-outlined text-base-content opacity-60/20 text-[14px] ml-auto shrink-0">lock</span></div>
+<div class="px-3 py-2 rounded text-xs cursor-not-allowed flex items-center gap-2 l1a-option text-base-content opacity-60/20" data-id="11"><span class="font-code-sm text-xs w-14 shrink-0">L1A-11</span><span class="truncate text-xs">黑域边境的突围</span><span class="material-symbols-outlined text-base-content opacity-60/20 text-[14px] ml-auto shrink-0">lock</span></div>
+<div class="px-3 py-2 rounded text-xs cursor-not-allowed flex items-center gap-2 l1a-option text-base-content opacity-60/20" data-id="12"><span class="font-code-sm text-xs w-14 shrink-0">L1A-12</span><span class="truncate text-xs">终极清洗的博弈</span><span class="material-symbols-outlined text-base-content opacity-60/20 text-[14px] ml-auto shrink-0">lock</span></div>
+<div class="px-3 py-1 text-center text-[9px] text-base-content opacity-60/30">··· 共 102 项 ···</div>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-4 flex gap-2">
+<button class="flex-1 py-2.5 rounded-xl border border-base-content/10 text-base-content opacity-60 hover:text-base-content hover:bg-base-content/5 transition-all flex items-center justify-center gap-1.5 font-bold text-xs" onclick="openRegenerateModal()">
+<span class="material-symbols-outlined text-[16px]">refresh</span>重新生成
+</button>
+<button id="plan-generation-btn" class="flex-1 py-2.5 rounded-xl bg-primary text-primary-content hover:bg-primary/90 transition-all flex items-center justify-center gap-1.5 font-bold text-xs" onclick="generatePlan()">
+<span class="material-symbols-outlined text-[16px]">auto_awesome</span>生成方案
+</button>
+</div>
+</div>
+</div>
+<!-- 情绪节拍曲线图 (右) -->
+<div class="flex-1 min-w-0 p-5 rounded-3xl bg-base-100 border border-base-content/5 shadow-sm relative flex flex-col max-h-[240px]">
+<div class="flex justify-between items-center mb-4">
+<h4 class="font-bold text-base-content opacity-85 text-xs flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px] text-tertiary">show_chart</span>情绪节拍</h4>
+</div>
+<!-- SVG 曲线（无 viewBox 约束，撑满宽度）+ HTML 数据点 -->
+<div class="flex-1 relative min-h-0" id="emotion-chart-area">
+  <!-- 渐变填充 + 线条 SVG -->
+  <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 26" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="areaGrad2" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-3="rgba(173,198,255,0.25)"/>
+        <stop offset="100%" stop-3="rgba(173,198,255,0.01)"/>
+      </linearGradient>
+      <linearGradient id="areaGradNeg2" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-3="rgba(255,180,171,0.15)"/>
+        <stop offset="100%" stop-3="rgba(255,180,171,0.01)"/>
+      </linearGradient>
+    </defs>
+    <!-- 网格线 -->
+    <line x1="0" y1="0" x2="100" y2="0" stroke="rgba(255,255,255,0.03)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>
+    <line x1="0" y1="13" x2="100" y2="13" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
+    <line x1="0" y1="26" x2="100" y2="26" stroke="rgba(255,255,255,0.03)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>
+    <!-- 基准线 -->
+    <line x1="0" y1="13" x2="100" y2="13" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="6 3" vector-effect="non-scaling-stroke"/>
+    <!-- 正区间渐变填充 -->
+    <path d="M21.67,11.8 C30.67,11.8 33.33,8.2 39.67,8.2 C46.00,8.2 51.33,4.4 57.67,4.4 C64.00,4.4 66.67,17.4 75.67,17.4 C84.67,17.4 86.67,13 93.67,13 L93.67,13 L21.67,13 Z" fill="url(#areaGrad2)"/>
+    <!-- 负区间渐变填充 -->
+    <path d="M57.67,4.4 C64.00,4.4 66.67,17.4 75.67,17.4 C84.67,17.4 86.67,13 93.67,13 L93.67,13 L57.67,13 Z" fill="url(#areaGradNeg2)"/>
+    <!-- 曲线 -->
+    <path d="M21.67,11.8 C30.67,11.8 33.33,8.2 39.67,8.2 C46.00,8.2 51.33,4.4 57.67,4.4 C64.00,4.4 66.67,17.4 75.67,17.4 C84.67,17.4 86.67,13 93.67,13" fill="none" stroke="rgba(173,198,255,0.6)" stroke-width="1.8" vector-effect="non-scaling-stroke"/>
+  </svg>
+  <!-- 数据点（HTML 元素，始终为正圆，按百分比定位） + 阶段标签 + 情绪值 -->
+  <div class="absolute cursor-pointer" style="left:21.67%;top:45.38%;transform:translate(-50%,-50%)" onclick="selectChapterByNum(42)">
+    <div class="flex flex-col items-center">
+      <span class="text-[8px] text-primary opacity-70 font-bold whitespace-nowrap leading-none mb-0.5">+0.40</span>
+      <div class="w-[9px] h-[9px] rounded-full bg-[rgba(173,198,255,0.9)] ring-2 ring-[#141B26]"></div>
+      <span class="text-[7px] text-base-content opacity-50 whitespace-nowrap leading-none mt-0.5">开端</span>
+    </div>
+  </div>
+  <div class="absolute cursor-pointer" style="left:39.67%;top:31.54%;transform:translate(-50%,-50%)" onclick="selectChapterByNum(43)">
+    <div class="flex flex-col items-center">
+      <span class="text-[8px] text-primary opacity-70 font-bold whitespace-nowrap leading-none mb-0.5">+0.65</span>
+      <div class="w-[9px] h-[9px] rounded-full bg-[rgba(173,198,255,0.9)] ring-2 ring-[#141B26]"></div>
+      <span class="text-[7px] text-base-content opacity-50 whitespace-nowrap leading-none mt-0.5">上升</span>
+    </div>
+  </div>
+  <div class="absolute cursor-pointer" style="left:57.67%;top:16.92%;transform:translate(-50%,-50%)" onclick="selectChapterByNum(44)">
+    <div class="flex flex-col items-center">
+      <span class="text-[8px] text-base-content font-bold whitespace-nowrap leading-none mb-0.5">+0.90</span>
+      <div class="w-[11px] h-[11px] rounded-full bg-white ring-2 ring-[rgba(173,198,255,1)]"></div>
+      <span class="text-[7px] text-base-content opacity-50 whitespace-nowrap leading-none mt-0.5">高压</span>
+    </div>
+  </div>
+  <div class="absolute cursor-pointer" style="left:75.67%;top:66.92%;transform:translate(-50%,-50%)" onclick="selectChapterByNum(45)">
+    <div class="flex flex-col items-center">
+      <span class="text-[8px] text-[rgba(255,180,171,0.85)] font-bold whitespace-nowrap leading-none mb-0.5">-0.20</span>
+      <div class="w-[9px] h-[9px] rounded-full bg-[rgba(255,180,171,0.9)] ring-2 ring-[#141B26]"></div>
+      <span class="text-[7px] text-base-content opacity-50 whitespace-nowrap leading-none mt-0.5">反转</span>
+    </div>
+  </div>
+  <div class="absolute cursor-pointer" style="left:93.67%;top:50%;transform:translate(-50%,-50%)" onclick="selectChapterByNum(46)">
+    <div class="flex flex-col items-center">
+      <span class="text-[8px] text-[rgba(173,198,255,0.4)] font-bold whitespace-nowrap leading-none mb-0.5">0.00</span>
+      <div class="w-[9px] h-[9px] rounded-full bg-[rgba(173,198,255,0.4)] ring-2 ring-[#141B26]"></div>
+      <span class="text-[7px] text-base-content opacity-50 whitespace-nowrap leading-none mt-0.5">收束</span>
+    </div>
+  </div>
+</div>
+<!-- Chapter Legend / Interactive Tabs -->
+<div class="relative w-full shrink-0 border-t border-base-content/5" style="height:32px;padding-top:2px">
+  <div class="absolute top-0" style="left:21.67%;transform:translateX(-50%);width:76px">
+    <div class="w-full h-full flex items-center justify-center rounded cursor-pointer transition-all chapter-tab border border-primary/40 bg-primary/10 shadow-[0_0_6px_rgba(77,142,255,0.15)] py-1" data-ch="42" onclick="selectChapter(42, this)">
+      <span class="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_4px_rgba(173,198,255,0.6)] shrink-0"></span>
+      <span class="font-label-caps text-primary text-[9px] ml-1">第42章</span>
+    </div>
+  </div>
+  <div class="absolute top-0" style="left:39.67%;transform:translateX(-50%);width:76px">
+    <div class="w-full h-full flex items-center justify-center rounded cursor-pointer transition-all chapter-tab border border-base-content/10 bg-neutral/20 hover:border-primary/30 hover:bg-primary/5 py-1" data-ch="43" onclick="selectChapter(43, this)">
+      <span class="w-1.5 h-1.5 rounded-full bg-primary/70 shrink-0"></span>
+      <span class="font-label-caps text-base-content opacity-60 text-[9px] ml-1">第43章</span>
+    </div>
+  </div>
+  <div class="absolute top-0" style="left:57.67%;transform:translateX(-50%);width:76px">
+    <div class="w-full h-full flex items-center justify-center rounded cursor-pointer transition-all chapter-tab border border-base-content/10 bg-neutral/20 hover:border-primary/30 hover:bg-primary/5 py-1" data-ch="44" onclick="selectChapter(44, this)">
+      <span class="w-1.5 h-1.5 rounded-full bg-white border border-primary shrink-0"></span>
+      <span class="font-label-caps text-base-content opacity-60 text-[9px] ml-1">第44章</span>
+    </div>
+  </div>
+  <div class="absolute top-0" style="left:75.67%;transform:translateX(-50%);width:76px">
+    <div class="w-full h-full flex items-center justify-center rounded cursor-pointer transition-all chapter-tab border border-base-content/10 bg-neutral/20 hover:border-primary/30 hover:bg-primary/5 py-1" data-ch="45" onclick="selectChapter(45, this)">
+      <span class="w-1.5 h-1.5 rounded-full bg-error/80 shrink-0"></span>
+      <span class="font-label-caps text-base-content opacity-60 text-[9px] ml-1">第45章</span>
+    </div>
+  </div>
+  <div class="absolute top-0" style="left:93.67%;transform:translateX(-50%);width:76px">
+    <div class="w-full h-full flex items-center justify-center rounded cursor-pointer transition-all chapter-tab border border-base-content/10 bg-neutral/20 hover:border-primary/30 hover:bg-primary/5 py-1" data-ch="46" onclick="selectChapter(46, this)">
+      <span class="w-1.5 h-1.5 rounded-full bg-primary/30 shrink-0"></span>
+      <span class="font-label-caps text-base-content opacity-60 text-[9px] ml-1">第46章</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 章节定位与L1A概览 (右列) -->
+<div class="w-[380px] shrink-0 bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 flex flex-col min-h-[220px] overflow-hidden">
+<div class="pb-3 border-b border-dashed border-base-content/10 mb-4">
+<h4 class="font-bold text-base-content opacity-85 text-xs flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-primary">extension</span>
+匹配套路
+</h4>
+</div>
+<div class="flex items-start gap-3 mb-3">
+<div class="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-lg">visibility</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2 mb-1.5">
+<h5 class="font-bold text-base-content text-sm">反向渗透 · 谍影重重</h5>
+<span class="px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary font-bold">92%</span>
+</div>
+<p class="font-body-md text-base-content opacity-60 text-xs leading-relaxed">赛博朋克反体制 + 身份反转双核驱动。主角以敌对身份潜入组织，逐步揭露内部阴谋。此套路在商业网文中有 <strong class="text-primary">27 条先例</strong>，读者预期管理清晰，爽点回收路径明确。</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Row: 章节方案 + 侧栏 -->
+<div class="flex gap-6 min-h-[660px]">
+<!-- 5个独立的章节方案详情容器 -->
+<div class="flex-1 grid grid-cols-2 gap-6 content-start" id="chapter-detail-grid">
+    <!-- 1. 章节定位 -->
+    <div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-6 flex flex-col relative">
+        <div class="absolute top-0 left-0 w-0.5 h-full bg-info rounded-l-xl"></div>
+        <h5 class="font-label-caps text-base-content opacity-60 mb-3 flex items-center gap-1.5 text-xs font-bold">
+            <span class="material-symbols-outlined text-[14px] text-info">info</span>章节定位
+        </h5>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-3 flex-1">
+            <div>
+                <span class="font-label-caps text-[9px] text-base-content opacity-50">章节号</span>
+                <p class="font-mono text-base-content font-bold text-xs mt-0.5" id="detail-ch-number-mid">第42章</p>
+            </div>
+            <div>
+                <span class="font-label-caps text-[9px] text-base-content opacity-50">节拍阶段</span>
+                <p class="font-body-md text-base-content font-bold text-xs mt-0.5" id="detail-ch-phase-mid">开端 Start</p>
+            </div>
+            <div>
+                <span class="font-label-caps text-[9px] text-base-content opacity-50">情绪值</span>
+                <p class="font-mono text-primary font-bold text-xs mt-0.5" id="detail-emotion-val-mid">+0.40</p>
+            </div>
+            <div>
+                <span class="font-label-caps text-[9px] text-base-content opacity-50">L1A进度</span>
+                <p class="font-body-md text-base-content font-bold text-xs mt-0.5" id="detail-l1a-progress-mid">1/5 · 20%</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 核心事件 -->
+    <div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-6 flex flex-col relative">
+        <div class="absolute top-0 left-0 w-0.5 h-full bg-primary rounded-l-xl"></div>
+        <h5 class="font-label-caps text-base-content opacity-60 mb-2 flex items-center gap-1.5 text-xs font-bold">
+            <span class="material-symbols-outlined text-[14px] text-primary">emoji_objects</span>核心事件
+        </h5>
+        <p class="font-body-md text-base-content text-xs leading-relaxed flex-1" id="detail-events">Kaelen-IV以伪造身份进入霓虹城，在核心监控站建立初步据点，发现系统存在异常数据流。通过与Elyse的首次接触，获得内部网络访问权限。</p>
+        <div class="mt-3 pt-2 border-t border-base-content/5 shrink-0">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-label-caps text-[9px] text-base-content opacity-50 shrink-0">出场:</span>
+                <div class="flex gap-1 flex-wrap" id="detail-characters">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-code-sm">Kaelen-IV</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-tertiary/10 text-tertiary border border-tertiary/20 font-code-sm">Elyse</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 套路匹配 -->
+    <div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-6 flex flex-col relative">
+        <div class="absolute top-0 left-0 w-0.5 h-full bg-secondary rounded-l-xl"></div>
+        <h5 class="font-label-caps text-base-content opacity-60 mb-3 flex items-center gap-1.5 text-xs font-bold">
+            <span class="material-symbols-outlined text-[14px] text-secondary">extension</span>套路匹配
+        </h5>
+        <div class="space-y-3 flex-1">
+            <div>
+                <span class="font-label-caps text-[9px] text-base-content opacity-50">驱动模式</span>
+                <p class="font-body-md text-base-content text-xs font-semibold mt-0.5" id="detail-drive-mode">信息锚定 + 角色入场</p>
+            </div>
+            <div>
+                <span class="font-label-caps text-[9px] text-base-content opacity-50">爽点类型</span>
+                <p class="font-body-md text-base-content text-xs font-semibold mt-0.5" id="detail-satisfaction">世界观沉浸</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. 钩子与揭露 -->
+    <div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-6 flex flex-col relative">
+        <div class="absolute top-0 left-0 w-0.5 h-full bg-tertiary rounded-l-xl"></div>
+        <h5 class="font-label-caps text-base-content opacity-60 mb-2 flex items-center gap-1.5 text-xs font-bold">
+            <span class="material-symbols-outlined text-[14px] text-tertiary">phishing</span>钩子与揭露
+        </h5>
+        <div class="space-y-3 flex-1">
+            <div>
+                <span class="font-label-caps text-[9px] text-base-content opacity-50">植入钩子</span>
+                <p class="font-body-md text-base-content text-xs font-semibold mt-0.5" id="detail-hook">异常登录指纹（中钩子）</p>
+            </div>
+            <div>
+                <span class="font-label-caps text-[9px] text-base-content opacity-50">信息揭露</span>
+                <p class="font-body-md text-base-content text-xs font-semibold mt-0.5" id="detail-reveal">霓虹城存在未公开的数据监控层</p>
+            </div>
+        </div>
+        <div class="mt-3 pt-2 border-t border-base-content/5 shrink-0">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-label-caps text-[9px] text-base-content opacity-50 shrink-0">关键词:</span>
+                <div class="flex flex-wrap gap-1" id="detail-tags">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-base-200 text-base-content opacity-60 border border-base-content/5">身份伪装</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-base-200 text-base-content opacity-60 border border-base-content/5">世界建立</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-base-200 text-base-content opacity-60 border border-base-content/5">首次接触</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. 禁止越界 -->
+    <div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-6 flex flex-col relative">
+        <div class="absolute top-0 left-0 w-0.5 h-full bg-error rounded-l-xl"></div>
+        <h5 class="font-label-caps text-base-content opacity-60 mb-3 flex items-center gap-1.5 text-xs font-bold">
+            <span class="material-symbols-outlined text-[14px] text-error">block</span>禁止越界
+        </h5>
+        <p class="font-body-md text-base-content opacity-70 text-xs leading-relaxed" id="detail-boundary">不得越过清洗协议三级权限区；Elyse身份背景暂不可揭露；不得使用超出信息边界的内容推动剧情。</p>
+    </div>
+
+    <!-- 6. 场景与可支配规则 -->
+    <div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-6 flex flex-col relative">
+        <div class="absolute top-0 left-0 w-0.5 h-full bg-accent rounded-l-xl"></div>
+        <h5 class="font-label-caps text-base-content opacity-60 mb-2 flex items-center gap-1.5 text-xs font-bold">
+            <span class="material-symbols-outlined text-[14px] text-accent">explore</span>场景与可支配规则
+        </h5>
+        <p class="font-body-md text-base-content opacity-70 text-xs leading-relaxed" id="detail-scenes">霓虹城核心监控站(高权限区)、数据黑市连接点(低权限区)、Elyse办公区(中权限区) — 可支配规则: 数据监控层探测、匿名加密通讯、身份伪造协议 v2</p>
+    </div>
+</div>
+<div class="w-[380px] shrink-0 flex flex-col gap-6 pr-1 custom-scrollbar pb-4">
+
+<!-- ===== 四维评分 ===== -->
+<div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 shrink-0">
+<h4 class="font-headline-sm text-base-content flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-sm text-primary">analytics</span>
+四维评分
+</h4>
+<div class="space-y-2">
+<!-- 连续性 -->
+<div>
+<div class="flex justify-between items-center mb-1.5">
+<span class="font-body-md text-base-content text-sm flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>连续性
+</span>
+<span class="font-code-sm text-primary text-xs">9.2</span>
+</div>
+<div class="h-1.5 bg-base-content/40 border border-base-content/5 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary/60 to-primary rounded-full" style="width:92%"></div>
+</div>
+<p class="font-label-caps text-[9px] text-base-content opacity-60/50 mt-0.5">事实 / 角色 / 规则无断层</p>
+</div>
+<!-- 人物弧光 -->
+<div>
+<div class="flex justify-between items-center mb-1.5">
+<span class="font-body-md text-base-content text-sm flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>人物弧光
+</span>
+<span class="font-code-sm text-tertiary text-xs">8.5</span>
+</div>
+<div class="h-1.5 bg-base-content/40 border border-base-content/5 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-tertiary/60 to-tertiary rounded-full" style="width:85%"></div>
+</div>
+<p class="font-label-caps text-[9px] text-base-content opacity-60/50 mt-0.5">四层本体模型一致性</p>
+</div>
+<!-- 商业性 -->
+<div>
+<div class="flex justify-between items-center mb-1.5">
+<span class="font-body-md text-base-content text-sm flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>商业性
+</span>
+<span class="font-code-sm text-secondary text-xs">9.0</span>
+</div>
+<div class="h-1.5 bg-base-content/40 border border-base-content/5 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-secondary/60 to-secondary rounded-full" style="width:90%"></div>
+</div>
+<p class="font-label-caps text-[9px] text-base-content opacity-60/50 mt-0.5">爽点兑现 + 钩子有效 + 粘性</p>
+</div>
+<!-- 呈现质量 -->
+<div>
+<div class="flex justify-between items-center mb-1.5">
+<span class="font-body-md text-base-content text-sm flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>呈现质量
+</span>
+<span class="font-code-sm text-error text-xs">8.8</span>
+</div>
+<div class="h-1.5 bg-base-content/40 border border-base-content/5 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-error/60 to-error rounded-full" style="width:88%"></div>
+</div>
+<p class="font-label-caps text-[9px] text-base-content opacity-60/50 mt-0.5">文学呈现 + AI指纹控制 + 风格</p>
+</div>
+</div>
+</div>
+
+<!-- ===== 章节定位与统计数据 ===== -->
+<div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 flex flex-col shrink-0 gap-4">
+<h3 class="font-headline-sm text-primary text-sm font-bold flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">group</span>L1A参演角色
+</h3>
+<div class="flex flex-wrap gap-1.5" id="detail-characters-right">
+    <span class="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-code-sm">Kaelen-IV</span>
+    <span class="text-[10px] px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary border border-tertiary/20 font-code-sm">Elyse</span>
+</div>
+<button class="w-full py-2 rounded-lg border border-base-content/10 text-base-content hover:bg-base-content/5 transition-colors flex items-center justify-center gap-1.5 font-bold text-xs">
+    <span class="material-symbols-outlined text-sm">person_add</span>增加角色
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+
+</div>
+
+<script>
+    // ===== L1A 下拉选择 =====
+    function toggleL1aDropdown() {
+        const dd = document.getElementById('l1a-dropdown');
+        dd.classList.toggle('hidden');
+    }
+
+    function resetPlanBtn() {
+        const btn = document.getElementById('plan-generation-btn');
+        if (btn && btn.getAttribute('onclick') !== 'generatePlan()') {
+            btn.setAttribute('onclick', 'generatePlan()');
+            btn.className = 'flex-1 py-2.5 rounded-xl bg-primary text-primary-content hover:bg-primary/90 transition-all flex items-center justify-center gap-1.5 font-bold text-xs';
+            btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">auto_awesome</span>生成方案';
+        }
+    }
+
+    function selectL1aOption(id, label, title, status, el) {
+        if (el.classList.contains('cursor-not-allowed')) return;
+        document.getElementById('l1a-dropdown').classList.add('hidden');
+        document.getElementById('l1a-current-label').textContent = label;
+        document.getElementById('l1a-current-title').textContent = title;
+        document.querySelectorAll('.l1a-option').forEach(o => o.classList.remove('bg-primary/10', 'text-primary'));
+        el.classList.add('bg-primary/10', 'text-primary');
+        const dot = document.getElementById('l1a-dropdown-trigger').querySelector('.w-1\\.5');
+        if (dot) { dot.className = status === 'active' ? 'w-1.5 h-1.5 rounded-full bg-secondary animate-pulse shrink-0' : 'w-1.5 h-1.5 rounded-full bg-secondary shrink-0'; }
+        resetPlanBtn();
+    }
+
+    // ===== 生成方案 =====
+    function generatePlan() {
+        const btn = document.getElementById('plan-generation-btn');
+        btn.classList.remove('btn-rainbow-glow');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> 生成中...';
+        setTimeout(function() {
+            btn.disabled = false;
+            btn.className = 'flex-1 py-2.5 rounded-xl bg-secondary hover:bg-secondary/90 text-secondary-content transition-all flex items-center justify-center gap-1.5 font-bold text-xs';
+            btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">play_circle</span>开始推演';
+            btn.setAttribute('onclick', 'startDeduction()');
+            showToast('方案生成成功', '已为所选 L1A 及关联章节生成精细化局部情节推进方案。已激活推演权限。', 'success');
+        }, 1200);
+    }
+
+    // ===== 开始推演 =====
+    function startDeduction() {
+        const btn = document.getElementById('plan-generation-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> 推演启动中...';
+        setTimeout(function() {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">play_circle</span>开始推演';
+            showToast('推演队列已加入', '当前所选章节的单章黑盒推演任务已成功提交至推演队列。', 'success');
+        }, 1500);
+    }
+
+    // ===== 重新推演修改方向弹窗控制 =====
+    function openRegenerateModal() {
+        document.getElementById('regenerate-modal').classList.remove('hidden');
+        document.getElementById('regenerate-modal').classList.add('flex');
+        document.getElementById('re-deduction-direction').value = '';
+        document.getElementById('re-deduction-direction').focus();
+    }
+
+    function closeRegenerateModal() {
+        document.getElementById('regenerate-modal').classList.remove('flex');
+        document.getElementById('regenerate-modal').classList.add('hidden');
+    }
+
+    function submitReplanDirection() {
+        const val = document.getElementById('re-deduction-direction').value.trim();
+        if (!val) {
+            showToast('提示', '请输入修改建议及推演方向。', 'warning');
+            return;
+        }
+        const btn = document.getElementById('submit-replan-btn');
+        const origText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> 发送中...';
+        
+        setTimeout(function() {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+            closeRegenerateModal();
+            showToast('发送成功', '重新推演方向已成功发送至后端，正在重新生成规划...', 'success');
+            resetPlanBtn();
+        }, 1500);
+    }
+
+    // ===== 章节数据（方案规划用，无推演状态） =====
+    var chapterData = {
+        42: {
+            number: '42',
+            phase: '开端 Start',
+            emotion: 0.40,
+            progress: '1/5 · 20%',
+            driveMode: '信息锚定 + 角色入场',
+            satisfaction: '世界观沉浸',
+            hook: '异常登录指纹（中钩子）',
+            events: 'Kaelen-IV以伪造身份进入霓虹城，在核心监控站建立初步据点，发现系统存在异常数据流。通过与Elyse的首次接触，获得内部网络访问权限。',
+            characters: ['Kaelen-IV', 'Elyse'],
+            reveal: '霓虹城存在未公开的数据监控层',
+            tags: ['身份伪装', '世界建立', '首次接触'],
+            boundary: '不得越过清洗协议三级权限区；Elyse身份背景暂不可揭露；不得使用超出信息边界的内容推动剧情。',
+            scenes: '霓虹城核心监控站(高权限区)、数据黑市连接点(低权限区)、Elyse办公区(中权限区) — 可支配规则: 数据监控层探测、匿名加密通讯、身份伪造协议 v2'
+        },
+        43: {
+            number: '43',
+            phase: '上升 Rising',
+            emotion: 0.65,
+            progress: '2/5 · 40%',
+            driveMode: '悬念推进 + 双线并行',
+            satisfaction: '线索发现',
+            hook: '匿名密报来源追踪（长钩子）',
+            events: 'Elyse收到匿名密报，揭示内部清洗协议升级计划。Kaelen-IV深入追踪异常登录指纹，锁定源阀计划第一线索。Thorne以情报商身份介入，提供地下网络加密通讯渠道。',
+            characters: ['Kaelen-IV', 'Elyse', 'Thorne'],
+            reveal: '清洗协议v2.0存在 → 源阀计划关联',
+            tags: ['匿名密报', '追踪溯源', '情报商'],
+            boundary: '不得越过清洗协议二级权限区；禁止在Kaelen和Elyse未建立同盟前向Thorne泄漏真实底牌；Thorne身份不能当场暴露。',
+            scenes: 'Thorne的加密地下室(中权限区)、地下黑市信息终端、霓虹城中转站 — 可支配规则: 匿名密报追踪、局域信号截断、伪装协议v2.1'
+        },
+        44: {
+            number: '44',
+            phase: '高压 Climax',
+            emotion: 0.90,
+            progress: '3/5 · 60%',
+            driveMode: '身份危机 + 双重压力',
+            satisfaction: '高压爽点',
+            hook: '身份暴露倒计时（短钩子密集）',
+            events: 'Kaelen-IV身份面临暴露危机，清洗协议v2.0触发全网格杀令。Elyse必须在组织忠诚与良知间做出选择。Thorne的地下网络被同步清扫，三方压力同时爆发。',
+            characters: ['Kaelen-IV', 'Elyse', 'Thorne'],
+            reveal: '清洗协议幕后主使初现轮廓',
+            tags: ['身份危机', '背叛抉择', '全网格杀'],
+            boundary: '严禁跳过危机爆发节点；主角身份不得被Thorne向组织告密；Elyse不得做出违背人设的盲目选择。',
+            scenes: '霓虹城核心监控站(沦陷中)、Thorne的秘密据点(包围中)、城市逃生通道 — 可支配规则: 逃生网络激活、全网格杀令应对、防爆强光弹'
+        },
+        45: {
+            number: '45',
+            phase: '反转 Twist',
+            emotion: -0.20,
+            progress: '4/5 · 80%',
+            driveMode: '情绪下压 + 关系撕裂',
+            satisfaction: '颠覆认知',
+            hook: '操盘者身份揭露（中钩子回收）',
+            events: '清洗协议真实操盘者揭露，Kaelen与Elyse的信任关系撕裂。Thorne被迫站队。霓虹城权力结构首次动摇，但付出的代价超出所有人预期。',
+            characters: ['Kaelen-IV', 'Elyse', 'Thorne'],
+            reveal: '操盘者身份 + 小队内部裂痕',
+            tags: ['关系撕裂', '操盘者揭晓', '被迫站队'],
+            boundary: '信任撕裂细节需层层推进，不得一蹴而就；Kaelen和Elyse不能彻底反目成仇；必须保留联合可能。',
+            scenes: '霓虹城上层议会厅(极高权限区)、清洗部临时指挥所、暴雨下的霓虹天桥 — 可支配规则: 上层监控越权、清洗小队指挥权反制、防雨伪装斗篷'
+        },
+        46: {
+            number: '46',
+            phase: '收束 Resolution',
+            emotion: 0.00,
+            progress: '5/5 · 100%',
+            driveMode: '伏笔回收 + 格局重塑',
+            satisfaction: '收束满足',
+            hook: '下一L1A暗线植入（长钩子）',
+            events: '源阀计划真相曝光，霓虹城权力格局重新确立。Kaelen-IV小队在废墟中整合力量。新秩序下暗流涌动，为下一L1A的更大冲突埋下伏笔。',
+            characters: ['Kaelen-IV', 'Elyse', 'Thorne'],
+            reveal: '源阀计划全貌 + 新权力格局',
+            tags: ['真相揭露', '格局重塑', '新暗线'],
+            boundary: '不得在此章揭露源阀计划背后的最终BOSS；不允许主角小队完全全身而退；新暗线伏笔必须合理植入。',
+            scenes: '废墟中的临时网络节点、源阀数据中枢(已破损)、霓虹城边缘废弃港口 — 可支配规则: 最终协议擦除、权力空档劫持、远程信号植入'
+        }
+    };
+
+    function selectChapter(ch, el) {
+        document.querySelectorAll('.chapter-tab').forEach(function(t) {
+            t.classList.remove('bg-primary/10','border-primary/30','shadow-[0_0_6px_rgba(77,142,255,0.15)]');
+        });
+        if (el) {
+            el.classList.add('bg-primary/10','border-primary/30','shadow-[0_0_6px_rgba(77,142,255,0.15)]');
+        }
+
+        var d = chapterData[ch];
+        if (!d) return;
+
+        document.getElementById('chapter-detail-title').textContent = '章节方案 · 第' + d.number + '章 ' + d.phase.split(' ')[0];
+        document.getElementById('detail-ch-number').textContent = '第' + d.number + '章';
+        document.getElementById('detail-ch-phase').textContent = d.phase;
+        document.getElementById('detail-emotion-val').textContent = (d.emotion >= 0 ? '+' : '') + d.emotion.toFixed(2);
+        document.getElementById('detail-l1a-progress').textContent = d.progress;
+
+        // 同步灌注中间的独立章节定位卡片数据
+        document.getElementById('detail-ch-number-mid').textContent = '第' + d.number + '章';
+        document.getElementById('detail-ch-phase-mid').textContent = d.phase;
+        document.getElementById('detail-emotion-val-mid').textContent = (d.emotion >= 0 ? '+' : '') + d.emotion.toFixed(2);
+        document.getElementById('detail-l1a-progress-mid').textContent = d.progress;
+        
+        // 动态灌注内容
+        document.getElementById('detail-events').textContent = d.events;
+        document.getElementById('detail-drive-mode').textContent = d.driveMode;
+        document.getElementById('detail-satisfaction').textContent = d.satisfaction;
+        document.getElementById('detail-hook').textContent = d.hook;
+        document.getElementById('detail-reveal').textContent = d.reveal;
+        document.getElementById('detail-boundary').textContent = d.boundary;
+        document.getElementById('detail-scenes').textContent = d.scenes;
+
+        // 动态绘制标签
+        var tagsEl = document.getElementById('detail-tags');
+        tagsEl.innerHTML = d.tags.map(function(t) {
+            return '<span class="text-[10px] px-1.5 py-0.5 rounded bg-base-200 text-base-content opacity-60 border border-base-content/5">' + t + '</span>';
+        }).join('');
+
+        // 动态绘制角色出场
+        var charsHtml = d.characters.map(function(c) {
+            var clr = c === 'Kaelen-IV' ? 'primary' : (c === 'Elyse' ? 'tertiary' : 'error');
+            return '<span class="text-[10px] px-2 py-0.5 rounded-full bg-' + clr + '/10 text-' + clr + ' border border-' + clr + '/20 font-code-sm">' + c + '</span>';
+        }).join('');
+        
+        var charsEl = document.getElementById('detail-characters');
+        if (charsEl) charsEl.innerHTML = charsHtml;
+
+        var charsRightEl = document.getElementById('detail-characters-right');
+        if (charsRightEl) charsRightEl.innerHTML = charsHtml;
+    }
+    
+    function selectChapterByNum(ch) {
+        var tab = document.querySelector('.chapter-tab[data-ch="' + ch + '"]');
+        if (tab) selectChapter(ch, tab);
+    }
+
+    // Toast 提示框组件
+    function showToast(title, message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        
+        const toast = document.createElement('div');
+        toast.className = 'toast-item toast-' + type;
+        
+        let typeIcon = '';
+        if (type === 'success') {
+            typeIcon = 'check_circle';
+        } else if (type === 'warning') {
+            typeIcon = 'warning';
+        } else if (type === 'error') {
+            typeIcon = 'error';
+        } else {
+            typeIcon = 'info';
+        }
+        
+        toast.innerHTML = `
+            <span class="material-symbols-outlined shrink-0 text-lg mt-0.5">${typeIcon}</span>
+            <div class="flex-1 min-w-0">
+                <div class="text-xs font-bold text-base-content mb-0.5">${title}</div>
+                <div class="text-[10px] text-cyber-text-muted leading-relaxed">${message}</div>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-base-content opacity-40 hover:text-base-content transition-colors shrink-0 self-start">
+                <span class="material-symbols-outlined text-sm">close</span>
+            </button>
+            <div class="absolute bottom-0 left-0 h-0.5 bg-current animate-[toast-progress_3s_linear_forwards] w-full"></div>
+        `;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('toast-show');
+        }, 10);
+        
+        setTimeout(() => {
+            toast.classList.remove('toast-show');
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 3000);
+    }
+    window.showToast = showToast;
+</script>
+<div id="toast-container" class="toast-container"></div>
+
+<!-- 重新生成模态弹窗 -->
+<div id="regenerate-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-neutral/60 backdrop-blur-sm">
+    <div class="glass-panel w-[460px] rounded-box p-6 flex flex-col gap-4 border border-base-content/10 shadow-2xl relative bg-base-100">
+        <button class="absolute top-4 right-4 text-base-content opacity-60 hover:text-base-content transition-colors" onclick="closeRegenerateModal()">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+        <div class="flex items-center gap-2 mb-1">
+            <span class="material-symbols-outlined text-primary text-[22px]">psychology_alt</span>
+            <h3 class="font-headline-sm text-sm font-semibold text-primary">重新推演修改建议</h3>
+        </div>
+        <p class="font-code-sm text-[11px] text-base-content opacity-60 leading-relaxed">
+            请输入您希望针对当前 L1A 方案及关联章节重新生成的修改建议或因果推演方向。AI 引擎将根据您的调整重新规划情节推进。
+        </p>
+        <div class="flex flex-col gap-2">
+            <label class="font-label-caps text-[10px] text-base-content opacity-60/80">修改建议与方向描述</label>
+            <textarea id="re-deduction-direction" class="w-full h-28 bg-base-content/40 border border-base-content/10 rounded-lg p-3 text-xs text-base-content focus:border-primary/50 focus:ring-0 placeholder:text-base-content opacity-60/30 font-code-sm" placeholder="例如：李逍遥求药时的誓言语气要更慷慨激昂，同时强化水脉法阵破碎时的视觉震撼力，以此给反派血灵老祖制造更强的威慑阻碍..."></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-2">
+            <button class="px-4 py-2 rounded-lg bg-base-300 hover:bg-base-200 text-base-content opacity-60 text-[11px] font-medium transition-colors" onclick="closeRegenerateModal()">取消</button>
+            <button id="submit-replan-btn" class="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-content text-[11px] font-medium transition-all shadow-[0_0_10px_rgba(173,198,255,0.2)] flex items-center gap-1" onclick="submitReplanDirection()">
+                确认发送
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+window.toggleSidebar = function() {
+    document.body.classList.toggle('sidebar-collapsed');
+    const icon = document.getElementById('sidebarIcon');
+    if (icon) {
+        icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
+    }
+};
+</script>
+</body>
+</html>

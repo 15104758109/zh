@@ -1,0 +1,906 @@
+{
+  "name": "ZH05-正文推演",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/production_stage",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "e8d0bea8-835c-45a2-af69-d310211cb03d",
+      "name": "Webhook：/production_stage",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "a969faed-5339-417e-bbd7-85fd90712150"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+      },
+      "id": "64fb6f8a-de62-4543-a426-953bccbb6a20",
+      "name": "JSON修复",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -304
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        -304
+      ],
+      "id": "742b6b48-2bdc-4e6a-9720-7c4bd1ea8462",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "纵横叙事引擎L1A颗粒拆解器。\n职责：负责将宏观剧情段落（L1A）的各个文本字段拆解为不可再分的最小推演颗粒，并与当前场景的世界设定包进行交叉比对核验。\n拆解产出的结果将直接下发，供后续的套路弧展开和章节执行目标生成节点调用。\n【输出约束】：严格输出标准的原生 JSON 格式，禁止包含任何 Markdown 代码块围栏。\n用户提示词（User Prompt）\n你是L1A颗粒拆解器。请将剧情段落字段精准拆解为高活性颗粒，并与世界设定包比对，强制过滤当前不可用的资源条目。\n\n## 输入数据\n\n- 剧情段单元：`{{ 剧情段单元_JSON }}`\n- 世界设定包可用资源资产代码列表：`{{ 可用资源资产代码列表 }}`\n\n## 执行步骤\n\n### 步骤1：高阶字段解析\n深度解析 `剧情段单元_JSON` 中的以下字段，并严格按照优先级顺序提取核心颗粒：\n- 从 `剧情承诺.必然发生 ` 提取 → 归类为：`事实颗粒 (truth)`\n- 从 `剧情承诺.必须覆盖颗粒 ` 提取 → 依据内在属性分类\n- 从 `关键后果 提取 → 归类为：`事实颗粒`\n- 从 `绝处生机` 提取 → 归类为：`资源颗粒` 或 `信息颗粒`\n- 从 `阶段性核心目标 ` 提取 → 依据内在属性分类\n\n### 步骤2：标准颗粒属性生成\n拆解出的每个最小颗粒必须完整包含以下底层属性字段：\n- `颗粒ID` / `颗粒类型 ` / `具体内容` / `来源字段 ` / `本章作用 ` / `数据债标注 `\n\n### 步骤3：世界设定包边界核验（D-V4增强机制）\n针对所有类型为 `资源 ` 的颗粒，强制核对该资源是否存在于 `可用资源资产代码列表` 中：\n- **确实存在**：安全保留该颗粒，并在颗粒内部标注 `是否通过世界核验: true`。\n- **不存在/虚空造物**：将该颗粒无条件从本章剔除，移入 `延后执行颗粒列表` 中，并标注 `延后原因: \"该资源资产在当前章节场景下处于不可用状态\"`。\n\n### 步骤4：局部数据债深度检测\n在每个颗粒内部的 `数据债标注` 中进行黑盒透视：\n- 如果该颗粒所严重依赖的外部世界观条目、人物背景设定缺失或语焉不详，必须精准标注出具体的设计缺口。\n\n### 步骤5：颗粒群完整性检查（熔断预警）\n- 若最终 `通过世界核验的颗粒计数 < 3`：必须在全局的 `全局数据债说明` 字段中报警提示：“本章可用推演颗粒不足3个，底层博弈极易流于平淡，强烈建议人工扩充前置世界设定或角色底牌”。\n- 若 `延后执行的颗粒计数 > 0`：在全局标注：“本章有部分核心颗粒因资源不满足被动延后执行”。\n\n## 输出格式\n\n{\n  \"可用颗粒列表\": [\n    {\n      \"颗粒ID\": \"p001\",\n      \"颗粒类型\": \"事实|资源|信息|情绪|悬念钩子\",\n      \"具体内容\": \"颗粒具体内容描述\",\n      \"来源字段\": \"解析自哪一个原剧情段字段\",\n      \"本章作用\": \"本颗粒在本章推演中所扮演的角色\",\n      \"公开范围\": \"全员可见|特定角色代码（继承自必须覆盖颗粒的公开范围属性）\",\n      \"是否通过世界核验\": true,\n      \"数据债标注\": \"单颗粒数据缺陷说明，无则填合规\"\n    }\n  ],\n  \"延后执行颗粒列表\": [\n    {\n      \"颗粒ID\": \"p003\",\n      \"具体内容\": \"被剔除的颗粒内容\",\n      \"延后原因\": \"该资源资产在当前章节场景下处于不可用状态\",\n      \"预计最早可用章节\": \"根据剧情规划预计可放行解锁的章节，无法预判则填null\"\n    }\n  ],\n  \"通过世界核验的颗粒计数\": 3,\n  \"延后执行的颗粒计数\": 1,\n  \"全局数据债说明\": \"全局视角的整体资源或设定缺口陈述，若完全合规且可用颗粒充足则填无\"\n}\n\n## 输出校验规则\n\n- 任何类型为 `资源` 的颗粒，必须强制完成世界边界核验并包含 `是否通过世界核验` 标注，绝对不得遗漏或跳过。\n- 凡是落入 `延后执行颗粒列表` 的颗粒，当前节点必须对其进行物理隔离，绝对不得流向下游进入本章的博弈推演。\n- 颗粒ID（如 p001, p002）在全局架构中必须保持绝对唯一，严禁碰撞。\n校验规则（来源：迭代实验固化）\n任何类型为 资源 的颗粒，必须强制完成世界边界核验并包含 是否通过世界核验 标注，绝对不得遗漏或跳过。\n\n凡是落入 延后执行颗粒列表 的颗粒，当前节点必须对其进行物理隔离，绝对不得流向下游进入本章的博弈推演。\n颗粒ID在全局架构中必须保持绝对唯一，严禁冲突"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        384,
+        -304
+      ],
+      "id": "71aa2b58-10c7-400a-adca-238bd8178425",
+      "name": "FP008-01 剧情段颗粒拆解",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
+        "additionalFields": {}
+      },
+      "id": "189865e3-2c21-407f-ab81-6e46dfc61489",
+      "name": "读取拆解结果",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        192,
+        -304
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
+        "additionalFields": {}
+      },
+      "id": "be602323-61a1-419e-b214-7cd4c0b4ccf7",
+      "name": "读取拆解结果1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        192,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        -304
+      ],
+      "id": "a23c1f7a-e88d-468f-93c1-1f65ee9654fc",
+      "name": "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+      },
+      "id": "78a78ba1-45e7-4d06-8dfc-14bc4daf4ed0",
+      "name": "JSON修复1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1072,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "审查-02 凭空造物（特级/P0）：正文中是否错误使用了「世界设定包」之外的物品、超自然能力、外部援军或底层规则？\n审查-03 信息越权（特级/P0）：角色是否在自身控视角中，使用了其「信息边界.不知」范围内的未授权客观信息？\n审查-05 设定污染（特级/P0）：文本中是否出现了任何未经前置审批的全新世界观规则或异能设定？\n审查-06 失活实体（高级/P1）：正文中是否错误调用了在先前剧情中已明确死亡、毁坏、停用或失去活性的角色与剧情道具？\n审查-09 情绪任务（高级/P1，节奏量化版）：\n从「目标快照.预设情绪目标」中提取预设的叙事节奏进行比对：\n实际情绪波事件：正文中实际体现的情绪波动事件（其支撑类型必须属于：资源消耗、关系变化、信息差变动、代价支付、底牌释放之一）。\n目标覆盖率：实际兑现的情绪节点数量 / 预设情绪节点总数。\n节奏忠实度判定：合格（≥80%） | 警告（60%-80%） | 不合格（<60%）。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1232,
+        -304
+      ],
+      "id": "b5718a0a-f087-47f1-a154-4e29cf062c3c",
+      "name": "FP008-03 阶段审计",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+      },
+      "id": "a2670d52-4b56-401c-975c-6d8aee890140",
+      "name": "JSON修复2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+      },
+      "id": "afd04fbe-6e85-49e0-ad50-7a5a5ab2542b",
+      "name": "JSON修复3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "纵横叙事引擎L1A颗粒拆解器。\n职责：负责将宏观剧情段落（L1A）的各个文本字段拆解为不可再分的最小推演颗粒，并与当前场景的世界设定包进行交叉比对核验。\n拆解产出的结果将直接下发，供后续的套路弧展开和章节执行目标生成节点调用。\n【输出约束】：严格输出标准的原生 JSON 格式，禁止包含任何 Markdown 代码块围栏。\n用户提示词（User Prompt）\n你是L1A颗粒拆解器。请将剧情段落字段精准拆解为高活性颗粒，并与世界设定包比对，强制过滤当前不可用的资源条目。\n\n## 输入数据\n\n- 剧情段单元：`{{ 剧情段单元_JSON }}`\n- 世界设定包可用资源资产代码列表：`{{ 可用资源资产代码列表 }}`\n\n## 执行步骤\n\n### 步骤1：高阶字段解析\n深度解析 `剧情段单元_JSON` 中的以下字段，并严格按照优先级顺序提取核心颗粒：\n- 从 `剧情承诺.必然发生 ` 提取 → 归类为：`事实颗粒 (truth)`\n- 从 `剧情承诺.必须覆盖颗粒 ` 提取 → 依据内在属性分类\n- 从 `关键后果 提取 → 归类为：`事实颗粒`\n- 从 `绝处生机` 提取 → 归类为：`资源颗粒` 或 `信息颗粒`\n- 从 `阶段性核心目标 ` 提取 → 依据内在属性分类\n\n### 步骤2：标准颗粒属性生成\n拆解出的每个最小颗粒必须完整包含以下底层属性字段：\n- `颗粒ID` / `颗粒类型 ` / `具体内容` / `来源字段 ` / `本章作用 ` / `数据债标注 `\n\n### 步骤3：世界设定包边界核验（D-V4增强机制）\n针对所有类型为 `资源 ` 的颗粒，强制核对该资源是否存在于 `可用资源资产代码列表` 中：\n- **确实存在**：安全保留该颗粒，并在颗粒内部标注 `是否通过世界核验: true`。\n- **不存在/虚空造物**：将该颗粒无条件从本章剔除，移入 `延后执行颗粒列表` 中，并标注 `延后原因: \"该资源资产在当前章节场景下处于不可用状态\"`。\n\n### 步骤4：局部数据债深度检测\n在每个颗粒内部的 `数据债标注` 中进行黑盒透视：\n- 如果该颗粒所严重依赖的外部世界观条目、人物背景设定缺失或语焉不详，必须精准标注出具体的设计缺口。\n\n### 步骤5：颗粒群完整性检查（熔断预警）\n- 若最终 `通过世界核验的颗粒计数 < 3`：必须在全局的 `全局数据债说明` 字段中报警提示：“本章可用推演颗粒不足3个，底层博弈极易流于平淡，强烈建议人工扩充前置世界设定或角色底牌”。\n- 若 `延后执行的颗粒计数 > 0`：在全局标注：“本章有部分核心颗粒因资源不满足被动延后执行”。\n\n## 输出格式\n\n{\n  \"可用颗粒列表\": [\n    {\n      \"颗粒ID\": \"p001\",\n      \"颗粒类型\": \"事实|资源|信息|情绪|悬念钩子\",\n      \"具体内容\": \"颗粒具体内容描述\",\n      \"来源字段\": \"解析自哪一个原剧情段字段\",\n      \"本章作用\": \"本颗粒在本章推演中所扮演的角色\",\n      \"公开范围\": \"全员可见|特定角色代码（继承自必须覆盖颗粒的公开范围属性）\",\n      \"是否通过世界核验\": true,\n      \"数据债标注\": \"单颗粒数据缺陷说明，无则填合规\"\n    }\n  ],\n  \"延后执行颗粒列表\": [\n    {\n      \"颗粒ID\": \"p003\",\n      \"具体内容\": \"被剔除的颗粒内容\",\n      \"延后原因\": \"该资源资产在当前章节场景下处于不可用状态\",\n      \"预计最早可用章节\": \"根据剧情规划预计可放行解锁的章节，无法预判则填null\"\n    }\n  ],\n  \"通过世界核验的颗粒计数\": 3,\n  \"延后执行的颗粒计数\": 1,\n  \"全局数据债说明\": \"全局视角的整体资源或设定缺口陈述，若完全合规且可用颗粒充足则填无\"\n}\n\n## 输出校验规则\n\n- 任何类型为 `资源` 的颗粒，必须强制完成世界边界核验并包含 `是否通过世界核验` 标注，绝对不得遗漏或跳过。\n- 凡是落入 `延后执行颗粒列表` 的颗粒，当前节点必须对其进行物理隔离，绝对不得流向下游进入本章的博弈推演。\n- 颗粒ID（如 p001, p002）在全局架构中必须保持绝对唯一，严禁碰撞。\n校验规则（来源：迭代实验固化）\n任何类型为 资源 的颗粒，必须强制完成世界边界核验并包含 是否通过世界核验 标注，绝对不得遗漏或跳过。\n\n凡是落入 延后执行颗粒列表 的颗粒，当前节点必须对其进行物理隔离，绝对不得流向下游进入本章的博弈推演。\n颗粒ID在全局架构中必须保持绝对唯一，严禁冲突"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        368,
+        0
+      ],
+      "id": "aa14c168-7552-424b-b1c9-c288124929ad",
+      "name": "FP008-01 剧情段颗粒拆解1",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        864,
+        0
+      ],
+      "id": "32e53a03-04bb-40cb-a77d-90117fc79068",
+      "name": "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎1"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+      },
+      "id": "d78f3c15-e61e-4422-918e-7c3e31e4c929",
+      "name": "JSON修复4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2080,
+        0
+      ],
+      "id": "ac71a5f8-696e-4ec8-85a5-e1a83064f51c",
+      "name": "FP008-03 阶段审计2",
+      "webhookId": "b5a9dec9-5520-4a9e-a36a-7c9e8b9aa144"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b9f86fcf-77a0-47b7-bbab-f52ff2865fef",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2256,
+        0
+      ],
+      "id": "ee59e5d8-7cdb-41b9-b949-9e635174ef09",
+      "name": "If审计通过"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b9f86fcf-77a0-47b7-bbab-f52ff2865fef",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1680,
+        -304
+      ],
+      "id": "1fa21130-04d4-4be8-9f3d-cc5a2ddddf93",
+      "name": "If审计通过1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
+        "additionalFields": {}
+      },
+      "id": "0c262066-325d-4625-8622-6f081ebac574",
+      "name": "异常样本入库",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        2464,
+        144
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
+        "additionalFields": {}
+      },
+      "id": "5af03a8b-df76-41aa-8a36-5924da9c6a48",
+      "name": "异常样本入库1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1888,
+        -176
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+      },
+      "id": "c2aba984-2d71-4d98-9796-551c9459b4fa",
+      "name": "JSON修复5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        2176,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+      },
+      "id": "f2300036-674d-4ac6-b2c6-09806acfa664",
+      "name": "JSON修复6",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2496,
+        -320
+      ],
+      "id": "6c4d2d9f-1848-456d-b19a-27de00011dea",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2608,
+        -16
+      ],
+      "id": "ef922377-f848-4267-9cd5-9e84b8a33eb6",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
+        "additionalFields": {}
+      },
+      "id": "323942be-377c-4bcd-b39a-2875aeaf8008",
+      "name": "推演结果断章入库",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        2432,
+        -16
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
+        "additionalFields": {}
+      },
+      "id": "c7bb1348-8afa-49ed-824a-77eca87b5f16",
+      "name": "推演结果断章入库1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        2336,
+        -320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "断章时机与业务分流（US1: 套路展开+断章）：  在剧情段（L1A）定稿后，系统会将中程承诺包下发。  NODE_03: 章节目标生成 负责接收这些颗粒，锁定本章的情绪目标（如节奏、峰值情绪、强度限制），并划分主/次 POV 的边界[cite: 4]。 章节套路展开 负责看菜下饭，依据情绪波峰、钩子位置、信息揭露节奏和阅读期待进行断章切分（每个剧情段最终断章通常不得少于 3 章）。  宏观大事纪划分：  如果涉及更上位的剧情段宏观排序，则通过设计层的 l1a_sort 的 Sub-call 1（大事纪划分器） 进行。它负责提取时间线索，按情绪强度变化和世界状态变迁划分叙事阶段，并标记出阶段间的转折剧情段，从而在微观拆章前完成宏观结构锁死。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1888,
+        -320
+      ],
+      "id": "8a6f5c98-f88d-47c6-aa61-21565a17ee0d",
+      "name": "FP008-04断章分析",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "断章时机与业务分流（US1: 套路展开+断章）：  在剧情段（L1A）定稿后，系统会将中程承诺包下发。  NODE_03: 章节目标生成 负责接收这些颗粒，锁定本章的情绪目标（如节奏、峰值情绪、强度限制），并划分主/次 POV 的边界[cite: 4]。 章节套路展开 负责看菜下饭，依据情绪波峰、钩子位置、信息揭露节奏和阅读期待进行断章切分（每个剧情段最终断章通常不得少于 3 章）。  宏观大事纪划分：  如果涉及更上位的剧情段宏观排序，则通过设计层的 l1a_sort 的 Sub-call 1（大事纪划分器） 进行。它负责提取时间线索，按情绪强度变化和世界状态变迁划分叙事阶段，并标记出阶段间的转折剧情段，从而在微观拆章前完成宏观结构锁死。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1632,
+        0
+      ],
+      "id": "57461c02-dcc2-4d36-b15f-6aee81d3e13d",
+      "name": "FP008-04断章分析1",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "审查-02 凭空造物（特级/P0）：正文中是否错误使用了「世界设定包」之外的物品、超自然能力、外部援军或底层规则？\n审查-03 信息越权（特级/P0）：角色是否在自身控视角中，使用了其「信息边界.不知」范围内的未授权客观信息？\n审查-05 设定污染（特级/P0）：文本中是否出现了任何未经前置审批的全新世界观规则或异能设定？\n审查-06 失活实体（高级/P1）：正文中是否错误调用了在先前剧情中已明确死亡、毁坏、停用或失去活性的角色与剧情道具？\n审查-09 情绪任务（高级/P1，节奏量化版）：\n从「目标快照.预设情绪目标」中提取预设的叙事节奏进行比对：\n实际情绪波事件：正文中实际体现的情绪波动事件（其支撑类型必须属于：资源消耗、关系变化、信息差变动、代价支付、底牌释放之一）。\n目标覆盖率：实际兑现的情绪节点数量 / 预设情绪节点总数。\n节奏忠实度判定：合格（≥80%） | 警告（60%-80%） | 不合格（<60%）。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "27389b02-a256-4603-9cba-84e9e65f7743",
+      "name": "FP008-03 阶段审计1",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+      },
+      "id": "a30059fc-13f2-4fa5-a002-30e34b746b45",
+      "name": "JSON修复7",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook：/production_stage": {
+      "main": [
+        [
+          {
+            "node": "读取拆解结果1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复": {
+      "main": [
+        [
+          {
+            "node": "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "读取拆解结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读取拆解结果": {
+      "main": [
+        [
+          {
+            "node": "FP008-01 剧情段颗粒拆解",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-01 剧情段颗粒拆解": {
+      "main": [
+        [
+          {
+            "node": "JSON修复",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎": {
+      "main": [
+        [
+          {
+            "node": "JSON修复1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复1": {
+      "main": [
+        [
+          {
+            "node": "FP008-03 阶段审计",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-03 阶段审计": {
+      "main": [
+        [
+          {
+            "node": "JSON修复2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复2": {
+      "main": [
+        [
+          {
+            "node": "If审计通过1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复3": {
+      "main": [
+        [
+          {
+            "node": "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-01 剧情段颗粒拆解1": {
+      "main": [
+        [
+          {
+            "node": "JSON修复3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎1": {
+      "main": [
+        [
+          {
+            "node": "JSON修复4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读取拆解结果1": {
+      "main": [
+        [
+          {
+            "node": "FP008-01 剧情段颗粒拆解1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复4": {
+      "main": [
+        [
+          {
+            "node": "FP008-03 阶段审计1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-03 阶段审计2": {
+      "main": [
+        [
+          {
+            "node": "If审计通过",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If审计通过": {
+      "main": [
+        [
+          {
+            "node": "推演结果断章入库",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "异常样本入库",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If审计通过1": {
+      "main": [
+        [
+          {
+            "node": "FP008-04断章分析",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "异常样本入库1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复5": {
+      "main": [
+        [
+          {
+            "node": "推演结果断章入库1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复6": {
+      "main": [
+        [
+          {
+            "node": "FP008-03 阶段审计2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "推演结果断章入库": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "推演结果断章入库1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-04断章分析": {
+      "main": [
+        [
+          {
+            "node": "JSON修复5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-04断章分析1": {
+      "main": [
+        [
+          {
+            "node": "JSON修复6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-03 阶段审计1": {
+      "main": [
+        [
+          {
+            "node": "JSON修复7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复7": {
+      "main": [
+        [
+          {
+            "node": "FP008-04断章分析1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "20f69f14-9e87-4c37-9f0f-c595a90246b5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"
+  },
+  "id": "fc798416-f7be-4ee6-abe6-199a98f97933",
+  "tags": []
+}

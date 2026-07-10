@@ -1,0 +1,64 @@
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+*.env
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.asc
+*.gpg
+id_rsa*
+id_ed25519*
+*secret*
+*secrets*
+*credential*
+*credentials*
+*token*
+*apikey*
+*api-key*
+
+# Local caches and dependency folders
+.cache/
+.tmp/
+tmp/
+temp/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+
+# Build artifacts
+dist/
+build/
+out/
+coverage/
+.next/
+.nuxt/
+.vite/
+*.tsbuildinfo
+
+# Runtime logs
+logs/
+*.log
+*.pid
+*.seed
+*.trace
+
+# Local files flagged by pre-baseline secret scan
+docs/前端原型_v2/pages/workbench.html
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

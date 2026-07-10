@@ -1,0 +1,1354 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Narrative Engine - 审计阶段</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+        <!-- Tailwind CSS & DaisyUI v4 via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="../common/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="../common/sidebar.css">
+    <script src="../common/theme.js"></script>
+    <script src="./new_book_wizard_data.js"></script>
+    <script src="../common/header.js"></script>
+
+
+
+
+
+
+<style>
+        .font-label-caps { font-family: 'Inter', sans-serif; font-size: 11px; line-height: 16px; letter-spacing: 0.05em; font-weight: 700; }
+        .font-code-sm { font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 18px; font-weight: 400; }
+        .font-body-md { font-family: 'Inter', sans-serif; font-size: 14px; line-height: 20px; font-weight: 400; }
+        .font-body-lg { font-family: 'Inter', sans-serif; font-size: 16px; line-height: 24px; font-weight: 400; }
+        .font-headline-sm { font-family: 'Geist', sans-serif; font-size: 18px; line-height: 24px; font-weight: 500; }
+        .font-headline-md { font-family: 'Geist', sans-serif; font-size: 24px; line-height: 32px; font-weight: 600; }
+        .font-headline-lg { font-family: 'Geist', sans-serif; font-size: 32px; line-height: 40px; letter-spacing: -0.02em; font-weight: 600; }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        .glass-panel {
+            background: rgba(20, 27, 38, 0.6);
+            backdrop-3: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: background-color 0.4s ease, border-color 0.4s ease;
+        }
+
+        /* Reader Transition */
+        #editor-panel {
+            transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+        }
+
+        /* Rainbow Button Styles (from production_stage.html) */
+        @keyframes rainbow-flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(0, 242, 255, 0.4), 0 0 30px rgba(0, 242, 255, 0.2); }
+            50% { box-shadow: 0 0 25px rgba(0, 242, 255, 0.7), 0 0 50px rgba(0, 242, 255, 0.4), 0 0 10px #00f0ff; }
+        }
+        .btn-rainbow-glow {
+            background: linear-gradient(90deg, #ff007f, #7f00ff, #00f0ff, #ff007f) !important;
+            background-size: 300% 100% !important;
+            animation: rainbow-flow 3s linear infinite, pulse-glow 2s ease-in-out infinite !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+            transform: scale(1.02);
+            transition: transform 0.2s ease, filter 0.2s ease !important;
+        }
+        .btn-rainbow-glow:hover {
+            transform: scale(1.06);
+            filter: brightness(1.2);
+        }
+        .btn-rainbow-glow:disabled {
+            animation: none !important;
+            background: #32353c !important;
+            box-shadow: none !important;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* Page Curl Corner Styles */
+        .page-curl-box {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 70px;
+            height: 70px;
+            overflow: hidden;
+            cursor: pointer;
+            z-index: 30;
+            transition: all 0.3s ease;
+        }
+        .page-curl-corner {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #ffffff 45%, #e1e2eb 55%);
+            transform: rotate(45deg) translate(0px, -70px);
+            box-shadow: -3px 3px 10px rgba(0, 0, 0, 0.25);
+            border-left: 1px solid rgba(0, 0, 0, 0.08);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+        .page-curl-box:hover .page-curl-corner {
+            transform: rotate(45deg) translate(0px, -66px);
+        }
+        .page-curl-text {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            font-size: 8px;
+            font-weight: 800;
+            color: #1e293b;
+            transform: rotate(45deg);
+            pointer-events: none;
+            transition: color 0.3s ease;
+        }
+        /* Shadow Mode styles for Curl */
+        .page-curl-shadow-active .page-curl-corner {
+            background: linear-gradient(135deg, #ff007f 45%, #7f00ff 55%);
+            box-shadow: -3px 3px 15px rgba(255, 0, 127, 0.3);
+        }
+        .page-curl-shadow-active .page-curl-text {
+            color: #ffffff;
+        }
+
+        /* Shadow Mode Editor Styles */
+        .shadow-mode-panel {
+            background-color: #0b020a !important;
+            color: #ffb4ab !important;
+            border-color: rgba(255, 0, 127, 0.15) !important;
+            box-shadow: inset 0 0 30px rgba(255, 0, 127, 0.08) !important;
+        }
+
+        /* Dimension Tabs */
+        .dim-tab-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .dim-tab-btn.active {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+        .dim-tab-btn.active.tab-objective {
+            color: #4edea3;
+            border-bottom: 2px solid #4edea3;
+        }
+        .dim-tab-btn.active.tab-commercial {
+            color: #adc6ff;
+            border-bottom: 2px solid #adc6ff;
+        }
+        .dim-tab-btn.active.tab-reader {
+            color: #ffb95f;
+            border-bottom: 2px solid #ffb95f;
+        }
+
+        /* Toast Styles */
+        .toast-item {
+            animation: slideIn 0.3s ease forwards;
+            background: rgba(18, 22, 31, 0.95);
+            border: 1px solid rgba(0, 230, 118, 0.25);
+            border-left: 4px solid #00E676;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-3: blur(12px);
+        }
+        .toast-progress {
+            height: 2px;
+            background: #00E676;
+            animation: toast-progress 4s linear forwards;
+        }
+        @keyframes toast-progress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(120%); opacity: 0; }
+        }
+        
+        
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0b0e14; }
+        ::-webkit-scrollbar-thumb { background: #32353c; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #424754; }
+
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-2px) scale(1.05); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+
+        .quick-settings-glass {
+            background: var(--color-base-100, rgba(15, 18, 25, 0.9)) !important;
+            backdrop-3: blur(20px);
+            -webkit-backdrop-3: blur(20px);
+            border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1)) !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+        }
+
+        .toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1); transition: .4s; border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .toggle-slider:before {
+            position: absolute; content: ""; height: 12px; width: 12px;
+            left: 3px; bottom: 3px; background-color: white; transition: .4s;
+            border-radius: 50%; box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        input:checked + .toggle-slider { background-color: rgba(77, 142, 255, 0.3); border-color: rgba(77, 142, 255, 0.4); }
+        input:checked + .toggle-slider:before { transform: translateX(16px); background-color: #4d8eff; box-shadow: 0 0 15px rgba(77, 142, 255, 0.6); }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #32353c; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #424754; }
+
+        .dashed-border { background-image: linear-gradient(to right, #424754 50%, rgba(255,255,255,0) 0%); background-position: bottom; background-size: 8px 1px; background-repeat: repeat-x; }
+
+        .custom-range {
+            -webkit-appearance: none; width: 100%; height: 4px;
+            background: rgba(255, 255, 255, 0.1); border-radius: 2px; outline: none;
+        }
+        .custom-range::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 12px; height: 12px;
+            background: #4d8eff; border-radius: 50%; cursor: pointer;
+            box-shadow: 0 0 10px rgba(77, 142, 255, 0.5); border: 2px solid white;
+        }
+
+        .scroll-hide::-webkit-scrollbar { width: 4px; }
+        .scroll-hide::-webkit-scrollbar-thumb { background: #363940; border-radius: 10px; }
+
+        .highlight-amber { color: #f59e0b; border-bottom: 1px dashed #f59e0b; }
+
+        .status-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; }
+
+        .glow-success { box-shadow: 0 0 15px rgba(16, 185, 129, 0.15); }
+            /* 顶栏随侧栏折叠隐藏 */
+        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
+        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
+        .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
+        .header-tab:hover { opacity: 0.85; }
+        .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        .settings-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-base-300); cursor: pointer; transition: background 0.2s ease; flex-shrink: 0; }
+        .settings-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.2s ease; }
+        .settings-switch.on { background: var(--color-accent); }
+        .settings-switch.on::after { transform: translateX(16px); }
+        .settings-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; cursor: pointer; transition: all 0.15s ease; }
+        .settings-btn:hover { background: var(--color-accent); color: white; }
+
+</style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-base-200 text-base-content font-body-md overflow-hidden h-screen flex selection:bg-primary/30 selection:text-base-content">
+<a href="#main-content" class="skip-link">跳到主内容</a>
+
+<nav class="sidebar-glass" aria-label="主菜单">
+  <div class="sidebar-brand">
+    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
+    <div class="sidebar-text">
+      <div class="brand-title">纵横</div>
+      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
+    </div>
+  </div>
+  <div class="sidebar-separator" aria-hidden="true"></div>
+  <ul class="menu sidebar-menu" id="sidebarMenu">
+    <li><a href="workbench.html" aria-label="总控设置面板"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
+    <li><a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
+    <li><a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
+    <li><a href="audit_stage.html" class="active" aria-label="审计阶段：正文审计、主编裁决"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
+    <li><a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
+  </ul>
+  <footer class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">U</div>
+      <span class="sidebar-text sidebar-user-name">用户</span>
+    </div>
+  </footer>
+</nav>
+<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
+</button>
+<!-- Main Content Area -->
+<div class="main-content" id="main">
+
+<!-- TopNavBar -->
+    <!-- TopNavBar -->
+        <!-- TopNavBar -->
+        <!-- TopNavBar -->
+    <header class="header-glass h-16 fixed top-0 right-0 z-[60] flex justify-between items-center px-6 bg-base-100">
+        <div class="flex items-center gap-4 h-full">
+            <nav class="flex h-full items-center ml-2">
+                <!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
+                                <div class="header-tabs">
+                    <a href="production_stage.html" class="header-tab">套路展开</a>
+                    <a href="multi_agent_deduction.html" class="header-tab">多代理推演</a>
+                    <a href="audit_review.html" class="header-tab active">结果审核</a>
+                </div>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- 当前书籍标识 -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-content/10 text-[11px] font-medium text-base-content/80">
+                <span class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></span>
+                <span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+                <span id="header-book-name"></span>
+            </div>
+            <button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">notifications</span>
+            </button>
+            
+            <!-- 快捷设置齿轮与弹窗 -->
+            <div class="relative flex items-center">
+                <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                </button>
+                <!-- Quick Settings Popover -->
+                        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
+                    <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
+                </div>
+                <div class="flex flex-col gap-2 mb-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
+                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
+                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
+                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-base-content/5">
+                    <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        应用当前配置
+                    </button>
+                </div>
+            </div>
+                
+                <div class="mt-4 pt-3 border-t border-base-content/5">
+                    <button class="btn btn-outline btn-primary btn-sm w-full font-bold" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">应用当前配置</button>
+                </div>
+            </div>
+            </div>
+            
+            <div class="h-8 w-[1px] bg-base-content/5 mx-1"></div>
+        </div>
+    </header>
+
+<!-- BEGIN: Audit Review Content -->
+<main class="flex-1 mt-16 p-6 overflow-hidden">
+<div class="grid grid-cols-12 gap-6 h-full max-w-[1600px] mx-auto">
+
+<!-- BEGIN: Left Content Area (Text Editor/Reader) -->
+<section class="col-span-9 flex flex-col gap-4 h-full overflow-hidden" data-purpose="text-editor-container">
+
+<!-- Main Editor Panel -->
+<div id="editor-panel" class="flex-1 bg-base-200 shadow-inner border border-base-content/5 rounded-3xl shadow-sm p-8 overflow-y-auto scroll-hide relative" style="border: 1px solid rgba(0,0,0,0.06); box-shadow: inset 0 2px 8px rgba(0,0,0,0.02);">
+<!-- 右上角折角“影子版”切换卡 -->
+<div id="page-curl-ctrl" class="page-curl-box" onclick="toggleShadowMode()" title="切换影子版/正式版">
+    <div class="page-curl-corner"></div>
+    <div class="page-curl-text" id="page-curl-label">影子版</div>
+</div>
+
+<!-- Header in Editor (重构：下拉菜单 + 总字数 + 大中小字号 + 黑白切换) -->
+<div class="flex justify-between items-start mb-10 select-none">
+    <div>
+        <p class="text-xs tracking-widest font-bold uppercase" style="color: #60735d;">Chapter 029</p>
+        
+        <!-- 章节标题下拉菜单 -->
+        <div class="relative inline-block text-left mt-1" id="chapter-select-container">
+            <button onclick="toggleChapterDropdown(event)" class="font-headline-md flex items-center gap-1.5 hover:opacity-80 transition-opacity focus:outline-none" style="color: #1d2a1c;" id="chapter-title-btn">
+                <span id="current-chapter-title">第029章 霓虹深渊的低语</span>
+                <span class="material-symbols-outlined text-[20px] opacity-70">arrow_drop_down</span>
+            </button>
+            
+            <!-- 下拉框本体 -->
+            <div id="chapter-select-dropdown" class="hidden absolute left-0 mt-2 w-80 rounded-box quick-settings-glass border border-base-content/10 shadow-2xl z-50 py-3 text-base-content">
+                <div class="px-4 py-1.5 border-b border-base-content/5 text-[9px] text-primary font-label-caps tracking-widest">
+                    本次推演章节 (运行中)
+                </div>
+                <div class="px-2 py-1 space-y-0.5">
+                    <a onclick="switchChapter(29, '第029章 霓虹深渊的低语')" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-base-content/5 cursor-pointer text-xs font-semibold text-secondary">
+                        <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                        <span>第029章 霓虹深渊的低语</span>
+                        <span class="px-1 py-0.2 bg-secondary/15 text-secondary text-[8px] rounded border border-secondary/20 ml-auto">当前</span>
+                    </a>
+                    <a onclick="switchChapter(30, '第030章 数据走私港')" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-base-content/5 cursor-pointer text-xs font-semibold text-base-content opacity-70">
+                        <span class="w-1.5 h-1.5 rounded-full bg-base-content/40"></span>
+                        <span>第030章 数据走私港</span>
+                    </a>
+                    <a onclick="switchChapter(31, '第031章 虚拟主机的觉醒')" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-base-content/5 cursor-pointer text-xs font-semibold text-base-content opacity-70">
+                        <span class="w-1.5 h-1.5 rounded-full bg-base-content/40"></span>
+                        <span>第031章 虚拟主机的觉醒</span>
+                    </a>
+                </div>
+                <div class="h-[1px] bg-base-content/5 my-2"></div>
+                <div class="px-4 py-1.5 text-[9px] text-primary font-label-caps tracking-widest">
+                    已放行章节
+                </div>
+                <!-- 历史章节支持局部滚动，防止列表过长 -->
+                <div class="max-h-48 overflow-y-auto custom-scrollbar px-2 py-1 space-y-0.5" id="history-chapters-list">
+                    <!-- 动态渲染历史已完成章节 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧阅读器控制器 -->
+    <div class="flex items-center gap-3">
+        <!-- 章节总字数 -->
+        <div class="bg-black/5 px-3 py-1.5 rounded border border-base-content/5 text-success-content font-semibold text-xs tracking-wider transition-colors" id="editor-word-count">
+            总字数：12,450 字
+        </div>
+
+        <!-- 大中小字号直选 -->
+        <div class="flex items-center bg-black/5 border border-base-content/5 p-0.5 rounded text-xs text-success-content transition-colors" id="font-size-container">
+            <button id="btn-font-sm" onclick="changeFontSize('small', this)" class="px-2.5 py-1 rounded hover:bg-neutral/10 transition-colors font-medium opacity-60 hover:opacity-100">小</button>
+            <button id="btn-font-md" onclick="changeFontSize('medium', this)" class="px-2.5 py-1 rounded bg-neutral/10 transition-colors font-bold border border-base-content/5">中</button>
+            <button id="btn-font-lg" onclick="changeFontSize('large', this)" class="px-2.5 py-1 rounded hover:bg-neutral/10 transition-colors font-medium opacity-60 hover:opacity-100">大</button>
+        </div>
+
+        <!-- 黑白背景切换开关 -->
+        <button onclick="toggleReaderTheme(this)" class="p-1.5 bg-black/5 rounded border border-base-content/5 cursor-pointer hover:bg-neutral/10 text-success-content transition-colors flex items-center justify-center" id="reader-theme-btn" title="白/黑背景切换">
+            <span class="material-symbols-outlined text-[18px]">dark_mode</span>
+        </button>
+    </div>
+</div>
+
+<!-- Narrative Text Content -->
+<div class="space-y-8 leading-relaxed text-lg max-w-4xl mx-auto" style="color: #2b3b2a;">
+<div class="flex gap-4 group">
+<span class="text-primary opacity-50 text-sm mt-1.5 select-none font-bold">①</span>
+<p class="">次轨道运输舱在突破外层大气层的瞬间遭遇破坏，Kaelen-IV 的断照灯划破舱体切割开。Elyse 紧盯着面板前的状态显示，<span id="evidence-1" class="transition-all duration-300" style="border-bottom: 2px solid transparent; padding-bottom: 2px;">充学界面的摩擦热在视镜玻璃上啨噬，直接映射为视觉皮层的撒裂感。</span></p>
+</div>
+<div class="flex gap-4">
+<span class="invisible text-sm">②</span>
+<p class="">"状态报告。"媞低声道，副声化通道提取出 AI 的回应。</p>
+</div>
+<div class="flex gap-4">
+<span class="text-warning/70 text-sm mt-1.5 select-none font-bold">②</span>
+<p class="">一串琥珀色的符文在舱娖呈现鼓动中瀫布般流下，然而数据很薄，由不可解的传感网绘倒塌，媞伸手覆上控制台，<span id="evidence-2" class="transition-all duration-300 pb-0.5" style="border-bottom: 2px solid transparent;">覆盖下降协议的自动运薀</span>。</p>
+</div>
+<div class="pl-8 text-base-content opacity-60/50 italic text-base space-y-4">
+<p class="">一串琥珀色的符文在舱外围舱体瀫布般流下。</p>
+<p class="">然而数据很薄，由不可解的传感网绘倒塌。</p>
+<p class="">一击无法追溯的通信包符文在媞的外围视觉中流泻，在控制台上覆盖下降协议的自动化。</p>
+</div>
+<div class="flex gap-4">
+<span class="text-error/70 text-sm mt-1.5 select-none font-bold">③</span>
+<p class=""><span id="evidence-3" class="transition-all duration-300 pb-0.5" style="border-bottom: 2px solid transparent;">"下面的 'Deep'，嫂等——四周是弥散的负恗云层劌电磁烟雾。"</span> 这是舱网规则的迕䯄投影，它隐藏着年代列阵队列。</p>
+</div>
+<p class="pl-8">突然，接近警报颤动。一团未标记的云団正在拦截航线，封锁着航线要升级轨道。</p>
+<div class="flex gap-4 group mt-8">
+<span class="text-success-content/85 text-sm mt-1.5 select-none font-bold">④</span>
+<p class="">在“Deep”底部癑的雷达扫描线上，那些被标记为候选态的负性颗粒开始展现出潮汐般的涨落。Elyse 的视线稿过绿色的全息网格，在脑海中对这一次的降落轨迹进行了第七次客观审计。系统运行锁依然稳固，但在未被探知的晪区，正悄然积累着偏离控制的微弱引力。</p>
+</div>
+<div class="flex gap-4 group mt-8">
+<span class="text-success-content/85 text-sm mt-1.5 select-none font-bold">⑤</span>
+<p class="">警告蜂鸣声亟深稺应答器里不断漏出，但媞并没有下令终止。纵横引擎的正式态逻辑正处于一种微妙的候选守恒中——在推演弻溃之前，任何警告都只是一种对未来的概率锚定。媞深深吸了一口带有冷却液味道的干涩气，指尖轻敲着控制台的金属框架，等待着最后的数据并入。</p>
+</div>
+</div>
+</section>
+<!-- END: Left Content Area -->
+
+<!-- BEGIN: Right Sidebar Panels -->
+<aside class="col-span-3 flex flex-col gap-4 overflow-y-auto scroll-hide" data-purpose="review-sidebar">
+<!-- 常驻正文呈现控制卡 (右一) -->
+<section class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 shrink-0" data-purpose="presentation-card">
+    <button id="start-presentation-btn" onclick="triggerTextPresentation(this)" class="start-presentation-btn-class w-full py-1.5 rounded-lg flex items-center justify-center gap-2 transition-all btn-rainbow-glow">
+        <span class="material-symbols-outlined text-[16px] text-base-content">play_circle</span>
+        <div class="text-left">
+            <p class="text-[11px] font-bold text-base-content leading-tight">开始正文呈现</p>
+            <p class="text-[7.5px] text-blue-200 leading-tight">Start Chapter Presentation</p>
+        </div>
+    </button>
+</section>
+
+<!-- Tabs 维度审计综合控制区 (右二) -->
+        <div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 flex flex-col gap-4 shrink-0" data-purpose="audit-tabs-panel">
+            <!-- Tabs 三维维度切换标签组 -->
+            <div class="flex bg-base-content/40 p-1 rounded-box border border-base-content/5 gap-1">
+                <button id="tab-audit-objective" onclick="switchAuditDimension('objective')" class="dim-tab-btn tab-objective flex-1 py-1.5 rounded-lg text-[11px] font-bold text-secondary bg-base-content/5 border border-base-content/5 transition-all cursor-pointer active">
+                    客观审计<br><span class="text-[9px] opacity-80 font-medium">通过</span>
+                </button>
+                <button id="tab-audit-commercial" onclick="switchAuditDimension('commercial')" class="dim-tab-btn tab-commercial flex-1 py-1.5 rounded-lg text-[11px] font-bold text-base-content opacity-60 hover:text-base-content transition-all cursor-pointer">
+                    商业审计<br><span class="text-[9px] opacity-80 font-medium">8.5分</span>
+                </button>
+                <button id="tab-audit-reader" onclick="switchAuditDimension('reader')" class="dim-tab-btn tab-reader flex-1 py-1.5 rounded-lg text-[11px] font-bold text-base-content opacity-60 hover:text-base-content transition-all cursor-pointer">
+                    读者审计<br><span class="text-[9px] opacity-80 font-medium">9分</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 审计评价内容动态卡片 -->
+        <div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 flex-1 flex flex-col overflow-hidden relative" id="audit-details-panel">
+            <!-- JS 动态渲染客观审计/商业审计/读者审计的内容 -->
+        </div>
+        <!-- Action Buttons Footer -->
+        <div id="action-footer-container" class="mt-auto flex flex-col gap-3" data-purpose="action-footer-container">
+            <!-- 主编决策内容卡片 -->
+            <div class="p-3.5 bg-base-content/5 border border-base-content/5 rounded-box text-xs flex flex-col gap-2" data-purpose="editor-decision-panel">
+                <div class="flex items-center gap-2 text-base-content opacity-60 font-semibold select-none">
+                    <span class="material-symbols-outlined text-[16px] text-primary">gavel</span>
+                    <span class="tracking-wide text-[11px] text-base-content">主编决策意见</span>
+                </div>
+                <p class="text-[10px] text-base-content opacity-60/75 leading-relaxed bg-neutral/20 p-2.5 rounded border border-base-content/5">
+                    本章推演骨架完整，爽点与因果校验合格。影子态修改了下降协议中的物理隔绝细节，建议主编直接放行或针对局部文风提交重新渲染。
+                </p>
+            </div>
+            
+            <!-- 底部并列按钮 -->
+            <div class="grid grid-cols-2 gap-3" data-purpose="action-footer">
+                <button id="approve-chapter-btn" onclick="approveChapterAndRelease()" class="bg-secondary/15 hover:bg-secondary/25 border border-secondary text-secondary py-2.5 rounded-box flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(78,251,190,0.15)] group">
+                    <span class="material-symbols-outlined text-[16px] text-secondary group-hover:scale-110 transition-transform">task_alt</span>
+                    <span class="text-xs font-bold text-base-content">正文放行</span>
+                </button>
+                <button id="replan-chapter-btn" onclick="openReplanModal()" class="bg-warning/15 hover:bg-warning/25 border border-warning text-warning py-2.5 rounded-box flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(255,171,0,0.1)] group">
+                    <span class="material-symbols-outlined text-[16px] text-warning group-hover:scale-110 transition-transform">autorenew</span>
+                    <span class="text-xs font-bold text-base-content">重新渲染</span>
+                </button>
+            </div>
+        </div>
+</aside>
+<!-- END: Right Sidebar Panels -->
+
+</div>
+</main>
+<!-- END: Audit Review Content -->
+
+</div>
+
+<script>
+    // 爽点/事实/钩子多色高亮跳转证据逻辑
+    window.locateEvidence = (num, color) => {
+        // 重置所有正文的高亮证据
+        for (let j = 1; j <= 5; j++) {
+            const ev = document.getElementById('evidence-' + j);
+            if (ev) {
+                ev.style.borderBottomColor = 'transparent';
+                ev.style.backgroundColor = 'transparent';
+                ev.style.boxShadow = 'none';
+            }
+        }
+        
+        const targetEv = document.getElementById('evidence-' + num);
+        if (targetEv) {
+            targetEv.style.borderBottomColor = color;
+            targetEv.style.backgroundColor = color + '15'; // 加上 15% 透明度背景
+            targetEv.style.boxShadow = '0 0 10px ' + color + '30';
+            targetEv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // 800ms 后平滑退去，包含下划线颜色
+            setTimeout(() => {
+                targetEv.style.transition = 'all 0.6s ease';
+                targetEv.style.backgroundColor = 'transparent';
+                targetEv.style.boxShadow = 'none';
+                targetEv.style.borderBottomColor = 'transparent';
+            }, 800);
+        }
+    };
+
+    // 资产视图动态大类数据
+    let activeAssetCategory = 'sparks';
+    const ASSETS_CATEGORIES_DATA = {
+        sparks: [
+            { id: 1, title: 'Elyse 在大气舱摩擦热中提取出高密情绪脉冲', tag: '爽点目标', desc: '利用摩擦热的生动生理机能描写增加读者沉浸感。', evNum: 1, color: '#2ec4b6' },
+            { id: 2, title: 'Kaelen 手动物理制动操作引起心理回声爆裂', tag: '动作爽点', desc: 'Kaelen 在逆向制动阀中的精细机械对抗动作线，提振读者肾上腺素。', evNum: 4, color: '#2ec4b6' },
+            { id: 3, title: '物理强行拉出下降协议向量底层校验环', tag: '技术爽点', desc: '硬核黑客对抗，极具赛博悬念张力与逻辑爽感。', evNum: 2, color: '#2ec4b6' }
+        ],
+        facts: [
+            { id: 4, title: 'Elyse 主动触碰控制台并物理隔绝验证系统', tag: '事实一致性', desc: 'Elyse 在舱内切断与母港验证，符合冷酷谨慎的特工性格。', evNum: 2, color: '#3f37c9' },
+            { id: 5, title: '次轨道运输舱外壳材料由于突入摩擦损毁 12%', tag: '物理事实', desc: '运输舱物理损损设定在前后段落完全一致，维持逻辑闭环。', evNum: 1, color: '#3f37c9' },
+            { id: 6, title: 'Elyse 视网膜芯片中的传感器警报狂闪', tag: '状态事实', desc: 'Elyse 视网膜感官与脑神经在影子总线切换时的客观反映。', evNum: 1, color: '#3f37c9' }
+        ],
+        hooks: [
+            { id: 7, title: '断章点 (#1012) 弥散的负性云层与雷达警告', tag: '悬念节点', desc: '负性云层与电磁烟雾为后续章节的战术对冲埋下重要伏笔。', evNum: 3, color: '#7209b7' },
+            { id: 8, title: '未授信的安全扫描特征码正在物理碰撞锁定', tag: '外部钩子', desc: '10秒后即将发生的物理碰撞留白，促使创作者快速开展下章推演。', evNum: 5, color: '#7209b7' },
+            { id: 9, title: '与中央向量特征库的离线状态已达 12 秒', tag: '心理钩子', desc: '心跳级限时离线倒计时，大幅强化现场故事张力。', evNum: 3, color: '#7209b7' }
+        ]
+    };
+
+    function switchAssetCategory(catName) {
+        activeAssetCategory = catName;
+        ['sparks', 'hooks', 'facts'].forEach(c => {
+            const card = document.getElementById('asset-card-' + c);
+            if (card) {
+                card.classList.remove('border-primary', 'bg-base-content/10');
+                card.classList.add('border-base-content/5');
+            }
+        });
+        const activeCard = document.getElementById('asset-card-' + catName);
+        if (activeCard) {
+            activeCard.classList.add('border-primary', 'bg-base-content/10');
+        }
+        renderAssetsList();
+    }
+
+    function renderAssetsList() {
+        const listContainer = document.getElementById('assets-list-container');
+        if (!listContainer) return;
+        
+        const list = ASSETS_CATEGORIES_DATA[activeAssetCategory];
+        let html = '';
+        list.forEach(item => {
+            html += `
+            <div onclick="locateEvidence(${item.evNum}, '${item.color}')" class="flex gap-3 cursor-pointer bg-base-content/5 p-3 rounded-lg border border-base-content/5 hover:border-primary/20 transition-all">
+                <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0" style="color: ${item.color};">
+                    <span class="material-symbols-outlined text-[14px]">flag</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center text-[10px]">
+                        <span class="font-bold text-base-content">${item.tag}</span>
+                        <span class="px-1.5 py-0.2 bg-base-content/10 text-base-content opacity-60 text-[8px] rounded border border-base-content/5">点击锚定正文</span>
+                    </div>
+                    <p class="text-xs text-base-content font-medium mt-1">${item.title}</p>
+                    <p class="text-[10px] text-base-content opacity-60/70 mt-1 leading-normal">${item.desc}</p>
+                </div>
+            </div>`;
+        });
+        listContainer.innerHTML = html;
+    }
+
+    // 正文放行大按钮切章联动交互
+    let approvedChapters = [29];
+    function approveChapterAndRelease() {
+        const btn = document.getElementById('approve-chapter-btn');
+        btn.disabled = true;
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = `
+            <span class="material-symbols-outlined text-[18px] animate-spin text-secondary">sync</span>
+            <span class="text-xs font-bold text-base-content">正在向正文库提交...</span>
+        `;
+        
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            
+            showToast('已完成第 0' + currentChapterNum + ' 章的评估与正文放行回写！', 'success');
+            
+            // 切换当前章节从 29 切到 30
+            if (currentChapterNum === 29) {
+                // 将 29 移入下拉已放行章节列表
+                const historyList = document.getElementById('history-chapters-list');
+                if (historyList) {
+                    historyList.innerHTML += `
+                    <a onclick="switchChapter(29, '第029章 霓虹深渊的低语')" class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-base-content/5 cursor-pointer text-xs text-base-content opacity-50 hover:text-base-content transition-colors">
+                        <span class="w-1 h-1 rounded-full bg-white/20"></span>
+                        <span class="truncate">第029章 霓虹深渊的低语</span>
+                    </a>`;
+                }
+                
+                // 动态切到 30 章
+                switchChapter(30, '第030章 数据走私港');
+            } else if (currentChapterNum === 30) {
+                switchChapter(31, '第031章 虚拟主机的觉醒');
+            }
+        }, 1500);
+    }
+
+    function triggerReturnRevision(btn) {
+        btn.disabled = true;
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = `
+            <span class="material-symbols-outlined text-[18px] animate-spin text-warning">sync</span>
+            <span class="text-xs font-bold text-base-content">发送中...</span>
+        `;
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            showToast('已退回给编辑和作者重新修文。', 'info');
+        }, 1200);
+    }
+
+
+    // 双态正文语料定义 (正式版 vs 影子版)
+    const CHAPTER_TEXTS = {
+        formal: `
+            <div class="flex gap-4 group">
+                <span class="text-primary opacity-50 text-sm mt-1.5 select-none font-bold">①</span>
+                <p class="">次轨道运输舱在突破外层大气层的瞬间遭遇破坏，Kaelen-IV 的断照灯划破舱体切割开。Elyse 紧盯着面板前的状态显示，<span id="evidence-1" class="transition-all duration-300" style="border-bottom: 2px solid transparent; padding-bottom: 2px;">充学界面的摩擦热在视镜玻璃上啨噬，直接映射为视觉皮层的撒裂感。</span></p>
+            </div>
+            <div class="flex gap-4">
+                <span class="invisible text-sm">②</span>
+                <p class="">"状态报告。"媞低声道，副声化通道提取出 AI 的回应。</p>
+            </div>
+            <div class="flex gap-4">
+                <span class="text-warning/70 text-sm mt-1.5 select-none font-bold">②</span>
+                <p class="">一串琥珀色的符文在舱娖呈现鼓动中瀫布般流下，然而数据很薄，由不可解的传感网绘倒塌，媞伸手覆上控制台，<span id="evidence-2" class="transition-all duration-300 pb-0.5" style="border-bottom: 2px solid transparent;">覆盖下降协议的自动运薀</span>。</p>
+            </div>
+            <div class="pl-8 text-base-content opacity-60/50 italic text-base space-y-4">
+                <p class="">一串琥珀色的符文在舱外围舱体瀫布般流下。</p>
+                <p class="">然而数据很薄，由不可解的传感网绘倒塌。</p>
+                <p class="">一击无法追溯的通信包符文在媞的外围视觉中流泻，在控制台上覆盖下降协议的自动化。</p>
+            </div>
+            <div class="flex gap-4">
+                <span class="text-error/70 text-sm mt-1.5 select-none font-bold">③</span>
+                <p class=""><span id="evidence-3" class="transition-all duration-300 pb-0.5" style="border-bottom: 2px solid transparent;">"下面的 'Deep'，嫂等——四周是弥散的负恗云层劌电磁烟雾。"</span> 这是舱网规则的迕䯄投影，它隐藏着年代列阵队列。</p>
+            </div>
+            <p class="pl-8">突然，接近警报颤动。一团未标记的云団正在拦截航线，封锁着航线要升级轨道。</p>
+            <div class="flex gap-4 group mt-8">
+                <span class="text-success-content/85 text-sm mt-1.5 select-none font-bold">④</span>
+                <p class="">在“Deep”底部癑的雷达扫描线上，那些被标记为候选态的负性颗粒开始展现出潮汐般的涨落。Elyse 的视线稿过绿色的全息网格，在脑海中对这一次的降落轨迹进行了第七次客观审计。系统运行锁依然稳固，但在未被探知的晪区，正悄然积累着偏离控制的微弱引力。</p>
+            </div>
+            <div class="flex gap-4 group mt-8">
+                <span class="text-success-content/85 text-sm mt-1.5 select-none font-bold">⑤</span>
+                <p class="">警告蜂鸣声亟深稺应答器里不断漏出，但媞并没有下令终止。纵横引擎的正式态逻辑正处于一种微妙的候选守恒中——在推演弻溃之前，任何警告都只是一种对未来的概率锚定。媞深深吸了一口带有冷却液味道的干涩气，指尖轻敲着控制台的金属框架，等待着最后的数据并入。</p>
+            </div>
+        `,
+        shadow: `
+            <div class="flex gap-4 group">
+                <span class="text-primary opacity-50 text-sm mt-1.5 select-none font-bold">①</span>
+                <p class=""><del class="opacity-40 line-through mr-1">次轨道运输舱在突破外层大气层的瞬间遭遇破坏...</del> <ins class="text-secondary border-b border-secondary/30 pb-0.5 font-semibold">【修改重推】次轨道运输舱外壳材料由于突入摩擦超负荷损毁 12%。Kaelen-IV 启动了手动逆向制动阀，电磁弧光像刺刀般直接切入显示器。</ins> Elyse 视网膜中的传感器警报狂闪，<span id="evidence-1" class="transition-all duration-300" style="border-bottom: 2px solid transparent; padding-bottom: 2px;">热辐射直接穿透舱板侵入脑神经皮层，映射为阵阵撕裂痛感。</span></p>
+            </div>
+            <div class="flex gap-4">
+                <span class="invisible text-sm">②</span>
+                <p class="">"断开外部指令，切回影子总线。" Elyse 声音沙哑，指令由微处理器异步广播。</p>
+            </div>
+            <div class="flex gap-4">
+                <span class="text-warning/70 text-sm mt-1.5 select-none font-bold">②</span>
+                <p class="">一排血红色的错误符文如同潮汐般漫过主控制台，Elyse 伸手强行锁死中枢物理网卡，<span id="evidence-2" class="transition-all duration-300 pb-0.5" style="border-bottom: 2px solid transparent;">【越权审计】强制拉出下降协议的底层向量校验环</span>，物理切断与母港的云端校验关系。</p>
+            </div>
+            <div class="pl-8 text-rose-400/40 italic text-base space-y-2 border-l border-rose-500/20 pl-4 py-1">
+                <p class="">警告：与中央向量特征库的离线状态已达 12 秒。</p>
+                <p class="">【影子态标记】当前正在以 shadow-candidate-v2.3 状态运行，所有状态回写均被隔离。</p>
+            </div>
+            <div class="flex gap-4">
+                <span class="text-error/70 text-sm mt-1.5 select-none font-bold">③</span>
+                <p class=""><span id="evidence-3" class="transition-all duration-300 pb-0.5" style="border-bottom: 2px solid transparent;">"警告，底层 Deep 网关正在进行全网嗅探——四周强电磁云团已被正式激活。"</span> 这不是自然形成的屏障，这是防卫矩阵的虚空重构。</p>
+            </div>
+            <p class="pl-8 text-rose-300/60 font-semibold">【重要冲突钩子】检测到未授信的安全扫描特征码正在锁定本舱，预计 10 秒后发生物理碰撞。</p>
+        `
+    };
+
+    let currentChapterNum = 29;
+    let isShadowMode = false;
+    let readerTheme = 'light'; // light = 豆沙绿, dark = 极暗
+    let activeAuditDimension = 'objective';
+
+    // 1. 影子版折角切换逻辑
+    function toggleShadowMode() {
+        isShadowMode = !isShadowMode;
+        
+        const curlCtrl = document.getElementById('page-curl-ctrl');
+        const curlLabel = document.getElementById('page-curl-label');
+        const editorPanel = document.getElementById('editor-panel');
+        const textContainer = editorPanel.querySelector('.space-y-8');
+        
+        if (isShadowMode) {
+            curlCtrl.classList.add('page-curl-shadow-active');
+            curlLabel.textContent = '正式版';
+            
+            // 切换为影子版风格
+            editorPanel.classList.add('shadow-mode-panel');
+            textContainer.innerHTML = CHAPTER_TEXTS.shadow;
+            showToast('已切换至影子版 (Candidate Draft) 视图', 'info');
+        } else {
+            curlCtrl.classList.remove('page-curl-shadow-active');
+            curlLabel.textContent = '影子版';
+            
+            // 切回正式版风格
+            editorPanel.classList.remove('shadow-mode-panel');
+            textContainer.innerHTML = CHAPTER_TEXTS.formal;
+            showToast('已切回正式版 (Production) 视图', 'success');
+        }
+        
+        // 维持黑白背景选择 (如果是暗色模式，影子模式依然支持暗色；但影子模式有其独立的红粉霓虹警示色调)
+        if (readerTheme === 'dark' && !isShadowMode) {
+            editorPanel.style.backgroundColor = 'var(--color-base-300)';
+            editorPanel.style.color = 'var(--color-base-content)';
+        } else if (readerTheme === 'light' && !isShadowMode) {
+            editorPanel.style.backgroundColor = 'var(--color-base-200)';
+            editorPanel.style.color = 'var(--color-base-content)';
+        }
+    }
+
+    // 2. 章节下拉交互逻辑
+    function toggleChapterDropdown(event) {
+        event.stopPropagation();
+        const dropdown = document.getElementById('chapter-select-dropdown');
+        if (dropdown) {
+            dropdown.classList.toggle('hidden');
+        }
+    }
+
+    function switchChapter(chNum, title) {
+        currentChapterNum = chNum;
+        
+        // 更新界面标题和头字样
+        document.getElementById('current-chapter-title').textContent = title;
+        document.querySelector('#chapter-select-container').previousElementSibling.textContent = 'Chapter ' + (chNum < 10 ? '00' : '0') + chNum;
+        
+        // 更新字数
+        const wordCounts = { 29: '12,450', 30: '9,812', 31: '14,022' };
+        document.getElementById('editor-word-count').textContent = '总字数：' + (wordCounts[chNum] || '10,000') + ' 字';
+        
+        // 关闭下拉
+        document.getElementById('chapter-select-dropdown').classList.add('hidden');
+        showToast('已加载 ' + title, 'success');
+    }
+
+    // 3. 大中小字号缩放控制
+    function changeFontSize(size, btn) {
+        const editorPanel = document.getElementById('editor-panel');
+        const textContainer = editorPanel.querySelector('.space-y-8');
+        
+        // 移除原有的字号类
+        textContainer.classList.remove('text-base', 'text-lg', 'text-xl');
+        
+        // 更新字号
+        if (size === 'small') {
+            textContainer.classList.add('text-base');
+        } else if (size === 'medium') {
+            textContainer.classList.add('text-lg');
+        } else if (size === 'large') {
+            textContainer.classList.add('text-xl');
+        }
+        
+        // 更新按钮激活样式
+        const parent = btn.parentNode;
+        parent.querySelectorAll('button').forEach(b => {
+            b.className = "px-2.5 py-1 rounded hover:bg-neutral/10 transition-colors font-medium opacity-60 hover:opacity-100";
+        });
+        btn.className = "px-2.5 py-1 rounded bg-neutral/10 transition-colors font-bold border border-base-content/5";
+    }
+
+    // 4. 黑白背景切换
+    function toggleReaderTheme(btn) {
+        const editorPanel = document.getElementById('editor-panel');
+        const titleBtn = document.getElementById('chapter-title-btn');
+        const wordCount = document.getElementById('editor-word-count');
+        const icon = btn.querySelector('span');
+        
+        if (readerTheme === 'light') {
+            readerTheme = 'dark';
+            icon.textContent = 'light_mode';
+            
+            if (!isShadowMode) {
+                editorPanel.style.backgroundColor = 'var(--color-base-300)';
+                editorPanel.style.color = 'var(--color-base-content)';
+                editorPanel.style.borderColor = 'rgba(255,255,255,0.08)';
+                titleBtn.style.color = '#adc6ff';
+                wordCount.style.color = 'var(--color-base-content)';
+                wordCount.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                wordCount.style.borderColor = 'rgba(255,255,255,0.08)';
+                btn.style.color = 'var(--color-base-content)';
+                btn.style.borderColor = 'rgba(255,255,255,0.1)';
+            }
+        } else {
+            readerTheme = 'light';
+            icon.textContent = 'dark_mode';
+            
+            if (!isShadowMode) {
+                editorPanel.style.backgroundColor = 'var(--color-base-200)';
+                editorPanel.style.color = 'var(--color-base-content)';
+                editorPanel.style.borderColor = 'rgba(0,0,0,0.06)';
+                titleBtn.style.color = '#1d2a1c';
+                wordCount.style.color = 'var(--color-base-content)';
+                wordCount.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                wordCount.style.borderColor = 'rgba(0,0,0,0.05)';
+                btn.style.color = 'var(--color-base-content)';
+                btn.style.borderColor = 'rgba(0,0,0,0.05)';
+            }
+        }
+    }
+
+    // 5. 三维维度 Tabs 评价内容渲染
+    function switchAuditDimension(dimName) {
+        activeAuditDimension = dimName;
+        
+        // 修改 Tabs 的 active 样式
+        ['objective', 'commercial', 'reader'].forEach(d => {
+            const tabBtn = document.getElementById('tab-audit-' + d);
+            if (tabBtn) {
+                tabBtn.className = "dim-tab-btn tab-" + d + " flex-1 py-1.5 rounded-lg text-[11px] font-bold text-base-content opacity-60 hover:text-base-content transition-all cursor-pointer";
+            }
+        });
+        
+        const activeBtn = document.getElementById('tab-audit-' + dimName);
+        if (activeBtn) {
+            activeBtn.className = "dim-tab-btn tab-" + dimName + " flex-1 py-1.5 rounded-lg text-[11px] font-bold text-base-content bg-base-content/5 border border-base-content/5 transition-all cursor-pointer active";
+            if (dimName === 'objective') activeBtn.classList.add('text-secondary', 'border-b-2', 'border-secondary');
+            if (dimName === 'commercial') activeBtn.classList.add('text-primary', 'border-b-2', 'border-primary');
+            if (dimName === 'reader') activeBtn.classList.add('text-tertiary', 'border-b-2', 'border-tertiary');
+        }
+        
+        renderAuditDetailsCard();
+    }
+
+    function renderAuditDetailsCard() {
+        const panel = document.getElementById('audit-details-panel');
+        if (!panel) return;
+        
+        let html = '';
+        if (activeAuditDimension === 'objective') {
+            html = `
+            <div class="space-y-4 flex-1 flex flex-col h-full">
+                <div class="flex items-center justify-between border-b border-base-content/5 pb-2">
+                    <span class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                        <span class="w-1.5 h-3 bg-secondary rounded-full"></span>
+                        客观一致性审计
+                    </span>
+                    <span class="px-2 py-0.5 bg-secondary/10 text-secondary border border-secondary/20 rounded text-[9px] font-bold">100% 合规</span>
+                </div>
+                
+                <!-- 5项通过检查清单 -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between bg-base-content/5 border border-base-content/5 px-3 py-2 rounded-lg text-[11px]">
+                        <span class="text-base-content opacity-80 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[14px] text-secondary">verified_user</span>
+                            事实一致性 检查
+                        </span>
+                        <span class="px-1.5 py-0.5 bg-secondary/15 text-secondary text-[9px] font-bold rounded border border-secondary/20">pass</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-base-content/5 border border-base-content/5 px-3 py-2 rounded-lg text-[11px]">
+                        <span class="text-base-content opacity-80 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[14px] text-secondary">face_retouching_natural</span>
+                            人物崩坏 检查
+                        </span>
+                        <span class="px-1.5 py-0.5 bg-secondary/15 text-secondary text-[9px] font-bold rounded border border-secondary/20">pass</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-base-content/5 border border-base-content/5 px-3 py-2 rounded-lg text-[11px]">
+                        <span class="text-base-content opacity-80 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[14px] text-secondary">psychology</span>
+                            伏笔越界 检查
+                        </span>
+                        <span class="px-1.5 py-0.5 bg-secondary/15 text-secondary text-[9px] font-bold rounded border border-secondary/20">pass</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-base-content/5 border border-base-content/5 px-3 py-2 rounded-lg text-[11px]">
+                        <span class="text-base-content opacity-80 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[14px] text-secondary">model_training</span>
+                            悬念兑现 检查
+                        </span>
+                        <span class="px-1.5 py-0.5 bg-secondary/15 text-secondary text-[9px] font-bold rounded border border-secondary/20">pass</span>
+                    </div>
+                    <div class="flex items-center justify-between bg-base-content/5 border border-base-content/5 px-3 py-2 rounded-lg text-[11px]">
+                        <span class="text-base-content opacity-80 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[14px] text-secondary">linear_scale</span>
+                            逻辑闭环 检查
+                        </span>
+                        <span class="px-1.5 py-0.5 bg-secondary/15 text-secondary text-[9px] font-bold rounded border border-secondary/20">pass</span>
+                    </div>
+                </div>
+                
+                <!-- 底部备注跳转 -->
+                <div class="mt-auto p-3 bg-base-content/5 border border-base-content/5 rounded-lg text-[10px] text-base-content opacity-60 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[14px] text-primary">info</span>
+                    <span>审计依据详见资产清单，点击可<a onclick="switchToAssetsView()" class="text-primary hover:underline cursor-pointer font-bold">跳转到资产视图</a>。</span>
+                </div>
+            </div>`;
+        } else if (activeAuditDimension === 'commercial') {
+            html = `
+            <div class="space-y-4 flex-1 flex flex-col min-h-0 h-full">
+                <div class="flex justify-between items-center border-b border-base-content/5 pb-2">
+                    <span class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                        <span class="w-1.5 h-3 bg-primary rounded-full"></span>
+                        商业设计评估
+                    </span>
+                    <span class="text-primary text-sm font-code-sm font-bold">8.5 分</span>
+                </div>
+                <!-- 商业审计评语列表 -->
+                <div class="flex-1 overflow-y-auto scroll-hide space-y-3 pr-1 custom-scrollbar">
+                    <div class="flex gap-2.5 bg-base-content/5 p-3 rounded-lg border border-base-content/5 hover:border-base-content/10 transition-colors">
+                        <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                            <span class="material-symbols-outlined text-[14px]">trending_up</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center text-[10px]">
+                                <span class="font-bold text-base-content">商业分析师 Chen Wei</span>
+                                <span class="text-base-content opacity-50">14:55</span>
+                            </div>
+                            <p class="text-xs text-base-content opacity-60 mt-1.5 leading-relaxed">此段落情感张力可再提升，建议补充内心挣扎以增加商业付费点的期待值。</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2.5 bg-base-content/5 p-3 rounded-lg border border-base-content/5 hover:border-base-content/10 transition-colors">
+                        <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                            <span class="material-symbols-outlined text-[14px]">star</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center text-[10px]">
+                                <span class="font-bold text-base-content">商业审计系统 V2.0</span>
+                                <span class="text-base-content opacity-50">16:15</span>
+                            </div>
+                            <p class="text-xs text-base-content opacity-60 mt-1.5 leading-relaxed">节奏评估模型给出黄色提醒，建议在后半段追加 Kaelen 情绪高潮以提升完读率。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        } else if (activeAuditDimension === 'reader') {
+            html = `
+            <div class="space-y-4 flex-1 flex flex-col min-h-0 h-full">
+                <div class="flex justify-between items-center border-b border-base-content/5 pb-2">
+                    <span class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                        <span class="w-1.5 h-3 bg-tertiary rounded-full"></span>
+                        读者兴趣审计
+                    </span>
+                    <span class="text-tertiary text-sm font-code-sm font-bold">7.2 分</span>
+                </div>
+                <!-- 读者反馈评语列表 -->
+                <div class="flex-1 overflow-y-auto scroll-hide space-y-3 pr-1 custom-scrollbar">
+                    <div class="flex gap-2.5 bg-base-content/5 p-3 rounded-lg border border-base-content/5 hover:border-base-content/10 transition-colors">
+                        <div class="w-6 h-6 rounded-full bg-tertiary/10 flex items-center justify-center shrink-0 text-tertiary">
+                            <span class="material-symbols-outlined text-[14px]">person</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center text-[10px]">
+                                <span class="font-bold text-base-content">核心读者 Lin Xue</span>
+                                <span class="text-base-content opacity-50">15:10</span>
+                            </div>
+                            <p class="text-xs text-base-content opacity-60 mt-1.5 leading-relaxed">Elyse 的决策动机需要补强以符合其以往谨慎、冷静的性格设定，否则对角色认可度易流失。</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2.5 bg-base-content/5 p-3 rounded-lg border border-base-content/5 hover:border-base-content/10 transition-colors">
+                        <div class="w-6 h-6 rounded-full bg-tertiary/10 flex items-center justify-center shrink-0 text-tertiary">
+                            <span class="material-symbols-outlined text-[14px]">rate_review</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center text-[10px]">
+                                <span class="font-bold text-base-content">模拟反馈分析</span>
+                                <span class="text-base-content opacity-50">16:45</span>
+                            </div>
+                            <p class="text-xs text-base-content opacity-60 mt-1.5 leading-relaxed">对 Elyse 雷达扫描线上操作反馈良好，情节悬念强度维持在“中上”水平，表现及格。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+        
+        panel.innerHTML = html;
+    }
+
+    function switchToAssetsView() {
+        const assetsBtn = document.getElementById('view-assets-btn');
+        if (assetsBtn) {
+            assetsBtn.click();
+            showToast('已无缝跳转至资产视图', 'info');
+        }
+    }
+
+    // 6. 开始正文呈现按钮交互
+    window.isPresentationRendered = false;
+    function triggerTextPresentation(btn) {
+        if (window.isPresentationRendered) return;
+        
+        const btns = document.querySelectorAll('.start-presentation-btn-class');
+        btns.forEach(b => {
+            b.disabled = true;
+            b.classList.remove('btn-rainbow-glow');
+            b.style.background = '#4b5563';
+            b.innerHTML = `
+                <span class="material-symbols-outlined text-[16px] text-base-content animate-spin">sync</span>
+                <div class="text-left">
+                    <p class="text-[11px] font-bold text-base-content leading-tight">正文呈现渲染中...</p>
+                    <p class="text-[7.5px] text-blue-200 leading-tight">Rendering Stage Presenter</p>
+                </div>
+            `;
+        });
+        
+        setTimeout(() => {
+            window.isPresentationRendered = true;
+            
+            const activeBtns = document.querySelectorAll('.start-presentation-btn-class');
+            activeBtns.forEach(b => {
+                b.disabled = true;
+                b.style.background = '#272a31';
+                b.style.borderColor = 'rgba(255,255,255,0.05)';
+                b.style.cursor = 'not-allowed';
+                b.style.boxShadow = 'none';
+                b.innerHTML = `
+                    <span class="material-symbols-outlined text-[16px] text-base-content opacity-50">check_circle</span>
+                    <div class="text-left">
+                        <p class="text-[11px] font-bold text-base-content opacity-70 font-semibold leading-tight">本章已完成正文渲染</p>
+                        <p class="text-[7.5px] text-base-content opacity-40 leading-tight">Presentation Rendered</p>
+                    </div>
+                `;
+            });
+            showToast('正文呈现渲染完毕！已进入正式播放就绪状态。', 'success');
+        }, 1500);
+    }
+    // 6.5. 重新渲染弹窗控制与修正方向提交
+    function openReplanModal() {
+        document.getElementById('replan-modal').classList.remove('hidden');
+        document.getElementById('replan-modal').classList.add('flex');
+    }
+
+    function closeReplanModal() {
+        document.getElementById('replan-modal').classList.add('hidden');
+        document.getElementById('replan-modal').classList.remove('flex');
+    }
+
+    function submitReplanDirection() {
+        const suggestion = document.getElementById('replan-suggestion').value.trim();
+        if (!suggestion) {
+            showToast('请输入退回重新渲染的修正建议！', 'error');
+            return;
+        }
+
+        const confirmBtn = document.getElementById('confirm-replan-btn');
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>发送中...</span>`;
+
+        setTimeout(() => {
+            closeReplanModal();
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = `<span>确认重新渲染</span>`;
+            
+            // 清空输入框内容
+            document.getElementById('replan-suggestion').value = '';
+            
+            showToast('修正意见已提交！正在重新调度推演渲染管线...', 'success');
+
+            // 状态重置闭环：将 window.isPresentationRendered 重置为 false，并恢复按钮为炫彩可点击状态
+            window.isPresentationRendered = false;
+            const activeBtns = document.querySelectorAll('.start-presentation-btn-class');
+            activeBtns.forEach(b => {
+                b.disabled = false;
+                b.classList.add('btn-rainbow-glow');
+                b.style.background = '';
+                b.style.borderColor = '';
+                b.style.cursor = 'pointer';
+                b.style.boxShadow = '';
+                b.innerHTML = `
+                    <span class="material-symbols-outlined text-[16px] text-base-content">play_circle</span>
+                    <div class="text-left">
+                        <p class="text-[11px] font-bold text-base-content leading-tight">开始正文呈现</p>
+                        <p class="text-[7.5px] text-blue-200 leading-tight">Start Chapter Presentation</p>
+                    </div>
+                `;
+            });
+        }, 1500);
+    }
+
+    // 7. Toast 通用提示
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast-item ${type === 'error' ? 'border-error text-error bg-error/5' : ''} rounded-lg overflow-hidden w-80 shadow-2xl transition-all duration-300`;
+        
+        const icon = type === 'error' ? 'error' : (type === 'info' ? 'info' : 'check_circle');
+        const iconColor = type === 'error' ? 'text-rose-400' : (type === 'info' ? 'text-primary' : 'text-secondary');
+        
+        toast.innerHTML = `
+            <div class="p-4 flex items-start gap-3">
+                <span class="material-symbols-outlined ${iconColor} text-[20px] shrink-0">${icon}</span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs text-base-content font-medium">${message}</p>
+                </div>
+            </div>
+            <div class="toast-progress" style="background-color: ${type === 'error' ? 'var(--color-error)' : (type === 'info' ? 'var(--color-primary)' : 'var(--color-secondary)')}"></div>
+        `;
+
+        container.appendChild(toast);
+        
+        // 触发动画
+        setTimeout(() => {
+            toast.classList.add('toast-show');
+        }, 10);
+
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s ease forwards';
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 4000);
+    }
+
+    // 渲染历史已完成推演章节下拉列表
+    function renderHistoryChaptersDropdown() {
+        const container = document.getElementById('history-chapters-list');
+        if (!container) return;
+        
+        let html = '';
+        for (let i = 1; i <= 28; i++) {
+            const titles = [
+                '数据帝国的裂痕', '深渊信号的反制', '源阀计划的真相', '隐秘的渗透', 
+                '浮空岛的陷落', '废墟底下的余震', '义体边缘的回调', '母矩阵协议的阻断'
+            ];
+            const chTitle = '第0' + (i < 10 ? '0' + i : i) + '章 ' + (titles[i % titles.length] || '章节故事主线章节');
+            html += `
+            <a onclick="switchChapter(${i}, '${chTitle}')" class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-base-content/5 cursor-pointer text-xs text-base-content opacity-50 hover:text-base-content transition-colors">
+                <span class="w-1 h-1 rounded-full bg-white/20"></span>
+                <span class="truncate">${chTitle}</span>
+            </a>`;
+        }
+        container.innerHTML = html;
+    }
+
+    // 页面级初始化
+    window.addEventListener('DOMContentLoaded', () => {
+        renderHistoryChaptersDropdown();
+        switchAuditDimension('objective');
+        
+        // 全局点击监听关闭下拉菜单
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('chapter-select-dropdown');
+            const trigger = document.getElementById('chapter-title-btn');
+            if (dropdown && trigger && !dropdown.contains(e.target) && !trigger.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const auditBtn = document.getElementById('view-audit-btn');
+        const assetsBtn = document.getElementById('view-assets-btn');
+        
+        const setView = (mode) => {
+            const panel = document.getElementById('audit-details-panel');
+            const tabsPanel = document.querySelector('[data-purpose="audit-tabs-panel"]');
+            const footer = document.getElementById('action-footer-container');
+            
+            if (mode === 'assets') {
+                auditBtn.className = "px-6 py-1.5 rounded-lg text-base-content opacity-60 hover:text-base-content hover:bg-base-content/5 transition-all cursor-pointer";
+                assetsBtn.className = "px-6 py-1.5 rounded-lg bg-base-content/5 text-primary font-bold border border-base-content/5 shadow-[0_0_15px_rgba(173,198,255,0.1)] transition-all cursor-pointer";
+                
+                // 切入资产视图时，隐藏客观/主观审计 Tabs 卡与主编决策底栏
+                if (tabsPanel) tabsPanel.classList.add('hidden');
+                if (footer) footer.classList.add('hidden');
+                if (panel) {
+                    panel.innerHTML = `
+                    <div class="space-y-4 flex-1 flex flex-col h-full min-h-0">
+                        <div class="flex justify-between items-center border-b border-base-content/5 pb-1 shrink-0">
+                            <span class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                                <span class="w-1.5 h-3 bg-primary rounded-full"></span>
+                                资产视图 · 证据对照大纲
+                            </span>
+                        </div>
+                        
+                        <!-- 爽点、钩子、事实 三分类 Tab 卡片 -->
+                        <div class="grid grid-cols-3 gap-2 shrink-0 select-none">
+                            <div onclick="switchAssetCategory('sparks')" id="asset-card-sparks" class="glass-panel p-2.5 rounded-box border border-primary bg-base-content/10 hover:border-primary/45 transition-colors cursor-pointer text-center">
+                                <span class="font-code-sm text-secondary font-bold text-sm">3 个</span>
+                                <p class="text-[8px] text-primary opacity-80 uppercase scale-90 mt-1">爽点</p>
+                            </div>
+                            <div onclick="switchAssetCategory('hooks')" id="asset-card-hooks" class="glass-panel p-2.5 rounded-box border border-base-content/5 hover:border-primary/45 transition-colors cursor-pointer text-center">
+                                <span class="font-code-sm text-tertiary font-bold text-sm">3 个</span>
+                                <p class="text-[8px] text-primary opacity-80 uppercase scale-90 mt-1">钩子</p>
+                            </div>
+                            <div onclick="switchAssetCategory('facts')" id="asset-card-facts" class="glass-panel p-2.5 rounded-box border border-base-content/5 hover:border-primary/45 transition-colors cursor-pointer text-center">
+                                <span class="font-code-sm text-primary font-bold text-sm">3 个</span>
+                                <p class="text-[8px] text-primary opacity-80 uppercase scale-90 mt-1">事实</p>
+                            </div>
+                        </div>
+
+                        <!-- 各分类清单渲染列表 -->
+                        <div class="flex-1 overflow-y-auto scroll-hide space-y-2 pr-1 custom-scrollbar min-h-[250px]" id="assets-list-container">
+                            <!-- JS 动态渲染爽点、钩子、事实清单 -->
+                        </div>
+
+                        <!-- 底部新增：野生钩子清单 (非受控悬念) -->
+                        <div class="mt-auto p-2 bg-cyber-panel/85 border border-dashed border-cyber-amber/30 rounded-box relative overflow-hidden shrink-0">
+                            <div class="flex items-center gap-2 mb-1.5 select-none">
+                                <span class="material-symbols-outlined text-[14px] text-cyber-amber animate-pulse">warning</span>
+                                <span class="text-xs font-bold text-base-content">野生钩子清单 (非受控悬念)</span>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="bg-base-content/5 p-1.5 rounded text-[10px] text-base-content opacity-60 flex flex-col gap-1 hover:bg-base-content/10 transition-colors cursor-pointer" onclick="locateEvidence(3, '#7209b7')">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-bold text-cyber-amber text-[9.5px]">● 0x4F 未授信指令 (Grain #985)</span>
+                                        <span class="px-1 bg-cyber-amber/10 border border-cyber-amber/20 text-cyber-amber text-[7px] rounded scale-90">待收束</span>
+                                    </div>
+                                    <p class="leading-tight text-[8px] text-base-content opacity-60/70">Elyse 视网膜芯片中截获到不在大纲内的 0x4F 虚无特征序列包。</p>
+                                </div>
+                                <div class="bg-base-content/5 p-1.5 rounded text-[10px] text-base-content opacity-60 flex flex-col gap-1 hover:bg-base-content/10 transition-colors">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-bold text-cyber-amber text-[9.5px]">● 离线声化环境噪音 (Grain #1015)</span>
+                                        <span class="px-1 bg-cyber-amber/10 border border-cyber-amber/20 text-cyber-amber text-[7px] rounded scale-90">待收束</span>
+                                    </div>
+                                    <p class="leading-tight text-[8px] text-base-content opacity-60/70">Kaelen 在副信道中听到的未知高维回响，非大纲设定音源。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                    
+                    // 默认加载 sparks 清单
+                    switchAssetCategory('sparks');
+                }
+            } else {
+                auditBtn.className = "px-6 py-1.5 rounded-lg bg-base-content/5 text-primary font-bold border border-base-content/5 shadow-[0_0_15px_rgba(173,198,255,0.1)] transition-all cursor-pointer";
+                assetsBtn.className = "px-6 py-1.5 rounded-lg text-base-content opacity-60 hover:text-base-content hover:bg-base-content/5 transition-all cursor-pointer";
+                
+                if (tabsPanel) tabsPanel.classList.remove('hidden');
+                if (footer) footer.classList.remove('hidden');
+                // 恢复渲染当前的主观/客观审计标签内容
+                switchAuditDimension(activeAuditDimension);
+            }
+        };
+        
+        auditBtn.addEventListener('click', () => setView('audit'));
+        assetsBtn.addEventListener('click', () => setView('assets'));
+    });
+</script>
+
+
+<!-- Re-render/Replan suggestions modal -->
+<div id="replan-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-neutral/60 backdrop-blur-sm transition-all duration-300">
+    <div class="w-[500px] bg-base-100 border border-base-content/10 rounded-box p-6 shadow-2xl relative overflow-hidden">
+        <div class="absolute -right-16 -top-16 w-32 h-32 bg-warning/10 rounded-full blur-3xl"></div>
+        <div class="flex items-center justify-between mb-4 pb-2 border-b border-base-content/5">
+            <h3 class="text-sm font-semibold flex items-center gap-2 text-base-content">
+                <span class="material-symbols-outlined text-warning text-[20px]">autorenew</span>
+                <span>退回重新渲染修正内容</span>
+            </h3>
+            <button onclick="closeReplanModal()" class="text-base-content opacity-60 hover:text-base-content transition-colors">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <div class="space-y-2">
+                <label class="text-[10px] text-base-content opacity-60 uppercase font-semibold tracking-wider">修正建议与调整方向</label>
+                <textarea id="replan-suggestion" rows="4" class="w-full bg-base-content/40 border border-base-content/10 rounded-box p-3 text-xs text-base-content placeholder-on-surface-variant/40 focus:outline-none focus:border-warning/50 transition-colors resize-none" placeholder="请输入针对本章重新渲染的具体修正意见、文风微调方向或情感补强建议..."></textarea>
+            </div>
+            
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="closeReplanModal()" class="px-4 py-2 border border-base-content/5 hover:bg-base-content/5 rounded-lg text-xs text-base-content opacity-60 hover:text-base-content transition-all">取消</button>
+                <button id="confirm-replan-btn" onclick="submitReplanDirection()" class="px-5 py-2 bg-warning hover:bg-warning/80 text-neutral-content text-xs font-semibold rounded-lg flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(255,171,0,0.25)]">
+                    <span>确认重新渲染</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
+
+<script>
+window.toggleSidebar = function() {
+    document.body.classList.toggle('sidebar-collapsed');
+    const icon = document.getElementById('sidebarIcon');
+    if (icon) {
+        icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
+    }
+};
+</script>
+</body>
+</html>

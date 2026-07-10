@@ -1,0 +1,1057 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>L1A 编辑与推演管理 - AI Narrative Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+        <!-- Tailwind CSS & DaisyUI v4 via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="../common/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="../common/sidebar.css">
+    <script src="../common/theme.js"></script>
+    <script src="./new_book_wizard_data.js"></script>
+    <script src="../common/header.js"></script>
+    
+    
+    
+    
+
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        .glass-panel {
+            background: rgba(20, 27, 38, 0.6);
+            backdrop-3: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0e14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #32353c;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #424754;
+        }
+        
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-2px) scale(1.05); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+
+        /* Quick Settings Popover */
+        .quick-settings-glass {
+            background: var(--color-base-100, rgba(15, 18, 25, 0.9)) !important;
+            backdrop-3: blur(20px);
+            -webkit-backdrop-3: blur(20px);
+            border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1)) !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Custom Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .4s;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 12px; width: 12px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider { background-color: rgba(77, 142, 255, 0.3); border-color: rgba(77, 142, 255, 0.4); }
+        input:checked + .toggle-slider:before { transform: translateX(16px); background-color: #4d8eff; }
+
+        .custom-range {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+        .custom-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #4d8eff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+        }
+
+        .glass-effect {
+            background: rgba(21, 25, 33, 0.7);
+            backdrop-3: blur(12px);
+            -webkit-backdrop-3: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        @keyframes toast-progress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+        /* Toast 专属样式 */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .toast-item {
+            width: 320px;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(15, 22, 33, 0.85);
+            backdrop-3: blur(20px);
+            -webkit-backdrop-3: blur(20px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+            display: flex;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform: translateX(360px);
+            opacity: 0;
+        }
+        .toast-item.toast-show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        .toast-success {
+            border-color: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.06);
+        }
+        .toast-info {
+            border-color: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            background: rgba(59, 130, 246, 0.06);
+        }
+        .toast-warning {
+            border-color: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            background: rgba(245, 158, 11, 0.06);
+        }
+        .toast-error {
+            border-color: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            background: rgba(239, 68, 68, 0.06);
+        }
+            /* 顶栏随侧栏折叠隐藏 */
+        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
+        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
+        .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
+        .header-tab:hover { opacity: 0.85; }
+        .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        .settings-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-base-300); cursor: pointer; transition: background 0.2s ease; flex-shrink: 0; }
+        .settings-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.2s ease; }
+        .settings-switch.on { background: var(--color-accent); }
+        .settings-switch.on::after { transform: translateX(16px); }
+        .settings-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; cursor: pointer; transition: all 0.15s ease; }
+        .settings-btn:hover { background: var(--color-accent); color: white; }
+
+    /* L1A card state backgrounds & aura */
+    .container-locked {
+        background-color: color-mix(in oklab, var(--color-neutral) 12%, transparent);
+    }
+    .container-locked:not(.card-active-aura):hover {
+        background-color: color-mix(in oklab, var(--color-neutral) 16%, transparent);
+    }
+    .container-unlocked {
+        background-color: color-mix(in oklab, var(--color-success) 12%, transparent);
+    }
+    .container-unlocked:not(.card-active-aura):hover {
+        background-color: color-mix(in oklab, var(--color-success) 18%, transparent);
+    }
+    .card-active-aura {
+        box-shadow: 0 0 18px color-mix(in oklab, var(--color-primary) 28%, transparent);
+    }
+    .top-panel-aura {
+        box-shadow: 0 0 30px color-mix(in oklab, var(--color-primary) 12%, transparent);
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+</style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-base-200 text-base-content font-body-md overflow-hidden flex h-screen selection:bg-primary/30 selection:text-base-content">
+<a href="#main-content" class="skip-link">跳到主内容</a>
+
+<!-- SideNavBar -->
+<!-- SideNavBar -->
+<nav class="sidebar-glass" aria-label="主菜单">
+  <div class="sidebar-brand">
+    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
+    <div class="sidebar-text">
+      <div class="brand-title">纵横</div>
+      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
+    </div>
+  </div>
+  <div class="sidebar-separator" aria-hidden="true"></div>
+  <ul class="menu sidebar-menu" id="sidebarMenu">
+    <li><a href="workbench.html" aria-label="总控设置面板"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
+    <li><a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段" class="active"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
+    <li><a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
+    <li><a href="audit_stage.html" aria-label="审计阶段：正文审计、主编裁决"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
+    <li><a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
+  </ul>
+  <footer class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">U</div>
+      <span class="sidebar-text sidebar-user-name">用户</span>
+    </div>
+  </footer>
+</nav>
+<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
+</button>
+
+<!-- TopNavBar -->
+        <!-- TopNavBar -->
+        <!-- TopNavBar -->
+    <header class="header-glass h-16 fixed top-0 right-0 z-[60] flex justify-between items-center px-6 bg-base-100">
+        <div class="flex items-center gap-4 h-full">
+            <nav class="flex h-full items-center ml-2">
+                <!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
+                                <div class="header-tabs">
+                    <a href="world_creator.html" class="header-tab">世界设定</a>
+                    <a href="character_settings.html" class="header-tab">角色设定</a>
+                    <a href="l1a_settings.html" class="header-tab active">L1A 设定</a>
+                </div>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- 当前书籍标识 -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-content/10 text-[11px] font-medium text-base-content/80">
+                <span class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></span>
+                <span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+                <span id="header-book-name"></span>
+            </div>
+            <button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">notifications</span>
+            </button>
+            
+            <!-- 快捷设置齿轮与弹窗 -->
+            <div class="relative flex items-center">
+                <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                </button>
+                <!-- Quick Settings Popover -->
+                        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
+                    <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
+                </div>
+                <div class="flex flex-col gap-2 mb-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
+                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
+                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
+                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-base-content/5">
+                    <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        应用当前配置
+                    </button>
+                </div>
+            </div>
+
+            <div class="h-8 w-[1px] bg-base-content/5 mx-1"></div>
+            
+        </div>
+    </header>
+
+<main id="main-content" class="main-content pt-16 w-full h-screen flex flex-col bg-base-200 relative overflow-hidden transition-all shadow-sm border border-base-content/5">
+    <!-- Top Cards Panel -->
+    <div class="w-full shrink-0 px-6 pt-4 pb-3 border-b border-base-content/5 bg-primary/5 flex flex-col gap-2.5 z-10 shadow-sm top-panel-aura">
+        <div class="flex justify-between items-center">
+            <h2 class="text-[12px] font-bold text-base-content opacity-60 tracking-widest uppercase flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-primary text-sm">view_carousel</span>
+                L1A 核心情节与情绪约束链条
+            </h2>
+        </div>
+        <div id="l1a-card-list" class="flex gap-4 overflow-x-auto scrollbar-hide items-stretch pb-2 scroll-smooth">
+            <!-- 动态卡片由 JS 填充 -->
+        </div>
+    </div>
+
+   <!-- Bottom Split View -->
+    <div class="flex-1 flex overflow-y-auto custom-scrollbar w-full relative">
+       <!-- BEGIN: DetailSection -->
+        <section id="l1a-detail-section" class="flex-1 flex flex-col">
+            <div class="p-6 space-y-6">
+                <!-- Field: Title Card with Integrated Action Buttons -->
+                <div class="bg-base-100 border border-base-content/10 rounded-2xl p-4 shadow-sm flex items-center justify-between gap-6 min-h-[80px]">
+                    <!-- Left: Metadata & Title Text -->
+                    <div class="flex-1 flex flex-col gap-1.5 min-w-0">
+                        <div class="flex items-center gap-2 text-xs opacity-60">
+                            <span id="l1a-id-val" class="font-mono tracking-wider text-primary">L1A-002</span>
+                            <span id="l1a-status-badge">
+                                <!-- JS 动态注入 -->
+                            </span>
+                        </div>
+                        <div id="l1a-title-val" class="text-base font-bold text-base-content opacity-90 truncate leading-tight">
+                            <!-- JS 注入 -->
+                        </div>
+                    </div>
+                    <!-- Right: DaisyUI Button Components -->
+                    <div class="flex items-center gap-2.5 shrink-0">
+                        <button onclick="if(confirm('确定删除此L1A条目？此操作不可恢复。')) deleteCurrentL1A()" class="btn btn-sm btn-outline btn-error rounded-xl font-medium gap-1.5 flex items-center">
+                            <span class="material-symbols-outlined text-[16px]">delete</span>
+                            删除本条
+                        </button>
+                        <button onclick="generateCandidateL1A()" class="btn btn-sm btn-primary rounded-xl font-bold gap-1.5 flex items-center shadow-sm hover:shadow-[0_0_12px_rgba(77,142,255,0.3)]">
+                            <span class="material-symbols-outlined text-[16px]">psychology</span>
+                            生成变体
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Field: Core Description -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 核心内容摘要 -->
+                    <div class="bg-base-100 border border-base-content/10 rounded-xl p-4 shadow-sm flex flex-col gap-2 min-h-[130px]">
+                        <span class="text-xs text-base-content opacity-50 font-medium">核心内容摘要</span>
+                        <div id="l1a-summary-val" class="text-sm leading-relaxed text-base-content opacity-85 flex-1">
+                            <!-- JS 注入 -->
+                        </div>
+                    </div>
+                    <!-- 不可逆后果 -->
+                    <div class="bg-base-100 border border-base-content/10 rounded-xl p-4 shadow-sm flex flex-col gap-2 min-h-[130px]">
+                        <span class="text-xs text-base-content opacity-50 font-medium">不可逆后果</span>
+                        <div id="l1a-consequence-val" class="text-sm leading-relaxed text-base-content opacity-85 flex-1">
+                            <!-- JS 注入 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Field: World Progression & Milestone Tasks -->
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <!-- 世界推进 -->
+                    <div class="bg-base-100 border border-base-content/10 rounded-xl p-4 shadow-sm flex flex-col gap-2 min-h-[140px]">
+                        <span class="text-xs text-base-content opacity-50 font-medium flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[16px] text-primary">trending_up</span>
+                            世界推进 (World Progression)
+                        </span>
+                        <div id="l1a-world-val" class="text-sm leading-relaxed text-base-content opacity-85 flex-1">
+                            <!-- JS 注入 -->
+                        </div>
+                    </div>
+                    <!-- 阶段性任务 -->
+                    <div class="bg-base-100 border border-base-content/10 rounded-xl p-4 shadow-sm flex flex-col gap-2 min-h-[140px]">
+                        <span class="text-xs text-base-content opacity-50 font-medium flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[16px] text-secondary">assignment_turned_in</span>
+                            大事记忆 (Milestone Tasks)
+                        </span>
+                        <div id="l1a-tasks-val" class="text-sm leading-relaxed text-base-content opacity-85 flex-1">
+                            <!-- JS 注入 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Field: Detailed Content -->
+                <div class="flex flex-col">
+                    <div class="flex items-end justify-between -mb-[1px] z-10">
+                        <div class="tabs-lifted shrink-0 mr-4">
+                            <button id="tab-plot" onclick="switchDetailTab('plot')" class="tab-item active">情节承诺</button>
+                            <button id="tab-emotion" onclick="switchDetailTab('emotion')" class="tab-item">情绪承诺</button>
+                            <button id="tab-character" onclick="switchDetailTab('character')" class="tab-item">角色弧光</button>
+                        </div>
+                        <span class="text-[10px] text-base-content opacity-60/40 uppercase tracking-widest font-mono mb-2">L1A Constraint Block</span>
+                    </div>
+                    <div class="bg-base-100 border border-base-content/5 rounded-2xl rounded-tl-none p-6 space-y-6">
+                        <p id="l1a-detail-content-val" class="text-sm leading-relaxed text-base-content opacity-70">
+                            <!-- JS 注入 -->
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- END: DetailSection -->
+
+       <!-- BEGIN: SidePanels -->
+        <aside id="l1a-side-panels" class="w-80 border-l border-base-content/5 flex flex-col bg-base-100 shrink-0">
+            <!-- 三线排序按钮 -->
+            <div class="p-6 border-b border-base-content/5">
+                <button id="triple-line-sort-btn" onclick="triggerTripleLineSort()" class="w-full py-2.5 text-xs font-bold bg-neutral hover:bg-neutral/90 text-neutral-content rounded-xl transition-all flex items-center justify-center gap-2 group cursor-pointer uppercase tracking-wider shadow-sm">
+                    <span id="triple-line-sort-icon" class="material-symbols-outlined text-[16px] animate-pulse">density_medium</span>
+                    <span id="triple-line-sort-text">三线排序</span>
+                </button>
+            </div>
+            
+            <div class="p-6 border-b border-base-content/5 space-y-4">
+                <h3 class="text-xs font-bold uppercase tracking-widest text-base-content opacity-50">推演状态</h3>
+                
+                <!-- Word Count & Importance Grid -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="p-4 bg-base-200/40 border border-base-content/5 rounded-2xl flex flex-col justify-between shadow-sm min-h-[72px]">
+                        <div class="text-[10px] text-base-content opacity-50 uppercase mb-1">字数统计</div>
+                        <div class="text-base font-bold text-base-content opacity-90"><span id="l1a-wordcount-val">0</span> <span class="text-[10px] font-normal text-base-content opacity-50">字</span></div>
+                    </div>
+                    <div class="p-4 bg-base-200/40 border border-base-content/5 rounded-2xl flex flex-col justify-between shadow-sm min-h-[72px]">
+                        <div class="text-[10px] text-base-content opacity-50 uppercase mb-1">已推演</div>
+                        <div id="l1a-stars-val" class="flex items-center gap-1 mt-1.5">
+                            <span class="text-[11px] font-bold text-success">已推演</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- AI Candidate Spawner Button Moved to L1A Tag List -->
+            </div>
+            
+            <div class="p-6 border-b border-base-content/5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-base-content opacity-60">关联章节 (2)</h3>
+                </div>
+                <div class="space-y-3">
+                    <div class="p-3 bg-base-200/30 border border-base-content/5 rounded-xl group hover:border-primary/20 transition-all cursor-pointer shadow-sm">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-xs font-bold text-base-content/95">第4章：真相的边缘</span>
+                        </div>
+                        <div class="text-[10px] text-base-content opacity-50">关联度: 85%</div>
+                    </div>
+                    <div class="p-3 bg-base-200/30 border border-base-content/5 rounded-xl group hover:border-primary/20 transition-all cursor-pointer shadow-sm">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-xs font-bold text-base-content/95">第12章：最终对决前夕</span>
+                        </div>
+                        <div class="text-[10px] text-base-content opacity-50">关联度: 60%</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-base-content opacity-60">场景人物</h3>
+                </div>
+                <div id="l1a-characters-list" class="space-y-4">
+                    <!-- JS 渲染 -->
+                </div>
+                <button onclick="addCharacterToCurrentL1A()" class="w-full mt-6 py-2 border border-dashed border-base-content/10 hover:border-primary/30 rounded-xl text-xs text-base-content opacity-60 hover:text-primary transition-all font-semibold">+ 添加场景人物</button>
+            </div>
+        </aside>
+        <!-- END: SidePanels -->
+    </div>
+</main>
+
+<!-- Toast Container -->
+<div id="toast-container" class="toast-container"></div>
+
+<script>
+    // 定义 5 条原始 L1A 数据数组
+    window.l1aSettings = [
+        {
+            id: "L1A-001",
+            title: "战争爆发的导火索",
+            summary: "边境冲突升级为全面战争的关键事件",
+            consequence: "若战争爆发未能得到控制，两国边境防线将彻底崩溃，导致后续剧情战力体系失衡，80%的情节将滑向纯军事战术推演。",
+            worldProgression: "世界局势紧张度上升25%。双方军备动员进度已达80%，局部战事频繁爆发，边境重力防线受损。",
+            milestoneTasks: "1. 调查边境哨所遇袭真相 (0/1)\n2. 截获敌军绝密动员密信 (0/1)",
+            wordCount: 8560,
+            importance: 5,
+            locked: true,
+            characters: [
+                { name: "神秘组织首领", role: "反派角色", priority: "主导", avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDWN1f5QywV4T1kvEuDMePpnX_XfzMmFd0EQUlM7ovGycO-dQ8gQqJ3M3Do31VaSDWXbJmsVmivXjBKjEoIZWXblfn_Mbj1AJyAmQtzs_MdaJz9pUav0DWCBHber1wGyKQG-ltRTEv0CwgdhQEGMGyeRFlVa7EuNLFQoBqKV0SDeWQ9e40ZhwsjDci2psAE6rcekQy4K2a9vNEOiv-sd46KaeCUzp-G24Z1EnZDP2A6OIABFGtH-qlLbXcRtMO8S6w6ldI_2N1mupI" },
+                { name: "内线叛徒", role: "关键配角", priority: "重要", avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAKk0brn9lQ2LSa7jRTLKr9uVpbq6KBianajU38JQW16x4jIblDZndSX0tMVEFMahbl81Xk2kznwdajKM5_0uXPB0UJ4Ghqu4nmlFHUtbRkdhvo3nzN9A_8C8a3BLIhVR_6Q6iwcWNxysZgTva_22qyzdRquPh0rjuCsmaeLRV89TX__qOqyez-y3ZbeUrdnXmkAJdBKnw4jbIDa8g3-CBdyohHSD7fmxIoYvxkqCv-KscwZkPV8ww2H9sSPAdAd67imYf0vM6Hjmc" }
+            ],
+            plotContent: "边境摩擦源自多年前埋下的暗桩。本章需要清晰展现各方在战争红线边缘的疯狂试探，确保情绪张力饱满。",
+            emotionContent: "主角在这里需要体现出极度压抑且克制的情绪，并在冲突的最终爆发时瞬间转化为彻底的愤怒。",
+            characterContent: "萧无双的心态产生了关键蜕变。从之前的独善其身，转变为意识到整个时代洪流之下无人能置身事外。"
+        },
+        {
+            id: "L1A-002",
+            title: "神秘组织的真实目的",
+            summary: "表面上的正义背后隐藏的真相",
+            consequence: "若神秘组织的阴谋未能被及时阻止，世界核心政权将彻底沦为傀儡，古代遗迹的虚空裂隙将不可逆地永久开启，导致现存物理法则全面崩溃，且 80% 叙事空间将被虚空物质所吞噬。",
+            worldProgression: "随着神秘组织在各国的渗透加剧，世界局势紧张度上升 15%。古代遗迹的挖掘进度已达 60%，引发局部重力异常与虚空潮汐涌动，世界物理法则面临局部重塑。",
+            milestoneTasks: "1. 潜入遗迹外围，搜集重力异变的核心数据 (0/1)\n2. 策反或解救被神秘组织胁迫的古代语言专家 (进行中)\n3. 在议会听证会上，公开揭露神秘组织的局部渗透证据 (0/1)",
+            wordCount: 12450,
+            importance: 4,
+            locked: false,
+            characters: [
+                { name: "神秘组织首领", role: "反派角色", priority: "主导", avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDWN1f5QywV4T1kvEuDMePpnX_XfzMmFd0EQUlM7ovGycO-dQ8gQqJ3M3Do31VaSDWXbJmsVmivXjBKjEoIZWXblfn_Mbj1AJyAmQtzs_MdaJz9pUav0DWCBHber1wGyKQG-ltRTEv0CwgdhQEGMGyeRFlVa7EuNLFQoBqKV0SDeWQ9e40ZhwsjDci2psAE6rcekQy4K2a9vNEOiv-sd46KaeCUzp-G24Z1EnZDP2A6OIABFGtH-qlLbXcRtMO8S6w6ldI_2N1mupI" },
+                { name: "内线叛徒", role: "关键配角", priority: "重要", avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAKk0brn9lQ2LSa7jRTLKr9uVpbq6KBianajU38JQW16x4jIblDZndSX0tMVEFMahbl81Xk2kznwdajKM5_0uXPB0UJ4Ghqu4nmlFHUtbRkdhvo3nzN9A_8C8a3BLIhVR_6Q6iwcWNxysZgTva_22qyzdRquPh0rjuCsmaeLRV89TX__qOqyez-y3ZbeUrdnXmkAJdBKnw4jbIDa8g3-CBdyohHSD7fmxIoYvxkqCv-KscwZkPV8ww2H9sSPAdAd67imYf0vM6Hjmc" },
+                { name: "调查记者", role: "配角", priority: "次要", avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAbvzFRzr2Cu0SYr1RVvbJz7C9Fnwep8zj2FrE7UCH1I-qQiS0Le8qo1gC2fj6QCLP4xAmMY1ritr1YBlZV3EtGx3_QGyDrtS1ygiy1_DODmFFqfUrdASeI5ONMuiVJyVlyTTd5vQK5_S9awVnFIokxtIa-29xvXrq2k24P8WuUwJnS2RZJ1Nb1ghJSjPyRrIQCEp-TC3tzSebFCZbSxz2JQtJ0X5FuUSXpLHzUylHrubuEOAzd4OVdgbinjRoXK2sK1MEG7VzpJKI" }
+            ],
+            plotContent: "该组织成立于数百年前，由一群拥有高度智慧和资源的秘密精英组成。他们通过渗透各国政府、操控经济和制造冲突来达到自己的目的。组织的最终目标是利用古代遗迹中的力量重塑世界秩序...",
+            emotionContent: "在这个惊天真相揭露的刹那，本章氛围应该滑向深沉的惊悚与宿命感。配角的反应应展现出对未知恐惧的颤栗。",
+            characterContent: "配角内线叛徒在道德与利益之间的痛苦挣扎。这是他走向命运深渊的重要转折点。"
+        },
+        {
+            id: "L1A-003",
+            title: "主角的觉醒时刻",
+            summary: "主角在绝境中觉醒特殊能力",
+            consequence: "若觉醒失败，主角将被深渊意志吞噬，故事线被迫切入非主角视角，产生极大的剧情断层，系统将被迫回滚上百个关联因子。",
+            worldProgression: "虚空能量爆发，主角所在区域重力法则紊乱。区域内灵气密度飙升 200%，促使灵剑共鸣产生。",
+            milestoneTasks: "1. 在绝境中存活 3 个回合 (0/1)\n2. 引导灵力流经封印节点 (0/1)",
+            characters: [
+                { name: "萧无双", role: "主角", priority: "绝对主导", avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAbvzFRzr2Cu0SYr1RVvbJz7C9Fnwep8zj2FrE7UCH1I-qQiS0Le8qo1gC2fj6QCLP4xAmMY1ritr1YBlZV3EtGx3_QGyDrtS1ygiy1_DODmFFqfUrdASeI5ONMuiVJyVlyTTd5vQK5_S9awVnFIokxtIa-29xvXrq2k24P8WuUwJnS2RZJ1Nb1ghJSjPyRrIQCEp-TC3tzSebFCZbSxz2JQtJ0X5FuUSXpLHzUylHrubuEOAzd4OVdgbinjRoXK2sK1MEG7VzpJKI" }
+            ],
+            wordCount: 6320,
+            importance: 5,
+            locked: true,
+            plotContent: "极境之下的涅槃是本书最为核心的情绪宣泄点，必须确保所有痛苦细节 and 绝境压迫感在文字中得到全量具象表现。",
+            emotionContent: "绝境带来的绝望感，必须在字里行间压迫读者，直至最后的突破性爆发，形成极强的打脸和爽感体验。",
+            characterContent: "萧无双彻底斩断了过去的软弱，在痛苦的淬炼中形成了冷酷、决绝但内心深处守护信仰的人物底色。"
+        },
+        {
+            id: "L1A-004",
+            title: "盟友的背叛",
+            summary: "最信任的人背叛了团队",
+            consequence: "背叛将导致主角团队的秘密基地暴露，后续两章内所有非战斗性防线将被击穿，无法完成常规物资的补充。",
+            worldProgression: "由于内鬼泄密，神秘组织对主角团队的追捕力度提升 50%。社会面舆论开始抹黑主角团队。",
+            milestoneTasks: "1. 识破背叛者的虚假情报 (0/1)\n2. 从暴露的基地撤离所有重要文献 (0/1)",
+            characters: [
+                { name: "内线叛徒", role: "关键配角", priority: "主导", avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAKk0brn9lQ2LSa7jRTLKr9uVpbq6KBianajU38JQW16x4jIblDZndSX0tMVEFMahbl81Xk2kznwdajKM5_0uXPB0UJ4Ghqu4nmlFHUtbRkdhvo3nzN9A_8C8a3BLIhVR_6Q6iwcWNxysZgTva_22qyzdRquPh0rjuCsmaeLRV89TX__qOqyez-y3ZbeUrdnXmkAJdBKnw4jbIDa8g3-CBdyohHSD7fmxIoYvxkqCv-KscwZkPV8ww2H9sSPAdAd67imYf0vM6Hjmc" }
+            ],
+            wordCount: 7890,
+            importance: 3,
+            locked: false,
+            plotContent: "背叛的伏笔早已在细节中埋下。写作者需要在此处注重情感碎裂的渲染，形成强烈的情绪低谷与叙事张力。",
+            emotionContent: "被至交背叛的刺痛感与难以置信。这里需要用极度细腻的微表情和对话留白，烘托窒息、压抑的氛围。",
+            characterContent: "通过这起背叛，侧面刻画了整个修真界资源的匮乏与人性的挣扎，令配角形象更加立体可信。"
+        },
+        {
+            id: "L1A-005",
+            title: "古代遗迹的发现",
+            summary: "发现改变世界格局的古代遗迹",
+            consequence: "若遗迹位置泄露给神秘组织，叙事主动权将拱手让人，导致主角方必须强行进入敌方主导的最终死局。",
+            worldProgression: "古代符文重见天日，学术界对远古纪元的认知被颠覆，灵力学研究进度增加 40%。",
+            milestoneTasks: "1. 解密遗迹入口处的巨石浮雕 (0/1)\n2. 采集古代符文拓片并带回 (0/1)",
+            characters: [
+                { name: "调查记者", role: "配角", priority: "主导", avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAbvzFRzr2Cu0SYr1RVvbJz7C9Fnwep8zj2FrE7UCH1I-qQiS0Le8qo1gC2fj6QCLP4xAmMY1ritr1YBlZV3EtGx3_QGyDrtS1ygiy1_DODmFFqfUrdASeI5ONMuiVJyVlyTTd5vQK5_S9awVnFIokxtIa-29xvXrq2k24P8WuUwJnS2RZJ1Nb1ghJSjPyRrIQCEp-TC3tzSebFCZbSxz2JQtJ0X5FuUSXpLHzUylHrubuEOAzd4OVdgbinjRoXK2sK1MEG7VzpJKI" }
+            ],
+            wordCount: 5670,
+            importance: 4,
+            locked: false,
+            plotContent: "尘封的神秘世界在这一刻揭开面纱。不仅要写出视觉上的宏伟，更要展现它所包含的历史厚重感与未知的恐惧。",
+            emotionContent: "主角一行人由最初的好奇、震撼，到感受到远古虚空力量残留时的发自灵魂深处的寒意。",
+            characterContent: "探索过程激活了萧无双脑海深处的记忆碎片，暗示了他非同寻常的神秘身世。"
+        }
+    ];
+
+    window.activeL1aId = "L1A-002";
+    let activeTab = "plot"; // 'plot', 'emotion', 'character'
+    window.hasGeneratedCandidate = false;
+
+    // 动态渲染 L1A 横向滚动卡片
+    function renderL1aCards() {
+        const cardList = document.getElementById('l1a-card-list');
+        if (!cardList) return;
+        
+        cardList.innerHTML = '';
+        
+        window.l1aSettings.forEach(l1a => {
+            const isActive = l1a.id === window.activeL1aId;
+            
+            // 基础状态颜色设置：灰色=锁死/已推演，绿色=未锁死/可推演
+            let bgClass = '';
+            let textClass = '';
+            let statusBadge = '';
+            
+            if (l1a.isCandidate) {
+                bgClass = 'bg-secondary/5 border-secondary/10 hover:border-secondary/30';
+                textClass = 'text-secondary';
+                statusBadge = `
+                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-secondary/10 border border-secondary/20 text-secondary rounded text-[9px] font-bold">
+                        <span class="material-symbols-outlined text-[10px]">psychology</span>候选
+                    </span>
+                `;
+            } else if (l1a.locked) {
+                bgClass = 'container-locked border-neutral/25 hover:border-neutral/45'; textClass = 'text-neutral/90';
+                statusBadge = `
+                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-neutral/15 border border-neutral/30 text-neutral rounded text-[9px] font-bold">
+                        <span class="material-symbols-outlined text-[10px]">lock</span>已推演
+                    </span>
+                `;
+            } else {
+                bgClass = 'container-unlocked border-success/25 hover:border-success/45'; textClass = 'text-emerald-700/90';
+                statusBadge = `
+                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-success/10 border border-success/30 text-success rounded text-[9px] font-bold">
+                        <span class="material-symbols-outlined text-[10px]">edit</span>可编辑
+                    </span>
+                `;
+            }
+
+            // 激活高亮：主题色 aura + 边框
+            let borderActive = '';
+            if (isActive) {
+                borderActive = 'border-primary ring-2 ring-primary/30 card-active-aura';
+            }
+            
+            const card = document.createElement('div');
+            card.className = `w-48 shrink-0 p-4 rounded-box border transition-all cursor-pointer flex flex-col gap-2 relative ${bgClass} ${borderActive}`;
+            card.onclick = () => selectL1A(l1a.id);
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="text-[11px] font-bold font-sans tracking-wider ${textClass}">${l1a.id}</span>
+                    ${statusBadge}
+                </div>
+                <div class="text-[13px] font-bold text-base-content truncate">${l1a.title}</div>
+                <div class="text-[11px] text-base-content opacity-50 line-clamp-2 leading-relaxed h-[34px]">${l1a.summary}</div>
+            `;
+            cardList.appendChild(card);
+        });
+
+        // 动态添加“生成候选”卡片按钮在最右侧，尺寸与普通卡片相同，若生成过则隐藏
+        if (!window.hasGeneratedCandidate) {
+            const addCard = document.createElement('div');
+            addCard.id = 'edit-commit-btn';
+            addCard.className = 'w-48 shrink-0 p-4 rounded-box border border-dashed border-base-content/10 hover:border-primary/30 hover:bg-base-200/50 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 relative text-base-content opacity-60 hover:text-primary';
+            addCard.onclick = () => {
+                window.hasGeneratedCandidate = true;
+                generateCandidateL1A();
+            };
+            addCard.innerHTML = `
+                <span id="edit-commit-icon" class="material-symbols-outlined text-[28px] animate-pulse">explore</span>
+                <span id="edit-commit-text" class="text-xs font-bold uppercase tracking-wider">冲突遍历</span>
+            `;
+            cardList.appendChild(addCard);
+        }
+    }
+
+    // 选中 L1A
+    function selectL1A(id) {
+        window.activeL1aId = id;
+        renderL1aCards();
+        refreshL1aDetail();
+    }
+
+    // 刷新 L1A 详情
+    function refreshL1aDetail() {
+        const current = window.l1aSettings.find(item => item.id === window.activeL1aId);
+        if (!current) return;
+        
+        document.getElementById('l1a-id-val').innerText = current.id;
+        document.getElementById('l1a-title-val').innerText = current.title;
+        document.getElementById('l1a-summary-val').innerText = current.summary;
+        document.getElementById('l1a-consequence-val').innerText = current.consequence;
+        document.getElementById('l1a-world-val').innerText = current.worldProgression;
+        document.getElementById('l1a-wordcount-val').innerText = current.wordCount.toLocaleString();
+        
+        // 格式化 Milestone Tasks 为换行
+        document.getElementById('l1a-tasks-val').innerHTML = current.milestoneTasks.replace(/\n/g, '<br>');
+        
+        // 渲染状态徽章
+        const badgeContainer = document.getElementById('l1a-status-badge');
+        if (current.isCandidate) {
+            badgeContainer.innerHTML = `
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-secondary/10 text-secondary border border-secondary/25 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.15)]">
+                    <span class="relative flex h-1.5 w-1.5 mr-0.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-secondary"></span>
+                    </span>
+                    AI 候选
+                </span>
+            `;
+        } else if (current.locked) {
+            badgeContainer.innerHTML = `
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-error/10 text-error border border-error/25 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.15)]">
+                    <span class="material-symbols-outlined text-[10px]">lock</span>
+                    已推演
+                </span>
+            `;
+        } else {
+            badgeContainer.innerHTML = '';
+        }
+        
+        // 重置右侧按钮状态
+        const rightBtnText = document.getElementById('edit-commit-text');
+        const rightBtnIcon = document.getElementById('edit-commit-icon');
+        if (rightBtnText) {
+            rightBtnText.innerText = '冲突遍历';
+            if (rightBtnIcon) rightBtnIcon.innerText = 'explore';
+        }
+        
+        // 重置三线排序按钮状态
+        const sortBtn = document.getElementById('triple-line-sort-btn');
+        const sortIcon = document.getElementById('triple-line-sort-icon');
+        const sortText = document.getElementById('triple-line-sort-text');
+        if (sortBtn && sortIcon && sortText) {
+            if (current.locked) {
+                sortBtn.className = 'w-full py-2.5 text-xs font-bold btn btn-accent rounded-xl transition-all flex items-center justify-center gap-2 group uppercase tracking-wider shadow-sm opacity-60 cursor-not-allowed';
+                sortBtn.removeAttribute('onclick');
+                sortIcon.innerText = 'lock';
+                sortIcon.classList.remove('animate-pulse');
+                sortText.innerText = 'L1A已锁死';
+            } else {
+                sortBtn.className = 'w-full py-2.5 text-xs font-bold bg-neutral hover:bg-neutral/90 text-neutral-content rounded-xl transition-all flex items-center justify-center gap-2 group cursor-pointer uppercase tracking-wider shadow-sm';
+                sortBtn.setAttribute('onclick', 'triggerTripleLineSort()');
+                sortIcon.innerText = 'density_medium';
+                sortIcon.classList.add('animate-pulse');
+                sortText.innerText = '三线排序';
+            }
+        }
+        
+        // 渲染已推演状态
+        const starsContainer = document.getElementById('l1a-stars-val');
+        starsContainer.innerHTML = `<span class="text-[11px] font-bold text-success">已推演</span>`;
+        
+        // 渲染 Tab 情节/情绪/角色
+        updateDetailTabContent(current);
+        
+        // 场景人物列表
+        const charactersContainer = document.getElementById('l1a-characters-list');
+        if (charactersContainer) {
+            charactersContainer.innerHTML = '';
+            if (current.characters && current.characters.length > 0) {
+                current.characters.forEach(char => {
+                    const charEl = document.createElement('div');
+                    charEl.className = 'flex items-center gap-3 group cursor-pointer hover:bg-base-content/[0.02] p-1.5 rounded-lg transition-all';
+                    let priorityColor = 'text-cyber-emerald';
+                    if (char.priority === '主导' || char.priority === '绝对主导') {
+                        priorityColor = 'text-error';
+                    } else if (char.priority === '重要') {
+                        priorityColor = 'text-yellow-500';
+                    }
+                    
+                    // 核心弧光锁定，非核心显示删除图标并支持交互
+                    let actionIcon = '';
+                    if (char.priority === '绝对主导' || char.priority === '主导') {
+                        actionIcon = `<span class="material-symbols-outlined text-[16px] text-base-content/40 cursor-help" title="核心弧光角色已锁定">lock</span>`;
+                    } else {
+                        actionIcon = `<span class="material-symbols-outlined text-[16px] text-base-content/40 hover:text-error transition-colors cursor-pointer" title="移除该场景人物" onclick="event.stopPropagation(); this.parentElement.parentElement.remove(); showToast('移除人物','已将 ${char.name} 从该场景中移除','info')">delete</span>`;
+                    }
+                    
+                    charEl.innerHTML = `
+                        <div class="w-10 h-10 rounded-full border border-base-content/5 overflow-hidden bg-gray-800 shrink-0">
+                            <img alt="Avatar" src="${char.avatar}" class="w-full h-full object-cover"/>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-xs font-bold text-base-content group-hover:text-primary transition-colors truncate">${char.name}</div>
+                            <div class="text-[10px] text-base-content opacity-50 truncate">${char.role}</div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <div class="text-[10px] font-medium ${priorityColor}">${char.priority}</div>
+                            ${actionIcon}
+                        </div>
+                    `;
+                    charactersContainer.appendChild(charEl);
+                });
+            } else {
+                charactersContainer.innerHTML = `
+                    <div class="text-xs text-base-content opacity-50 italic py-2 text-center w-full">暂无场景人物</div>
+                `;
+            }
+        }
+    }
+
+    // 切换 L1A 详情下的情节、情绪、角色 TAB
+    function switchDetailTab(tab) {
+        activeTab = tab;
+        
+        // 切换 CSS
+        const tabs = ['plot', 'emotion', 'character'];
+        tabs.forEach(t => {
+            const btn = document.getElementById(`tab-${t}`);
+            if (t === tab) {
+                btn.className = "tab-item active";
+            } else {
+                btn.className = "tab-item";
+            }
+        });
+        
+        const current = window.l1aSettings.find(item => item.id === window.activeL1aId);
+        if (current) {
+            updateDetailTabContent(current);
+        }
+    }
+
+    function updateDetailTabContent(current) {
+        const textEl = document.getElementById('l1a-detail-content-val');
+        if (activeTab === 'plot') {
+            textEl.innerText = current.plotContent || "暂无情节承诺";
+        } else if (activeTab === 'emotion') {
+            textEl.innerText = current.emotionContent || "暂无情绪承诺";
+        } else if (activeTab === 'character') {
+            textEl.innerText = current.characterContent || "暂无角色弧光承诺";
+        }
+    }
+
+    // AI 生成候选变体
+    function generateCandidateL1A() {
+        window.hasGeneratedCandidate = true;
+        const current = window.l1aSettings.find(item => item.id === window.activeL1aId);
+        if (!current) return;
+        
+        const suffix = current.id.includes('-C') ? '' : '-C1';
+        const newId = current.id + suffix + '_' + Math.floor(Math.random() * 100);
+        const newTitle = `[冲突遍历] ${current.title}`;
+        const newL1a = {
+            ...current,
+            id: newId,
+            title: newTitle,
+            locked: false,
+            summary: `AI 基于 ${current.id} 衍生出的替代策略摘要。`,
+            isCandidate: true,
+            plotContent: `[AI 推荐候选情节] ${current.plotContent}`,
+            emotionContent: `[AI 推荐候选情绪] ${current.emotionContent}`,
+            characterContent: `[AI 推荐候选角色] ${current.characterContent}`
+        };
+        
+        // 插入到当前元素后面
+        const index = window.l1aSettings.findIndex(item => item.id === window.activeL1aId);
+        window.l1aSettings.splice(index + 1, 0, newL1a);
+        
+        // 切换到新变体
+        window.activeL1aId = newId;
+        
+        renderL1aCards();
+        refreshL1aDetail();
+        
+        showToast('冲突遍历完成', `已基于 ${current.id} 衍生出新候选变体 ${newId} 并切换激活。`, 'success');
+        
+        // 自动滚动到新卡片
+        setTimeout(() => {
+            const listContainer = document.getElementById('l1a-card-list');
+            if (listContainer) {
+                listContainer.scrollLeft = listContainer.scrollWidth;
+            }
+        }, 100);
+    }
+
+    // 三线排序
+    function triggerTripleLineSort() {
+        showToast('触发三线排序', '叙事引擎正在重新审计情节线、情绪线、世界线的交叉拓扑排序...', 'info');
+        setTimeout(() => {
+            showToast('三线逻辑排序成功', '已成功交叉分析，全量对齐情节承诺、情绪跌宕点与世界线推进里程碑任务！', 'success');
+
+            // 切换为 L1A锁死按钮（使用偏深绿的 accent 配色）
+            const btn = document.getElementById('triple-line-sort-btn');
+            const icon = document.getElementById('triple-line-sort-icon');
+            const text = document.getElementById('triple-line-sort-text');
+            if (btn && icon && text) {
+                btn.className = 'w-full py-2.5 text-xs font-bold btn btn-accent rounded-xl transition-all flex items-center justify-center gap-2 group cursor-pointer uppercase tracking-wider shadow-sm hover:shadow-[0_0_12px_rgba(92,127,103,0.3)]';
+                btn.setAttribute('onclick', 'lockCurrentL1A()');
+                icon.innerText = 'lock';
+                icon.classList.remove('animate-pulse');
+                text.innerText = 'L1A锁死';
+            }
+        }, 1500);
+    }
+
+    // 锁死当前 L1A
+    function lockCurrentL1A() {
+        const current = window.l1aSettings.find(item => item.id === window.activeL1aId);
+        if (!current) return;
+
+        if (current.locked) {
+            showToast('已锁死', `L1A ${current.id} 已处于锁死状态。`, 'info');
+            return;
+        }
+
+        current.locked = true;
+        refreshL1aDetail();
+        showToast('L1A 锁死成功', `已将 ${current.id} 锁定，进入已推演状态，情节约束不再变更。`, 'success');
+    }
+
+
+
+    // 删除当前条目
+    function deleteCurrentL1A() {
+        if (window.l1aSettings.length <= 1) {
+            showToast('无法删除', '叙事引擎中必须保留至少一条 L1A 约束。', 'warning');
+            return;
+        }
+        const index = window.l1aSettings.findIndex(item => item.id === window.activeL1aId);
+        if (index !== -1) {
+            const deletedId = window.activeL1aId;
+            window.l1aSettings.splice(index, 1);
+            // 激活相邻项
+            const nextActive = window.l1aSettings[index] || window.l1aSettings[index - 1];
+            window.activeL1aId = nextActive.id;
+            
+            renderL1aCards();
+            refreshL1aDetail();
+            
+            showToast('条目已删除', `约束条目 ${deletedId} 已成功从推演中卸载。`, 'success');
+        }
+    }
+
+    // 添加场景人物
+    function addCharacterToCurrentL1A() {
+        const current = window.l1aSettings.find(item => item.id === window.activeL1aId);
+        if (!current) return;
+        
+        const names = ["大皇子", "国师", "灵剑宗长老", "黑市商人"];
+        const roles = ["反派角色", "关键配角", "关键配角", "次要配角"];
+        const priorities = ["重要", "主导", "次要", "次要"];
+        const avatars = [
+            "https://lh3.googleusercontent.com/aida-public/AB6AXuAKk0brn9lQ2LSa7jRTLKr9uVpbq6KBianajU38JQW16x4jIblDZndSX0tMVEFMahbl81Xk2kznwdajKM5_0uXPB0UJ4Ghqu4nmlFHUtbRkdhvo3nzN9A_8C8a3BLIhVR_6Q6iwcWNxysZgTva_22qyzdRquPh0rjuCsmaeLRV89TX__qOqyez-y3ZbeUrdnXmkAJdBKnw4jbIDa8g3-CBdyohHSD7fmxIoYvxkqCv-KscwZkPV8ww2H9sSPAdAd67imYf0vM6Hjmc",
+            "https://lh3.googleusercontent.com/aida-public/AB6AXuDWN1f5QywV4T1kvEuDMePpnX_XfzMmFd0EQUlM7ovGycO-dQ8gQqJ3M3Do31VaSDWXbJmsVmivXjBKjEoIZWXblfn_Mbj1AJyAmQtzs_MdaJz9pUav0DWCBHber1wGyKQG-ltRTEv0CwgdhQEGMGyeRFlVa7EuNLFQoBqKV0SDeWQ9e40ZhwsjDci2psAE6rcekQy4K2a9vNEOiv-sd46KaeCUzp-G24Z1EnZDP2A6OIABFGtH-qlLbXcRtMO8S6w6ldI_2N1mupI",
+            "https://lh3.googleusercontent.com/aida-public/AB6AXuAbvzFRzr2Cu0SYr1RVvbJz7C9Fnwep8zj2FrE7UCH1I-qQiS0Le8qo1gC2fj6QCLP4xAmMY1ritr1YBlZV3EtGx3_QGyDrtS1ygiy1_DODmFFqfUrdASeI5ONMuiVJyVlyTTd5vQK5_S9awVnFIokxtIa-29xvXrq2k24P8WuUwJnS2RZJ1Nb1ghJSjPyRrIQCEp-TC3tzSebFCZbSxz2JQtJ0X5FuUSXpLHzUylHrubuEOAzd4OVdgbinjRoXK2sK1MEG7VzpJKI"
+        ];
+        
+        const randomIndex = Math.floor(Math.random() * names.length);
+        const newChar = {
+            name: names[randomIndex],
+            role: roles[randomIndex],
+            priority: priorities[randomIndex],
+            avatar: avatars[Math.floor(Math.random() * avatars.length)]
+        };
+        
+        if (!current.characters) {
+            current.characters = [];
+        }
+        current.characters.push(newChar);
+        
+        refreshL1aDetail();
+        showToast('人物添加成功', `已向当前约束场景添加关联人物 ${newChar.name}。`, 'success');
+    }
+
+    // Toast 提示框组件
+    function showToast(title, message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        
+        const toast = document.createElement('div');
+        toast.className = 'toast-item toast-' + type;
+        
+        let typeIcon = '';
+        if (type === 'success') {
+            typeIcon = 'check_circle';
+        } else if (type === 'warning') {
+            typeIcon = 'warning';
+        } else if (type === 'error') {
+            typeIcon = 'error';
+        } else {
+            typeIcon = 'info';
+        }
+        
+        toast.innerHTML = `
+            <span class="material-symbols-outlined shrink-0 text-lg mt-0.5">${typeIcon}</span>
+            <div class="flex-1 min-w-0">
+                <div class="text-xs font-bold text-base-content mb-0.5">${title}</div>
+                <div class="text-[10px] text-base-content opacity-50 leading-relaxed">${message}</div>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-base-content opacity-40 hover:text-base-content transition-colors shrink-0 self-start">
+                <span class="material-symbols-outlined text-sm">close</span>
+            </button>
+            <div class="absolute bottom-0 left-0 h-0.5 bg-current animate-[toast-progress_3s_linear_forwards] w-full"></div>
+        `;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('toast-show');
+        }, 10);
+        
+        setTimeout(() => {
+            toast.classList.remove('toast-show');
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 3000);
+    }
+    window.showToast = showToast;
+
+    // 初始化加载
+   window.addEventListener('DOMContentLoaded', () => {
+       renderL1aCards();
+       refreshL1aDetail();
+
+       // 鼠标横向拖拽滚动支持
+       const slider = document.getElementById('l1a-card-list');
+        if (slider) {
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            slider.style.cursor = 'grab';
+            slider.style.userSelect = 'none';
+
+            slider.addEventListener('mousedown', (e) => {
+                isDown = true;
+                slider.style.cursor = 'grabbing';
+                startX = e.pageX - slider.offsetLeft;
+                scrollLeft = slider.scrollLeft;
+            });
+            slider.addEventListener('mouseleave', () => {
+                isDown = false;
+                slider.style.cursor = 'grab';
+            });
+            slider.addEventListener('mouseup', () => {
+                isDown = false;
+                slider.style.cursor = 'grab';
+            });
+            slider.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - slider.offsetLeft;
+                const walk = (x - startX) * 2;
+                slider.scrollLeft = scrollLeft - walk;
+            });
+        }
+    });
+</script>
+
+
+<script>
+window.toggleSidebar = function() {
+    document.body.classList.toggle('sidebar-collapsed');
+    const icon = document.getElementById('sidebarIcon');
+    if (icon) {
+        icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
+    }
+};
+</script>
+</body>
+</html>

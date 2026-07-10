@@ -1,0 +1,172 @@
+{
+  "name": "技能评价与优化",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "afdfd800-b789-49b2-91dc-dea8f423a1fe",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "499add8b-90ce-4467-86ce-03e5d4d7ee24",
+      "name": "Webhook",
+      "webhookId": "afdfd800-b789-49b2-91dc-dea8f423a1fe"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "你是纵横小说推演系统的skill评价与优化专家。\n1.读取系统内已有的技能数据，了解技能的逻辑及用途。\n2.进行网络搜素与分析，根据写作技巧、流行小说的因素更新技能评价。\n3.如用户有想法或新增需要根据这个需求分析与已有技能的重合度，进行内容及分类方法的优化建议。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "75756b50-ec11-4d08-a06f-5877bd79b9aa",
+      "name": "FP015-02 后端技能评价与优化",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "38269356-fa79-4dad-a957-abddd5ada6db",
+      "name": "读库技能表",
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavilyTool",
+      "typeVersion": 1,
+      "position": [
+        560,
+        176
+      ],
+      "id": "7f5dd0bf-d7a9-4a06-ac6b-cff00fd015d3",
+      "name": "Search in Tavily",
+      "credentials": {
+        "tavilyApi": {
+          "id": "u7C4DLfL5QaXg7JR",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        768,
+        0
+      ],
+      "id": "61c047e6-f7ef-419d-ad8a-3d6802027d5c",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "读库技能表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读库技能表": {
+      "main": [
+        [
+          {
+            "node": "FP015-02 后端技能评价与优化",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search in Tavily": {
+      "ai_tool": [
+        [
+          {
+            "node": "FP015-02 后端技能评价与优化",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP015-02 后端技能评价与优化": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8272baf7-32b1-4a15-a920-9521b6105f7c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"
+  },
+  "id": "NGWtvgwPAzRb6xNL",
+  "tags": []
+}

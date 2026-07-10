@@ -1,0 +1,896 @@
+{
+  "name": "ZH07-迭代阶段",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/iteration",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "0272c780-2de2-4933-aca6-b8866dd9624a",
+      "name": "Webhook：/iteration",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        528,
+        0
+      ],
+      "webhookId": "2181e34e-e315-44ab-a60f-c69db2218579"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0].json;\nlet output = {};\ntry {\n  const text = input.output || input.text;\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    output = JSON.parse(jsonMatch[0]);\n  } else {\n    output = JSON.parse(text);\n  }\n} catch (e) {\n  output = { has_value: false, error: 'Failed to parse JSON' };\n}\nreturn { json: { ...input, ...output } };"
+      },
+      "id": "c6c2d6ec-6729-45c2-aec5-172ddb722690",
+      "name": "JSON修复",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.has_value }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "e9499560-c014-4434-aed1-15b665fd04f9",
+      "name": "IF：有迭代价值？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.auto_iteration }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "c253f6a5-211d-47af-a932-6b772b218410",
+      "name": "IF：auto_iteration ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1696,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM prompt_config WHERE is_active = true ORDER BY version_no DESC LIMIT 1;",
+        "additionalFields": {}
+      },
+      "id": "edc8bfa7-a94e-4d73-a788-2077aa895460",
+      "name": "读取当前版本",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        864,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM iteration_log WHERE result_status = 'pending' ORDER BY id DESC LIMIT 1;",
+        "additionalFields": {}
+      },
+      "id": "addca57e-631d-4a05-a1e6-9cc1df81bc55",
+      "name": "读取待处理日志",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        704,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM prompt_config WHERE is_active = true ORDER BY version_no DESC LIMIT 1;",
+        "additionalFields": {}
+      },
+      "id": "69af7619-db6c-48c9-a2a1-33eae6b22576",
+      "name": "标记丢弃样本",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        224
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=你是迭代样本分析器。请严密分析失败样本，执行精准的三维技术归因，并给出可供工程人员一键采纳的修复补丁建议。\n\n输入数据\n失败前状态（快照数据）：{{ 失败前状态_JSON }}\n\n使用的提示词版本：{{ 失败前提示词_JSON }}\n\n大模型原始输出：{{ 大模型原始输出_JSON }}\n\n退回原因/系统警报：{{ 阻断原因_TEXT }}\n\n失败节点代码：{{ 失败节点代码 }}\n\n分析步骤\n步骤1：事实冲突比对\n将「大模型原始输出」与「失败前状态」及「失败前提示词」进行点对点的数据硬撞，进行客观事实定位：\n\n找出输出具体违反了哪一条规则约束（必须精准引用提示词中的具体规则条文）。\n\n找出输出具体忽略了哪一个前置触发条件（必须精准引用失败前状态快照中的具体数据字段）。\n\n步骤2：三维技术归因（先精准分类，再对症修补）\n📊 数据债（Data Issue）\n输入的数据本身存在逻辑矛盾、状态漂移、虚空调用或严重缺失，导致模型在底层逻辑链上无法自圆其说。\n典型表现：角色四层模型中的 L0 根源与 L1 情绪字段相互冲突、世界设定包中错误引用了不存在的道具代码、或角色的实时信息边界未进行正确的裁剪。\n\n📝 提示词债（Prompt Issue）\n提示词中的指令要求不够明确、边界约束未加锁、或者多步骤之间的执行顺序存在逻辑歧义，导致模型在生成时产生自由发挥的越权幻觉。\n典型表现：字段定义模糊、缺乏特级阻断的绝对禁止项、未强调差分输出规范。\n\n🛠️ 技能债（Skill Issue）\n模型调用的剧情套路技能过时，或者大纲分配的商业、情绪硬性指标过于极端，超出了当前模型或套路库的承载上限，导致最终呈现输出变形。\n典型表现：套路库（skill_library）中的固有剧情套路无法完美匹配当前的实时情绪波段或戏剧意图类型。\n\n步骤3：优化补丁生成\n针对排查出的“核心技术欠账（primary_debt）”，针对性地输出对应的修复方案：\n\n若属于数据债：明确指出具体需要精细化修改的数据字段、角色档案或世界设定条目。\n\n若属于提示词债：直接在指定字段输出重写优化后的 优化后提示词片段（确保工程人员可一键复制采纳）。\n\n若属于技能债：给出更新、微调或替换套路库（skill_library）中哪一个套路类目或规则属性的具体建议。\n\n输出格式\nJSON\n{\n  \"失败节点\": \"{{ 失败节点代码 }}\",\n  \"分析摘要\": \"对本次失败样本的一句话核心技术归因说明\",\n  \"技术归因分类\": {\n    \"是否为数据缺陷\": false,\n    \"是否为提示词缺陷\": true,\n    \"是否为技能缺陷\": false,\n    \"核心技术欠账\": \"数据|提示词|能力\"\n  },\n  \"冲突依据\": [\n    {\n      \"发现的冲突点\": \"输出中具体表现出的冲突事实或逻辑越界\",\n      \"背离的数据字段\": \"哪一个输入快照字段与最终输出发生了事实背离\",\n      \"违反的提示词条文\": \"被模型违反的提示词条文原文（必须直接引用）\"\n    }\n  ],\n  \"补丁候选方案\": {\n    \"数据修复建议\": \"若是否为数据缺陷=true：建议如何精细化修改四层模型、角色档案或世界设定，否则填无\",\n    \"提示词修复建议\": \"若是否为提示词缺陷=true：精准指出应当修改或加锁原提示词的哪一部分，否则填无\",\n    \"技能修复建议\": \"若是否为技能缺陷=true：建议如何更新或扩充套路库中的特定剧情套路，否则填无\"\n  },\n  \"优化后提示词片段\": \"若核心技术欠账=提示词：直接提供完成修复、可供工程人员一键复制采纳的提示词代码片段；否则填无\"\n}\n输出校验规则\n技术归因分类.核心技术欠账 的取值必须在 数据 | 提示词 | 能力 三者中严格选一。\n\n若 核心技术欠账 锁定了某一具体技术欠账分类，对应的 是否为*_缺陷 标志位必须强制设置为 true。\n\n若 是否为提示词缺陷 判定为 true，必须在 优化后提示词片段 字段中提供立即可用、逻辑加锁后的修改后提示词片段（绝对不可填无或输出 null）。\n\n冲突依据 列表必须至少包含 1 项，且必须精准引用具体的输入数据字段或条文原文，严禁使用纯主观臆测来推断模型的“内心想法”。\n\n违反的提示词条文 必须强行引用「使用提示词版本」中的原文约束内容（即使为了排版允许进行标准缩略引用，也必须保留其核心控制语义）。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "c22c6fe0-c1ff-4ea1-a9a9-667688f2bb62",
+      "name": "FP014-01 异常样本分析",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0].json;\nlet output = {};\ntry {\n  const text = input.output || input.text;\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    output = JSON.parse(jsonMatch[0]);\n  } else {\n    output = JSON.parse(text);\n  }\n} catch (e) {\n  output = { has_value: false, error: 'Failed to parse JSON' };\n}\nreturn { json: { ...input, ...output } };"
+      },
+      "id": "18bbc0eb-09ba-46a4-8d26-a1def1dff52a",
+      "name": "JSON修复1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        2448,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "1569be22-2038-413b-8742-2c39b6adb333",
+      "name": "Respond：前端页面刷新",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0].json;\nlet output = {};\ntry {\n  const text = input.output || input.text;\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    output = JSON.parse(jsonMatch[0]);\n  } else {\n    output = JSON.parse(text);\n  }\n} catch (e) {\n  output = { has_value: false, error: 'Failed to parse JSON' };\n}\nreturn { json: { ...input, ...output } };"
+      },
+      "id": "cc80c71d-b34b-47a3-887e-c8c20bcd2e8f",
+      "name": "JSON修复2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        2544,
+        -592
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "7WctNeWx8XcCtVTY",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/7WctNeWx8XcCtVTY",
+          "cachedResultName": "提示词代理"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        -448
+      ],
+      "id": "1daaf25d-b424-4ae1-9d23-ff0fdd747db8",
+      "name": "Call '提示词代理'1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "7WctNeWx8XcCtVTY",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/7WctNeWx8XcCtVTY",
+          "cachedResultName": "提示词代理"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2640,
+        -48
+      ],
+      "id": "6e196206-231e-404c-ab05-e9440006a3fd",
+      "name": "FP014-02 提示词实验2"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "你将了解旧节点的所在的流程节点及工作任务，根据调整建议在不感染其他目的的前提下精确定位问题区域进行微调，生成新版本提示词内容。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        2160,
+        -48
+      ],
+      "id": "17097fba-b323-4b4e-8a96-e6927e96e7fc",
+      "name": "提示词建议",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "你将了解旧节点的所在的流程节点及工作任务，根据调整建议在不感染其他目的的前提下精确定位问题区域进行微调，生成新版本提示词内容。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        2256,
+        -592
+      ],
+      "id": "f2876b24-51f6-4b0b-b6ef-c40894888993",
+      "name": "FP014-02 提示词自迭代实验",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO prompt_iteration_log (original_prompt, revised_prompt, status, compare_report) VALUES ('{{ $json.prompt_content }}', '{{ $json.revised_prompt }}', 'failed', '{{ $json.compare_report }}');",
+        "additionalFields": {}
+      },
+      "id": "7779426f-0881-4d92-a1c9-1fc5026b4ff9",
+      "name": "写入失败原因",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        3248,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1888,
+        -48
+      ],
+      "id": "65cb9613-3635-46a1-86df-d188aabefd20",
+      "name": "前端选择实验提示词",
+      "webhookId": "67680faa-d2c5-4da3-9d92-06cb80c76bcb"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2000,
+        -608
+      ],
+      "id": "c90ae5f5-c37f-4c3e-b237-604931a81174",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b6adba1a-16f9-464a-a7c7-5f5d3f6f123d"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        3040,
+        -48
+      ],
+      "id": "ad3aa4bf-84da-49ef-aa87-f88fba00dc00",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3248,
+        240
+      ],
+      "id": "cb070b3e-5e16-4be4-9e8e-f0674ac9b784",
+      "name": "写入废弃原因",
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "80560967-cbb9-42c9-b8f8-94057bfa4c04",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3472,
+        48
+      ],
+      "id": "292c2f72-f75b-4975-939d-27f1544f9d4b",
+      "name": "If有剩余未实验提示词"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "109355a6-e0bf-4cf9-a7b2-6346ff0b0856",
+      "name": "Respond：提示词已废弃",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3472,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b1abebea-9fe6-4b2c-9730-a0ec675f174a",
+      "name": "实验完毕",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3728,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ba53ea91-a5cf-49d8-bdcc-130305562fd4",
+      "name": "实验完毕1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2256,
+        -752
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "id": "1d8271ce-ee17-44aa-a043-88fdb705e1ee",
+      "name": "FP014-03Respond：等待人工",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        2832,
+        -48
+      ],
+      "webhookId": "6209f0d3-9a8f-4eee-9bf6-bead718421d8"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO prompt_iteration_log (original_prompt, revised_prompt, status, compare_report) VALUES ('{{ $json.prompt_content }}', '{{ $json.revised_prompt }}', 'failed', '{{ $json.compare_report }}');",
+        "additionalFields": {}
+      },
+      "id": "a19815e7-d31f-4ec1-bffa-2f9d754f2118",
+      "name": "FP014-04更新提示词",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        3248,
+        -160
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2720,
+        -592
+      ],
+      "id": "0bd39879-5464-45bc-a027-a3a527c30b6c",
+      "name": "FP014-04更新提示词1",
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook：/iteration": {
+      "main": [
+        [
+          {
+            "node": "读取待处理日志",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复": {
+      "main": [
+        [
+          {
+            "node": "IF：有迭代价值？",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF：有迭代价值？": {
+      "main": [
+        [
+          {
+            "node": "IF：auto_iteration ?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "标记丢弃样本",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF：auto_iteration ?": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "前端选择实验提示词",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读取当前版本": {
+      "main": [
+        [
+          {
+            "node": "FP014-01 异常样本分析",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读取待处理日志": {
+      "main": [
+        []
+      ]
+    },
+    "标记丢弃样本": {
+      "main": [
+        [
+          {
+            "node": "Respond：前端页面刷新",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP014-01 异常样本分析": {
+      "main": [
+        [
+          {
+            "node": "JSON修复",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复1": {
+      "main": [
+        [
+          {
+            "node": "FP014-02 提示词实验2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call '提示词代理'1": {
+      "ai_tool": [
+        [
+          {
+            "node": "FP014-02 提示词自迭代实验",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP014-02 提示词实验2": {
+      "main": [
+        [
+          {
+            "node": "FP014-03Respond：等待人工",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "提示词建议": {
+      "main": [
+        [
+          {
+            "node": "JSON修复1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP014-02 提示词自迭代实验": {
+      "main": [
+        [
+          {
+            "node": "JSON修复2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "写入失败原因": {
+      "main": [
+        [
+          {
+            "node": "提示词建议",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "前端选择实验提示词": {
+      "main": [
+        [
+          {
+            "node": "提示词建议",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "实验完毕1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FP014-02 提示词自迭代实验",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复2": {
+      "main": [
+        [
+          {
+            "node": "FP014-04更新提示词1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "写入失败原因",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "FP014-04更新提示词",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "写入废弃原因",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If有剩余未实验提示词": {
+      "main": [
+        [
+          {
+            "node": "前端选择实验提示词",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "实验完毕",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "写入废弃原因": {
+      "main": [
+        [
+          {
+            "node": "Respond：提示词已废弃",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond：提示词已废弃": {
+      "main": [
+        [
+          {
+            "node": "前端选择实验提示词",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP014-03Respond：等待人工": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP014-04更新提示词": {
+      "main": [
+        [
+          {
+            "node": "If有剩余未实验提示词",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP014-04更新提示词1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e3d1ec74-4772-46fe-aceb-9b1cff304de1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"
+  },
+  "id": "79a37e5c-de2a-4761-ae32-7efc6b78a987",
+  "tags": []
+}

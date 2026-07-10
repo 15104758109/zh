@@ -1,0 +1,162 @@
+/* ===== Sidebar System — 统一侧栏组件 ===== */
+/* 使用方式: 页面 <link rel="stylesheet" href="../common/sidebar.css"> */
+/* 依赖: 页面 <style> 中必须定义 --sidebar-w (默认 220px) */
+
+/* ── 基础变量 ── */
+:root {
+  --sidebar-w: 200px;
+  --sidebar-divider-color: color-mix(in oklab, var(--color-primary, oklch(62.45% 0.278 3.836)) 78%, transparent);
+  --sidebar-divider-soft: color-mix(in oklab, var(--color-primary, oklch(62.45% 0.278 3.836)) 14%, transparent);
+}
+
+/* ── 侧栏容器 ── */
+.sidebar-glass {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-w);
+  padding: 24px 12px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(0,0,0,.06);
+  transition: width .2s ease;
+}
+
+/* ── 折叠状态 ── */
+body.sidebar-collapsed { --sidebar-w: 64px; }
+body.sidebar-collapsed .sidebar-text,
+body.sidebar-collapsed .sidebar-subtitle { display: none; }
+body.sidebar-collapsed .sidebar-brand,
+body.sidebar-collapsed .sidebar-menu a { justify-content: center; }
+body.sidebar-collapsed .sidebar-footer { padding-inline: 0; }
+body.sidebar-collapsed .sidebar-user { justify-content: center; }
+
+/* ── 品牌区 ── */
+.sidebar-brand {
+  display: flex; gap: 12px; align-items: center;
+  padding: 0 10px 22px;
+}
+.brand-mark {
+  width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--color-neutral); color: var(--color-neutral-content);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+}
+.brand-title { font-weight: 800; letter-spacing: -.02em; }
+.brand-subtitle { margin-top: 2px; font-size: 11px; opacity: .55; }
+
+/* ── 菜单 ── */
+.sidebar-section { display: grid; gap: 6px; }
+.sidebar-menu {
+  width: 100%;
+  background: transparent;
+  font-size: 15px;
+  gap: 8px;
+  padding-top: 6px;
+}
+.sidebar-menu li > a {
+  min-height: 44px;
+  gap: 11px;
+  padding: 10px 12px;
+  line-height: 1.35;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+.sidebar-menu li > a:hover {
+  background: var(--color-base-100, rgba(0,0,0,.04));
+}
+.sidebar-menu li > a.active,
+.sidebar-menu li > a.menu-active {
+  background: color-mix(in oklab, var(--color-accent) 12%, white 88%);
+  border: 1px solid color-mix(in oklab, var(--color-accent) 34%, transparent);
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+/* ── 分隔线 ── */
+.sidebar-separator {
+  display: block;
+  flex: 0 0 auto;
+  height: 0;
+  margin: 0 0 20px;
+  border-top: 1px solid var(--sidebar-divider-color);
+  box-shadow: 0 1px 0 var(--sidebar-divider-soft);
+}
+
+/* ── 底部用户区 ── */
+.sidebar-footer { margin-top: auto; padding: 14px 0 0; font-size: 11px; }
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 0;
+  border-top: 1px solid rgba(0,0,0,.06);
+}
+.sidebar-user-avatar {
+  width: 32px; height: 32px; border-radius: 999px;
+  background: var(--color-accent); color: var(--color-accent-content);
+  display: grid; place-items: center;
+  font-size: 14px; font-weight: 700; flex-shrink: 0;
+}
+.sidebar-user-name {
+  font-size: 13px; font-weight: 700;
+}
+
+/* ── 伸缩按钮 ── */
+.sidebar-toggle {
+  position: fixed; z-index: 80; top: 24px; left: calc(var(--sidebar-w) - 12px);
+  width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255,255,255,.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: inherit;
+  opacity: .7;
+  cursor: pointer;
+  transition: left .2s ease, opacity .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.sidebar-toggle:hover {
+  opacity: 1;
+  background: var(--color-base-100);
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+
+/* ── 主内容区调整 ── */
+.main-content {
+  margin-left: var(--sidebar-w); padding-top: 0;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  transition: margin-left .2s ease;
+}
+
+
+/* ── 固定顶部导航栏随侧栏宽度调整 ── */
+.header-glass {
+  left: var(--sidebar-w);
+  transition: left .2s ease;
+}
+
+/* ── 无障碍跳转链接（视觉隐藏，键盘可访问） ── */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: -1;
+}
+.skip-link:focus {
+  left: 12px;
+  top: 12px;
+  z-index: 200;
+  background: var(--color-base-100);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-primary);
+}
+
+/* ── 页脚随侧栏折叠调整 ── */
+footer.app-footer { transition: left .2s ease; }
+body.sidebar-collapsed footer.app-footer { left: 72px !important; }

@@ -1,0 +1,167 @@
+{
+  "name": "影子融合工具",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "1133ac66-1807-4ab3-b113-f9038fc53bf5",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a47fbb6e-aee8-4af7-a813-160ea4d42bfc",
+      "name": "Webhook",
+      "webhookId": "1133ac66-1807-4ab3-b113-f9038fc53bf5"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "41dd188b-e192-4295-9a5a-3c944810203a",
+      "name": "读取新/影子版本正文及审计记录",
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "ad36130d-2a0a-455e-9e98-b3be7cb98aae",
+      "name": "json修复"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        976,
+        0
+      ],
+      "id": "7d2bf5ee-b606-4e36-b421-42a1c2a73027",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "你是正文理解与比较专家，你仅限于两次推演的版本与审计结论的对比做出结论，而不是自己对该段文章的分析与推测，负责为用户整理为重新生成的详细建议。\n1.对比影子版本与新版本的评分差异，得到两个版本的待增强方向。\n2.分析优秀方向的原因，基于原因锁定关键证据。\n3.确保建议内容在不更改客观结果的基础上。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "a462595a-20a1-490d-b4b5-1c11a4a2f155",
+      "name": "FP012-03 影子实验",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "读取新/影子版本正文及审计记录",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读取新/影子版本正文及审计记录": {
+      "main": [
+        [
+          {
+            "node": "FP012-03 影子实验",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "json修复": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP012-03 影子实验": {
+      "main": [
+        [
+          {
+            "node": "json修复",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0be470cc-838e-4c98-b326-b3294a29ba15",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"
+  },
+  "id": "Zfejr9HOEu19nlZf",
+  "tags": []
+}

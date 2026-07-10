@@ -1,0 +1,167 @@
+{
+  "name": "前端变体/主线健康助手",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "48f9852e-484c-4290-bea7-7e1719cc41ba",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b5aae08a-6378-48ed-b691-b2ba1b42d5fd",
+      "name": "Webhook",
+      "webhookId": "48f9852e-484c-4290-bea7-7e1719cc41ba"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "4c9473a4-02dd-4cb2-a3ad-6394bb29fc7a",
+      "name": "读库设定、角色、主线剧情",
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "基于当前已有主线内容进行健康分析，并根据提示输出提示及剧情变体内容。\n1.同类型情绪疲劳或集中。\n2.同类爽点过多或集中\n3.角色弧光超出读者接受范围，如关键人物死亡、失去能力、或转折过强。\n4.中、长期承诺与钩子回收周期过长，可能导致读者记忆衰减或驱动强度不足。\n5.设定、剧情之间存在冲突、互伤或削弱。\n6.三观背离主流认知，角色不理体或失去共鸣。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "60cd1c56-8b45-4cd4-9771-88139bf1a668",
+      "name": "FP004-05 前端变体/主线健康助手",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "8f872140-0f58-44aa-847c-1f4a63a2c2ab",
+      "name": "json修复"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        976,
+        0
+      ],
+      "id": "e776b27b-0b4c-43bc-94dd-eda8ea0dd6d2",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "读库设定、角色、主线剧情",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读库设定、角色、主线剧情": {
+      "main": [
+        [
+          {
+            "node": "FP004-05 前端变体/主线健康助手",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP004-05 前端变体/主线健康助手": {
+      "main": [
+        [
+          {
+            "node": "json修复",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "json修复": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "cf608bb6-081b-4922-a12f-d62e5de5f8a5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"
+  },
+  "id": "kP78P5PL30k4HqML",
+  "tags": []
+}

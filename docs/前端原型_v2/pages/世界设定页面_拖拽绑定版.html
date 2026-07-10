@@ -1,0 +1,2536 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>世界设定 - 纵横叙事引擎</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<!-- Tailwind CSS & DaisyUI v4 via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
+<link href="../common/theme.css" rel="stylesheet">
+<link href="../common/sidebar.css" rel="stylesheet">
+<script src="../common/theme.js"></script>
+<script charset="utf-8" src="./new_book_wizard_data.js"></script>
+<script src="../common/header.js"></script>
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+  /* 投影 pill */
+  .projection-pill {
+    font-size: 11px; padding: 4px 12px; border-radius: 20px; font-weight: 600;
+    cursor: pointer; border: 1px solid transparent; transition: all 0.15s;
+    white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .projection-pill.active { color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+  .projection-pill:not(.active) {
+    background: rgba(0,0,0,0.04); color: oklch(40% 0.005 17);
+    border-color: rgba(0,0,0,0.08);
+  }
+  .projection-pill:not(.active):hover { background: rgba(0,0,0,0.08); }
+
+  /* 条目卡片 (列表模式) */
+  .world-card {
+    background: rgba(255,255,255,0.85); border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px; padding: 12px 14px; cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.12s, border-color 0.15s;
+    position: relative; border-left-width: 4px;
+  }
+  .world-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); transform: translateY(-2px); }
+  .world-card .card-actions { opacity: 0; transition: opacity 0.15s; }
+  .world-card:hover .card-actions { opacity: 1; }
+
+  /* 张力徽章 */
+  .tension-badge {
+    font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700;
+    letter-spacing: 0.03em; display: inline-flex; align-items: center; gap: 2px;
+  }
+  .tension-high { background: oklch(97% 0.03 3); color: oklch(52% 0.25 3); border: 1px solid oklch(88% 0.08 3); }
+  .tension-mid { background: oklch(97% 0.04 83); color: oklch(50% 0.18 83); border: 1px solid oklch(88% 0.1 83); }
+  .tension-low { background: oklch(93% 0.005 17); color: oklch(45% 0.005 17); border: 1px solid oklch(82% 0.005 17); }
+
+  /* 商业指数徽章 */
+  .commercial-badge {
+    font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700;
+    background: oklch(96% 0.015 240); color: oklch(40% 0.08 240);
+    border: 1px solid oklch(88% 0.03 240);
+  }
+
+  /* 绑定标签 */
+  .bind-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; padding: 2px 7px; border-radius: 12px;
+    font-weight: 500; background: rgba(0,0,0,0.04);
+    border: 1px solid rgba(0,0,0,0.08); color: oklch(40% 0.005 17);
+  }
+
+  /* AI建议条 */
+  .ai-suggestion {
+    background: oklch(96% 0.015 240); border: 1px solid oklch(88% 0.03 240);
+    border-radius: 6px; padding: 5px 8px; font-size: 10px;
+    color: oklch(40% 0.08 240); margin-top: 6px;
+  }
+
+  /* 右侧抽屉 */
+  #detailDrawer {
+    position: fixed; top: 0; right: 0; height: 100%; width: 480px;
+    z-index: 100; background: rgba(255,255,255,0.96);
+    border-left: 1px solid rgba(0,0,0,0.08);
+    box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+    transition: transform 0.25s ease; transform: translateX(100%);
+    backdrop-filter: blur(8px); display: flex; flex-direction: column;
+  }
+  #detailDrawer.open { transform: translateX(0); }
+
+  #drawerBackdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(2px); z-index: 90; opacity: 0;
+    transition: opacity 0.25s ease; pointer-events: none;
+  }
+  #drawerBackdrop.open { opacity: 1; pointer-events: auto; }
+
+  /* 绑定弹窗 */
+  #bindingModal {
+    position: fixed; inset: 0; z-index: 130;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+  }
+  #bindingModal.open { opacity: 1; pointer-events: auto; }
+
+  /* AI Proposals Diff 弹窗 */
+  #diffModal {
+    position: fixed; inset: 0; z-index: 140;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+  }
+  #diffModal.open { opacity: 1; pointer-events: auto; }
+
+  .field-input {
+    width: 100%; background: rgba(255,255,255,0.95);
+    border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;
+    padding: 7px 11px; font-size: 12px; color: var(--color-base-content);
+    outline: none; transition: border-color 0.15s;
+  }
+  .field-input:focus { border-color: var(--color-primary); }
+
+  .field-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; color: oklch(45% 0.005 17);
+    margin-bottom: 5px; display: block;
+  }
+
+  /* 板块色条映射 */
+  .board-rules { border-left-color: oklch(62.45% 0.278 3.836); }
+  .board-geography { border-left-color: oklch(64.8% 0.15 160); }
+  .board-resources { border-left-color: oklch(84.71% 0.199 83.87); }
+  .board-factions { border-left-color: oklch(48.495% 0.11 355.095); }
+  .board-professions { border-left-color: oklch(72.06% 0.191 231.6); }
+  .board-monsters { border-left-color: oklch(71.76% 0.221 22.18); }
+  .board-chronicle { border-left-color: oklch(30% 0.005 17); }
+
+  /* 地图底图网格 */
+  .cyber-grid {
+    background-image: radial-gradient(rgba(0,0,0,0.08) 1.5px, transparent 0);
+    background-size: 32px 32px;
+    background-position: 0 0;
+    position: relative;
+    overflow: auto;
+  }
+
+  /* 地理钉样式 */
+  .location-pin {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    z-index: 10;
+  }
+  .location-pin:hover {
+    transform: translate(-50%, -55%) scale(1.05);
+    z-index: 20;
+  }
+  .pin-circle {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(4px);
+    border: 2.5px solid oklch(64.8% 0.15 160);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pin-label {
+    position: absolute; top: 48px; left: 50%; transform: translateX(-50%);
+    white-space: nowrap; font-size: 11px; font-weight: 700;
+    background: rgba(255,255,255,0.9); padding: 2px 8px;
+    border-radius: 12px; border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    color: var(--color-base-content);
+  }
+  
+  /* 钉外圈聚合图标 */
+  .pin-clusters {
+    position: absolute;
+    top: -8px; right: -8px;
+    display: flex; gap: 2px;
+  }
+  .cluster-badge {
+    width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+    border: 1px solid rgba(255,255,255,0.8);
+  }
+
+  /* 关系线连线 */
+  .path-connection {
+    position: absolute;
+    height: 2px;
+    background: repeating-linear-gradient(to right, transparent, transparent 4px, oklch(62.45% 0.278 3.836 / 40%) 4px, oklch(62.45% 0.278 3.836 / 40%) 8px);
+    transform-origin: 0 50%;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* 面包屑返回 */
+  .pivot-breadcrumb {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 500; color: oklch(45% 0.005 17);
+  }
+  .pivot-breadcrumb-item {
+    cursor: pointer; transition: color 0.15s;
+  }
+  .pivot-breadcrumb-item:hover { color: var(--color-primary); }
+
+  /* 辐射分解树 */
+  .tree-branch-container {
+    position: relative;
+    padding-left: 14px;
+    margin-left: 6px;
+    border-left: 1.5px dashed rgba(0,0,0,0.08);
+  }
+  .tree-branch-item {
+    position: relative;
+    padding: 4px 0;
+  }
+  .tree-branch-item::before {
+    content: ''; position: absolute; left: -14px; top: 12px;
+    width: 10px; height: 1.5px; border-top: 1.5px dashed rgba(0,0,0,0.08);
+  }
+
+  /* 想法收集聊天气泡 */
+  #conflict-seed-chat {
+    position: fixed; bottom: 24px; right: 24px; z-index: 90;
+  }
+  .chat-bubble-panel {
+    position: absolute; bottom: 60px; right: 0;
+    width: 360px; height: 460px;
+    background: rgba(255,255,255,0.96); backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    border-radius: 16px; display: flex; flex-direction: column; overflow: hidden;
+    transition: transform 0.25s, opacity 0.25s;
+    transform: scale(0.9) translateY(20px); opacity: 0; pointer-events: none;
+    transform-origin: bottom right;
+  }
+  .chat-bubble-panel.open {
+    transform: scale(1) translateY(0); opacity: 1; pointer-events: auto;
+  }
+
+
+  /* ============ V1.4 骨架驱动拖拽绑定布局 ============ */
+  .world-workspace {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 280px minmax(520px, 1fr) 300px;
+    gap: 14px;
+    padding: 14px 18px 18px;
+    overflow: hidden;
+  }
+  .world-skeleton-panel,
+  .resource-dock-panel,
+  .canvas-shell {
+    background: rgba(255,255,255,0.78);
+    border: 1px solid rgba(0,0,0,0.07);
+    border-radius: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+    backdrop-filter: blur(12px);
+    min-height: 0;
+  }
+  .world-skeleton-row {
+    border: 1px solid rgba(0,0,0,0.06);
+    border-left-width: 4px;
+    background: rgba(255,255,255,0.72);
+    border-radius: 13px;
+    padding: 10px 11px;
+    cursor: pointer;
+    transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+  }
+  .world-skeleton-row:hover,
+  .world-skeleton-row.active {
+    transform: translateY(-1px);
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  }
+  .skeleton-count-pill {
+    font-size: 9px;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 999px;
+    font-weight: 800;
+    border: 1px solid rgba(0,0,0,0.08);
+    background: rgba(0,0,0,0.035);
+  }
+  .skeleton-ai-hint {
+    margin-top: 7px;
+    padding: 7px 8px;
+    border-radius: 10px;
+    background: oklch(96% 0.015 240);
+    border: 1px solid oklch(88% 0.03 240);
+    color: oklch(40% 0.08 240);
+    font-size: 10px;
+    line-height: 1.45;
+  }
+  .canvas-mode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 7px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 800;
+    transition: all .16s ease;
+    cursor: pointer;
+  }
+  .canvas-mode-btn.active {
+    background: white;
+    border: 1px solid rgba(0,0,0,0.09);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    color: var(--color-base-content);
+  }
+  .canvas-mode-btn:not(.active) {
+    color: var(--color-base-content);
+    opacity: .55;
+  }
+  .geo-zone-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(240px, 1fr));
+    gap: 14px;
+    padding: 18px;
+  }
+  .geo-zone-card {
+    min-height: 218px;
+    border: 1.5px dashed rgba(0,0,0,0.12);
+    border-radius: 20px;
+    background:
+      radial-gradient(circle at 12% 15%, rgba(255,255,255,.9), transparent 26%),
+      linear-gradient(135deg, rgba(255,255,255,.84), rgba(255,255,255,.56));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.55), 0 8px 24px rgba(0,0,0,.04);
+    padding: 14px;
+    transition: border-color .18s, box-shadow .18s, transform .18s, background .18s;
+    position: relative;
+    overflow: hidden;
+  }
+  .geo-zone-card.drag-over {
+    border-color: var(--color-accent);
+    background: oklch(97% 0.018 145);
+    box-shadow: 0 0 0 5px oklch(62% 0.194 149.214 / .13), 0 12px 28px rgba(0,0,0,.07);
+    transform: translateY(-2px);
+  }
+  .geo-zone-card::after {
+    content: '';
+    position: absolute;
+    right: -50px;
+    top: -40px;
+    width: 120px;
+    height: 120px;
+    border-radius: 999px;
+    background: var(--zone-color, var(--color-success));
+    opacity: .08;
+    pointer-events: none;
+  }
+  .zone-bind-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.82);
+    border: 1px solid rgba(0,0,0,.07);
+    cursor: pointer;
+  }
+  .drag-resource-card {
+    border: 1px solid rgba(0,0,0,.08);
+    background: rgba(255,255,255,.88);
+    border-radius: 14px;
+    padding: 10px;
+    cursor: grab;
+    transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+  }
+  .drag-resource-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(0,0,0,.08);
+    border-color: var(--color-accent);
+  }
+  .drag-resource-card:active { cursor: grabbing; }
+  .dock-section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-weight: 900;
+    color: rgba(0,0,0,.45);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 12px 0 7px;
+  }
+  .relation-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 14px;
+    padding: 18px;
+  }
+  .relation-card {
+    border-left-width: 4px;
+    border-radius: 18px;
+    padding: 14px;
+    background: rgba(255,255,255,.82);
+    border-top: 1px solid rgba(0,0,0,.06);
+    border-right: 1px solid rgba(0,0,0,.06);
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    box-shadow: 0 8px 24px rgba(0,0,0,.045);
+  }
+  .empty-drop-hint {
+    border: 1px dashed rgba(0,0,0,.12);
+    color: rgba(0,0,0,.38);
+    border-radius: 12px;
+    padding: 9px 10px;
+    font-size: 11px;
+    background: rgba(255,255,255,.5);
+  }
+  #dropConfirmModal {
+    position: fixed;
+    inset: 0;
+    z-index: 145;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.38);
+    backdrop-filter: blur(3px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  #dropConfirmModal.open { opacity: 1; pointer-events: auto; }
+  .drop-modal-card {
+    width: 460px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.96);
+    border: 1px solid rgba(0,0,0,.08);
+    box-shadow: 0 24px 70px rgba(0,0,0,.18);
+    padding: 22px;
+  }
+  @media (max-width: 1280px) {
+    .world-workspace { grid-template-columns: 250px minmax(420px, 1fr) 270px; gap: 10px; padding: 10px; }
+    .geo-zone-grid, .relation-card-grid { grid-template-columns: 1fr; }
+  }
+
+  /* 顶栏随侧栏折叠隐藏 */
+  .header-glass {
+    transition: left .2s ease, transform .2s ease, opacity .2s ease;
+  }
+  body.sidebar-collapsed .header-glass {
+    transform: translateX(-120%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* 顶栏自定义标签组（替代 DaisyUI tabs-boxed，保证垂直居中） */
+  .header-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--color-neutral);
+  }
+  .header-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    color: var(--color-neutral-content);
+    opacity: 0.6;
+    transition: all 0.15s ease;
+    cursor: pointer;
+  }
+  .header-tab:hover { opacity: 0.85; }
+  .header-tab.active {
+    opacity: 1;
+    background: var(--color-base-300);
+    color: var(--color-base-content);
+  }
+
+  /* 控制面板自定义组件 */
+  .settings-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    border-radius: 10px;
+    background: var(--color-base-300);
+    cursor: pointer;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+  }
+  .settings-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    transition: transform 0.2s ease;
+  }
+  .settings-switch.on {
+    background: var(--color-accent);
+  }
+  .settings-switch.on::after {
+    transform: translateX(16px);
+  }
+  .settings-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--color-accent);
+    color: var(--color-accent);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .settings-btn:hover {
+    background: var(--color-accent);
+    color: white;
+  }
+
+</style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-base-200 text-base-content overflow-hidden flex h-screen">
+<a href="#main-content" class="skip-link">跳到主内容</a>
+
+<!-- SideNavBar -->
+<nav class="sidebar-glass" aria-label="主菜单">
+  <div class="sidebar-brand">
+    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
+    <div class="sidebar-text">
+      <div class="brand-title">纵横</div>
+      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
+    </div>
+  </div>
+  <div class="sidebar-separator" aria-hidden="true"></div>
+  <ul class="menu sidebar-menu" id="sidebarMenu">
+    <li><a href="workbench.html"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
+    <li><a href="world_creator.html" class="active"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
+    <li><a href="production_stage.html"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
+    <li><a href="audit_stage.html"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
+    <li><a href="iteration.html"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
+  </ul>
+  <footer class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">U</div>
+      <span class="sidebar-text sidebar-user-name">用户</span>
+    </div>
+  </footer>
+</nav>
+
+<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
+</button>
+
+<!-- Main Content -->
+<main class="main-content" id="main-content">
+
+  <!-- TopNavBar -->
+    <!-- TopNavBar -->
+  <header class="header-glass h-16 fixed top-0 right-0  z-[60] flex justify-between items-center px-6 bg-base-100">
+    <div class="flex items-center gap-4 h-full">
+      <nav class="flex h-full items-center ml-2">
+        <!-- 自定义深色标签组 -->
+        <div class="header-tabs">
+          <a href="world_creator.html" class="header-tab active">世界设定</a>
+          <a href="character_settings.html" class="header-tab">角色设定</a>
+          <a href="l1a_settings.html" class="header-tab">L1A 设定</a>
+        </div>
+      </nav>
+    </div>
+    
+    <div class="flex items-center gap-3">
+      <!-- 当前书籍标识 -->
+      <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-content/10 text-[11px] font-medium text-base-content/80">
+        <span class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></span>
+        <span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+        <span id="header-book-name" class="truncate max-w-[160px]"></span>
+      </div>
+
+      <button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
+        <span class="material-symbols-outlined text-[20px]">notifications</span>
+      </button>
+      
+      <!-- 快捷设置齿轮与弹窗 -->
+      <div class="relative flex items-center">
+        <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+          <span class="material-symbols-outlined text-[20px]">settings</span>
+        </button>
+        <!-- Quick Settings Popover -->
+        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
+            <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
+          </div>
+
+          <!-- Automation Section -->
+          <div class="flex flex-col gap-2 mb-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
+              <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
+              <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
+              <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+            </div>
+          </div>
+          
+          <div class="mt-3 pt-2 border-t border-base-content/5">
+            <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+              <span class="material-symbols-outlined text-[14px]">check</span>
+              应用当前配置
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="pt-16 flex-1 flex flex-col overflow-hidden">
+    <!-- 世界概况栏 -->
+    <div id="world-context-bar" class="shrink-0 px-6 py-4 border-b border-base-content/8 bg-base-100/70 backdrop-blur-sm">
+      <div class="flex items-start justify-between gap-4 mb-3">
+        <div class="flex-1 flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary text-[24px]">public</span>
+          <div class="flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-[15px] font-bold text-base-content" id="world-name-display">苍穹界</span>
+              <span class="text-[12px] text-base-content opacity-50">·</span>
+              <span class="text-[12px] text-base-content opacity-70" id="world-time-display">开天历 300 年</span>
+              <span class="text-[12px] text-base-content opacity-50">·</span>
+              <span class="text-[11px] text-base-content opacity-70" id="world-genre-display">玄幻 · 灵气复苏</span>
+            </div>
+            <p class="text-[11px] text-base-content opacity-60 mt-1 leading-relaxed max-w-3xl" id="world-desc-display">灵气复苏的初期纪元，以太常数极化衰变律支配修炼秩序，诸宗林立，散修崛起，虚空兽潮自边界裂隙频频涌入，旧有仙门体系正面临新一轮洗牌。</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button onclick="editWorldContext()" class="p-1.5 rounded-full hover:bg-base-content/8 text-base-content opacity-50 hover:opacity-100 transition-all cursor-pointer" title="编辑世界定义">
+            <span class="material-symbols-outlined text-[16px]">edit</span>
+          </button>
+          <button onclick="toggleWorldContextBar()" class="p-1.5 rounded-full hover:bg-base-content/8 text-base-content opacity-50 hover:opacity-100 transition-all cursor-pointer" title="收起概况栏">
+            <span class="material-symbols-outlined text-[16px]" id="context-toggle-icon">expand_less</span>
+          </button>
+        </div>
+      </div>
+      <div class="flex items-center gap-5 text-[11px] text-base-content opacity-60 flex-wrap">
+        <span>设定数量：<strong id="stat-volume-label" class="text-primary opacity-100">正常</strong></span>
+        <span><strong id="stat-total-items" class="text-base-content opacity-100">0</strong> 条目</span>
+        <span><strong id="stat-bound-items" class="text-success opacity-100">0</strong> 已绑定</span>
+        <span class="text-warning"><strong id="stat-unbound" class="text-base-content opacity-100">0</strong> 未绑定</span>
+        <div class="h-3 w-[1px] bg-base-content/10"></div>
+        <span>绑定关系 <strong id="stat-total-bindings" class="text-secondary opacity-100">0</strong></span>
+        <span>骨架提示已落在左侧条目中</span>
+      </div>
+    </div>
+
+    <!-- 投影选择栏 -->
+    <div class="shrink-0 px-6 py-3 border-b border-base-content/8 bg-base-100/60 backdrop-blur-sm flex items-center justify-between gap-4">
+      <div class="flex items-center gap-2 overflow-x-auto" id="projection-bar">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-base-content opacity-40 shrink-0">过滤</span>
+        <button onclick="switchProjection('all')" class="projection-pill active" id="proj-all" style="background:oklch(30% 0.005 17);">全局</button>
+        <button onclick="switchProjection('rules')" class="projection-pill" id="proj-rules">规则</button>
+        <button onclick="switchProjection('geography')" class="projection-pill" id="proj-geography">地理</button>
+        <button onclick="switchProjection('resources')" class="projection-pill" id="proj-resources">资源</button>
+        <button onclick="switchProjection('factions')" class="projection-pill" id="proj-factions">势力</button>
+        <button onclick="switchProjection('professions')" class="projection-pill" id="proj-professions">职业</button>
+        <button onclick="switchProjection('monsters')" class="projection-pill" id="proj-monsters">怪物</button>
+        <button onclick="switchProjection('chronicle')" class="projection-pill" id="proj-chronicle">年表</button>
+      </div>
+      <button onclick="openAddItemDrawer()" class="flex items-center gap-1 px-3 py-1.5 bg-primary hover:opacity-90 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-sm shrink-0">
+        <span class="material-symbols-outlined text-[14px]">add</span> 新增条目
+      </button>
+    </div>
+
+    <div class="world-workspace flex-1">
+      <!-- 左侧世界骨架：体检提示落在条目里，不再单独占一个右侧面板 -->
+      <aside id="world-skeleton-panel" class="world-skeleton-panel flex flex-col overflow-hidden">
+        <div class="px-4 py-3 border-b border-base-content/5 shrink-0">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-[10px] font-black uppercase tracking-[0.12em] text-primary">World Skeleton</div>
+              <div class="text-sm font-bold mt-0.5">世界骨架</div>
+            </div>
+            <button onclick="openAddItemDrawer()" class="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center hover:opacity-90 cursor-pointer" title="新增条目">
+              <span class="material-symbols-outlined text-[16px]">add</span>
+            </button>
+          </div>
+          <p class="text-[10px] text-base-content opacity-50 mt-1 leading-relaxed">每个板块显示已绑定/未绑定数量，AI 体检提示直接贴在对应骨架上。</p>
+        </div>
+        <div id="world-skeleton-list" class="flex-1 overflow-y-auto custom-scrollbar p-3 flex flex-col gap-2"></div>
+      </aside>
+
+      <!-- 中间主画布：地图/列表成为画布主按钮 -->
+      <section class="canvas-shell flex flex-col overflow-hidden">
+        <div class="shrink-0 px-4 py-3 border-b border-base-content/5 flex items-center justify-between gap-3 bg-white/45">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span id="canvas-board-icon" class="material-symbols-outlined text-primary text-[18px]">landscape</span>
+              <h2 id="canvas-title" class="text-sm font-bold truncate">地理画布 · 拖拽绑定</h2>
+            </div>
+            <p id="canvas-hint" class="text-[10px] text-base-content opacity-50 mt-0.5 truncate">把右侧未资源、势力、怪物拖到地理区块，确认后完成绑定。</p>
+          </div>
+          <div class="flex items-center gap-1 bg-base-200 rounded-2xl p-1 border border-base-content/10 shrink-0">
+            <button id="btn-view-map" onclick="toggleViewMode('map')" class="canvas-mode-btn active"><span class="material-symbols-outlined text-[14px]">map</span>地图</button>
+            <button id="btn-view-list" onclick="toggleViewMode('list')" class="canvas-mode-btn"><span class="material-symbols-outlined text-[14px]">view_list</span>列表</button>
+          </div>
+        </div>
+
+        <!-- 地图视图 (默认) -->
+        <div id="map-view-container" class="flex-1 flex flex-col overflow-hidden">
+          <div class="shrink-0 px-4 py-2.5 bg-base-100/40 backdrop-blur-sm border-b border-base-content/5 flex items-center gap-3 overflow-x-auto">
+            <span class="text-[10px] font-bold text-primary shrink-0 uppercase tracking-wider flex items-center gap-1">
+              <span class="material-symbols-outlined text-[13px]">gavel</span> 全局锚点
+            </span>
+            <div id="world-level-rules" class="flex items-center gap-2"></div>
+          </div>
+          <div id="map-canvas" class="flex-1 cyber-grid bg-base-200 relative overflow-y-auto custom-scrollbar select-none">
+            <div id="map-svg-connections" class="absolute inset-0 pointer-events-none z-0"></div>
+            <div id="map-pins-container" class="relative z-10 min-h-full"></div>
+          </div>
+        </div>
+
+        <!-- 列表视图 (默认隐藏) -->
+        <div id="list-view-container" class="flex-1 overflow-y-auto p-5 bg-base-200 hidden custom-scrollbar">
+          <div class="flex items-center justify-between mb-4">
+            <div id="projection-hint" class="text-[11px] text-base-content opacity-50"></div>
+            <div class="flex items-center gap-2">
+              <button onclick="batchAction('tension')" class="btn btn-xs btn-outline font-semibold">批量设为高张力</button>
+              <button onclick="batchAction('delete')" class="btn btn-xs btn-outline btn-error font-semibold">批量删除</button>
+            </div>
+          </div>
+          <div id="list-groups-accordion" class="flex flex-col gap-4"></div>
+        </div>
+      </section>
+
+      <!-- 右侧未绑定卡池：替代右侧世界体检面板 -->
+      <aside id="resource-dock" class="resource-dock-panel flex flex-col overflow-hidden">
+        <div class="px-4 py-3 border-b border-base-content/5 shrink-0">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-[10px] font-black uppercase tracking-[0.12em] text-secondary">Drag Pool</div>
+              <div class="text-sm font-bold mt-0.5">未绑定卡池</div>
+            </div>
+            <span class="material-symbols-outlined text-secondary text-[20px]">drag_indicator</span>
+          </div>
+          <p class="text-[10px] text-base-content opacity-50 mt-1 leading-relaxed">地理视图下可拖拽资源、势力、怪物到地理区块；其他视图用于检查关系缺口。</p>
+        </div>
+        <div id="resource-dock-content" class="flex-1 overflow-y-auto custom-scrollbar p-3"></div>
+      </aside>
+    </div>
+
+  </div>
+</main>
+
+<!-- Backdrop -->
+<div id="drawerBackdrop" onclick="closeDrawer()"></div>
+
+<!-- 右侧画像抽屉 -->
+<div id="detailDrawer">
+  <div class="p-5 border-b border-base-content/5 flex items-center justify-between shrink-0 bg-white/40">
+    <div class="flex items-center gap-3 min-w-0">
+      <span id="drawer-board-icon" class="material-symbols-outlined text-[20px] text-primary">hub</span>
+      <div class="min-w-0">
+        <div class="text-[10px] text-base-content opacity-40 uppercase tracking-wider font-bold" id="drawer-board-label">—</div>
+        <div class="text-[14px] font-bold text-base-content truncate" id="drawer-item-name">条目详情</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-1">
+      <button id="drawer-delete-btn" onclick="deleteCurrentItem()" class="p-1.5 rounded-full hover:bg-base-content/8 text-base-content opacity-50 hover:text-error transition-all cursor-pointer" title="删除">
+        <span class="material-symbols-outlined text-[17px]">delete</span>
+      </button>
+      <button onclick="closeDrawer()" class="p-1.5 rounded-full hover:bg-base-content/8 text-base-content opacity-50 hover:opacity-100 transition-all cursor-pointer">
+        <span class="material-symbols-outlined text-[19px]">close</span>
+      </button>
+    </div>
+  </div>
+  
+  <!-- 面包屑 Pivot 栈 -->
+  <div class="px-5 py-2 border-b border-base-content/5 bg-base-100/50 flex items-center justify-between shrink-0">
+    <div id="drawer-breadcrumbs" class="pivot-breadcrumb">
+      <!-- 动态注入面包屑 -->
+    </div>
+    <button id="btn-breadcrumb-back" onclick="popPivot()" class="text-[10px] text-primary hover:underline cursor-pointer flex items-center gap-0.5 hidden">
+      <span class="material-symbols-outlined text-[12px]">arrow_back</span> 返回前一节
+    </button>
+  </div>
+
+  <div id="drawer-content" class="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+    <!-- 动态渲染画像卡内容 -->
+  </div>
+  
+  <div class="px-5 py-3 border-t border-base-content/5 shrink-0 flex gap-2 bg-white/40">
+    <button id="drawer-ai-btn" onclick="aiFillDrawer()" class="px-3 py-2 bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1">
+      <span class="material-symbols-outlined text-[14px]">auto_awesome</span> AI 帮我填
+    </button>
+    <button id="btn-drawer-ai-expand" onclick="aiExpandItem()" class="px-3 py-2 bg-secondary/10 border border-secondary/20 hover:bg-secondary/20 text-secondary rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1">
+      <span class="material-symbols-outlined text-[14px]">insights</span> ✦ AI帮我展开
+    </button>
+    <button onclick="saveDrawerItem()" class="flex-1 py-2 bg-gradient-to-r from-primary to-secondary text-white font-bold text-xs rounded-lg shadow hover:opacity-90 transition-all cursor-pointer">保存设定</button>
+  </div>
+</div>
+
+<!-- 新建/编辑绑定弹窗 -->
+<div id="bindingModal" onclick="if(event.target===this) closeBindingModal()">
+  <div class="bg-base-200 border border-base-content/5 rounded-box w-[540px] flex flex-col overflow-hidden shadow-2xl p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-bold text-base-content flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[18px]">link</span>
+        新设绑定关系
+      </h2>
+      <button onclick="closeBindingModal()" class="p-1 rounded-full hover:bg-base-content/8 text-base-content opacity-50 hover:opacity-100 cursor-pointer">
+        <span class="material-symbols-outlined text-[18px]">close</span>
+      </button>
+    </div>
+    <div class="flex flex-col gap-3 max-h-[440px] overflow-y-auto pr-1" id="binding-form-content"></div>
+    <div class="flex gap-2 mt-4 pt-3 border-t border-base-content/5">
+      <button onclick="aiFillBinding()" class="px-3 py-2 bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1">
+        <span class="material-symbols-outlined text-[14px]">auto_awesome</span> AI 帮我填
+      </button>
+      <button onclick="closeBindingModal()" class="flex-1 py-2 border border-base-content/10 text-base-content opacity-70 hover:bg-base-content/5 text-xs font-bold rounded-lg transition-all cursor-pointer">取消</button>
+      <button onclick="saveBinding()" class="flex-1 py-2 bg-gradient-to-r from-primary to-secondary text-white font-bold text-xs rounded-lg shadow hover:opacity-90 transition-all cursor-pointer">保存绑定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 拖拽绑定确认弹窗 -->
+<div id="dropConfirmModal" onclick="if(event.target===this) closeDropConfirm()">
+  <div class="drop-modal-card">
+    <div class="flex items-start gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-accent/15 border border-accent/25 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-accent text-[22px]">add_link</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <h2 class="text-sm font-bold text-base-content">确认建立绑定？</h2>
+        <p id="drop-confirm-text" class="text-[12px] text-base-content opacity-65 mt-1 leading-relaxed"></p>
+        <div class="mt-3">
+          <label class="field-label">绑定关系</label>
+          <select id="drop-bind-type" class="field-input text-xs"></select>
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-2 mt-5 pt-3 border-t border-base-content/5">
+      <button onclick="closeDropConfirm()" class="flex-1 py-2 border border-base-content/10 text-base-content opacity-70 hover:bg-base-content/5 text-xs font-bold rounded-lg transition-all cursor-pointer">取消</button>
+      <button onclick="confirmDropBinding()" class="flex-1 py-2 bg-gradient-to-r from-primary to-secondary text-white font-bold text-xs rounded-lg shadow hover:opacity-90 transition-all cursor-pointer">完成绑定</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Proposals Diff 提案弹窗 -->
+<div id="diffModal" onclick="if(event.target===this) closeDiffModal()">
+  <div class="bg-base-100 border border-base-content/5 rounded-box w-[560px] flex flex-col overflow-hidden shadow-2xl p-6">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-sm font-bold text-base-content flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[18px]">auto_awesome</span>
+        AI 展开提案列表
+      </h2>
+      <button onclick="closeDiffModal()" class="p-1 rounded-full hover:bg-base-content/8 text-base-content opacity-50 hover:opacity-100 cursor-pointer">
+        <span class="material-symbols-outlined text-[18px]">close</span>
+      </button>
+    </div>
+    <p class="text-[11px] text-base-content opacity-50 mb-4">基于此设定在物理和冲突层面的合理性推演出以下新设定建议，您可以独立操作采纳：</p>
+    
+    <div id="diff-list-container" class="flex flex-col gap-3 max-h-[360px] overflow-y-auto pr-1">
+      <!-- 动态注入 Proposal Diff 行 -->
+    </div>
+    
+    <div class="flex gap-2 mt-5 pt-3 border-t border-base-content/5 justify-end">
+      <button onclick="acceptAllProposals()" class="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all cursor-pointer">全部采纳</button>
+      <button onclick="closeDiffModal()" class="px-4 py-2 border border-base-content/10 text-base-content opacity-70 text-xs font-bold rounded-lg hover:bg-base-content/5 transition-all cursor-pointer">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 想法收集冲突种子聊天窗口 -->
+<div id="conflict-seed-chat">
+  <button onclick="toggleChatPanel()" class="w-12 h-12 bg-primary rounded-full text-white flex items-center justify-center shadow-lg hover:opacity-90 transition-all cursor-pointer">
+    <span class="material-symbols-outlined text-[24px]">forum</span>
+  </button>
+  
+  <div class="chat-bubble-panel" id="chat-panel">
+    <div class="p-3 bg-gradient-to-r from-primary to-secondary text-white flex items-center justify-between shrink-0">
+      <span class="text-xs font-bold flex items-center gap-1">
+        <span class="material-symbols-outlined text-[14px]">auto_awesome</span> ✦ 想法收集与冲突种子
+      </span>
+      <button onclick="toggleChatPanel()" class="text-white opacity-70 hover:opacity-100"><span class="material-symbols-outlined text-[16px]">close</span></button>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-3" id="chat-messages">
+      <div class="flex items-start gap-2 max-w-[85%]">
+        <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+          <span class="material-symbols-outlined text-[12px] text-primary">smart_toy</span>
+        </div>
+        <div class="bg-base-200 text-[11px] p-2.5 rounded-lg text-base-content leading-relaxed">
+          作者，有零碎想法不知道放哪？写在这，我会解析并为您给出新设定提案，可接受后直接融入世界设定！
+        </div>
+      </div>
+    </div>
+    
+    <div class="p-3 border-t border-base-content/5 bg-base-100 flex gap-2 shrink-0">
+      <input type="text" id="chat-input" onkeydown="if(event.key==='Enter') sendChatIdea()" class="flex-1 bg-base-200 border border-base-content/10 rounded-lg px-3 py-1.5 text-xs outline-none" placeholder="输入想法（例如：丧尸圈养人类）">
+      <button onclick="sendChatIdea()" class="w-8 h-8 bg-primary rounded-lg text-white flex items-center justify-center hover:opacity-90 cursor-pointer">
+        <span class="material-symbols-outlined text-[16px]">send</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container" style="position:fixed;bottom:24px;left:240px;z-index:9999;display:flex;flex-direction:column;gap:8px;"></div>
+
+<script>
+// ============ 侧栏折叠 ============
+function toggleSidebar() {
+  document.body.classList.toggle('sidebar-collapsed');
+  const icon = document.getElementById('sidebarIcon');
+  if (icon) icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
+}
+
+// ============ 板块配置 (V7附录D 对齐) ============
+// 前端 key → DB 列 映射表见 V7_附录D_数据标准修订方案 §D.2.1b
+const BOARDS = {
+  rules:       { label: '规则',     en: 'Rules',       icon: 'gavel',           cls: 'board-rules',       color: 'oklch(62.45% 0.278 3.836)' },
+  geography:   { label: '地理',     en: 'Geography',   icon: 'landscape',       cls: 'board-geography',   color: 'oklch(64.8% 0.15 160)' },
+  resources:   { label: '资源',     en: 'Resources',   icon: 'diamond',         cls: 'board-resources',   color: 'oklch(84.71% 0.199 83.87)' },
+  factions:    { label: '势力',     en: 'Factions',    icon: 'account_balance', cls: 'board-factions',    color: 'oklch(48.495% 0.11 355.095)' },
+  professions: { label: '职业',     en: 'Professions', icon: 'bolt',            cls: 'board-professions', color: 'oklch(72.06% 0.191 231.6)' },
+  monsters:    { label: '怪物',     en: 'Monsters',    icon: 'pest_control',    cls: 'board-monsters',    color: 'oklch(71.76% 0.221 22.18)' },
+  chronicle:   { label: '年表',     en: 'Chronicle',   icon: 'history_edu',     cls: 'board-chronicle',   color: 'oklch(30% 0.005 17)' },
+};
+const BOARD_ORDER = ['rules','geography','resources','factions','professions','monsters','chronicle'];
+
+// ── 字段 key 已对齐 world_entry 表列名 ──
+const BOARD_FIELDS = {
+  rules: [
+    { key: 'title',        label: '规则名称',   type: 'text',     col: 'title',        required: true },
+    { key: 'rule_type',    label: '规则类型',   type: 'select',   col: 'rule_type',     options: ['物理法则','社会律法','超凡规则','禁制'] },
+    { key: 'description',  label: '内容详情',   type: 'textarea', col: 'description' },
+    { key: 'apply_scope',  label: '适用范围',   type: 'text',     col: 'apply_scope' },
+    { key: 'violate_cost', label: '违反代价',   type: 'text',     col: 'violate_cost' },
+  ],
+  geography: [
+    { key: 'title',         label: '地点名称', type: 'text',     col: 'title',         required: true },
+    { key: 'location_text', label: '位置',     type: 'text',     col: 'location_text' },
+    { key: 'description',   label: '内容详情', type: 'textarea', col: 'description' },
+    { key: 'danger_level',  label: '危险等级', type: 'select',   col: 'danger_level',  options: ['安全','低','中等','高','极高'] },
+  ],
+  resources: [
+    { key: 'title',          label: '资源名称', type: 'text',     col: 'title',          required: true },
+    { key: 'usage_text',     label: '用途',     type: 'text',     col: 'usage_text' },
+    { key: 'description',    label: '内容详情', type: 'textarea', col: 'description' },
+    { key: 'scarcity_level', label: '稀缺度',   type: 'select',   col: 'scarcity_level', options: ['普遍','稳定','较稀缺','稀有','极度罕见'] },
+    { key: 'cheat_writing',  label: '爽点写法', type: 'textarea', col: 'cheat_writing' },
+  ],
+  factions: [
+    { key: 'title',          label: '势力名称',     type: 'text',     col: 'title',          required: true },
+    { key: 'leader_name',    label: '领袖',         type: 'text',     col: 'leader_name' },
+    { key: 'description',    label: '内容详情',     type: 'textarea', col: 'description' },
+    { key: 'hierarchy_text', label: '地位/称呼层级', type: 'text',    col: 'hierarchy_text' },
+    { key: 'faction_status', label: '当前状态',     type: 'select',   col: 'faction_status', options: ['崛起','鼎盛','稳定','衰落','覆灭'] },
+  ],
+  professions: [
+    { key: 'title',        label: '职业/体系名称', type: 'text',     col: 'title',        required: true },
+    { key: 'is_system',    label: '是否为体系',   type: 'select',   col: 'is_system',    options: ['单一职业','分级体系'] },
+    { key: 'effect_scope', label: '生效范围',     type: 'text',     col: 'effect_scope' },
+    { key: 'description',  label: '内容描述',     type: 'textarea', col: 'description' },
+    { key: 'cheat_writing',label: '爽点写法',     type: 'textarea', col: 'cheat_writing' },
+  ],
+  monsters: [
+    { key: 'title',         label: '怪物/灾难名称', type: 'text',     col: 'title',          required: true },
+    { key: 'monster_scale', label: '规模等级',     type: 'select',   col: 'monster_scale',  options: ['个体','群体','区域级','洲域级','灭世级'] },
+    { key: 'description',   label: '内容描述',     type: 'textarea', col: 'description' },
+    { key: 'counter_text',  label: '克制/应对',    type: 'text',     col: 'counter_text' },
+  ],
+  chronicle: [
+    { key: 'title',        label: '事件名称', type: 'text',     col: 'title',        required: true },
+    { key: 'event_source', label: '来源',     type: 'text',     col: 'event_source' },
+    { key: 'description',  label: '内容描述', type: 'textarea', col: 'description' },
+    { key: 'event_era',    label: '发生时间', type: 'text',     col: 'event_era' },
+  ],
+};
+
+const BIND_TYPES = {
+  rules:       { geography:['管辖','豁免'], professions:['赋能','限制','依赖'], factions:['约束','豁免'], monsters:['催生','压制'] },
+  geography:   { resources:['产出','封锁'], factions:['盘踞','争夺','流亡'], monsters:['栖息','迁徙'], rules:['受规则影响'] },
+  resources:   { factions:['控制','依赖','争夺'], professions:['消耗','炼制'], monsters:['滋养'] },
+  factions:    { factions:['同盟','敌对','从属','表面中立'], professions:['官方认证','打压','垄断培养'], resources:['控制','争夺'], geography:['占据'], monsters:['豢养','讨伐'] },
+  professions: { monsters:['克制','被克制','共生'], resources:['依赖'], factions:['效忠'] },
+  monsters:    { geography:['盘踞','迁徙'], resources:['掠夺'], rules:['违反'] },
+  chronicle:   { factions:['涉及'], professions:['涉及'], rules:['触发','改写'], monsters:['涉及'] },
+};
+
+const BIND_TYPE_FIELDS = {
+  '控制': ['strength','timespan'], '争夺': ['strength','tags'], '产出': ['amount','timespan'],
+  '同盟': ['strength','timespan'], '敌对': ['strength','tags'], '从属': ['strength'],
+  '赋能': ['strength'], '限制': ['strength','unlock'], '克制': ['strength'],
+  '盘踞': ['strength'], '垄断培养': ['strength','unlock'],
+  '_default': ['strength'],
+};
+
+// ============ 数据池 (V7附录D 对齐 world_entry 列名) ============
+// fields 对象 key 已映射为 world_entry 表列名
+// ai 对象为运行时标注，不落库（见附录D §D.4）
+let items = [
+  { id:'r1', board:'rules', title:'以太常数极化衰变律',
+    fields:{ rule_type:'物理法则', description:'以太在受到精神意志干涉时局部矢量发生极化，常数瞬时偏移，是本世界一切"修炼"的物理基础；但每次极化都加速以太总量的不可逆衰减。', apply_scope:'全界', violate_cost:'精神意志过载则遭反噬，重则神魂俱灭' },
+    ai:{ tension:'high', commercial:82, note:'稀缺性驱动的核心冲突源，天然制造资源争夺。', suggestion:'可绑定一个利用衰变漏洞牟利的势力，强化灰色地带张力。' } },
+  { id:'r2', board:'rules', title:'天道雷劫因果律',
+    fields:{ rule_type:'超凡规则', description:'凡突破大境界者必降雷劫，业力越重劫威越盛。', apply_scope:'突破境界的修行者', violate_cost:'渡劫失败则跌落凡尘或形神俱灭' },
+    ai:{ tension:'mid', commercial:65, note:'经典设定，读者认知成本低。', suggestion:'与某势力的渡劫保险商业行为绑定可增加新意。' } },
+
+  { id:'g1', board:'geography', title:'青云山脉', map_x: 26, map_y: 32,
+    fields:{ location_text:'中州', description:'中州第一灵脉所在，终年灵雾缭绕，太一仙门根据地。', danger_level:'低' },
+    ai:{ tension:'low', commercial:55, note:'安全区，适合作主角早期成长地。', suggestion:'缺少威胁性绑定，可关联一个潜伏的怪物增加暗线。' } },
+  { id:'g2', board:'geography', title:'流沙废土', map_x: 62, map_y: 65,
+    fields:{ location_text:'西域边缘', description:'荒芜之地，玄铁矿脉裸露，蚀骨雨频发。', danger_level:'高' },
+    ai:{ tension:'mid', commercial:60, note:'资源与危险并存的经典冒险地。', suggestion:'' } },
+  { id:'g3', board:'geography', title:'万妖古禁', map_x: 78, map_y: 22,
+    fields:{ location_text:'极北深处', description:'极北冰原下的无底巨壑，自古封印大妖。', danger_level:'极高' },
+    ai:{ tension:'high', commercial:88, note:'极高危，中后期剧情爆发点。', suggestion:'' } },
+
+  { id:'res1', board:'resources', title:'下品灵石矿脉',
+    fields:{ usage_text:'修炼通货 / 炼器燃料', description:'基础开采矿床，含微量流金，是修真界硬通货。', scarcity_level:'普遍', cheat_writing:'主角偶然发现一条无主富矿，一夜暴富。' },
+    ai:{ tension:'mid', commercial:70, note:'通货型资源，绑定面广。', suggestion:'被多个势力争夺时张力会显著上升。' } },
+  { id:'res2', board:'resources', title:'太古秘境洞天',
+    fields:{ usage_text:'限时机缘 / 顶级资源副本', description:'每逢甲子开启一次的洞天残篇，内有上古传承。', scarcity_level:'极度罕见', cheat_writing:'秘境内一刻，外界一年，主角闭关速成。' },
+    ai:{ tension:'high', commercial:88, note:'强稀缺+强机缘，爽点密集。', suggestion:'' } },
+
+  { id:'f1', board:'factions', title:'太一仙门',
+    fields:{ leader_name:'掌教·清玄真人', description:'正道领袖，通天级底蕴，门规森严。', hierarchy_text:'掌教→长老→真传→内门→外门', faction_status:'鼎盛' },
+    ai:{ tension:'mid', commercial:68, note:'正派标杆，适合作主角靠山或对立面。', suggestion:'与无极魔宗的敌对关系尚未绑定，建议补全。' } },
+  { id:'f2', board:'factions', title:'无极魔宗',
+    fields:{ leader_name:'宗主·血河老祖', description:'魔道巨擘，行事狠辣，深不可测。', hierarchy_text:'宗主→魔尊→护法→魔徒', faction_status:'崛起' },
+    ai:{ tension:'high', commercial:75, note:'反派势力，冲突天然。', suggestion:'' } },
+  { id:'f3', board:'factions', title:'散修联盟',
+    fields:{ leader_name:'松散推举', description:'无根散修的互利联合，自由交易市的实际控制者。', hierarchy_text:'无严格层级', faction_status:'稳定' },
+    ai:{ tension:'low', commercial:50, note:'中立缓冲势力。', suggestion:'孤立度偏高，建议绑定一处地理据点。' } },
+
+  { id:'p1', board:'professions', title:'丹修体系',
+    fields:{ is_system:true, effect_scope:'苍穹界·炼丹侧', description:'以草木灵药炼制丹药的修行序列，地位崇高。', cheat_writing:'主角一炉九转金丹惊艳全场，引各方哄抢。' },
+    ai:{ tension:'mid', commercial:72, note:'后勤型体系，养成线清晰。', suggestion:'建议绑定药材类资源，形成产业闭环。' },
+    system_tiers:[ {name:'一级·炼气丹师', note:'可炼凝气散等基础丹'}, {name:'二级·筑基丹师', note:'可炼筑基丹'}, {name:'三级·金丹宗师', note:'可炼渡劫金丹'} ] },
+  { id:'p2', board:'professions', title:'灵剑士',
+    fields:{ is_system:false, effect_scope:'苍穹界', description:'以飞剑御敌的攻击型职业，爆发极强。', cheat_writing:'千里取人首级，一剑光寒十九洲。' },
+    ai:{ tension:'mid', commercial:70, note:'高人气输出职业。', suggestion:'' } },
+
+  { id:'m1', board:'monsters', title:'虚空兽潮',
+    fields:{ monster_scale:'洲域级', description:'自边界裂隙周期性涌入的虚空生物洪流，所过之处寸草不生。', counter_text:'星陨级法阵 / 多势力联防' },
+    ai:{ tension:'high', commercial:80, note:'外部灾难，可驱动势力联合主线。', suggestion:'' } },
+  { id:'m2', board:'monsters', title:'蚀骨雨',
+    fields:{ monster_scale:'区域级', description:'废土区特有的腐蚀性酸雨，持续3-5天，金属与血肉俱化。', counter_text:'避雨石窟 / 护体灵罩' },
+    ai:{ tension:'low', commercial:45, note:'环境型威胁，烘托氛围。', suggestion:'孤立条目，建议绑定流沙废土地理。' } },
+
+  { id:'c1', board:'chronicle', title:'开天历元年·灵气复苏',
+    fields:{ event_source:'仙门典籍', description:'沉寂万年的天地灵气骤然复苏，开启当前修炼大世。', event_era:'开天历 1 年' },
+    ai:{ tension:'mid', commercial:60, note:'世界起点事件，奠定时代基调。', suggestion:'' } },
+];
+
+let bindings = [
+  { id:'b1', from:'r1', to:'f3', type:'豁免', strength:0.7, tags:['灰色地带'] },
+  { id:'b2', from:'g2', to:'res1', type:'产出', strength:0.8 },
+  { id:'b3', from:'res1', to:'f1', type:'控制', strength:0.6 },
+  { id:'b4', from:'res2', to:'f1', type:'争夺', strength:0.5, tags:['宗门大比'] },
+  { id:'b5', from:'res2', to:'f2', type:'争夺', strength:0.5, tags:['夺宝'] },
+  { id:'b6', from:'f1', to:'f2', type:'敌对', strength:0.9, tags:['正魔对立'] },
+  { id:'b7', from:'g1', to:'f1', type:'盘踞', strength:1.0 },
+  { id:'b8', from:'p1', to:'f1', type:'效忠', strength:0.7 },
+  { id:'b9', from:'p2', to:'m1', type:'克制', strength:0.6 },
+  { id:'b10', from:'r1', to:'p1', type:'赋能', strength:0.8 },
+];
+
+function applyWizardWorldData() {
+  const source = window.NEW_BOOK_WIZARD_DATA;
+  const step = source && Array.isArray(source.stages)
+    ? source.stages.find(s => s.key === 'world_settings')
+    : null;
+  if (!step || !Array.isArray(step.cards)) return;
+
+  const boardMap = {
+    '规则': 'rules',
+    '地理': 'geography',
+    '资源': 'resources',
+    '势力': 'factions',
+    '职业': 'professions',
+    '职业/超能': 'professions',
+    '怪物': 'monsters',
+    '怪物/灾难': 'monsters',
+    '大事': 'chronicle',
+    '大事记': 'chronicle'
+  };
+  const nextPos = { geography: 0 };
+  const mapBoard = (value) => boardMap[value] || value || 'rules';
+
+  items = step.cards.map((card) => {
+    const board = mapBoard(card.category || card.board_type);
+    const fields = { ...card };
+    delete fields.id;
+    delete fields.category;
+    delete fields.board_type;
+    delete fields.title;
+    delete fields.text;
+    delete fields.bindTo;
+    if (!fields.description) fields.description = card.text || '';
+
+    const item = {
+      id: card.id,
+      board,
+      title: card.title || card.item_name || '未命名设定',
+      fields,
+      ai: {
+        tension: card.ai?.tension || 'mid',
+        commercial: card.ai?.commercial || 60,
+        note: card.ai?.note || '',
+        suggestion: card.ai?.suggestion || ''
+      }
+    };
+
+    if (board === 'geography') {
+      const index = nextPos.geography++;
+      item.map_x = card.map_x ?? Math.min(82, 24 + index * 18);
+      item.map_y = card.map_y ?? Math.min(76, 30 + index * 14);
+    }
+    if (Array.isArray(card.system_tiers)) item.system_tiers = card.system_tiers;
+    return item;
+  });
+
+  const itemIds = new Set(items.map(item => item.id));
+  bindings = (step.bindings || []).map((binding, index) => ({
+    id: binding.id || `wizard-bind-${index + 1}`,
+    from: binding.from,
+    to: binding.to,
+    type: binding.type || '绑定',
+    strength: binding.strength ?? 0.7,
+    tags: binding.tags || []
+  })).filter(binding => itemIds.has(binding.from) && itemIds.has(binding.to));
+}
+
+applyWizardWorldData();
+
+// 运行时变量
+let currentProjection = 'all';
+let viewMode = 'map'; // map | list
+let mapLayer = 'rules'; // rules | factions | resources
+let currentItemId = null;
+let pivotStack = []; // 抽屉导航历史栈
+let drawerMode = 'detail';
+let bindingDraft = null;
+let pendingDropBinding = null;
+const externalRoles = [
+  { id:'role1', name:'林玄', binds:['p1','p2'] },
+  { id:'role2', name:'苏璃', binds:['p1'] },
+  { id:'role3', name:'陆沉舟', binds:['p2'] },
+];
+let idCounter = 100;
+const genId = (p) => p + (++idCounter);
+
+// AI 建议临时池
+let activeProposals = [];
+
+// ============ 工具函数 ============
+const itemById = (id) => items.find(i => i.id === id);
+const bindingsOf = (id) => bindings.filter(b => b.from === id || b.to === id);
+
+function tensionMeta(t) {
+  if (t === 'high') return { cls:'tension-high', icon:'bolt', label:'高张力' };
+  if (t === 'mid')  return { cls:'tension-mid',  icon:'change_history', label:'中张力' };
+  return { cls:'tension-low', icon:'remove', label:'低张力' };
+}
+const esc = (s) => (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ============ 页面初始化 ============
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (document.getElementById('diffModal').classList.contains('open')) closeDiffModal();
+      else if (document.getElementById('bindingModal').classList.contains('open')) closeBindingModal();
+      else closeDrawer();
+    }
+  });
+
+  recomputeStats();
+  renderCurrentView();
+});
+
+// ============ 核心数据统计 ============
+function relationTypeForBoard(board) {
+  if (board === 'resources') return '产出';
+  if (board === 'factions') return '盘踞';
+  if (board === 'monsters') return '栖息';
+  if (board === 'professions') return '涉及';
+  return '关联';
+}
+
+function settingVolumeLabel(count) {
+  if (count >= 22) return '较多';
+  if (count <= 8) return '较少';
+  return '正常';
+}
+
+function boardBindingStats(boardKey) {
+  const bItems = items.filter(i => i.board === boardKey);
+  const boundIds = new Set();
+  bindings.forEach(b => { boundIds.add(b.from); boundIds.add(b.to); });
+  const bound = bItems.filter(i => boundIds.has(i.id)).length;
+  const unbound = bItems.length - bound;
+  return { total: bItems.length, bound, unbound };
+}
+
+function isGeoBound(it) {
+  return bindingsOf(it.id).some(bd => {
+    const otherId = bd.from === it.id ? bd.to : bd.from;
+    return itemById(otherId)?.board === 'geography';
+  });
+}
+
+function firstQualityHint(boardKey, stats) {
+  const unboundItem = items.find(i => i.board === boardKey && bindingsOf(i.id).length === 0);
+  if (unboundItem) return `「${unboundItem.title}」还没有落点或关系，建议拖拽绑定/快速新建目标。`;
+  if (boardKey === 'geography') return '地理是主画布锚点，可直接接收资源、势力、怪物卡。';
+  if (boardKey === 'professions') return '职业与角色是多对多关系：一个角色可绑定多个职业，不按单一归属处理。';
+  if (stats.total === 0) return '此板块为空，可先建占位条目，不打断创作心流。';
+  return '当前骨架健康，继续补充关键冲突绑定即可。';
+}
+
+function recomputeStats() {
+  const total = items.length;
+  const bd = bindings.length;
+  const boundIds = new Set();
+  bindings.forEach(b => { boundIds.add(b.from); boundIds.add(b.to); });
+  const boundCount = items.filter(i => boundIds.has(i.id)).length;
+  const unbound = total - boundCount;
+
+  document.getElementById('stat-total-items').textContent = total;
+  const boundEl = document.getElementById('stat-bound-items');
+  if (boundEl) boundEl.textContent = boundCount;
+  document.getElementById('stat-total-bindings').textContent = bd;
+  document.getElementById('stat-unbound').textContent = unbound;
+  const vol = document.getElementById('stat-volume-label');
+  if (vol) vol.textContent = settingVolumeLabel(total);
+}
+
+// ============ 视图与图层控制 ============
+function toggleViewMode(mode) {
+  viewMode = mode;
+  const btnMap = document.getElementById('btn-view-map');
+  const btnList = document.getElementById('btn-view-list');
+  const mapContainer = document.getElementById('map-view-container');
+  const listContainer = document.getElementById('list-view-container');
+
+  if (mode === 'map') {
+    btnMap.className = "canvas-mode-btn active";
+    btnList.className = "canvas-mode-btn";
+    mapContainer.classList.remove('hidden');
+    listContainer.classList.add('hidden');
+  } else {
+    btnMap.className = "canvas-mode-btn";
+    btnList.className = "canvas-mode-btn active";
+    mapContainer.classList.add('hidden');
+    listContainer.classList.remove('hidden');
+  }
+  renderCurrentView();
+}
+
+function switchMapLayer(layer) {
+  mapLayer = layer;
+  renderMap();
+}
+
+function switchProjection(p) {
+  currentProjection = p;
+  document.querySelectorAll('.projection-pill').forEach(el => {
+    const on = el.id === 'proj-' + p;
+    el.classList.toggle('active', on);
+    if (el.id === 'proj-all') {
+      el.style.background = on ? 'oklch(30% 0.005 17)' : '';
+    } else {
+      el.style.background = on ? 'var(--color-primary)' : '';
+    }
+  });
+  renderCurrentView();
+}
+
+function renderCurrentView() {
+  recomputeStats();
+  renderSkeletonPanel();
+  renderResourceDock();
+  updateCanvasHeader();
+  if (viewMode === 'map') {
+    renderMap();
+  } else {
+    renderList();
+  }
+}
+
+function updateCanvasHeader() {
+  const key = currentProjection === 'all' ? 'geography' : currentProjection;
+  const board = BOARDS[key] || BOARDS.geography;
+  const icon = document.getElementById('canvas-board-icon');
+  const title = document.getElementById('canvas-title');
+  const hint = document.getElementById('canvas-hint');
+  if (!icon || !title || !hint) return;
+  icon.textContent = board.icon;
+  icon.style.color = board.color;
+  if (key === 'geography' || currentProjection === 'all') {
+    title.textContent = '地理画布 · 拖拽绑定';
+    hint.textContent = '把右侧未资源、势力、怪物拖到地理区块，确认后完成绑定。';
+  } else if (key === 'professions') {
+    title.textContent = '职业画布 · 角色多职业绑定';
+    hint.textContent = '职业与角色是多对多关系，一个角色可拥有多个职业，不强行归入单一区块。';
+  } else {
+    title.textContent = `${board.label}画布 · 关系块检查`;
+    hint.textContent = '点击条目查看它已经绑定的地理、势力、怪物等关系，缺口会同步显示在左侧骨架。';
+  }
+}
+
+function renderSkeletonPanel() {
+  const box = document.getElementById('world-skeleton-list');
+  if (!box) return;
+  box.innerHTML = '';
+  BOARD_ORDER.forEach(k => {
+    const b = BOARDS[k];
+    const stats = boardBindingStats(k);
+    const active = currentProjection === k || (currentProjection === 'all' && k === 'geography');
+    const row = document.createElement('div');
+    row.className = `world-skeleton-row ${active ? 'active' : ''}`;
+    row.style.borderLeftColor = b.color;
+    row.onclick = () => switchProjection(k);
+    row.innerHTML = `
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="material-symbols-outlined text-[16px]" style="color:${b.color}">${b.icon}</span>
+          <div class="min-w-0">
+            <div class="text-[12px] font-extrabold truncate">${b.label}</div>
+            <div class="text-[9px] opacity-45 font-mono uppercase">${b.en}</div>
+          </div>
+        </div>
+        <span class="skeleton-count-pill">设定数量：${settingVolumeLabel(stats.total)}</span>
+      </div>
+      <div class="flex items-center gap-2 mt-2 text-[10px]">
+        <span class="skeleton-count-pill text-success">已绑定 ${stats.bound}</span>
+        <span class="skeleton-count-pill text-warning">未绑定 ${stats.unbound}</span>
+        <span class="opacity-35">/ 共 ${stats.total}</span>
+      </div>
+      <div class="skeleton-ai-hint"><span class="material-symbols-outlined text-[11px] align-[-2px]">tips_and_updates</span> ${esc(firstQualityHint(k, stats))}</div>
+    `;
+    box.appendChild(row);
+  });
+}
+
+function renderResourceDock() {
+  const box = document.getElementById('resource-dock-content');
+  if (!box) return;
+  const dockBoards = ['resources','factions','monsters'];
+  box.innerHTML = `<div class="empty-drop-hint mb-3"><span class="material-symbols-outlined text-[13px] align-[-2px]">touch_app</span> 拖到中间地理区块后，会弹出确认绑定关系。</div>`;
+  dockBoards.forEach(k => {
+    const b = BOARDS[k];
+    const candidates = items.filter(it => it.board === k && !isGeoBound(it));
+    const section = document.createElement('div');
+    section.innerHTML = `<div class="dock-section-title"><span class="flex items-center gap-1"><span class="material-symbols-outlined text-[13px]" style="color:${b.color}">${b.icon}</span>${b.label}</span><span>${candidates.length}</span></div>`;
+    const wrap = document.createElement('div');
+    wrap.className = 'flex flex-col gap-2';
+    if (!candidates.length) {
+      wrap.innerHTML = `<div class="empty-drop-hint">暂无未绑定${b.label}</div>`;
+    } else {
+      candidates.forEach(it => {
+        const card = document.createElement('div');
+        card.className = 'drag-resource-card';
+        card.draggable = true;
+        card.ondragstart = (ev) => startResourceDrag(ev, it.id);
+        card.onclick = () => openDetail(it.id);
+        card.style.borderLeft = `4px solid ${b.color}`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="material-symbols-outlined text-[15px]" style="color:${b.color}">${b.icon}</span>
+              <span class="text-[12px] font-bold truncate">${esc(it.title)}</span>
+            </div>
+            <span class="material-symbols-outlined text-[15px] opacity-35">drag_indicator</span>
+          </div>
+          <div class="text-[10px] opacity-50 mt-1 leading-snug">${esc(it.fields.usage_text || it.fields.leader_name || it.fields.monster_scale || it.ai?.note || '拖拽到地理区块建立归属关系')}</div>
+        `;
+        wrap.appendChild(card);
+      });
+    }
+    section.appendChild(wrap);
+    box.appendChild(section);
+  });
+}
+
+// ============ 地图画布渲染 ============
+function renderMap() {
+  const container = document.getElementById('map-pins-container');
+  const rulesBar = document.getElementById('world-level-rules');
+  if (!container || !rulesBar) return;
+  container.innerHTML = '';
+  rulesBar.innerHTML = '';
+
+  const globItems = items.filter(i => (i.board === 'rules' || i.board === 'professions' || i.board === 'chronicle'));
+  globItems.forEach(it => {
+    const b = BOARDS[it.board];
+    const badge = document.createElement('div');
+    badge.className = 'projection-pill active cursor-pointer text-white flex items-center gap-1.5 transition-all hover:scale-105';
+    badge.style.background = b.color;
+    badge.onclick = () => openDetail(it.id);
+    const stats = bindingsOf(it.id).length;
+    badge.innerHTML = `<span class="material-symbols-outlined text-[12px]">${b.icon}</span>${esc(it.title)} <span class="text-[9px] opacity-80">已绑 ${stats}</span>`;
+    rulesBar.appendChild(badge);
+  });
+  if (!globItems.length) rulesBar.innerHTML = '<span class="text-[10px] text-base-content opacity-40">暂无全局锚点</span>';
+
+  if (currentProjection === 'professions') {
+    renderProfessionCanvas(container);
+  } else if (['resources','factions','monsters','rules','chronicle'].includes(currentProjection)) {
+    renderRelationCanvas(container, currentProjection);
+  } else {
+    renderGeographyCanvas(container);
+  }
+}
+
+function renderGeographyCanvas(container) {
+  const locItems = items.filter(i => i.board === 'geography');
+  const grid = document.createElement('div');
+  grid.className = 'geo-zone-grid';
+  locItems.forEach(loc => {
+    const related = bindingsOf(loc.id).map(bd => {
+      const otherId = bd.from === loc.id ? bd.to : bd.from;
+      const other = itemById(otherId);
+      return other ? { item: other, bind: bd } : null;
+    }).filter(Boolean).filter(x => x.item.board !== 'rules');
+
+    const card = document.createElement('div');
+    card.className = 'geo-zone-card';
+    card.style.setProperty('--zone-color', BOARDS.geography.color);
+    card.ondragover = (ev) => { ev.preventDefault(); card.classList.add('drag-over'); };
+    card.ondragleave = () => card.classList.remove('drag-over');
+    card.ondrop = (ev) => { card.classList.remove('drag-over'); handleDropOnGeo(ev, loc.id); };
+    card.innerHTML = `
+      <div class="flex items-start justify-between gap-3 relative z-10">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-success text-[18px]">landscape</span>
+            <h3 class="text-[15px] font-black truncate cursor-pointer hover:text-primary" onclick="openDetail('${loc.id}')">${esc(loc.title)}</h3>
+          </div>
+          <div class="text-[11px] opacity-55 mt-1">${esc(loc.fields.location_text || '未命名方位')} · 危险等级：${esc(loc.fields.danger_level || '未知')}</div>
+        </div>
+        <span class="skeleton-count-pill">绑定内容 ${related.length}</span>
+      </div>
+      <p class="text-[11px] opacity-60 leading-relaxed mt-3 relative z-10">${esc(loc.fields.description || '拖入资源、势力或怪物，快速补全该区域的叙事内容。')}</p>
+      <div class="mt-4 flex flex-wrap gap-1.5 relative z-10">
+        ${related.length ? related.map(x => {
+          const b = BOARDS[x.item.board];
+          return `<button onclick="openDetail('${x.item.id}')" class="zone-bind-chip" title="${esc(x.bind.type)}"><span class="material-symbols-outlined text-[12px]" style="color:${b.color}">${b.icon}</span><span class="truncate max-w-[130px]">${esc(x.item.title)}</span><span class="opacity-45">${esc(x.bind.type)}</span></button>`;
+        }).join('') : '<div class="empty-drop-hint w-full">把右侧卡片拖到这里，弹出确认后完成绑定</div>'}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+}
+
+function renderRelationCanvas(container, boardKey) {
+  const b = BOARDS[boardKey] || BOARDS.resources;
+  const bItems = items.filter(i => i.board === boardKey);
+  const grid = document.createElement('div');
+  grid.className = 'relation-card-grid';
+  if (!bItems.length) {
+    grid.innerHTML = `<div class="empty-drop-hint">暂无${b.label}条目，可点击左侧骨架或右上新增创建。</div>`;
+  }
+  bItems.forEach(it => {
+    const rels = bindingsOf(it.id).map(bd => {
+      const otherId = bd.from === it.id ? bd.to : bd.from;
+      const other = itemById(otherId);
+      return other ? { item: other, bind: bd } : null;
+    }).filter(Boolean);
+    const grouped = ['geography','factions','monsters','resources','professions','rules'].map(k => {
+      const arr = rels.filter(x => x.item.board === k);
+      return { key:k, arr };
+    }).filter(g => g.arr.length);
+    const card = document.createElement('div');
+    card.className = 'relation-card';
+    card.style.borderLeftColor = b.color;
+    card.innerHTML = `
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0 cursor-pointer" onclick="openDetail('${it.id}')">
+          <span class="material-symbols-outlined text-[17px]" style="color:${b.color}">${b.icon}</span>
+          <h3 class="text-[14px] font-black truncate">${esc(it.title)}</h3>
+        </div>
+        <span class="skeleton-count-pill">已绑定 ${rels.length}</span>
+      </div>
+      <p class="text-[11px] opacity-55 leading-relaxed mt-2">${esc(it.fields.description || it.fields.usage_text || it.fields.leader_name || it.fields.monster_scale || it.ai?.note || '暂无描述')}</p>
+      <div class="mt-3 flex flex-col gap-2">
+        ${grouped.length ? grouped.map(g => `<div><div class="text-[9px] font-black uppercase opacity-40 mb-1">${BOARDS[g.key].label}</div><div class="flex flex-wrap gap-1">${g.arr.map(x => `<button onclick="openDetail('${x.item.id}')" class="zone-bind-chip"><span class="material-symbols-outlined text-[12px]" style="color:${BOARDS[x.item.board].color}">${BOARDS[x.item.board].icon}</span>${esc(x.item.title)}<span class="opacity-40">${esc(x.bind.type)}</span></button>`).join('')}</div></div>`).join('') : '<div class="empty-drop-hint">暂无绑定，建议从左侧骨架提示进入补关系。</div>'}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+}
+
+function renderProfessionCanvas(container) {
+  const grid = document.createElement('div');
+  grid.className = 'relation-card-grid';
+  const profs = items.filter(i => i.board === 'professions');
+  profs.forEach(it => {
+    const roles = externalRoles.filter(r => r.binds.includes(it.id));
+    const rels = bindingsOf(it.id).map(bd => {
+      const otherId = bd.from === it.id ? bd.to : bd.from;
+      const other = itemById(otherId);
+      return other ? { item: other, bind: bd } : null;
+    }).filter(Boolean);
+    const card = document.createElement('div');
+    card.className = 'relation-card';
+    card.style.borderLeftColor = BOARDS.professions.color;
+    card.innerHTML = `
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0 cursor-pointer" onclick="openDetail('${it.id}')">
+          <span class="material-symbols-outlined text-info text-[17px]">bolt</span>
+          <h3 class="text-[14px] font-black truncate">${esc(it.title)}</h3>
+        </div>
+        <span class="skeleton-count-pill">角色 ${roles.length}</span>
+      </div>
+      <p class="text-[11px] opacity-55 leading-relaxed mt-2">${esc(it.fields.description || '职业体系说明待补充')}</p>
+      <div class="mt-3">
+        <div class="text-[9px] font-black uppercase opacity-40 mb-1">角色绑定 · 多对多</div>
+        <div class="flex flex-wrap gap-1.5">
+          ${roles.length ? roles.map(r => `<span class="zone-bind-chip"><span class="material-symbols-outlined text-[12px] text-primary">person</span>${esc(r.name)}<span class="opacity-40">可多职业</span></span>`).join('') : '<div class="empty-drop-hint w-full">暂无角色绑定；角色模块只读引用，可在绑定面板选择角色。</div>'}
+        </div>
+      </div>
+      <div class="mt-3">
+        <div class="text-[9px] font-black uppercase opacity-40 mb-1">世界关系</div>
+        <div class="flex flex-wrap gap-1.5">
+          ${rels.length ? rels.map(x => `<button onclick="openDetail('${x.item.id}')" class="zone-bind-chip"><span class="material-symbols-outlined text-[12px]" style="color:${BOARDS[x.item.board].color}">${BOARDS[x.item.board].icon}</span>${esc(x.item.title)}<span class="opacity-40">${esc(x.bind.type)}</span></button>`).join('') : '<div class="empty-drop-hint w-full">建议绑定规则/资源/势力，形成职业来源和消耗闭环。</div>'}
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+  container.appendChild(grid);
+}
+
+function startResourceDrag(ev, itemId) {
+  ev.dataTransfer.setData('text/plain', itemId);
+  ev.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDropOnGeo(ev, geoId) {
+  ev.preventDefault();
+  const itemId = ev.dataTransfer.getData('text/plain');
+  const it = itemById(itemId);
+  const geo = itemById(geoId);
+  if (!it || !geo || geo.board !== 'geography') return;
+  if (!['resources','factions','monsters'].includes(it.board)) {
+    showToast('当前仅支持资源、势力、怪物拖拽到地理区块', 'warning');
+    return;
+  }
+  const existed = bindings.some(bd => (bd.from === geoId && bd.to === itemId) || (bd.from === itemId && bd.to === geoId));
+  if (existed) {
+    showToast('这两个条目已经存在绑定关系', 'info');
+    return;
+  }
+  const relationOptions = {
+    resources: ['产出','封锁'],
+    factions: ['盘踞','争夺','流亡'],
+    monsters: ['栖息','迁徙'],
+  }[it.board] || ['关联'];
+  pendingDropBinding = { geoId, itemId, relationOptions };
+  document.getElementById('drop-confirm-text').innerHTML = `是否将 <strong>${esc(it.title)}</strong> 绑定到地理区块 <strong>${esc(geo.title)}</strong>？完成后，该地理区块会显示“绑定内容 ${bindingsOf(geo.id).length + 1}”。`;
+  document.getElementById('drop-bind-type').innerHTML = relationOptions.map(t => `<option value="${t}">${t}</option>`).join('');
+  document.getElementById('dropConfirmModal').classList.add('open');
+}
+
+function closeDropConfirm() {
+  const modal = document.getElementById('dropConfirmModal');
+  if (modal) modal.classList.remove('open');
+  pendingDropBinding = null;
+}
+
+function confirmDropBinding() {
+  if (!pendingDropBinding) return;
+  const { geoId, itemId } = pendingDropBinding;
+  const type = document.getElementById('drop-bind-type').value || relationTypeForBoard(itemById(itemId)?.board);
+  bindings.push({ id: genId('b'), from: geoId, to: itemId, type, strength: 0.75, tags: ['拖拽绑定'] });
+  const geo = itemById(geoId), it = itemById(itemId);
+  showToast(`已绑定：${geo?.title} ${type} ${it?.title}`, 'success');
+  closeDropConfirm();
+  renderCurrentView();
+  if (currentItemId) renderDrawerContent();
+}
+
+function drawConnections() {
+  const svg = document.getElementById('map-svg-connections');
+  if (svg) svg.innerHTML = '';
+}
+
+// ============ 列表大纲展示 ============
+function renderList() {
+  const container = document.getElementById('list-groups-accordion');
+  const hint = document.getElementById('projection-hint');
+  
+  container.innerHTML = '';
+  
+  let boardsToRender = BOARD_ORDER;
+  if (currentProjection !== 'all') {
+    boardsToRender = [currentProjection];
+    hint.innerHTML = `当前大纲类别：<strong>${BOARDS[currentProjection].label}</strong>`;
+  } else {
+    hint.innerHTML = `全局设定大纲 · 支持多选批量编辑`;
+  }
+
+  boardsToRender.forEach(bKey => {
+    const board = BOARDS[bKey];
+    const bItems = items.filter(i => i.board === bKey);
+    
+    const div = document.createElement('div');
+    div.className = "bg-white/80 border border-base-content/10 rounded-xl overflow-hidden shadow-sm";
+    
+    let groupHtml = `
+      <div class="flex items-center justify-between px-4 py-3 bg-base-100 border-b border-base-content/5 cursor-pointer">
+        <div class="flex items-center gap-2 font-bold text-xs">
+          <span class="material-symbols-outlined text-[16px]" style="color:${board.color}">${board.icon}</span>
+          ${board.label} <span class="opacity-40 font-mono">(${bItems.length})</span>
+        </div>
+        <span class="material-symbols-outlined text-[16px] opacity-40">expand_more</span>
+      </div>
+      <div class="p-3 flex flex-col gap-2">
+    `;
+
+    if (bItems.length === 0) {
+      groupHtml += `<p class="text-[11px] text-base-content opacity-30 py-4 text-center">暂无此板块设定</p>`;
+    } else {
+      bItems.forEach(it => {
+        const tm = tensionMeta(it.ai?.tension);
+        const myBinds = bindingsOf(it.id);
+        const bindsText = myBinds.length ? `关联设定数: ${myBinds.length}` : '无关联';
+        
+        groupHtml += `
+          <div class="flex items-center justify-between p-2 rounded-lg hover:bg-base-200/50 border border-base-content/5 transition-all text-xs">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <input type="checkbox" name="bulk-item" value="${it.id}" onclick="event.stopPropagation()" class="rounded border-base-content/20 text-primary focus:ring-primary">
+              <span onclick="openDetail('${it.id}')" class="font-bold truncate cursor-pointer hover:text-primary flex-1">${esc(it.title)}</span>
+              <span class="text-[10px] opacity-50 w-24 truncate">${esc(it.fields.rule_type || it.fields.location_text || it.fields.usage_text || '')}</span>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+              <span class="tension-badge ${tm.cls}"><span class="material-symbols-outlined" style="font-size:10px;">${tm.icon}</span>${tm.label}</span>
+              <span class="text-[10px] text-base-content opacity-40">${bindsText}</span>
+              <button onclick="openDetail('${it.id}')" class="btn btn-ghost btn-xs text-primary font-bold">展开详情▸</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    groupHtml += `</div>`;
+    div.innerHTML = groupHtml;
+    container.appendChild(div);
+  });
+}
+
+function batchAction(action) {
+  const checked = Array.from(document.querySelectorAll('input[name="bulk-item"]:checked')).map(el => el.value);
+  if (!checked.length) {
+    showToast('未选择任何大纲项', 'warning');
+    return;
+  }
+  
+  if (action === 'delete') {
+    if (!confirm(`将批量物理删除这 ${checked.length} 项设定及其绑定因果关系，确认吗？`)) return;
+    items = items.filter(it => !checked.includes(it.id));
+    bindings = bindings.filter(b => !checked.includes(b.from) && !checked.includes(b.to));
+    showToast('批量物理移除成功', 'info');
+  } else if (action === 'tension') {
+    items.forEach(it => {
+      if (checked.includes(it.id)) {
+        if (!it.ai) it.ai = {};
+        it.ai.tension = 'high';
+      }
+    });
+    showToast('设定高张力成功', 'success');
+  }
+  
+  renderCurrentView();
+}
+
+// ============ 面包屑 Pivot 导航历史栈 ============
+function openDetail(id) {
+  currentItemId = id;
+  drawerMode = 'detail';
+  pivotStack = [id];
+  renderDrawerContent();
+  openDrawer();
+  
+  // 刷新地图/大纲的选中效果
+  if (viewMode === 'map') renderMap();
+}
+
+function pushPivot(id) {
+  if (pivotStack[pivotStack.length - 1] === id) return;
+  pivotStack.push(id);
+  currentItemId = id;
+  renderDrawerContent();
+  
+  if (viewMode === 'map') renderMap();
+}
+
+function popPivot() {
+  if (pivotStack.length <= 1) return;
+  pivotStack.pop();
+  currentItemId = pivotStack[pivotStack.length - 1];
+  renderDrawerContent();
+  
+  if (viewMode === 'map') renderMap();
+}
+
+function renderDrawerBreadcrumbs() {
+  const container = document.getElementById('drawer-breadcrumbs');
+  const btnBack = document.getElementById('btn-breadcrumb-back');
+  
+  container.innerHTML = '';
+  
+  if (pivotStack.length <= 1) {
+    btnBack.classList.add('hidden');
+    container.innerHTML = `<span class="font-bold">设定画像卡</span>`;
+    return;
+  }
+  
+  btnBack.classList.remove('hidden');
+  
+  pivotStack.forEach((id, idx) => {
+    const it = itemById(id);
+    if (!it) return;
+    
+    if (idx > 0) {
+      const sep = document.createElement('span');
+      sep.className = "text-base-content opacity-30 text-[10px]";
+      sep.textContent = '›';
+      container.appendChild(sep);
+    }
+    
+    const span = document.createElement('span');
+    span.className = "pivot-breadcrumb-item truncate max-w-[100px]";
+    if (idx === pivotStack.length - 1) {
+      span.classList.add('text-primary', 'font-bold');
+    }
+    span.textContent = it.title;
+    span.onclick = () => {
+      pivotStack = pivotStack.slice(0, idx + 1);
+      currentItemId = id;
+      renderDrawerContent();
+      if (viewMode === 'map') renderMap();
+    };
+    container.appendChild(span);
+  });
+}
+
+// ============ 四段式画像抽屉内容 ============
+function renderDrawerContent() {
+  const it = itemById(currentItemId);
+  if (!it) return;
+  
+  const b = BOARDS[it.board];
+  document.getElementById('drawer-board-icon').textContent = b.icon;
+  document.getElementById('drawer-board-icon').style.color = b.color;
+  document.getElementById('drawer-board-label').textContent = b.label + ' · ' + b.en;
+  document.getElementById('drawer-item-name').textContent = it.title;
+  document.getElementById('drawer-delete-btn').style.display = '';
+
+  renderDrawerBreadcrumbs();
+
+  const content = document.getElementById('drawer-content');
+  content.innerHTML = '';
+
+  // 1. 第一段：身份区与基本属性
+  const tm = tensionMeta(it.ai?.tension);
+  const myBinds = bindingsOf(it.id);
+  const identitySection = document.createElement('div');
+  identitySection.className = "flex flex-col gap-2 pb-4 border-b border-base-content/8";
+  
+  identitySection.innerHTML = `
+    <div class="flex items-center gap-1.5 flex-wrap">
+      <span class="tension-badge ${tm.cls}"><span class="material-symbols-outlined" style="font-size:10px;">${tm.icon}</span>${tm.label}</span>
+      <span class="commercial-badge">商业价值 ${it.ai?.commercial||0}/100</span>
+      <span class="bind-chip"><span class="material-symbols-outlined" style="font-size:11px;">link</span>${myBinds.length}个关联</span>
+    </div>
+    ${renderFields(it.board, it.fields)}
+  `;
+  content.appendChild(identitySection);
+
+  // 2. 第二段：辐射关联区 (规则为分解树，其余为泳道行)
+  const radiationSection = document.createElement('div');
+  radiationSection.className = "pb-4 border-b border-base-content/8 flex flex-col gap-2";
+  
+  let radiationHtml = `
+    <div class="flex items-center justify-between">
+      <label class="field-label mb-0">辐射与关联设定</label>
+      <button onclick="openBindingModal('${it.id}')" class="text-[10px] text-primary hover:underline cursor-pointer flex items-center gap-0.5">
+        <span class="material-symbols-outlined" style="font-size:12px;">add_link</span>添加设定绑定
+      </button>
+    </div>
+  `;
+
+  if (it.board === 'rules') {
+    // 辐射树展示
+    radiationHtml += `<div class="tree-branch-container">`;
+    if (myBinds.length === 0) {
+      radiationHtml += `<p class="text-[11px] text-base-content opacity-30 py-2">暂无管辖下的子级设定辐射</p>`;
+    } else {
+      myBinds.forEach(bd => {
+        const otherId = bd.from === it.id ? bd.to : bd.from;
+        const other = itemById(otherId);
+        if (!other) return;
+        const ob = BOARDS[other.board];
+        radiationHtml += `
+          <div class="tree-branch-item flex items-center justify-between text-[11px] group">
+            <div class="flex items-center gap-1.5 cursor-pointer hover:text-primary min-w-0 flex-1" onclick="pushPivot('${other.id}')">
+              <span class="material-symbols-outlined text-[12px]" style="color:${ob.color}">${ob.icon}</span>
+              <span class="font-semibold text-base-content opacity-45">〔统御·${esc(bd.type)}〕</span>
+              <span class="truncate font-medium">${esc(other.title)}</span>
+            </div>
+            <button onclick="removeBinding('${bd.id}')" class="opacity-0 group-hover:opacity-100 text-error transition-all" title="解绑">
+              <span class="material-symbols-outlined text-[13px]">link_off</span>
+            </button>
+          </div>
+        `;
+      });
+    }
+    radiationHtml += `</div>`;
+  } else {
+    // 泳道行模式展示
+    if (myBinds.length === 0) {
+      radiationHtml += `<p class="text-[11px] text-base-content opacity-30 py-2">无任何板块关联绑定</p>`;
+    } else {
+      radiationHtml += `<div class="flex flex-col gap-1.5 mt-1">`;
+      myBinds.forEach(bd => {
+        const otherId = bd.from === it.id ? bd.to : bd.from;
+        const other = itemById(otherId);
+        if (!other) return;
+        const ob = BOARDS[other.board];
+        const dir = bd.from === it.id ? '→' : '←';
+        
+        radiationHtml += `
+          <div class="flex items-center justify-between py-1 px-2 rounded-lg bg-base-content/5 group text-[11px]">
+            <div class="flex items-center gap-1.5 cursor-pointer hover:text-primary min-w-0 flex-1" onclick="pushPivot('${other.id}')">
+              <span class="material-symbols-outlined text-[12px]" style="color:${ob.color}">${ob.icon}</span>
+              <span class="font-bold text-[10px] opacity-40">${dir} ${esc(bd.type)}</span>
+              <span class="truncate font-medium">${esc(other.title)}</span>
+            </div>
+            <div class="flex items-center gap-1">
+              ${bd.strength ? `<span class="opacity-40 text-[9px] font-mono">${Math.round(bd.strength*100)}%</span>` : ''}
+              <button onclick="removeBinding('${bd.id}')" class="opacity-0 group-hover:opacity-100 text-error transition-all" title="解绑">
+                <span class="material-symbols-outlined text-[13px]">link_off</span>
+              </button>
+            </div>
+          </div>
+        `;
+      });
+      radiationHtml += `</div>`;
+    }
+  }
+
+  // 职业分级体系内嵌
+  if (it.system_tiers) {
+    radiationHtml += `
+      <div class="mt-3 pt-3 border-t border-dashed border-base-content/8">
+        <label class="field-label mb-1.5">分级体系设定（共 ${it.system_tiers.length} 级）</label>
+        <div class="flex flex-col gap-1">
+          ${it.system_tiers.map((s, idx) => `
+            <div class="flex items-center gap-2 p-1.5 rounded bg-secondary/5 text-[11px]">
+              <span class="font-bold text-secondary text-[10px] shrink-0">${idx+1}级</span>
+              <span class="font-semibold text-base-content">${esc(s.name)}</span>
+              <span class="text-base-content opacity-40 truncate flex-1">${esc(s.note||'')}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  radiationSection.innerHTML = radiationHtml;
+  content.appendChild(radiationSection);
+
+  // 3. 第三段：质量信号区 (含矛盾检测与 AI 调和)
+  const signalSection = document.createElement('div');
+  signalSection.className = "pb-4 flex flex-col gap-2";
+  
+  let signalHtml = `<label class="field-label">质量信号与漏洞检测</label>`;
+  
+  if (it.id === 'r1') {
+    signalHtml += `
+      <div class="p-2.5 rounded-lg border border-error bg-error/5 text-[11px] flex flex-col gap-1.5">
+        <div class="font-bold text-error flex items-center gap-1">
+          <span class="material-symbols-outlined text-[14px]">warning</span> ⚠ 物理设定矛盾：
+        </div>
+        <p class="text-base-content opacity-75">该物理法则与 <strong>「天道雷劫因果律」</strong> 对境界突破的能量涨落判定公式相反。</p>
+        <div class="flex gap-2 justify-end mt-1">
+          <button onclick="pushPivot('r2')" class="px-2 py-0.5 bg-base-content/10 hover:bg-base-content/20 text-base-content font-bold rounded text-[9px]">查看对方</button>
+          <button onclick="aiReconcile('r1', 'r2')" class="px-2 py-0.5 bg-error text-white font-bold rounded text-[9px] hover:opacity-90">AI 调和提案</button>
+        </div>
+      </div>
+    `;
+  }
+  
+  const ai = it.ai || {};
+  signalHtml += `
+    <div class="text-[11px] flex flex-col gap-1.5">
+      <p class="text-base-content opacity-65 leading-relaxed">${esc(ai.note || '暂无深度自评，点击下方 AI 帮我填以补全。')}</p>
+      ${ai.suggestion ? `<div class="ai-suggestion"><span class="material-symbols-outlined" style="font-size:11px;vertical-align:-1px;">tips_and_updates</span> ${esc(ai.suggestion)}</div>` : ''}
+    </div>
+  `;
+  signalSection.innerHTML = signalHtml;
+  content.appendChild(signalSection);
+}
+
+// ============ 新增条目表单渲染 ============
+function openAddItemDrawer() {
+  drawerMode = 'add';
+  currentItemId = null;
+  pivotStack = [];
+  
+  const board = currentProjection === 'all' ? 'rules' : currentProjection;
+  document.getElementById('drawer-board-icon').textContent = 'add_circle';
+  document.getElementById('drawer-board-icon').style.color = 'var(--color-primary)';
+  document.getElementById('drawer-board-label').textContent = '新增条目';
+  document.getElementById('drawer-item-name').textContent = '选择分类并填写';
+  document.getElementById('drawer-delete-btn').style.display = 'none';
+
+  document.getElementById('drawer-breadcrumbs').innerHTML = `<span class="font-bold">快捷创建设定</span>`;
+
+  const boardSelect = `<div><label class="field-label">设定分类</label>
+    <select id="fld-board" class="field-input text-xs" onchange="onAddBoardChange(this.value)">
+      ${BOARD_ORDER.map(k=>`<option value="${k}" ${k===board?'selected':''}>${BOARDS[k].label} · ${BOARDS[k].en}</option>`).join('')}
+    </select></div>`;
+    
+  document.getElementById('drawer-content').innerHTML = boardSelect + `<div id="add-fields-container" class="mt-2">${renderFields(board, {})}</div>
+    <p class="text-[10px] text-base-content opacity-40 mt-4">提示：保存后可在条目详情中添加绑定关系，或点击底部「AI 帮我填」自动填充草稿。</p>`;
+  openDrawer();
+}
+
+function onAddBoardChange(board) {
+  document.getElementById('add-fields-container').innerHTML = renderFields(board, {});
+}
+
+function saveDrawerItem() {
+  if (drawerMode === 'add') {
+    const board = document.getElementById('fld-board').value;
+    const data = collectFields(board);
+    if (!data.title) { showToast('请填写名称', 'error'); return; }
+    
+    const it = { 
+      id: genId('i'), board, name: data.title, fields: data,
+      ai: { tension:'low', commercial:50, note:'新建条目，待 AI 评估。', suggestion:'建议尽快建立绑定关系，避免成为孤立设定。' } 
+    };
+    if (board === 'geography') {
+it.map_x = Math.round(20 + Math.random() * 60);
+it.map_y = Math.round(20 + Math.random() * 60);
+    }
+
+    items.push(it);
+    showToast('已新增设定「' + data.title + '」', 'success');
+    closeDrawer();
+    renderCurrentView();
+  } else {
+    const it = itemById(currentItemId);
+    if (!it) return;
+    const data = collectFields(it.board);
+    if (!data.title) { showToast('请填写名称', 'error'); return; }
+    it.title = data.title;
+    it.fields = { ...it.fields, ...data };
+    showToast('已保存设定修改', 'success');
+    closeDrawer();
+    renderCurrentView();
+  }
+}
+
+function deleteCurrentItem() {
+  if (!currentItemId) return;
+  const it = itemById(currentItemId); if (!it) return;
+  if (!confirm('确认删除「' + it.title + '」？相关绑定关系也会一并移除。')) return;
+  
+  items = items.filter(i => i.id !== currentItemId);
+  bindings = bindings.filter(b => b.from !== currentItemId && b.to !== currentItemId);
+  
+  showToast('已物理删除并自动失效绑定', 'info');
+  closeDrawer();
+  currentItemId = null;
+  renderCurrentView();
+}
+
+function removeBinding(bid) {
+  bindings = bindings.filter(b => b.id !== bid);
+  if (currentItemId) renderDrawerContent();
+  renderCurrentView();
+  showToast('已移除关联关系', 'info');
+}
+
+// ============ 新建绑定面板控制 ============
+function openBindingModal(fromId) {
+  const from = itemById(fromId); if (!from) return;
+  bindingDraft = { from: fromId, to: null, toBoard: null, type: null, strength: 0.5, timespan:'', unlock:'', tags:[] };
+  renderBindingForm();
+  document.getElementById('bindingModal').classList.add('open');
+}
+
+function closeBindingModal() {
+  document.getElementById('bindingModal').classList.remove('open');
+  bindingDraft = null;
+}
+
+function renderBindingForm() {
+  const d = bindingDraft;
+  const from = itemById(d.from);
+  const fromBoard = from.board;
+
+  const targetBoards = Object.keys(BIND_TYPES[fromBoard] || {});
+  if (!d.toBoard && targetBoards.length) d.toBoard = targetBoards[0];
+  
+  const types = (BIND_TYPES[fromBoard] && BIND_TYPES[fromBoard][d.toBoard]) || [];
+  if (!d.type && types.length) d.type = types[0];
+
+  const candidates = items.filter(i => i.board === d.toBoard && i.id !== d.from);
+  const dynFields = BIND_TYPE_FIELDS[d.type] || BIND_TYPE_FIELDS._default;
+
+  let html = `
+    <div class="flex items-center gap-2 p-2.5 rounded-lg bg-base-content/5">
+      <span class="material-symbols-outlined text-primary" style="font-size:16px;">${BOARDS[fromBoard].icon}</span>
+      <div class="min-w-0">
+        <div class="text-[9px] text-base-content opacity-50 uppercase">源实体 · ${BOARDS[fromBoard].label}</div>
+        <div class="text-[12px] font-bold truncate">${esc(from.title)}</div>
+      </div>
+      <span class="material-symbols-outlined text-base-content opacity-30 mx-1">arrow_forward</span>
+      <div class="text-[11px] text-base-content opacity-60">目标类别</div>
+      <select id="bind-toboard" class="field-input" style="width:auto;flex:1" onchange="onBindBoardChange(this.value)">
+        ${targetBoards.map(tb=>`<option value="${tb}" ${tb===d.toBoard?'selected':''}>${BOARDS[tb].label}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="mt-2"><label class="field-label">绑定关系类型</label>
+      <div class="flex flex-wrap gap-1.5" id="bind-type-pills">
+        ${types.map(t=>`<button onclick="setBindType('${t}')" class="projection-pill ${t===d.type?'active':''}" style="${t===d.type?'background:var(--color-primary)':''}">${t}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="mt-2"><label class="field-label">目标关联对象</label>
+      <select id="bind-to" class="field-input">
+        <option value="">— 选择已有条目 —</option>
+        ${candidates.map(c=>`<option value="${c.id}" ${c.id===d.to?'selected':''}>${esc(c.title)}</option>`).join('')}
+      </select>
+      <button onclick="quickCreateTarget()" class="mt-1.5 text-[10px] text-primary hover:underline cursor-pointer flex items-center gap-0.5">
+        <span class="material-symbols-outlined" style="font-size:12px;">add</span>没有？快速新建一个「${BOARDS[d.toBoard].label}」设定条目并选中 (占位先行)
+      </button>
+    </div>`;
+
+  if (dynFields.includes('strength')) {
+    html += `<div class="mt-2"><label class="field-label">关联强度 <span id="bind-strength-val" class="text-primary">${Math.round(d.strength*100)}%</span></label>
+      <input type="range" id="bind-strength" min="0" max="100" value="${Math.round(d.strength*100)}" class="w-full accent-primary cursor-pointer" oninput="document.getElementById('bind-strength-val').textContent=this.value+'%'"></div>`;
+  }
+  if (dynFields.includes('timespan')) {
+    html += `<div class="mt-2"><label class="field-label">发生时限</label><input type="text" id="bind-timespan" class="field-input" value="${esc(d.timespan)}" placeholder="如：开天历 300 年起 持续性"></div>`;
+  }
+  if (dynFields.includes('unlock')) {
+    html += `<div class="mt-2"><label class="field-label">解锁条件 / 前置事件</label><input type="text" id="bind-unlock" class="field-input" value="${esc(d.unlock)}" placeholder="例如：需完成某突破或声望事件"></div>`;
+  }
+  html += `<div class="mt-2"><label class="field-label">叙事与张力标签</label>
+    <input type="text" id="bind-tags" class="field-input" value="${esc(d.tags.join('、'))}" placeholder="多个标签以顿号分隔，如：冲突爆发点、势力底线"></div>`;
+
+  const preview = estimateBindingImpact(d);
+  html += `<div class="p-2.5 rounded-lg mt-3" style="background:oklch(96% 0.015 240);border:1px solid oklch(88% 0.03 240);">
+    <div class="flex items-center gap-1 mb-1"><span class="material-symbols-outlined text-primary" style="font-size:13px;">insights</span><span class="text-[10px] font-bold uppercase tracking-wider" style="color:oklch(40% 0.08 240)">冲突张力与商业估算</span></div>
+    <div class="flex items-center gap-4 text-[11px]" style="color:oklch(40% 0.08 240)">
+      <span>商业价值预估 <strong>${preview.commercial>0?'+':''}${preview.commercial}%</strong> ${preview.commercial>0?'↑':''}</span>
+      <span>张力变化 <strong>${preview.tension}</strong></span>
+    </div>
+  </div>`;
+
+  document.getElementById('binding-form-content').innerHTML = html;
+}
+
+function onBindBoardChange(tb) { bindingDraft.toBoard = tb; bindingDraft.to = null; bindingDraft.type = null; renderBindingForm(); }
+function setBindType(t) { bindingDraft.type = t; syncBindingDraft(); renderBindingForm(); }
+
+function syncBindingDraft() {
+  const d = bindingDraft; if (!d) return;
+  const to = document.getElementById('bind-to'); if (to) d.to = to.value || null;
+  const st = document.getElementById('bind-strength'); if (st) d.strength = st.value/100;
+  const ts = document.getElementById('bind-timespan'); if (ts) d.timespan = ts.value;
+  const ul = document.getElementById('bind-unlock'); if (ul) d.unlock = ul.value;
+  const tg = document.getElementById('bind-tags'); if (tg) d.tags = tg.value.split(/[、,，]/).map(s=>s.trim()).filter(Boolean);
+}
+
+function estimateBindingImpact(d) {
+  const HIGH = ['敌对','争夺','克制','打压','讨伐','违反'];
+  const MID = ['控制','垄断培养','豁免','限制','盘踞'];
+  let commercial = 3, stars = 3;
+  if (HIGH.includes(d.type)) { commercial = 15; stars = 4; }
+  else if (MID.includes(d.type)) { commercial = 8; stars = 3; }
+  commercial = Math.round(commercial * (0.5 + d.strength));
+  const tStr = '★'.repeat(stars) + '☆'.repeat(5-stars);
+  return { commercial, tension: '★★★ → ' + tStr };
+}
+
+// 绑定时快速新建条目 (占位先行)
+function quickCreateTarget() {
+  const tb = bindingDraft.toBoard;
+  const name = prompt('新建「' + BOARDS[tb].label + '」设定名称：');
+  if (!name) return;
+  
+  const it = { 
+    id: genId('i'), board: tb, name: name.trim(), fields: { name: name.trim() },
+    ai: { tension:'low', commercial:55, note:'快速新建占位，待后续补充字段属性。', suggestion:'补全该设定的属性详情。' } 
+  };
+  if (tb === 'geography') {
+    it.x = Math.round(20 + Math.random() * 60);
+    it.y = Math.round(20 + Math.random() * 60);
+  }
+  
+  items.push(it);
+  bindingDraft.to = it.id;
+  showToast('已快速创建「' + name + '」占位并自动选中', 'success');
+  renderBindingForm();
+}
+
+function saveBinding() {
+  syncBindingDraft();
+  const d = bindingDraft;
+  if (!d.to) { showToast('请选择关联目标对象', 'error'); return; }
+  if (!d.type) { showToast('请选择关联关系类型', 'error'); return; }
+  
+  bindings.push({ id: genId('b'), from: d.from, to: d.to, type: d.type,
+    strength: d.strength, timespan: d.timespan, unlock: d.unlock, tags: d.tags });
+    
+  const fromName = itemById(d.from)?.title, toName = itemById(d.to)?.title;
+  showToast(`成功关联：${fromName} ${d.type} ${toName}`, 'success');
+  
+  closeBindingModal();
+  renderCurrentView();
+  if (currentItemId) renderDrawerContent();
+}
+
+// ============ AI 提案与 Diff 交互 ============
+function openDiffModal() {
+  document.getElementById('diffModal').classList.add('open');
+}
+function closeDiffModal() {
+  document.getElementById('diffModal').classList.remove('open');
+  activeProposals = [];
+}
+
+function renderDiffProposals() {
+  const container = document.getElementById('diff-list-container');
+  container.innerHTML = '';
+  
+  if (activeProposals.length === 0) {
+    container.innerHTML = `<p class="text-xs text-base-content opacity-40 py-8 text-center">暂无新的 AI 提案</p>`;
+    return;
+  }
+
+  activeProposals.forEach((p, idx) => {
+    const ob = BOARDS[p.board];
+    container.innerHTML += `
+      <div id="prop-row-${idx}" class="p-3 rounded-xl border border-base-content/10 bg-base-200/40 text-xs flex items-start justify-between gap-3">
+        <div class="flex-1 min-w-0 flex flex-col gap-1">
+          <div class="flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[14px]" style="color:${ob.color}">${ob.icon}</span>
+            <span class="font-bold text-base-content">${esc(p.title)}</span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold">${esc(p.proposalType)}</span>
+          </div>
+          <p class="text-base-content opacity-75 leading-relaxed">${esc(p.description)}</p>
+        </div>
+        <div class="flex flex-col gap-1.5 shrink-0">
+          <button onclick="acceptProposal(${idx})" class="px-2 py-1 bg-primary text-white text-[10px] font-bold rounded">接受</button>
+          <button onclick="editProposal(${idx})" class="px-2 py-1 border border-base-content/10 bg-white hover:bg-base-content/5 text-base-content text-[10px] font-bold rounded">修改</button>
+          <button onclick="discardProposal(${idx})" class="px-2 py-1 text-error hover:bg-error/10 text-[10px] font-bold rounded">放弃</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+function acceptProposal(idx) {
+  const p = activeProposals[idx];
+  if (!p) return;
+
+  const newItem = {
+    id: genId('i'),
+    board: p.board,
+    title: p.title,
+    fields: { title: p.title, description: p.description },
+    ai: { tension: p.tension, commercial: p.commercial, note: 'AI 自动推演引入。', suggestion: p.suggestion }
+  };
+  
+  if (p.board === 'geography') {
+    newItem.map_x = Math.round(20 + Math.random() * 60);
+    newItem.map_y = Math.round(20 + Math.random() * 60);
+  }
+  
+  items.push(newItem);
+  
+  if (p.bindTo && p.bindType) {
+    bindings.push({
+      id: genId('b'),
+      from: p.bindFrom || currentItemId || newItem.id,
+      to: p.bindTo === 'self' ? newItem.id : p.bindTo,
+      type: p.bindType,
+      strength: 0.7
+    });
+  }
+
+  showToast(`已采纳设定「${p.title}」并新增关联`, 'success');
+  
+  activeProposals.splice(idx, 1);
+  renderDiffProposals();
+  renderCurrentView();
+  if (currentItemId) renderDrawerContent();
+  
+  if (activeProposals.length === 0) {
+    closeDiffModal();
+  }
+}
+
+function editProposal(idx) {
+  const p = activeProposals[idx];
+  const newName = prompt('修改设定名称：', p.title);
+  if (newName === null) return;
+  const newDesc = prompt('修改设定详情：', p.description);
+  if (newDesc === null) return;
+  
+  p.title = newName.trim();
+  p.description = newDesc.trim();
+  renderDiffProposals();
+}
+
+function discardProposal(idx) {
+  const p = activeProposals[idx];
+  showToast(`已放弃提案「${p.title}」`, 'info');
+  activeProposals.splice(idx, 1);
+  renderDiffProposals();
+  
+  if (activeProposals.length === 0) {
+    closeDiffModal();
+  }
+}
+
+function acceptAllProposals() {
+  while(activeProposals.length > 0) {
+    acceptProposal(0);
+  }
+}
+
+// 模拟 AI 展开本条设定的提案
+function aiExpandItem() {
+  const it = itemById(currentItemId);
+  if (!it) return;
+
+  showToast('AI 正在分析物理与矛盾规则关系...', 'info');
+  
+  setTimeout(() => {
+    if (it.board === 'rules') {
+      activeProposals = [
+        {
+          board: 'resources',
+          title: '可存续口粮',
+          proposalType: '按物理扩展',
+          description: '受到以太衰变律影响，灵气逆流时唯一能为修士保留微弱灵力体征的高能压缩干粮。',
+          tension: 'high', commercial: 85,
+          suggestion: '囤积该资源将导致修士阶层分化矛盾。',
+          bindTo: 'self', bindType: '管辖'
+        },
+        {
+          board: 'factions',
+          title: '囤积者议会',
+          proposalType: '按势力推演',
+          description: '以低价收购可存续口粮并意图在高灵衰竭期实施阶层限制统治的正道新联盟。',
+          tension: 'high', commercial: 76,
+          bindTo: 'self', bindType: '约束'
+        }
+      ];
+    } else {
+      activeProposals = [
+        {
+          board: 'monsters',
+          title: '灵气噬心魔',
+          proposalType: '按怪物推演',
+          description: '伴随该区域所处的世界极化现象应运而生的能量体妖兽，克制强修。',
+          tension: 'mid', commercial: 70,
+          bindTo: 'self', bindType: '栖息'
+        }
+      ];
+    }
+    
+    renderDiffProposals();
+    openDiffModal();
+  }, 1000);
+}
+
+// 物理与矛盾调和
+function aiReconcile(r1Id, r2Id) {
+  const r1 = itemById(r1Id);
+  const r2 = itemById(r2Id);
+  
+  showToast(`AI 正在调和「${r1.title}」与「${r2.title}」的物理冲突...`, 'info');
+  
+  setTimeout(() => {
+    activeProposals = [
+      {
+        board: 'rules',
+        title: '灵极雷击折衷因果律',
+        proposalType: '按冲突调和',
+        description: '天道降下因果雷劫，但每次极化时，雷劫的抗阻机制受以太衰退影响降低30%，即极化现象局部爆发时，雷击阈值折衷降低，达到和谐演变。',
+        tension: 'high', commercial: 80,
+        suggestion: '可完全调和物理设定漏洞。',
+        bindFrom: r1Id, bindTo: r2Id, bindType: '依赖'
+      }
+    ];
+    renderDiffProposals();
+    openDiffModal();
+  }, 1200);
+}
+
+// ============ 想法收集聊天窗口与冲突种子 ============
+function toggleChatPanel() {
+  document.getElementById('chat-panel').classList.toggle('open');
+}
+
+function sendChatIdea() {
+  const input = document.getElementById('chat-input');
+  const idea = input.value.trim();
+  if (!idea) return;
+
+  // 渲染我的消息
+  appendChatMessage('user', idea);
+  input.value = '';
+
+  // 渲染 AI 解析中
+  const botMessageId = 'bot-temp-' + Date.now();
+  appendChatMessage('bot', '正在从物理、商业、伏笔张力三维度解析中...', botMessageId);
+
+  setTimeout(() => {
+    const botEl = document.getElementById(botMessageId);
+    if (!botEl) return;
+    
+    activeProposals = [
+      {
+        board: 'factions',
+        title: '人类圈养所',
+        proposalType: '按用户想法',
+        description: '当怪物（丧尸）具备了高级思维后，建立起的用于收割修行者以太活体能量的集中圈养高墙。',
+        tension: 'high', commercial: 88,
+        suggestion: '此地是经典的反抗战力爆发点。',
+        bindTo: 'm1', bindType: '盘踞'
+      }
+    ];
+    
+    botEl.innerHTML = `
+      <p class="mb-1 text-primary font-bold flex items-center gap-1">
+        <span class="material-symbols-outlined text-[12px] animate-pulse">auto_awesome</span> 解析完毕，生成以下提案：
+      </p>
+      <div class="p-2 border border-primary/20 bg-primary/5 rounded-lg text-[10px] mt-1.5">
+        <span class="font-bold">＋ 【势力】 人类圈养所</span>
+        <p class="opacity-80 mt-0.5">${activeProposals[0].description}</p>
+      </div>
+      <button onclick="openDiffModal(); renderDiffProposals();" class="mt-2 text-xs font-bold text-primary hover:underline flex items-center gap-0.5">
+        点击展开并采纳该提案 <span class="material-symbols-outlined text-[12px]">arrow_forward</span>
+      </button>
+    `;
+  }, 1200);
+}
+
+function appendChatMessage(sender, text, id = null) {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = sender === 'user' ? "flex items-start justify-end max-w-[85%] ml-auto" : "flex items-start gap-2 max-w-[85%]";
+  if (id) div.id = id;
+
+  const avatar = sender === 'user' ? '' : `
+    <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+      <span class="material-symbols-outlined text-[12px] text-primary">smart_toy</span>
+    </div>
+  `;
+  const bg = sender === 'user' ? 'bg-primary text-white' : 'bg-base-200 text-base-content';
+
+  div.innerHTML = `
+    ${avatar}
+    <div class="${bg} text-[11px] p-2.5 rounded-lg leading-relaxed shadow-sm">
+      ${esc(text)}
+    </div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+// ============ AI 填充 (自适应样本) ============
+const AI_SAMPLES = {
+  rules:       { title:'灵气逆流潮汐律', rule_type:'物理法则', description:'每逢月圆，天地灵气短暂逆流，低阶修士可借势速进，高阶修士却易受冲击经脉。强弱在此夜暂时易位。', apply_scope:'全界·月圆夜', violate_cost:'高阶强行运功者经脉逆冲，修为倒退' },
+  geography:   { title:'坠星深渊',     location_text:'极北冰原', description:'万年前陨星坠落形成的巨型环形深渊，底部弥漫扭曲空间的星尘，孕育异种矿藏。', danger_level:'极高' },
+  resources:   { title:'九转还魂草',   usage_text:'起死回生 / 顶级药材', description:'生于极阴极煞之地，汲取地脉残魂而生，百年仅熟一株，能活死人肉白骨。', scarcity_level:'极度罕见', cheat_writing:'主角九死一生采回药草救活师姐，让无数觊觎者大跌眼镜。' },
+  factions:    { title:'天机阁',        leader_name:'算无遗', description:'超然物外的古老情报宗门，据传阁中存有预测千古命运的玄机鉴，从不插手世俗纷争。', hierarchy_text:'阁主→四大阁老→天机使', faction_status:'稳定' },
+  professions: { title:'御兽宗契约者', is_system:true, effect_scope:'全界', description:'专注于以兽核同源相契的修行分支，修士与妖兽生命同调。', cheat_writing:'一人双宠，与变异妖兽心灵相通，战场一力破万军。' },
+  monsters:    { title:'极寒冰蚕',      monster_scale:'个体', description:'沉眠于玄冰底部的微型毒虫，剧毒，喷吐出的寒气可封锁法宝灵力。', counter_text:'纯阳真火 / 龙鳞软甲' },
+  chronicle:   { title:'玄阳劫乱',      event_source:'太一仙门旧史', description:'五百年前太一仙门上代宗主走火入魔引降的灭世天劫，波及方圆十万里，死伤无算。', event_era:'开天历前 200 年' }
+};
+
+function aiFillDrawer() {
+  const board = drawerMode==='add' ? document.getElementById('fld-board').value : itemById(currentItemId).board;
+  const btn = document.getElementById('drawer-ai-btn');
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-outlined animate-spin" style="font-size:14px;">progress_activity</span> 生成中…';
+  
+  setTimeout(() => {
+    const sample = AI_SAMPLES[board];
+    BOARD_FIELDS[board].forEach(f => {
+      const el = document.getElementById('fld-'+f.key);
+      if (el && sample[f.key] !== undefined) el.value = sample[f.key];
+      else if (el && f.key==='title') el.value = sample.title;
+    });
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">auto_awesome</span> AI 帮我填';
+    showToast('AI 已成功填充，请审阅后保存！', 'success');
+  }, 800);
+}
+
+function aiFillBinding() {
+  syncBindingDraft();
+  const d = bindingDraft;
+  const candidates = items.filter(i => i.board === d.toBoard && i.id !== d.from);
+  if (candidates.length) {
+    d.to = candidates[Math.floor(Math.random()*candidates.length)].id;
+  }
+  d.strength = parseFloat((0.6 + Math.random()*0.35).toFixed(2));
+  d.tags = ['AI推荐绑定'];
+  showToast('AI 已完成关联与张力推荐参数！', 'success');
+  renderBindingForm();
+}
+
+function triggerGlobalAI() {
+  showToast('AI 正在扫描全界规则与张力完备度...', 'info');
+  setTimeout(() => {
+    const isolated = items.filter(i => bindingsOf(i.id).length === 0);
+    if (isolated.length) {
+      showToast(`检测到 ${isolated.length} 个孤立无关联的条目，易导致剧情割裂，建议建立绑定。`, 'warning');
+    } else {
+      showToast('恭喜！当前世界物理与设定因果完全闭环，无孤立节点。', 'success');
+    }
+  }, 1000);
+}
+
+// ============ 世界概况编辑 ============
+function toggleWorldContextBar() {
+  const bar = document.getElementById('world-context-bar');
+  const icon = document.getElementById('context-toggle-icon');
+  bar.classList.toggle('collapsed');
+  
+  if (bar.classList.contains('collapsed')) {
+    bar.style.height = '48px';
+    bar.style.paddingTop = '12px';
+    bar.style.paddingBottom = '12px';
+    icon.textContent = 'expand_more';
+  } else {
+    bar.style.height = 'auto';
+    bar.style.paddingTop = '16px';
+    bar.style.paddingBottom = '16px';
+    icon.textContent = 'expand_less';
+  }
+}
+
+function editWorldContext() {
+  const name = prompt('世界名称定义：', document.getElementById('world-name-display').textContent);
+  if (name===null) return;
+  const time = prompt('当前纪元与年份定义：', document.getElementById('world-time-display').textContent);
+  if (time===null) return;
+  const desc = prompt('世界底座背景描述：', document.getElementById('world-desc-display').textContent);
+  if (desc===null) return;
+  
+  document.getElementById('world-name-display').textContent = name;
+  document.getElementById('world-time-display').textContent = time;
+  document.getElementById('world-desc-display').textContent = desc;
+  showToast('已同步写回世界背景真值数据', 'success');
+}
+
+// ============ Toast 提示 ============
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  
+  let bg = 'bg-info text-white';
+  let icon = 'info';
+  if (type === 'success') { bg = 'bg-accent text-white'; icon = 'check_circle'; }
+  if (type === 'warning') { bg = 'bg-warning text-base-content'; icon = 'warning'; }
+  if (type === 'error')   { bg = 'bg-error text-white'; icon = 'error'; }
+  
+  el.className = `alert ${bg} shadow-lg py-2 px-3 text-xs flex items-center gap-2 rounded-xl transition-all duration-300 transform translate-y-4 opacity-0`;
+  el.innerHTML = `
+    <span class="material-symbols-outlined text-[16px]">${icon}</span>
+    <span class="font-semibold">${esc(msg)}</span>
+  `;
+  
+  container.appendChild(el);
+  
+  setTimeout(() => {
+    el.classList.remove('translate-y-4', 'opacity-0');
+  }, 10);
+  
+  setTimeout(() => {
+    el.classList.add('translate-y-4', 'opacity-0');
+    setTimeout(() => el.remove(), 300);
+  }, 3500);
+}
+</script>
+<script>
+// TASK3_WORLD_BRIDGE_ACTIVE
+(function(){
+  if(window.TASK3_WORLD_BRIDGE_ACTIVE)return; window.TASK3_WORLD_BRIDGE_ACTIVE=true;
+  function D(){return window.WIZARD_DATA||{};} function esc(s){return String(s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]||c;});}
+  function mount(){var d=D(), ws=d.WORLD_SCHEMA; if(!ws||document.getElementById('v7-setting-layer-tabs'))return; var bar=document.getElementById('world-context-bar')||document.getElementById('main-content'); if(!bar)return; var p=document.createElement('section'); p.id='v7-setting-layer-tabs'; p.className='px-6 py-3 border-b border-base-content/10 bg-base-100/80'; p.innerHTML='<div class="flex items-center justify-between gap-3"><div class="flex gap-2"><button class="btn btn-xs btn-primary" data-layer="initial">初始设定</button><button class="btn btn-xs" data-layer="l1a_generated">未来走向</button></div><div id="v7-world-schema-badges" class="flex flex-wrap gap-1 text-[10px]"></div></div><div id="v7-world-layer-summary" class="mt-2 text-[11px] opacity-70">当前显示初始设定。</div><div id="v7-interlock-warning" class="mt-2 hidden text-[11px] text-error font-semibold"></div>'; bar.insertAdjacentElement('afterend',p);
+    var badges=document.getElementById('v7-world-schema-badges'); badges.innerHTML=Object.keys(ws.boards||{}).map(function(k){var b=ws.boards[k];return '<span class="badge badge-sm badge-ghost">'+esc(k)+''+'</span>';}).join('');
+    p.addEventListener('click',function(e){var b=e.target.closest('[data-layer]'); if(!b)return; document.body.dataset.settingLayer=b.dataset.layer; p.querySelectorAll('[data-layer]').forEach(function(x){x.classList.toggle('btn-primary',x===b);}); document.getElementById('v7-world-layer-summary').innerHTML=b.dataset.layer==='l1a_generated'?'当前显示未来走向。<span class="badge badge-error badge-sm">需更新</span>':'当前显示初始设定。'; document.querySelectorAll('input,textarea,select').forEach(function(x){x.toggleAttribute('readonly',b.dataset.layer==='l1a_generated');});});
+    document.addEventListener('input',function(){var w=document.getElementById('v7-interlock-warning'); var txt=(document.body.innerText||''); var hit=txt.includes('唯一')&&txt.includes('控制'); w.classList.toggle('hidden',!hit); w.textContent=hit?'提示：唯一资源建议只保留一个控制方。':'';});
+    var old=window.openBindingModal; if(typeof old==='function'){window.openBindingModal=function(){old.apply(this,arguments); setTimeout(function(){var box=document.getElementById('binding-form-content'); if(!box)return; var types=ws.BINDING_TYPES; var first=Object.keys(types)[0]; box.insertAdjacentHTML('afterbegin','<div class="p-2 rounded-lg bg-primary/10 text-[11px]">可选绑定：'+esc(Object.keys(types[first]).map(function(k){return k+'→'+types[first][k].join('/')}).join('；'))+'</div>');},0);};}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount); else mount();
+})();
+</script>
+</body>
+</html>

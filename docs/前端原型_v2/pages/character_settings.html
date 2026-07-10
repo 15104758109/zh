@@ -1,0 +1,1722 @@
+﻿<!DOCTYPE html><html lang="zh-CN" data-theme="garden" style="width:100%;height:100%;overflow:hidden;position:relative;"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Character Settings - Cyber-Tech Narrative Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+        <!-- Tailwind CSS & DaisyUI v4 via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="../common/theme.css" rel="stylesheet">
+    <link href="../common/sidebar.css" rel="stylesheet">
+    <script src="../common/theme.js"></script>
+    <script charset="utf-8" src="./new_book_wizard_data.js"></script>
+    <script src="../common/header.js"></script>
+
+
+
+
+
+
+<style>
+        .cyber-border { border: 1px solid var(--color-primary); }
+        .active-card { border-color: var(--color-accent); box-shadow: 0 0 12px oklch(62% 0.194 149.214 / 0.2); }
+        .glow-text { text-shadow: 0 1px 4px var(--color-primary-content); }
+        
+        /* 顶栏随侧栏折叠隐藏 */
+        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
+        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
+        .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
+        .header-tab:hover { opacity: 0.85; }
+        .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        .settings-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-base-300); cursor: pointer; transition: background 0.2s ease; flex-shrink: 0; }
+        .settings-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.2s ease; }
+        .settings-switch.on { background: var(--color-accent); }
+        .settings-switch.on::after { transform: translateX(16px); }
+        .settings-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; cursor: pointer; transition: all 0.15s ease; }
+        .settings-btn:hover { background: var(--color-accent); color: white; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #32353c; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #424754; }
+
+        /* Hide scrollbar for horizontal scrolling area */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-2px) scale(1.05); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+
+    
+        /* Quick Settings Popover */
+        .quick-settings-glass {
+            background: var(--color-base-100, rgba(15, 18, 25, 0.9)) !important;
+            backdrop-3: blur(20px);
+            -webkit-backdrop-3: blur(20px);
+            border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1)) !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Custom Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .4s;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 12px; width: 12px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        input:checked + .toggle-slider { background-color: rgba(77, 142, 255, 0.3); border-color: rgba(77, 142, 255, 0.4); }
+        input:checked + .toggle-slider:before { transform: translateX(16px); background-color: #4d8eff; box-shadow: 0 0 15px rgba(77, 142, 255, 0.6); }
+
+        /* Custom Slider */
+        .custom-range {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+        .custom-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #4d8eff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(77, 142, 255, 0.5);
+            border: 2px solid white;
+        }
+    </style>
+<style data-stitch-cursor="">*{cursor:crosshair!important}[contenteditable="true"]:focus,.cursor-text:focus{cursor:text!important}</style>
+<style data-stitch-scroll-lock="">html,body{overflow:hidden!important}</style>
+<style data-stitch-cursor="">*{cursor:crosshair!important}[contenteditable="true"]:focus,.cursor-text:focus{cursor:text!important}</style>
+<style data-stitch-scroll-lock="">html,body{overflow:hidden!important}</style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="h-screen w-full overflow-hidden flex bg-base-200 selection:bg-primary/30 selection:text-base-content">
+<a href="#main-content" class="skip-link">跳到主内容</a>
+
+<!-- SideNavBar -->
+<!-- SideNavBar -->
+<nav class="sidebar-glass" aria-label="主菜单">
+  <div class="sidebar-brand">
+    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
+    <div class="sidebar-text">
+      <div class="brand-title">纵横</div>
+      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
+    </div>
+  </div>
+  <div class="sidebar-separator" aria-hidden="true"></div>
+  <ul class="menu sidebar-menu" id="sidebarMenu">
+    <li><a href="workbench.html" aria-label="总控设置面板"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
+    <li><a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段" class="active"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
+    <li><a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
+    <li><a href="audit_stage.html" aria-label="审计阶段：正文审计、主编裁决"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
+    <li><a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
+  </ul>
+  <footer class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">U</div>
+      <span class="sidebar-text sidebar-user-name">用户</span>
+    </div>
+  </footer>
+</nav>
+<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
+</button>
+
+<!-- Main Content Wrapper -->
+<div class="main-content" id="main-content">
+
+<!-- TopNavBar -->
+    <!-- TopNavBar -->
+        <!-- TopNavBar -->
+        <!-- TopNavBar -->
+    <header class="header-glass h-16 fixed top-0 right-0  z-[60] flex justify-between items-center px-6 bg-base-100">
+        <div class="flex items-center gap-4 h-full">
+            <nav class="flex h-full items-center ml-2">
+                <!-- 自定义深色标签组 -->
+                <div class="header-tabs">
+                    <a href="world_creator.html" class="header-tab">世界设定</a>
+                    <a href="character_settings.html" class="header-tab active">角色设定</a>
+                    <a href="l1a_settings.html" class="header-tab">L1A 设定</a>
+                </div>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- 当前书籍标识 -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-content/10 text-[11px] font-medium text-base-content/80">
+                <span class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></span>
+                <span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+                <span id="header-book-name"></span>
+            </div>
+            <button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">notifications</span>
+            </button>
+            
+            <!-- 快捷设置齿轮与弹窗 -->
+            <div class="relative flex items-center">
+                <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                </button>
+                <!-- Quick Settings Popover -->
+                <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
+                    <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
+                </div>
+
+                <div class="flex flex-col gap-2 mb-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
+                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
+                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
+                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                    </div>
+                </div>
+                
+                <div class="mt-3 pt-2 border-t border-base-content/5">
+                    <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        应用当前配置
+                    </button>
+                </div>
+            </div>
+            </div>
+            
+            <div class="h-8 w-[1px] bg-base-content/5 mx-1"></div>
+        </div>
+    </header>
+
+<!-- Main Canvas -->
+<main class="flex-1 pt-16 flex flex-col overflow-hidden relative z-10 cyber-grid bg-base-200">
+    <!-- View Mode Toggle -->
+    <div class="px-6 py-sm flex justify-between items-center border-b border-base-content/10 bg-base-200/60 backdrop-blur">
+        <h2 class="font-headline-sm text-body-lg font-bold text-base-content flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">groups</span>
+            核心角色阵列
+        </h2>
+        <div class="flex items-center bg-base-100 rounded border border-base-content/10 p-3">
+            <button class="px-4 py-xs rounded bg-base-300 text-base-content font-label-caps text-label-caps shadow-sm border border-base-content/10 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">visibility</span> 当前设定</button>
+            <button class="px-4 py-xs rounded text-base-content opacity-60 hover:text-base-content font-label-caps text-label-caps flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-[14px]">casino</span>未来设定</button>
+        </div>
+    </div>
+
+<div class="flex-1 overflow-y-auto">
+<!-- Top Panel: Horizontal Character List -->
+<div class="w-full shrink-0 px-gutter pt-gutter pb-gutter">
+    <div id="character-card-list" class="flex gap-4 flex-wrap items-stretch">
+        <!-- 动态渲染角色卡片 -->
+    </div>
+</div>
+<!-- Main Detail Area -->
+<div class="px-gutter pb-6 flex flex-col gap-6">
+<!-- Top Section: Info & Matrices -->
+<div class="flex gap-6 items-start">
+<!-- Left Column: Basic Info + Relationship -->
+<div class="flex flex-col w-[540px] shrink-0 gap-6">
+<!-- Basic Info -->
+<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box p-6 flex flex-col relative overflow-hidden">
+<div id="char-identity-badge" class="absolute top-0 right-0 bg-secondary/10 text-secondary px-3 py-1 rounded-bl-lg font-label-caps text-label-caps border-b border-l border-secondary/30">核心主角</div>
+<h2 class="font-headline-md text-headline-md text-base-content mb-6 border-b border-base-content/10 pb-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">person</span> 角色信息
+</h2>
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-center bg-base-200/50 p-3 rounded-lg border border-base-content/10">
+<span class="text-base-content opacity-60 font-code-sm">姓名</span>
+<span id="char-name-val" class="text-base-content font-bold">李逍遥</span>
+</div>
+<div class="flex justify-between items-center bg-base-200/50 p-3 rounded-lg border border-base-content/10">
+<span class="text-base-content opacity-60 font-code-sm">所属势力</span>
+<select id="char-sect-select" onchange="updateCharSect(this.value)" class="bg-base-100 border border-base-content/10 rounded px-2 py-1 text-xs text-base-content outline-none cursor-pointer">
+</select>
+</div>
+<div class="flex justify-between items-center bg-base-200/50 p-3 rounded-lg border border-base-content/10">
+<span class="text-base-content opacity-60 font-code-sm">职业</span>
+<select id="char-job-select" onchange="updateCharJob(this.value)" class="bg-base-100 border border-base-content/10 rounded px-2 py-1 text-xs text-base-content outline-none cursor-pointer">
+</select>
+</div>
+<div class="flex flex-col gap-1.5 bg-base-200/50 p-3 rounded-lg border border-base-content/10 w-full">
+    <div class="flex justify-between items-center w-full relative">
+        <span class="text-base-content opacity-60 font-code-sm">资源</span>
+        <div class="relative inline-block text-left" id="resource-select-container">
+            <button type="button" onclick="toggleResourceDropdown(event)" class="bg-base-100 border border-base-content/10 rounded px-2 py-1 text-[11px] text-base-content outline-none cursor-pointer flex items-center gap-1 hover:border-white/20 transition-all">
+                <span id="selected-resource-count-text">选择资源</span>
+                <span class="material-symbols-outlined text-[12px] pointer-events-none">arrow_drop_down</span>
+            </button>
+            <div id="resource-dropdown-menu" class="hidden absolute right-0 mt-1 w-56 rounded-lg bg-base-100/95 backdrop-blur border border-base-content/10 shadow-xl z-20 p-2 flex flex-col gap-1">
+                <!-- 动态渲染多选项 -->
+            </div>
+        </div>
+    </div>
+    <div id="char-resource-tags" class="flex flex-wrap gap-1 mt-1 w-full min-h-[20px]">
+        <!-- 选中后增加的标签 -->
+    </div>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-2">
+<div class="bg-base-200/50 p-3 rounded-lg border border-base-content/10 flex flex-col gap-1">
+<span class="text-base-content opacity-60 text-xs">当前状态</span>
+<span id="char-status-val" class="text-secondary font-code-sm flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 活跃，想当大将军</span>
+</div>
+<div class="bg-base-200/50 p-3 rounded-lg border border-base-content/10 flex flex-col gap-1">
+<span class="text-base-content opacity-60 text-xs">当前目标</span>
+<span id="char-target-val" class="text-base-content font-code-sm truncate" title="寻找真相">寻找真相</span>
+</div>
+</div>
+<div class="bg-base-200/50 p-3 rounded-lg border border-base-content/10 flex justify-between items-center mt-2">
+<span class="text-base-content opacity-60 text-xs">人物简介</span>
+<span id="char-desc-val" class="text-base-content text-xs truncate max-w-[200px]" title=""></span>
+</div>
+<!-- 角色冲突源泉（只读预览） -->
+<div class="bg-base-200/50 p-3 rounded-lg border border-base-content/10 mt-2">
+  <div class="flex items-center gap-1.5 mb-2">
+    <span class="text-base-content opacity-60 text-xs font-semibold tracking-wide">⚔ 角色冲突源泉</span>
+    <span class="badge badge-ghost badge-xs opacity-50">预览</span>
+  </div>
+  <div id="char-conflict-source-body" class="flex flex-col gap-2 text-xs">
+    <div class="flex items-start gap-2">
+      <span class="opacity-50 shrink-0">·</span>
+      <span><b class="opacity-80">核心信念：</b><span id="cs-belief" class="opacity-70">待推导</span></span>
+    </div>
+    <div class="flex items-start gap-2">
+      <span class="opacity-50 shrink-0">·</span>
+      <span><b class="opacity-80">驱动欲望：</b><span id="cs-desire" class="opacity-70">待推导</span></span>
+    </div>
+    <div class="flex items-start gap-2">
+      <span class="opacity-50 shrink-0">·</span>
+      <span><b class="opacity-80">本质分歧：</b><span id="cs-divergence" class="opacity-70">待遍历检查角色对立关系后自动推导</span></span>
+    </div>
+  </div>
+  <div class="mt-2 pt-2 border-t border-base-content/5 flex items-center gap-1.5 text-[10px] opacity-40">
+    <span class="material-symbols-outlined text-[10px]">info</span>
+    <span>需哲学/出身/执念/资源绑定完成并遍历检查后自动推导</span>
+  </div>
+</div>
+<div class="mt-4">
+<div class="flex justify-between text-sm mb-2">
+<span class="text-base-content opacity-60">当前压力</span>
+<span id="char-stress-val" class="text-error font-code-sm">7 / 10</span>
+</div>
+<div class="h-2 w-full bg-base-300 rounded-full overflow-hidden">
+<div id="char-stress-bar" class="h-full bg-gradient-to-r from-secondary via-tertiary to-error w-[70%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Relationship Matrix: 关系 Radar -->
+<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box p-6 flex flex-col">
+<h2 class="font-headline-sm text-headline-sm text-base-content mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">hub</span> 关系维度
+<select id="rel-char-selector" onchange="selectRadarChar(this.value)" class="ml-auto bg-base-200 border border-base-content/10 rounded px-2 py-0.5 text-xs text-base-content font-code-sm outline-none cursor-pointer">
+<option value="李逍遥">李逍遥</option>
+<option value="赵灵儿">赵灵儿</option>
+<option value="血灵老祖">血灵老祖</option>
+<option value="林月如">林月如</option>
+<option value="拜月教主">拜月教主</option>
+<option value="阿奴">阿奴</option>
+</select>
+</h2>
+<div class="flex flex-col items-center justify-center relative">
+<div class="relative w-full max-w-[220px]" style="margin:0 auto;">
+<canvas id="relation-radar" class="w-full" style="height:auto;aspect-ratio:11/10;"></canvas>
+</div>
+<div class="flex flex-wrap gap-3 justify-center text-xs mt-2 opacity-80">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-primary"></span>量化关系</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-secondary"></span>结构关系</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Character Layers -->
+<div class="flex-1 flex flex-col gap-6">
+<!-- L0: 哲学前提 -->
+<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box overflow-hidden">
+<div class="flex items-center px-5 py-3.5 cursor-pointer hover:brightness-110 transition-colors bg-tertiary/10" onclick="toggleDrawer('drawer-l0')">
+<span class="material-symbols-outlined text-[18px] text-tertiary">psychology</span>
+<span class="text-sm font-bold text-base-content flex-1 text-center">L0 · 哲学前提</span>
+<span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-l0-icon">expand_more</span>
+</div>
+<div id="drawer-l0" class="px-5 pb-5">
+<table class="w-full text-left border-collapse text-sm">
+<thead class="text-base-content opacity-60 text-xs">
+<tr><th class="pb-2 border-b border-base-content/10">维度</th><th class="pb-2 border-b border-base-content/10 text-center">极左</th><th class="pb-2 border-b border-base-content/10 text-center">值</th><th class="pb-2 border-b border-base-content/10 text-center">极右</th><th class="pb-2 border-b border-base-content/10">状态</th></tr>
+</thead>
+<tbody class="text-base-content">
+<tr class="border-b border-base-content/5"><td class="py-2 text-outline text-xs">困境选择</td><td class="py-2 text-center text-error text-xs">宿命论</td><td id="l0-dilemma-val" class="py-2 text-center text-primary font-code-sm">8</td><td class="py-2 text-center text-primary text-xs">自由意志</td><td id="l0-dilemma-desc" class="py-2 text-xs text-primary">我命由我</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-outline text-xs">价值排序</td><td class="py-2 text-center text-error text-xs">权力至上</td><td id="l0-valueOrder-val" class="py-2 text-center text-secondary font-code-sm">7</td><td class="py-2 text-center text-secondary text-xs">情义为先</td><td id="l0-valueOrder-desc" class="py-2 text-xs text-secondary">情义优先</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-outline text-xs">底层信念</td><td class="py-2 text-center text-error text-xs">人性本恶</td><td id="l0-belief-val" class="py-2 text-center text-primary font-code-sm">6</td><td class="py-2 text-center text-primary text-xs">人性本善</td><td id="l0-belief-desc" class="py-2 text-xs text-base-content">善恶皆存</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-outline text-xs">自由与责任</td><td class="py-2 text-center text-error text-xs">绝对宿命</td><td class="py-2 text-center text-primary font-code-sm">8</td><td class="py-2 text-center text-primary text-xs">绝对自由</td><td class="py-2 text-xs text-primary">我命由我</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-outline text-xs">存在与虚无</td><td class="py-2 text-center text-error text-xs">虚无主义</td><td class="py-2 text-center text-primary font-code-sm">6</td><td class="py-2 text-center text-primary text-xs">存在主义</td><td class="py-2 text-xs text-base-content">寻找意义</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-outline text-xs">自欺与真诚</td><td class="py-2 text-center text-error text-xs">自欺欺人</td><td class="py-2 text-center text-secondary font-code-sm">9</td><td class="py-2 text-center text-secondary text-xs">绝对真诚</td><td class="py-2 text-xs text-secondary">追求真相</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-outline text-xs">他者与注视</td><td class="py-2 text-center text-error text-xs">他人即地狱</td><td class="py-2 text-center text-base-content opacity-60 font-code-sm">4</td><td class="py-2 text-center text-primary text-xs">共情与爱</td><td class="py-2 text-xs text-base-content opacity-60">防备心理</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-outline text-xs">本质与先验</td><td class="py-2 text-center text-error text-xs">本质先于存在</td><td class="py-2 text-center text-primary font-code-sm">7</td><td class="py-2 text-center text-primary text-xs">存在先于本质</td><td class="py-2 text-xs text-base-content">打破常规</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-outline text-xs">行动与绝望</td><td class="py-2 text-center text-error text-xs">陷入绝望</td><td class="py-2 text-center text-secondary font-code-sm">8</td><td class="py-2 text-center text-secondary text-xs">在绝望中行动</td><td class="py-2 text-xs text-secondary">逆境反击</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-outline text-xs">事实性与超越性</td><td class="py-2 text-center text-error text-xs">屈服环境</td><td class="py-2 text-center text-primary font-code-sm">6</td><td class="py-2 text-center text-primary text-xs">超越环境</td><td class="py-2 text-xs text-base-content">适应并改变</td></tr>
+<tr><td class="py-2 text-outline text-xs">介入与旁观</td><td class="py-2 text-center text-error text-xs">冷眼旁观</td><td class="py-2 text-center text-primary font-code-sm">9</td><td class="py-2 text-center text-primary text-xs">积极介入</td><td class="py-2 text-xs text-primary">挺身而出</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- L1: 驱动层 -->
+<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box overflow-hidden">
+<div class="flex items-center px-5 py-3.5 cursor-pointer hover:brightness-110 transition-colors bg-primary/10" onclick="toggleDrawer('drawer-l1')">
+<span class="material-symbols-outlined text-[18px] text-primary">bolt</span>
+<span class="text-sm font-bold text-base-content flex-1 text-center">L1 · 驱动层</span>
+<span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-l1-icon">expand_more</span>
+</div>
+<div id="drawer-l1" class="px-5 pb-5">
+<div class="grid grid-cols-2 gap-2 text-xs">
+<div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">内驱动</span><span id="l1-innerDrive" class="text-base-content"></span></div>
+<div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">外驱动</span><span id="l1-outerDrive" class="text-base-content"></span></div>
+<div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">欲望</span><span id="l1-desire" class="text-primary"></span></div>
+<div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">恐惧</span><span id="l1-fear" class="text-error"></span></div>
+<div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">羞耻</span><span id="l1-shame" class="text-tertiary"></span></div>
+<div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">执念</span><span id="l1-obsession" class="text-secondary"></span></div>
+</div>
+</div>
+</div>
+<!-- L2: 关系层 -->
+<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box overflow-hidden">
+<div class="flex items-center px-5 py-3.5 cursor-pointer hover:brightness-110 transition-colors bg-secondary/10" onclick="toggleDrawer('drawer-l2')">
+<span class="material-symbols-outlined text-[18px] text-secondary">group</span>
+<span class="text-sm font-bold text-base-content flex-1 text-center">L2 · 关系层</span>
+<span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-l2-icon">expand_more</span>
+</div>
+<div id="drawer-l2" class="px-5 pb-5">
+<div class="space-y-2 text-xs">
+<div class="bg-primary/5 p-2 rounded border border-primary/20">
+<div class="text-primary font-medium mb-1.5 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">favorite</span> 可信赖的朋友</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between"><span class="text-base-content">赵灵儿</span><span class="text-primary font-code-sm">信任 8 · 依赖 6</span></div>
+<div class="flex items-center justify-between"><span class="text-base-content">阿奴</span><span class="text-primary font-code-sm">信任 6 · 依赖 3</span></div>
+</div>
+</div>
+<div class="bg-error/5 p-2 rounded border border-error/20">
+<div class="text-error font-medium mb-1.5 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">swords</span> 互相利用的敌人</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between"><span class="text-base-content">血灵老祖</span><span class="text-error font-code-sm">敌意 9 · 戒备 7</span></div>
+<div class="flex items-center justify-between"><span class="text-base-content">拜月教主</span><span class="text-error font-code-sm">敌意 8 · 利用 4</span></div>
+</div>
+</div>
+<div class="bg-base-200/50 p-2 rounded border border-base-content/10">
+<div class="text-base-content opacity-60 font-medium mb-1.5 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">balance</span> 复杂关系</div>
+<div class="flex items-center justify-between"><span class="text-base-content">林月如</span><span class="text-base-content opacity-60 font-code-sm">信任 5 · 误解 3</span></div>
+</div>
+</div>
+</div>
+</div>
+<!-- L3: 事件记忆层 -->
+<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box overflow-hidden">
+<div class="flex items-center px-5 py-3.5 cursor-pointer hover:brightness-110 transition-colors bg-base-100/50" onclick="toggleDrawer('drawer-l3')">
+<span class="material-symbols-outlined text-[18px] text-base-content opacity-60">history_edu</span>
+<span class="text-sm font-bold text-base-content flex-1 text-center">L3 · 事件记忆层</span>
+<span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-l3-icon">expand_more</span>
+</div>
+<div id="drawer-l3" class="px-5 pb-5">
+<div class="space-y-1.5 text-xs">
+<div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">关键事件</span><span id="l3-keyEvent" class="text-base-content"></span></div>
+<div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">记忆片段</span><span id="l3-memoryFragment" class="text-base-content"></span></div>
+<div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">触发点</span><span id="l3-trigger" class="text-error"></span></div>
+<div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">近期变化</span><span id="l3-recentChange" class="text-secondary"></span></div>
+</div>
+</div>
+</div>
+<!-- 对话偏好 -->
+<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box overflow-hidden">
+<div class="flex items-center px-5 py-3.5 cursor-pointer hover:brightness-110 transition-colors bg-base-100/30" onclick="toggleDrawer('drawer-dialogue')">
+<span class="material-symbols-outlined text-[18px] text-primary">chat_bubble</span>
+<span class="text-sm font-bold text-base-content flex-1 text-center">对话偏好</span>
+<span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-dialogue-icon">expand_more</span>
+</div>
+<div id="drawer-dialogue" class="px-5 pb-5">
+<table class="w-full text-left border-collapse text-xs">
+<thead class="text-base-content opacity-60">
+<tr><th class="pb-2 border-b border-base-content/10">功能类型</th><th class="pb-2 border-b border-base-content/10">说明</th></tr>
+</thead>
+<tbody class="text-base-content">
+<tr class="border-b border-base-content/5"><td class="py-2 text-primary">局势变化</td><td class="py-2 text-base-content opacity-60">对白改变当前局势/选择集</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-secondary">人格暴露</td><td class="py-2 text-base-content opacity-60">对白暴露角色价值排序/性格基线</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-tertiary">关系温度</td><td class="py-2 text-base-content opacity-60">对白改变/揭示关系亲密度/信任度</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-outline">信息遮蔽</td><td class="py-2 text-base-content opacity-60">对白控制信息流（说半句/转移/回避/误导）</td></tr>
+<tr class="border-b border-base-content/5"><td class="py-2 text-error">压力升级</td><td class="py-2 text-base-content opacity-60">对白触发对方压力阈值</td></tr>
+<tr><td class="py-2 text-base-content">情绪防线表现</td><td class="py-2 text-base-content opacity-60">对白展现合理化自我安慰/防线击穿/回调</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Section: Experiment Lab -->
+<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box p-6 shrink-0 flex flex-col mt-auto">
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-headline-sm text-headline-sm text-base-content flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">science</span> 行为实验
+                        </h2>
+<div class="flex gap-2 w-1/2">
+<input class="flex-1 bg-base-200 border border-base-content/10 rounded px-3 py-1.5 text-base-content font-body-md focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all" placeholder="输入一个触发事件 (如: 发现掌门是内鬼)" type="text">
+<button class="bg-primary text-primary-content px-4 py-1.5 rounded font-label-caps text-label-caps font-bold hover:bg-primary-fixed transition-colors flex items-center gap-1 whitespace-nowrap">
+<span class="material-symbols-outlined text-sm">play_arrow</span> 开始实验
+                            </button>
+</div>
+</div>
+<div class="grid grid-cols-[150px_1fr_1fr] gap-px bg-base-content/10 border border-base-content/10 rounded overflow-hidden">
+<!-- Header Row -->
+<div class="bg-base-200 p-2.5 text-base-content opacity-60 font-label-caps text-label-caps text-center">生成内容</div>
+<div class="bg-base-200 p-2.5 text-base-content opacity-60 font-label-caps text-label-caps text-center border-l border-base-content/10">生成区</div>
+<div class="bg-base-200 p-2.5 text-base-content opacity-60 font-label-caps text-label-caps text-center border-l border-base-content/10">初始设定对照区</div>
+<!-- Row 1 -->
+<div class="bg-base-200/60 p-3 text-base-content opacity-60 font-code-sm flex items-center justify-end border-t border-base-content/10">关联记忆</div>
+<div class="bg-base-200/80 p-3 text-base-content font-body-md border-t border-l border-base-content/10">
+                            等待输入...
+                        </div>
+<div class="bg-base-200/80 p-3 text-outline font-body-md border-t border-l border-base-content/10 italic">
+                            基于当前设定自动匹配
+                        </div>
+<!-- Row 2 -->
+<div class="bg-base-200/60 p-3 text-base-content opacity-60 font-code-sm flex items-center justify-end border-t border-base-content/10">心理活动</div>
+<div class="bg-base-200/80 p-3 text-base-content font-body-md border-t border-l border-base-content/10">
+                            等待输入...
+                        </div>
+<div class="bg-base-200/80 p-3 text-outline font-body-md border-t border-l border-base-content/10 italic">
+                            基于层级设定推演
+                        </div>
+<!-- Row 3 -->
+<div class="bg-base-200/60 p-3 text-base-content opacity-60 font-code-sm flex items-center justify-end border-t border-base-content/10">可能的交互</div>
+<div class="bg-base-200/80 p-3 text-base-content font-body-md border-t border-l border-base-content/10">
+                            等待输入...
+                        </div>
+<div class="bg-base-200/80 p-3 text-outline font-body-md border-t border-l border-base-content/10 italic">
+                            预测角色反应
+                        </div>
+<!-- Row 4 -->
+<div class="bg-base-200/60 p-3 text-base-content opacity-60 font-code-sm flex items-center justify-end border-t border-base-content/10">最终抉择倾向</div>
+<div class="bg-base-200/80 p-3 text-base-content font-body-md border-t border-l border-base-content/10">
+                            等待输入...
+                        </div>
+<div class="bg-base-200/80 p-3 text-outline font-body-md border-t border-l border-base-content/10 italic">
+                            输出行动概率模型
+                        </div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+
+
+<script>
+    // 侧边栏折叠
+
+    // 快速配置面板切换
+    
+
+
+
+    // 抽屉管理折叠切换
+    function toggleDrawer(id) {
+        const allDrawers = ['drawer-l0','drawer-l1','drawer-l2','drawer-l3','drawer-dialogue'];
+        const target = document.getElementById(id);
+        const targetIcon = document.getElementById(id + '-icon');
+        if (!target) return;
+        const isOpen = target.style.maxHeight && target.style.maxHeight !== '0px';
+        allDrawers.forEach(function(did){
+            const el = document.getElementById(did);
+            const icon = document.getElementById(did + '-icon');
+            if (!el || !icon) return;
+            if (did === id && !isOpen) {
+                el.style.maxHeight = el.scrollHeight + 'px';
+                el.style.overflow = 'visible';
+                el.style.paddingTop = '';
+                el.style.paddingBottom = '';
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                el.style.maxHeight = '0px';
+                el.style.overflow = 'hidden';
+                el.style.paddingTop = '0';
+                el.style.paddingBottom = '0';
+                icon.style.transform = 'rotate(-90deg)';
+            }
+        });
+    }
+
+    // ===================================================
+    // 🚀 window.characterSettings 全局状态驱动引擎
+    // ===================================================
+
+    // 默认出场角色数据列表
+    window.characterSettings = [
+        {
+            name: "李逍遥",
+            identity: "核心主角",
+            gender: "男性",
+            stress: 7,
+            resource: "三尺青锋剑",
+            personalities: ["冷静孤傲", "坚韧不拔"],
+            bindLaw: "rules:灵气赤字",
+            sect: "青云门",
+            status: "活跃，想当大将军",
+            desc: "青云门弟子。性格沉稳冷酷，在灵气枯竭的末法时代，为寻求宗门生路而独自负剑下山。",
+            l0: {
+                dilemma: { val: "自由意志", desc: "誓要打破宿命枷锁" },
+                valueOrder: { val: "情义为先", desc: "视同门生死高于一切权力" },
+                belief: { val: "人性本善", desc: "相信万物皆有灵，恶人亦可渡" }
+            },
+            l1: {
+                innerDrive: "追寻父母失踪的真相",
+                outerDrive: "振兴衰落的青云门",
+                desire: "御剑乘风的绝对自由",
+                fear: "眼睁睁看着身边重要之人离去",
+                shame: "曾因实力弱小无法保护外门同门",
+                obsession: "查明覆灭山村的幕后黑手"
+            },
+            l2: {
+                worldBinding: "绑定规则：灵气赤字。在此法则下施展剑招会加倍消耗心神。"
+            },
+            l3: {
+                relations: {
+                    "赵灵儿": { trust: 9, depend: 8, hostility: 0, evidence: "十年前仙灵岛赠药之恩，与一路上同生共死的羁绊。" },
+                    "血灵老祖": { trust: 0, depend: 0, hostility: 10, evidence: "此魔屠戮青云门外门弟子，是不共戴天之仇。" }
+                }
+            },
+            knowledge: {
+                confirmed: ["赵灵儿是女娲后裔", "拜月教在暗中收集五灵珠"],
+                unknown: ["父母失踪前去过的无底深渊位置"],
+                wrong: ["误以为血灵老祖是整起事件的元凶（实际只是牵线木偶）"],
+                doubt: ["合理怀疑门派内部长老有内奸"]
+            },
+            memory: {
+                source: ["童年在余杭客栈度过的无忧时光"],
+                active: ["在青云山深处遭遇神秘黑衣人袭杀"],
+                conflict: ["赵灵儿失踪前留下的绝笔信与其之前誓言不符"],
+                support: ["酒剑仙在醉酒时传授的御剑术真诀"]
+            }
+        },
+        {
+            name: "赵灵儿",
+            identity: "重要配角",
+            gender: "女性",
+            stress: 4,
+            resource: "女娲神杖",
+            personalities: ["机警过人", "热烈坦率"],
+            bindLaw: "geography:仙灵岛",
+            sect: "仙灵岛",
+            status: "活跃，想当大将军",
+            desc: "身世神秘的少女，居住在仙灵岛。生性善良，却肩负着沉重的宿命。",
+            l0: {
+                dilemma: { val: "宿命论", desc: "默默承受女娲后裔拯救苍生的宿命" },
+                valueOrder: { val: "情义为先", desc: "为了保护逍遥哥哥和子民愿意牺牲自己" },
+                belief: { val: "人性本善", desc: "认为众生皆苦，不忍看任何生灵涂炭" }
+            },
+            l1: {
+                innerDrive: "寻找自己身世的起源",
+                outerDrive: "履行女娲后裔庇佑子民的责任",
+                desire: "像普通少女一样和逍遥过平静生活",
+                fear: "宿命反噬导致爱人受到伤害",
+                shame: "无法控制体内暴走的神力",
+                obsession: "镇压即将苏醒的上古水魔兽"
+            },
+            l2: {
+                worldBinding: "绑定地理：仙灵岛。在仙灵岛水脉加持下，神力恢复速度加倍。"
+            },
+            l3: {
+                relations: {
+                    "李逍遥": { trust: 10, depend: 9, hostility: 0, evidence: "余杭相遇并蒙他相救，认定他是此生唯一的依靠。" },
+                    "血灵老祖": { trust: 0, depend: 0, hostility: 10, evidence: "屠杀仙灵岛众人，乃是彻头彻尾的仇人。" }
+                }
+            },
+            knowledge: {
+                confirmed: ["五灵珠中水灵珠在母亲留下的神像中"],
+                unknown: ["母亲当年的真实死因"],
+                wrong: ["曾以为苗疆子民都痛恨女娲一脉"],
+                doubt: ["合理怀疑姥姥的伤势是中毒而非自然衰老"]
+            },
+            memory: {
+                source: ["姥姥在水月宫传授道法的岁月"],
+                active: ["被迫逃离仙灵岛时的漫天火光"],
+                conflict: ["苗疆长老对女娲的态度前后矛盾"],
+                support: ["体内流淌的女娲神血是最终的力量源泉"]
+            }
+        },
+        {
+            name: "血灵老祖",
+            identity: "反派敌对",
+            gender: "非人类",
+            stress: 9,
+            resource: "万魂血煞幡",
+            personalities: ["腹黑深沉", "冷静孤傲"],
+            bindLaw: "rules:因果契约",
+            sect: "万魔窟",
+            status: "活跃，想当大将军",
+            desc: "血煞教长老，修炼血系功法的魔头。行事狠辣，为了复活魔尊不择手段。",
+            l0: {
+                dilemma: { val: "宿命论", desc: "认为天道不公，唯有杀戮方是魔道真理" },
+                valueOrder: { val: "权力至上", desc: "力量才是一切，弱者只配作为血食" },
+                belief: { val: "人性本恶", desc: "世人皆虚伪自私，唯有魔道坦荡" }
+            },
+            l1: {
+                innerDrive: "突破血海神功的最高境界",
+                outerDrive: "奉命复活魔尊",
+                desire: "掌控整界生灵的生死大权",
+                fear: "寿元将尽且神魂俱灭",
+                shame: "百年前被青云门祖师一剑削去半身",
+                obsession: "用十万修士精血炼制万魂幡"
+            },
+            l2: {
+                worldBinding: "绑定规则：因果契约。利用因果律诅咒对其仇敌施加持续的血毒伤害。"
+            },
+            l3: {
+                relations: {
+                    "李逍遥": { trust: 0, depend: 0, hostility: 10, evidence: "此子屡次破坏本座血祭大典，必将其抽魂炼魄。" },
+                    "赵灵儿": { trust: 0, depend: 0, hostility: 9, evidence: "她是复活魔尊必不可少的祭品，极其防备其血脉觉醒。" }
+                }
+            },
+            knowledge: {
+                confirmed: ["青云门护山大阵的阵眼所在"],
+                unknown: ["魔尊主魂目前被封印的具体维度"],
+                wrong: ["以为自己掌握了血煞教的绝对控制权"],
+                doubt: ["合理怀疑旁人对自己忠诚的真实程度"]
+            },
+            memory: {
+                source: ["在万尸谷中吞噬腐尸苟活的魔道起点"],
+                active: ["正在密室中凝聚十万怨魂"],
+                conflict: ["教主赐予的圣药中似乎隐藏着微小蛊虫"],
+                support: ["与魔界意志沟通得到的毁灭印记"]
+            }
+        }
+    ];
+
+    function wizardCharacterSettings() {
+        const source = window.NEW_BOOK_WIZARD_DATA;
+        const stages = source && Array.isArray(source.stages) ? source.stages : [];
+        const charStep = stages.find(s => s.key === "characters");
+        const worldStep = stages.find(s => s.key === "world_settings");
+        if (!charStep || !Array.isArray(charStep.characters)) return null;
+
+        const cards = worldStep && Array.isArray(worldStep.cards) ? worldStep.cards : [];
+        const titleById = (id) => {
+            const card = cards.find(c => c.id === id);
+            return card ? (card.title || card.item_name || id) : id;
+        };
+        const roleLabel = (char) => {
+            if (char.role) return char.role;
+            if (char.char_type === "protagonist") return "核心主角";
+            if (char.char_type === "antagonist") return "反派敌对";
+            if (char.char_type === "support") return "重要配角";
+            return "常驻NPC";
+        };
+        const genderLabel = (gender) => String(gender || "").includes("♀") ? "女性" : (String(gender || "").includes("♂") ? "男性" : "非人类");
+
+        return charStep.characters.map((char) => {
+            const resources = (char.bindRes || []).map(titleById);
+            const forces = (char.bindForce || []).map(titleById);
+            const jobs = (char.bindJob || []).map(titleById);
+            const relations = {};
+            (charStep.characters || []).forEach((other) => {
+                if (other.id !== char.id) relations[other.name] = { trust: 5, depend: 5, hostility: 0, evidence: "由新书向导角色关系初始化。" };
+            });
+            return {
+                id: char.id,
+                name: char.name || "未命名角色",
+                identity: roleLabel(char),
+                gender: genderLabel(char.gender),
+                age: char.age || "",
+                stress: Math.max(1, Math.min(10, Math.round(((char.arc && char.arc.progress) || 50) / 10))),
+                resource: resources.join(", "),
+                bindJob: jobs,
+                bindForce: forces,
+                sect: forces[0] || "未绑定势力",
+                status: (char.arc && char.arc.direction) || "活跃",
+                desc: char.background || char.bio || "暂无简介",
+                personalities: char.traitTags || [],
+                bindLaw: resources[0] ? `resources:${resources[0]}` : "",
+                worldBinding: [
+                    resources.length ? `资源：${resources.join("、")}` : "",
+                    jobs.length ? `职业：${jobs.join("、")}` : "",
+                    forces.length ? `势力：${forces.join("、")}` : ""
+                ].filter(Boolean).join("；") || "暂无绑定。",
+                l0: {
+                    dilemma: { val: "自由意志", desc: (char.arc && char.arc.oneSentence) || "由角色弧光推导" },
+                    valueOrder: { val: "情义为先", desc: (char.arc && char.arc.desire) || "由角色目标推导" },
+                    belief: { val: "人性本善", desc: "由角色哲学层初始化" }
+                },
+                l1: {
+                    innerDrive: (char.arc && char.arc.desire) || "暂无内驱动",
+                    outerDrive: forces.length ? `受${forces.join("、")}牵引` : "暂无外驱动",
+                    desire: (char.arc && char.arc.desire) || "暂无欲望",
+                    fear: "失去关键绑定资源",
+                    shame: "未能完成角色承诺",
+                    obsession: char.bio || (char.arc && char.arc.arcDesc) || "暂无执念"
+                },
+                l3: { relations },
+                memory: {
+                    active: [(char.arc && char.arc.arcDesc) || "暂无关键事件"],
+                    source: [char.background || "暂无记忆片段"],
+                    conflict: [(char.arc && char.arc.oneSentence) || "暂无明确触发点"],
+                    support: ["由新书向导同步"]
+                },
+                knowledge: {
+                    confirmed: ["角色基础设定已同步"],
+                    unknown: ["后续剧情信息待生成"],
+                    wrong: [],
+                    doubt: []
+                }
+            };
+        });
+    }
+
+    let activeCharIndex = 0;
+    const CHARACTER_STORAGE_KEY = "characterSettingsV7Wizard";
+    const defaultPersonalityPool = ["冷静孤傲", "机警过人", "傲娇嘴硬", "热烈坦率", "腹黑深沉", "坚韧不拔", "散漫自由", "侠骨柔情", "野心勃勃"];
+
+    function loadSavedData() {
+        const wizardSaved = localStorage.getItem("NEW_BOOK_CHAR_STATE_V2");
+        const stored = localStorage.getItem(CHARACTER_STORAGE_KEY);
+        if (wizardSaved) {
+            try {
+                const parsed = JSON.parse(wizardSaved);
+                if (parsed && Array.isArray(parsed.characters)) {
+                    const source = window.NEW_BOOK_WIZARD_DATA;
+                    const charStep = source && source.stages && source.stages.find(s => s.key === "characters");
+                    if (charStep) charStep.characters = parsed.characters;
+                    const mapped = wizardCharacterSettings();
+                    if (mapped) window.characterSettings = mapped;
+                    return;
+                }
+            } catch(e) {
+                console.error("加载新书角色状态错误: ", e);
+            }
+        }
+        if (stored) {
+            try {
+                window.characterSettings = JSON.parse(stored);
+                return;
+            } catch(e) {
+                console.error("加载角色数据错误: ", e);
+            }
+        }
+        const mapped = wizardCharacterSettings();
+        if (mapped) window.characterSettings = mapped;
+    }
+
+    function saveAllData() {
+        syncWizardCharacterState();
+        localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(window.characterSettings));
+        localStorage.setItem('characterSettings', JSON.stringify(window.characterSettings));
+    }
+
+    function syncWizardCharacterState() {
+        const source = window.NEW_BOOK_WIZARD_DATA;
+        const charStep = source && source.stages && source.stages.find(s => s.key === "characters");
+        if (!charStep || !Array.isArray(charStep.characters)) return;
+        const worldStep = source && source.stages && source.stages.find(s => s.key === "world_settings");
+        const worldCards = worldStep && Array.isArray(worldStep.cards) ? worldStep.cards : [];
+        const idsByTitle = (names, typeNames) => {
+            const list = Array.isArray(names) ? names : [];
+            return list.map(name => {
+                const card = worldCards.find(item => typeNames.includes(item.category || item.board_type) && (item.title === name || item.item_name === name || item.id === name));
+                return card ? card.id : name;
+            }).filter(Boolean);
+        };
+        const nextCharacters = charStep.characters.map((char) => {
+            const current = window.characterSettings.find(item => item.id === char.id || item.name === char.name);
+            if (!current) return char;
+            const resources = current.resource ? current.resource.split(',').map(r => r.trim()).filter(Boolean) : [];
+            return {
+                ...char,
+                name: current.name || char.name,
+                role: current.identity || char.role,
+                age: current.age ?? char.age ?? "",
+                background: current.desc || char.background || "",
+                traitTags: current.personalities || char.traitTags || [],
+                bindRes: idsByTitle(resources, ["资源"]),
+                bindForce: idsByTitle(current.bindForce || (current.sect ? [current.sect] : []), ["势力"]),
+                bindJob: idsByTitle(current.bindJob || [], ["职业", "职业/超能"])
+            };
+        });
+        localStorage.setItem("NEW_BOOK_CHAR_STATE_V2", JSON.stringify({ characters: nextCharacters, activeCharIndex }));
+    }
+
+    // 动态渲染角色卡片阵列
+    function renderCharacterCards() {
+        const listContainer = document.getElementById('character-card-list');
+        if (!listContainer) return;
+        listContainer.innerHTML = "";
+
+        window.characterSettings.forEach((char, index) => {
+            const isActive = index === activeCharIndex;
+            let badgeColor = "bg-primary text-base-content";
+            let shortIdentity = "配";
+            if (char.identity === "核心主角") { badgeColor = "bg-secondary text-success-content"; shortIdentity = "主"; }
+            else if (char.identity === "反派敌对") { badgeColor = "bg-error text-error-content"; shortIdentity = "反"; }
+            else if (char.identity === "常驻NPC") { badgeColor = "bg-base-300 text-base-content opacity-85"; shortIdentity = "NPC"; }
+
+            // 压力分值展现
+            const stressText = `压: ${char.stress || 0}/10`;
+            const stressPercent = Math.min(100, Math.max(0, (char.stress || 0) * 10));
+
+            const card = document.createElement('div');
+            card.className = `w-64 bg-base-100 border border-base-content/5 rounded-2xl p-5 flex gap-3 cursor-pointer transition-all relative shrink-0 ${isActive ? 'active-card' : 'border-transparent hover:border-base-content/10 shadow-sm'}`;
+            card.onclick = () => {
+                activeCharIndex = index;
+                window.activeCharIndex = activeCharIndex;
+                renderCharacterCards();
+                refreshCharDetail();
+            };
+
+            card.innerHTML = `
+                <div class="w-16 h-16 rounded bg-gradient-to-br from-indigo-500/20 to-purple-600/30 flex items-center justify-center text-base-content text-xl font-bold border border-base-content/10 shrink-0 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                    <span class="relative z-10">${char.name.charAt(0)}</span>
+                    <div class="absolute bottom-0 right-0 ${badgeColor} text-[9px] font-bold px-1 rounded-tl select-none cursor-pointer" onclick="toggleCardIdentity(${index}, event)">${shortIdentity}</div>
+                </div>
+                <div class="flex-1 min-w-0 flex flex-col justify-between">
+                    <div class="flex justify-between items-start">
+                        <h3 class="text-xs font-bold text-base-content truncate glow-text">${char.name}</h3>
+                        <button onclick="deleteCharacter(${index}, event)" class="text-base-content opacity-50 hover:text-error transition-colors">
+                            <span class="material-symbols-outlined text-[14px]">delete</span>
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-base-content opacity-70 truncate">${char.resource || '无特殊资源'}</p>
+                    <div class="flex flex-col gap-1 mt-1">
+                        <div class="flex justify-between text-[9px] text-base-content opacity-70">
+                            <span>${char.personalities[0] || '平凡'}</span>
+                            <span>${stressText}</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-neutral/5 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-secondary to-error" style="width: ${stressPercent}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            listContainer.appendChild(card);
+        });
+
+        // 增加“AI快速孕育新人物”按钮卡槽
+        const addCard = document.createElement('div');
+        addCard.className = "w-64 bg-base-content/20 border border-dashed border-base-content/10 rounded-2xl p-5 flex items-center justify-center text-primary opacity-60 opacity-80 shrink-0 cursor-pointer hover:border-primary hover:text-primary hover:opacity-100 hover:bg-base-content/5 transition-all";
+        addCard.onclick = spawnCharacterViaAi;
+        addCard.innerHTML = `
+            <div class="flex flex-col items-center gap-1">
+                <span class="material-symbols-outlined text-[24px] animate-pulse">add_circle</span>
+                <span class="text-[10px] font-bold tracking-wider">AI快速孕育新人物</span>
+            </div>
+        `;
+        listContainer.appendChild(addCard);
+    }
+
+    // 快速切换卡片上的身份定位属性
+    function toggleCardIdentity(index, event) {
+        event.stopPropagation();
+        const char = window.characterSettings[index];
+        if (!char) return;
+        const idMap = ["核心主角", "重要配角", "反派敌对", "常驻NPC"];
+        let currIdx = idMap.indexOf(char.identity);
+        currIdx = (currIdx + 1) % idMap.length;
+        char.identity = idMap[currIdx];
+        saveAllData();
+        renderCharacterCards();
+        if (index === activeCharIndex) {
+            refreshCharDetail();
+        }
+    }
+
+    // 删除角色
+    function deleteCharacter(index, event) {
+        event.stopPropagation();
+        const char = window.characterSettings[index];
+        if (!char) return;
+        if (confirm(`确认物理擦除角色 [${char.name}] 的全部本体设定及记忆证据吗？`)) {
+            // 清理其他人对他的关系
+            window.characterSettings.forEach(c => {
+                if (c.l3 && c.l3.relations && c.l3.relations[char.name]) {
+                    delete c.l3.relations[char.name];
+                }
+            });
+            window.characterSettings.splice(index, 1);
+            if (activeCharIndex >= window.characterSettings.length) {
+                activeCharIndex = Math.max(0, window.characterSettings.length - 1);
+            }
+            saveAllData();
+            renderCharacterCards();
+            refreshCharDetail();
+        }
+    }
+
+    // AI孕育新人物
+    function spawnCharacterViaAi() {
+        const listNames = ["姬如雪", "莫问天", "独孤一剑", "林玄机4", "沈妙音", "风无极", "白骨真君", "妙手神医", "紫云仙子", "冷无双"];
+        const randomName = listNames[Math.floor(Math.random() * listNames.length)] + (window.characterSettings.length + 1);
+        const randomIdentity = ["核心主角", "重要配角", "反派敌对", "常驻NPC"][Math.floor(Math.random() * 4)];
+        const randomGender = ["男性", "女性", "非人类"][Math.floor(Math.random() * 3)];
+        const randomStress = Math.floor(Math.random() * 10) + 1;
+        const resourcePool = resourceOptions.map(opt => opt.name);
+        const randomResource = resourcePool.length ? resourcePool[Math.floor(Math.random() * resourcePool.length)] : "";
+        const forcePool = wizardSelectOptions(["势力"]).map(opt => opt.name);
+        const randomSect = forcePool.length ? forcePool[Math.floor(Math.random() * forcePool.length)] : "";
+        const randomDesc = `神秘修行者，来历讳莫如深。行事随心所欲，近期在各大灵矿脉附近现身，其身负绝学不可小觑。`;
+        
+        // 随机特质
+        const allTraits = ["冷静孤傲", "机警过人", "傲娇嘴硬", "热烈坦率", "腹黑深沉", "坚韧不拔", "散漫自由"];
+        const personalities = [allTraits[Math.floor(Math.random() * allTraits.length)], allTraits[Math.floor(Math.random() * allTraits.length)]];
+        
+        const newChar = {
+            name: randomName,
+            identity: randomIdentity,
+            gender: randomGender,
+            stress: randomStress,
+            resource: randomResource,
+            sect: randomSect,
+            bindForce: randomSect ? [randomSect] : [],
+            status: "活跃，想当大将军",
+            personalities: Array.from(new Set(personalities)),
+            bindLaw: "rules:灵气赤字",
+            desc: randomDesc,
+            l0: {
+                dilemma: { val: "中立", desc: "对待天地规则抱持审视态度" },
+                valueOrder: { val: "中立", desc: "平衡自我提升与人际交往" },
+                belief: { val: "中立", desc: "不轻信他人亦不作无端猜忌" }
+            },
+            l1: {
+                innerDrive: "摸索并掌握大自然运转的核心规律",
+                outerDrive: "游历各方，探查天地变局",
+                desire: "在这场末法之灾中自保并寻求飞升",
+                fear: "沦为高阶修士权力博弈的弃子",
+                shame: "往昔的决策失误导致门派基业受损",
+                obsession: "寻找传说中可打破灵力屏障的至纯法力点"
+            },
+            l2: {
+                worldBinding: `受到灵气赤字法则的影响，产生相应的防御加持或灵力损耗表现。`
+            },
+            l3: {
+                relations: {}
+            },
+            knowledge: {
+                confirmed: ["此界正在发生灵气枯竭事实"],
+                unknown: ["天变即将完全合拢的准确倒计时"],
+                wrong: ["误认为修行资源彻底断绝"],
+                doubt: ["怀疑某些隐世长老在暗中开启献祭大阵"]
+            },
+            memory: {
+                source: ["在残破仙府中继承部分上古传承的起点"],
+                active: ["在此城中四处打探拜月教动向"],
+                conflict: ["典籍关于天裂缝隙的记载与肉眼观测多有出入"],
+                support: ["所佩戴的玉坠能屏蔽一切精神干扰"]
+            }
+        };
+        
+        // 双向默认关系织网
+        window.characterSettings.forEach(c => {
+            newChar.l3.relations[c.name] = { trust: 5, depend: 3, hostility: 0, evidence: "首次碰面，在灵矿山脚下有过一次简单切磋。" };
+            if (!c.l3) c.l3 = { relations: {} };
+            if (!c.l3.relations) c.l3.relations = {};
+            c.l3.relations[newChar.name] = { trust: 5, depend: 2, hostility: 0, evidence: "来历成谜，暂以礼相待但抱有戒备之心。" };
+        });
+        
+        window.characterSettings.push(newChar);
+        activeCharIndex = window.characterSettings.length - 1;
+        window.activeCharIndex = activeCharIndex;
+        
+        saveAllData();
+        renderCharacterCards();
+        refreshCharDetail();
+
+        // 孕育闪烁特效
+        setTimeout(() => {
+            const cards = document.querySelectorAll('#character-card-list > div');
+            const activeCard = cards[activeCharIndex];
+            if (activeCard) {
+                activeCard.classList.add('ring-2', 'ring-secondary');
+                setTimeout(() => activeCard.classList.remove('ring-2', 'ring-secondary'), 1000);
+            }
+        }, 100);
+    }
+
+    // ===================================================
+    // ⚙️ 势力及自定义资源下拉多选配置与交互函数
+    // ===================================================
+    function wizardWorldCardsByType(typeNames) {
+        const source = window.NEW_BOOK_WIZARD_DATA;
+        const worldStep = source && source.stages && source.stages.find(s => s.key === "world_settings");
+        if (!worldStep || !Array.isArray(worldStep.cards)) return [];
+        return worldStep.cards.filter(card => typeNames.includes(card.category || card.board_type));
+    }
+
+    function wizardResourceOptions() {
+        const resources = wizardWorldCardsByType(["资源"]);
+        if (!resources.length) return null;
+        return resources.map(card => ({
+            name: card.title || card.item_name || card.id,
+            law: `resources:${card.id}`,
+            lawLabel: card.title || card.id
+        }));
+    }
+
+    let resourceOptions = wizardResourceOptions() || [
+        { name: "三尺青锋剑", law: "rules:灵气赤字", lawLabel: "灵气赤字" },
+        { name: "女娲神杖", law: "geography:仙灵岛", lawLabel: "仙灵岛" },
+        { name: "万魂血煞幡", law: "rules:因果契约", lawLabel: "因果契约" },
+        { name: "天琊神剑", law: "rules:九天玄刹", lawLabel: "九天玄刹" },
+        { name: "合欢铃", law: "geography:古墓情缘", lawLabel: "古墓情缘" },
+        { name: "九仪天尊剑", law: "rules:天道法则", lawLabel: "天道法则" }
+    ];
+
+    function wizardSelectOptions(typeNames) {
+        return wizardWorldCardsByType(typeNames).map(card => ({
+            id: card.id,
+            name: card.title || card.item_name || card.id
+        }));
+    }
+
+    function renderBoundSelect(selectId, options, currentValue, emptyLabel) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        const names = options.map(opt => opt.name);
+        const value = names.includes(currentValue) ? currentValue : "";
+        select.innerHTML = `<option value="">${emptyLabel}</option>` + options.map(opt => `<option value="${opt.name}">${opt.name}</option>`).join("");
+        select.value = value;
+    }
+
+    window.toggleResourceDropdown = function(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('resource-dropdown-menu');
+        if (menu) {
+            menu.classList.toggle('hidden');
+        }
+    };
+
+    window.updateCharSect = function(val) {
+        const char = window.characterSettings[activeCharIndex];
+        if (char) {
+            char.sect = val;
+            char.bindForce = val ? [val] : [];
+            char.worldBinding = buildWorldBindingText(char);
+            saveAllData();
+            renderCharacterCards();
+            refreshCharDetail();
+        }
+    };
+
+    window.updateCharJob = function(val) {
+        const char = window.characterSettings[activeCharIndex];
+        if (char) {
+            char.bindJob = val ? [val] : [];
+            char.worldBinding = buildWorldBindingText(char);
+            saveAllData();
+            renderCharacterCards();
+            refreshCharDetail();
+        }
+    };
+
+    function buildWorldBindingText(char) {
+        const resources = char.resource ? char.resource.split(',').map(r => r.trim()).filter(Boolean) : [];
+        const jobs = Array.isArray(char.bindJob) ? char.bindJob : [];
+        const forces = Array.isArray(char.bindForce) ? char.bindForce : (char.sect ? [char.sect] : []);
+        return [
+            resources.length ? `资源：${resources.join("、")}` : "",
+            jobs.length ? `职业：${jobs.join("、")}` : "",
+            forces.length ? `势力：${forces.join("、")}` : ""
+        ].filter(Boolean).join("；") || "暂无绑定。";
+    }
+
+    window.renderResourceDropdownMenu = function(char) {
+        const menu = document.getElementById('resource-dropdown-menu');
+        if (!menu) return;
+        menu.innerHTML = '';
+        
+        const selectedResources = char.resource ? char.resource.split(',').map(r => r.trim()).filter(Boolean) : [];
+        
+        resourceOptions.forEach(opt => {
+            const isChecked = selectedResources.includes(opt.name);
+            const item = document.createElement('label');
+            item.className = 'flex items-center gap-2 p-1.5 rounded hover:bg-base-content/5 cursor-pointer text-[11px] text-base-content';
+            item.innerHTML = `
+                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleResourceSelection('${opt.name}', this.checked)" class="accent-secondary rounded border-base-content/10 bg-base-100">
+                <span>${opt.name}</span>
+                <span class="text-[9px] text-base-content opacity-50 ml-auto">[${opt.lawLabel}]</span>
+            `;
+            menu.appendChild(item);
+        });
+
+        const countText = document.getElementById('selected-resource-count-text');
+        if (countText) {
+            countText.innerText = selectedResources.length > 0 ? `已选 ${selectedResources.length} 项` : '选择资源';
+        }
+    };
+
+    window.renderResourceTags = function(char) {
+        const tagsContainer = document.getElementById('char-resource-tags');
+        if (!tagsContainer) return;
+        tagsContainer.innerHTML = '';
+        
+        const selectedResources = char.resource ? char.resource.split(',').map(r => r.trim()).filter(Boolean) : [];
+        
+        if (selectedResources.length === 0) {
+            tagsContainer.innerHTML = '<span class="text-[10px] text-base-content opacity-50 italic leading-loose">暂无资源标签</span>';
+            return;
+        }
+        
+        selectedResources.forEach(resName => {
+            const opt = resourceOptions.find(o => o.name === resName);
+            const lawLabel = opt ? opt.lawLabel : '无';
+            const tag = document.createElement('span');
+            tag.className = 'inline-flex items-center gap-1 px-2 py-0.5 bg-secondary/10 border border-secondary/20 text-secondary text-[10px] rounded-full font-medium';
+            tag.innerHTML = `
+                ${resName} <span class="opacity-60 text-[9px]">[${lawLabel}]</span>
+                <button onclick="toggleResourceSelection('${resName}', false)" class="hover:text-error transition-colors flex items-center">
+                    <span class="material-symbols-outlined text-[10px]">close</span>
+                </button>
+            `;
+            tagsContainer.appendChild(tag);
+        });
+    };
+
+    window.toggleResourceSelection = function(name, checked) {
+        const char = window.characterSettings[activeCharIndex];
+        if (!char) return;
+        
+        let selectedResources = char.resource ? char.resource.split(',').map(r => r.trim()).filter(Boolean) : [];
+        if (checked) {
+            if (!selectedResources.includes(name)) {
+                selectedResources.push(name);
+            }
+        } else {
+            selectedResources = selectedResources.filter(r => r !== name);
+        }
+        
+        char.resource = selectedResources.join(', ');
+        
+        const activeLaws = [];
+        const activeBindings = [];
+        selectedResources.forEach(rName => {
+            const opt = resourceOptions.find(o => o.name === rName);
+            if (opt) {
+                activeLaws.push(opt.law);
+                activeBindings.push(`绑定${opt.law.includes('geography:') ? '地理' : '规则'}：${opt.lawLabel}`);
+            }
+        });
+        
+        char.bindLaw = activeLaws.join(',');
+        char.worldBinding = buildWorldBindingText(char);
+        
+        saveAllData();
+        renderResourceDropdownMenu(char);
+        renderResourceTags(char);
+        renderCharacterCards();
+        refreshCharDetail();
+    };
+
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('resource-dropdown-menu');
+        const container = document.getElementById('resource-select-container');
+        if (menu && !menu.classList.contains('hidden') && container && !container.contains(e.target)) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    // ===================================================
+    // 🎨 抽屉内容动态填充与联动
+    // ===================================================
+    function refreshCharDetail() {
+        window.activeCharIndex = activeCharIndex;
+        const char = window.characterSettings[activeCharIndex];
+        if (!char) return;
+
+        // 1. 基本字段
+        document.getElementById('char-name-val').innerText = char.name || "";
+        
+        const badge = document.getElementById('char-identity-badge');
+        if (badge) {
+            badge.innerText = char.identity || "核心主角";
+            if (char.identity === "核心主角") {
+                badge.className = "absolute top-0 right-0 bg-secondary/10 text-secondary px-3 py-1 rounded-bl-lg font-label-caps text-label-caps border-b border-l border-secondary/30";
+            } else if (char.identity === "反派敌对") {
+                badge.className = "absolute top-0 right-0 bg-error/10 text-error px-3 py-1 rounded-bl-lg font-label-caps text-label-caps border-b border-l border-error/30";
+            } else {
+                badge.className = "absolute top-0 right-0 bg-primary/10 text-primary px-3 py-1 rounded-bl-lg font-label-caps text-label-caps border-b border-l border-primary/30";
+            }
+        }
+        
+        const sectSelect = document.getElementById('char-sect-select');
+        if (sectSelect) {
+            const forceOptions = wizardSelectOptions(["势力"]);
+            const currentSect = char.sect || (Array.isArray(char.bindForce) ? char.bindForce[0] : "");
+            renderBoundSelect("char-sect-select", forceOptions, currentSect, "未绑定势力");
+            if (!forceOptions.some(opt => opt.name === currentSect)) {
+                char.sect = "";
+                char.bindForce = [];
+            }
+        }
+
+        const jobSelect = document.getElementById('char-job-select');
+        if (jobSelect) {
+            const jobOptions = wizardSelectOptions(["职业", "职业/超能"]);
+            const currentJob = Array.isArray(char.bindJob) ? (char.bindJob[0] || "") : "";
+            renderBoundSelect("char-job-select", jobOptions, currentJob, "未绑定职业");
+        }
+        
+        // 自定义资源下拉多选与标签刷新
+        renderResourceDropdownMenu(char);
+        renderResourceTags(char);
+        
+        const descVal = document.getElementById('char-desc-val');
+        if (descVal) {
+            descVal.innerText = char.desc || "暂无简介";
+            descVal.title = char.desc || "";
+        }
+
+        // 角色冲突源泉推导（只读预览）
+        (function() {
+            const beliefEl = document.getElementById('cs-belief');
+            const desireEl = document.getElementById('cs-desire');
+            const divgEl = document.getElementById('cs-divergence');
+            if (!beliefEl || !desireEl || !divgEl) return;
+            const l0 = char.l0 || {};
+            const l1 = char.l1 || {};
+            const belief = l0.belief || {};
+            // 信念推导
+            const beliefText = belief.val ? `${belief.val}：${belief.desc || ''}` : '暂未设定哲学前提';
+            beliefEl.innerText = beliefText || '待推导';
+            // 欲望推导
+            const desire = l1.desire || '暂未设定';
+            desireEl.innerText = desire;
+            // 本质分歧推导
+            const oppChars = window.characterSettings
+                .filter(c => c.name !== char.name && c.identity === '反派敌对')
+                .map(c => c.name);
+            const oppSect = char.sect ? `所属势力「${char.sect}」` : '';
+            let divgText = '';
+            if (oppChars.length > 0) {
+                divgText = `与 ${oppChars.join('、')} 在
+                    ${belief.val ? belief.val.replace(/^人性本[善恶]|自由意志|宿命论$/, '价值观') : '核心信念'}
+                    层面存在根本对立`;
+            } else if (oppSect) {
+                divgText = `${oppSect}在当前叙事中与至少一股对立势力存在不可调和的分歧`;
+            } else {
+                divgText = '需遍历检查角色对立关系后自动推导';
+            }
+            divgEl.innerText = divgText;
+        })();
+        
+        document.getElementById('char-stress-val').innerText = `${char.stress || 0} / 10`;
+        document.getElementById('char-stress-bar').style.width = `${(char.stress || 0) * 10}%`;
+
+        const statusVal = document.getElementById('char-status-val');
+        if (statusVal) {
+            statusVal.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> ${char.status || '活跃，想当大将军'}`;
+        }
+
+        // 2. L0 哲学前提表格回填
+        const dilemmaVal = document.getElementById('l0-dilemma-val');
+        const dilemmaDesc = document.getElementById('l0-dilemma-desc');
+        if (char.l0 && char.l0.dilemma) {
+            if (dilemmaVal) dilemmaVal.innerText = char.l0.dilemma.val === "自由意志" ? "8" : (char.l0.dilemma.val === "宿命论" ? "2" : "5");
+            if (dilemmaDesc) dilemmaDesc.innerText = char.l0.dilemma.desc || "无";
+        }
+
+        const valueVal = document.getElementById('l0-valueOrder-val');
+        const valueDesc = document.getElementById('l0-valueOrder-desc');
+        if (char.l0 && char.l0.valueOrder) {
+            if (valueVal) valueVal.innerText = char.l0.valueOrder.val === "情义为先" ? "7" : (char.l0.valueOrder.val === "权力至上" ? "3" : "5");
+            if (valueDesc) valueDesc.innerText = char.l0.valueOrder.desc || "无";
+        }
+
+        const beliefVal = document.getElementById('l0-belief-val');
+        const beliefDesc = document.getElementById('l0-belief-desc');
+        if (char.l0 && char.l0.belief) {
+            if (beliefVal) beliefVal.innerText = char.l0.belief.val === "人性本善" ? "6" : (char.l0.belief.val === "人性本恶" ? "4" : "5");
+            if (beliefDesc) beliefDesc.innerText = char.l0.belief.desc || "无";
+        }
+
+        // 3. L1 驱动层回填
+        if (char.l1) {
+            document.getElementById('l1-innerDrive').innerText = char.l1.innerDrive || "无内驱动";
+            document.getElementById('l1-outerDrive').innerText = char.l1.outerDrive || "无外驱动";
+            document.getElementById('l1-desire').innerText = char.l1.desire || "无欲望";
+            document.getElementById('l1-fear').innerText = char.l1.fear || "无恐惧";
+            document.getElementById('l1-shame').innerText = char.l1.shame || "无羞耻";
+            document.getElementById('l1-obsession').innerText = char.l1.obsession || "无执念";
+        }
+
+        // 4. L2 关系分类盒子动态渲染
+        renderL2Relations(char);
+
+        // 5. L3 关键记忆回填
+        document.getElementById('l3-keyEvent').innerText = (char.memory && char.memory.active && char.memory.active[0]) || "暂无关键事件";
+        document.getElementById('l3-memoryFragment').innerText = (char.memory && char.memory.source && char.memory.source[0]) || "暂无记忆片段";
+        document.getElementById('l3-trigger').innerText = (char.memory && char.memory.conflict && char.memory.conflict[0]) || "暂无明确触发点";
+        document.getElementById('l3-recentChange').innerText = (char.memory && char.memory.support && char.memory.support[0]) || "暂无近期变化";
+
+        // 6. 联动刷新关系雷达图
+        refreshRadarForActiveChar();
+    }
+
+    // 动态绘制 L2 关系盒子
+    function renderL2Relations(char) {
+        const container = document.getElementById('drawer-l2');
+        if (!container) return;
+        
+        const friends = [];
+        const enemies = [];
+        const neutrals = [];
+        
+        if (char.l3 && char.l3.relations) {
+            Object.keys(char.l3.relations).forEach(name => {
+                const rel = char.l3.relations[name];
+                if (rel.hostility > 5) {
+                    enemies.push({ name, ...rel });
+                } else if (rel.trust > 5) {
+                    friends.push({ name, ...rel });
+                } else {
+                    neutrals.push({ name, ...rel });
+                }
+            });
+        }
+        
+        let html = `<div class="space-y-2 text-xs">`;
+        
+        if (friends.length > 0) {
+            html += `
+            <div class="bg-primary/5 p-2 rounded border border-primary/20">
+                <div class="text-primary font-medium mb-1.5 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">favorite</span> 可信赖的朋友</div>
+                <div class="space-y-1">
+                    ${friends.map(f => `<div class="flex items-center justify-between"><span class="text-base-content">${f.name}</span><span class="text-primary font-code-sm">信任 ${f.trust} · 依赖 ${f.depend}</span></div>`).join('')}
+                </div>
+            </div>`;
+        }
+        
+        if (enemies.length > 0) {
+            html += `
+            <div class="bg-error/5 p-2 rounded border border-error/20">
+                <div class="text-error font-medium mb-1.5 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">swords</span> 互相利用的敌人</div>
+                <div class="space-y-1">
+                    ${enemies.map(e => `<div class="flex items-center justify-between"><span class="text-base-content">${e.name}</span><span class="text-error font-code-sm">敌意 ${e.hostility} · 戒备 ${e.depend || 0}</span></div>`).join('')}
+                </div>
+            </div>`;
+        }
+        
+        if (neutrals.length > 0) {
+            html += `
+            <div class="bg-base-200/50 p-2 rounded border border-base-content/10">
+                <div class="text-base-content opacity-60 font-medium mb-1.5 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">balance</span> 复杂关系</div>
+                <div class="space-y-1">
+                    ${neutrals.map(n => `<div class="flex items-center justify-between"><span class="text-base-content">${n.name}</span><span class="text-base-content opacity-60 font-code-sm">信任 ${n.trust} · 误解 ${n.hostility}</span></div>`).join('')}
+                </div>
+            </div>`;
+        }
+        
+        html += `</div>`;
+        container.innerHTML = html;
+    }
+
+    // ===================================================
+    // 📊 关系雷达图渲染与动画引擎
+    // ===================================================
+    const quantLabels = ['亲密','信任','依赖','沟通','冲突','支持','定位','互惠'];
+    const structLabels = ['血缘','社会','契约'];
+    const totalAxes = 11;
+    const RANGE_MIN = -10, RANGE_MAX = 10;
+
+    let _animId = null;
+    let currentChar = "";
+
+    function normalize(v) { return (v - RANGE_MIN) / (RANGE_MAX - RANGE_MIN); }
+
+    function setupRadarCanvas() {
+        const canvas = document.getElementById('relation-radar');
+        if (!canvas) return;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        const w = Math.round(rect.width) || 200;
+        const h = Math.round(w * 10 / 11);
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        return { canvas, dpr, w, h };
+    }
+
+    function getCharRadarData(charName, targetName) {
+        const char = window.characterSettings.find(c => c.name === charName);
+        if (!char) return { quant: [5,5,5,5,0,5,5,5], struct: [0,0,0] };
+        const rel = (char.l3 && char.l3.relations && char.l3.relations[targetName]) || { trust: 5, depend: 5, hostility: 0 };
+        
+        const quant = [
+            rel.intimacy !== undefined ? rel.intimacy : (rel.trust > 6 ? rel.trust - 1 : 5),
+            rel.trust !== undefined ? rel.trust : 5,
+            rel.depend !== undefined ? rel.depend : 5,
+            5, // 沟通
+            rel.hostility !== undefined ? rel.hostility : 0,
+            5, // 支持
+            5, // 定位
+            5  // 互惠
+        ];
+        
+        let struct = [0, 3, 2];
+        if (charName === '李逍遥' && targetName === '赵灵儿') struct = [2, 4, 6];
+        else if (charName === '赵灵儿' && targetName === '李逍遥') struct = [5, 3, 2];
+        
+        return { quant, struct };
+    }
+
+    function drawRadarFrame(quant, struct) {
+        const setup = setupRadarCanvas();
+        if (!setup) return;
+        const { canvas, dpr, w, h } = setup;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const cx = w / 2, cy = h / 2 + 4;
+        const R = Math.min(w, h) * 0.34;
+        const labelR = R * 1.26;
+        const allScores = [...quant, ...struct];
+
+        ctx.clearRect(0, 0, w, h);
+
+        for (let ring = -10; ring <= 10; ring += 5) {
+            const r = normalize(ring) * R;
+            ctx.beginPath();
+            for (let i = 0; i <= totalAxes; i++) {
+                const a = (i % totalAxes) / totalAxes * Math.PI * 2 - Math.PI / 2;
+                const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.strokeStyle = ring === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.07)';
+            ctx.lineWidth = ring === 0 ? 1 : 0.5;
+            ctx.stroke();
+        }
+
+        for (let i = 0; i < totalAxes; i++) {
+            const a = i / totalAxes * Math.PI * 2 - Math.PI / 2;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + R * Math.cos(a), cy + R * Math.sin(a));
+            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+        }
+
+        function drawPoly(dataStart, count, color, fill) {
+            ctx.beginPath();
+            for (let i = dataStart; i < dataStart + count; i++) {
+                const a = i / totalAxes * Math.PI * 2 - Math.PI / 2;
+                const s = normalize(allScores[i]) * R;
+                const x = cx + s * Math.cos(a), y = cy + s * Math.sin(a);
+                i === dataStart ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+
+        drawPoly(0, 8, '#adc6ff', 'rgba(173,198,255,0.12)');
+        drawPoly(8, 3, '#ffd699', 'rgba(255,214,153,0.12)');
+
+        for (let i = 0; i < totalAxes; i++) {
+            const a = i / totalAxes * Math.PI * 2 - Math.PI / 2;
+            const s = normalize(allScores[i]) * R;
+            const x = cx + s * Math.cos(a), y = cy + s * Math.sin(a);
+            ctx.beginPath();
+            ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = i < 8 ? '#adc6ff' : '#ffd699';
+            ctx.fill();
+        }
+
+        const fontSize = Math.max(8, Math.round(11 / dpr));
+        ctx.font = fontSize + 'px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let i = 0; i < totalAxes; i++) {
+            const a = i / totalAxes * Math.PI * 2 - Math.PI / 2;
+            const label = i < 8 ? quantLabels[i] : structLabels[i - 8];
+            const lx = cx + labelR * Math.cos(a), ly = cy + labelR * Math.sin(a);
+            ctx.fillStyle = i < 8 ? 'rgba(255,255,255,0.55)' : 'rgba(255,214,153,0.65)';
+            ctx.fillText(label, lx, ly);
+        }
+
+        const valFont = Math.max(7, Math.round(10 / dpr));
+        ctx.font = valFont + 'px system-ui, sans-serif';
+        for (let i = 0; i < totalAxes; i++) {
+            const v = Math.round(allScores[i]);
+            const a = i / totalAxes * Math.PI * 2 - Math.PI / 2;
+            const s = normalize(allScores[i]) * R;
+            const lx = cx + (s + 10) * Math.cos(a), ly = cy + (s + 10) * Math.sin(a);
+            const display = v > 0 ? '+' + v : v.toString();
+            ctx.fillStyle = i < 8 ? 'rgba(173,198,255,0.7)' : 'rgba(255,214,153,0.7)';
+            ctx.fillText(display, lx, ly);
+        }
+    }
+
+    function animateRadar(fromQuant, fromStruct, toQuant, toStruct, charName, duration) {
+        if (_animId) cancelAnimationFrame(_animId);
+        const start = performance.now();
+        function tick(now) {
+            const t = Math.min((now - start) / duration, 1);
+            const ease = 1 - Math.pow(1 - t, 3);
+            const q = fromQuant.map((v, i) => v + (toQuant[i] - v) * ease);
+            const s = fromStruct.map((v, i) => v + (toStruct[i] - v) * ease);
+            drawRadarFrame(q, s);
+            if (t < 1) _animId = requestAnimationFrame(tick);
+        }
+        _animId = requestAnimationFrame(tick);
+    }
+
+    function selectRadarChar(name) {
+        const char = window.characterSettings[activeCharIndex];
+        if (!char) return;
+        
+        const oldTarget = currentChar;
+        const newTarget = name;
+        
+        const oldRadar = getCharRadarData(char.name, oldTarget);
+        const newRadar = getCharRadarData(char.name, newTarget);
+        
+        currentChar = newTarget;
+        const sel = document.getElementById('rel-char-selector');
+        if (sel) sel.value = newTarget;
+        
+        animateRadar(
+            oldRadar.quant, oldRadar.struct,
+            newRadar.quant, newRadar.struct,
+            newTarget, 350
+        );
+    }
+
+    function refreshRadarForActiveChar() {
+        const char = window.characterSettings[activeCharIndex];
+        if (!char) return;
+        
+        const sel = document.getElementById('rel-char-selector');
+        if (!sel) return;
+        sel.innerHTML = "";
+        
+        let firstTarget = "";
+        window.characterSettings.forEach((c, idx) => {
+            if (idx !== activeCharIndex) {
+                if (!firstTarget) firstTarget = c.name;
+                const opt = document.createElement('option');
+                opt.value = c.name;
+                opt.text = c.name;
+                sel.appendChild(opt);
+            }
+        });
+        
+        if (firstTarget) {
+            currentChar = firstTarget;
+            sel.value = firstTarget;
+            const radar = getCharRadarData(char.name, firstTarget);
+            drawRadarFrame(radar.quant, radar.struct);
+        } else {
+            const canvas = document.getElementById('relation-radar');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+    }
+
+    // ===================================================
+    // ⚙️ 初始化与抽屉默认开闭设定
+    // ===================================================
+    window.addEventListener('load', () => {
+        loadSavedData();
+        activeCharIndex = 0;
+        window.activeCharIndex = activeCharIndex;
+        
+        renderCharacterCards();
+        refreshCharDetail();
+
+        // 只有 drawer-l0（哲学前提）默认打开，其他 4 个默认关闭
+        ['drawer-l0','drawer-l1','drawer-l2','drawer-l3','drawer-dialogue'].forEach(function(id){
+            const el = document.getElementById(id);
+            const icon = document.getElementById(id + '-icon');
+            if(el){ 
+                el.style.transition = 'max-height 0.3s ease'; 
+                if (id === 'drawer-l0') {
+                    el.style.maxHeight = el.scrollHeight + 'px';
+                    el.style.overflow = 'visible';
+                    el.style.paddingTop = '';
+                    el.style.paddingBottom = '';
+                    if (icon) icon.style.transform = 'rotate(0deg)';
+                } else {
+                    el.style.maxHeight = '0px';
+                    el.style.overflow = 'hidden';
+                    el.style.paddingTop = '0';
+                    el.style.paddingBottom = '0';
+                    if (icon) icon.style.transform = 'rotate(-90deg)';
+                }
+            }
+        });
+    });
+</script> 
+
+<script>
+window.toggleSidebar = function() {
+    document.body.classList.toggle('sidebar-collapsed');
+    const icon = document.getElementById('sidebarIcon');
+    if (icon) {
+        icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
+    }
+};
+</script>
+<script>
+// TASK3_CHARACTER_BRIDGE_ACTIVE
+(function(){
+  if(window.TASK3_CHARACTER_BRIDGE_ACTIVE)return; window.TASK3_CHARACTER_BRIDGE_ACTIVE=true;
+  function D(){return window.WIZARD_DATA||{};} function esc(s){return String(s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]||c;});}
+  function activeChar(){return (window.characterSettings||[])[window.activeCharIndex||0]||(window.characterSettings||[])[0]||{};}
+  function targetName(){var sel=document.getElementById('rel-char-selector');return (sel&&sel.value)||window.currentChar||'';}
+  function relData(){var c=activeChar(), t=targetName(), r=(c.l3&&c.l3.relations&&c.l3.relations[t])||{};return {c:c,t:t,r:r};}
+  function bar(label,val,cls){var n=Number(val==null?0:val), pct=Math.max(0,Math.min(100,(n+10)*5));return '<div class="text-[11px]"><div class="flex justify-between"><span>'+esc(label)+'</span><b>'+esc(n)+'</b></div><progress class="progress '+(cls||'progress-primary')+' w-full" value="'+pct+'" max="100"></progress></div>';}
+  function syncBindings(){document.querySelectorAll('#v7-force-bind-badge,#v7-character-binding-badges').forEach(function(x){x.remove();});}
+  function syncRelation(){var rs=(D().RELATION_SCHEMA||{}), data=relData(), c=data.c, t=data.t, r=data.r, title=(c.name||'A')+' ↔ '+(t||'B');var radar=document.getElementById('relation-radar');if(radar&&!document.getElementById('v7-relation-radar-meta'))radar.closest('.flex').insertAdjacentHTML('beforeend','<div id="v7-relation-radar-meta" class="w-full mt-3 p-2 rounded-lg bg-base-200/50 border border-base-content/10 text-xs"></div>');var meta=document.getElementById('v7-relation-radar-meta');if(meta)meta.innerHTML='<div class="flex items-center justify-between gap-2"><b>'+esc(title)+'</b><span class="badge badge-ghost badge-xs">关系状态</span></div><div class="grid grid-cols-2 gap-2 mt-2">'+['trust','intimacy','dependence','hostility'].map(function(k){var dim=(rs.DIMENSIONS||[]).find(function(x){return x.key===k;})||{label:k};return bar(dim.label,r[k]!==undefined?r[k]:(k==='hostility'?0:5),k==='hostility'?'progress-error':'progress-primary');}).join('')+'</div><div class="mt-2 opacity-60 text-[10px]">当前角色与目标角色的关系。</div>';var l2=document.getElementById('drawer-l2');if(l2){var card=document.getElementById('v7-l2-relation-state');if(!card){card=document.createElement('div');card.id='v7-l2-relation-state';card.className='mt-3 p-2 rounded-lg bg-secondary/10 border border-secondary/20 text-xs';l2.appendChild(card);}card.innerHTML='<div class="flex items-center justify-between"><b>L2 关系状态：'+esc(title)+'</b><span class="badge badge-secondary badge-xs">关系</span></div><div class="grid grid-cols-2 gap-2 mt-2">'+(rs.DIMENSIONS||[]).map(function(x){var v=r[x.key];if(v===undefined){v=x.key==='hostility'?0:5;}return bar(x.label,v,x.key==='hostility'?'progress-error':'progress-secondary');}).join('')+'</div><div class="mt-2 opacity-60">类型 / 层级 / 起源</div>';}}
+  function syncKnowledge(){var cs=(D().CHARACTER_SCHEMA||{}), l3=document.getElementById('drawer-l3');if(!l3)return;var kb=document.getElementById('v7-knowledge-boundary');if(!kb){kb=document.createElement('div');kb.id='v7-knowledge-boundary';kb.className='mt-3 p-2 rounded-lg bg-warning/10 border border-warning/20 text-xs';l3.appendChild(kb);}kb.innerHTML='<div class="flex items-center justify-between"><b>知识边界</b><span class="badge badge-warning badge-xs">待确认</span></div><div class="grid grid-cols-2 gap-2 mt-2">'+(cs.KB_QUADRANTS||['已知','未知','错误认知','合理推断']).map(function(q){return '<div class="p-2 rounded bg-base-100/70 border border-base-content/10"><b>'+esc(q)+'</b><p class="opacity-60 mt-1">按当前角色可见信息整理</p></div>';}).join('')+'</div>';}
+  function syncAll(){syncBindings();syncRelation();document.querySelectorAll('#v7-relation-radar-meta').forEach(function(x){x.remove();});syncKnowledge();}
+  function mount(){var d=D(); if(!d.CHARACTER_SCHEMA||!d.RELATION_SCHEMA)return;document.querySelectorAll('#v7-relation-network').forEach(function(x){x.remove();});syncAll();['refreshCharDetail','selectRadarChar','refreshRadarForActiveChar','renderL2Relations','renderResourceTags'].forEach(function(name){var old=window[name];if(typeof old==='function'&&!old.__v7Wrapped){window[name]=function(){var ret=old.apply(this,arguments);setTimeout(syncAll,0);return ret;};window[name].__v7Wrapped=true;}});setTimeout(syncAll,300);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount); else mount();
+})();
+</script>
+</body></html>

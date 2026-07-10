@@ -1,0 +1,166 @@
+{
+  "name": "角色设定生成助手",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "43a4c891-b0b8-42c1-bd0d-aa85a824b14e",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -144,
+        0
+      ],
+      "id": "5fa5737f-bede-4054-9447-9a849c55355a",
+      "name": "Webhook",
+      "webhookId": "43a4c891-b0b8-42c1-bd0d-aa85a824b14e"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "你将基于以下原则生成一个候选人物，并为其绑定设定资源。\n1.剧情冲突需求。\n2.性格与价值冲突、角色张力需求。\n3.读者与呈现情绪、氛围实现需求。\n4.性别、魅力、年龄等维度与感情线丰富。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        0
+      ],
+      "id": "62400ffa-b505-4f64-a5aa-da21b5027d36",
+      "name": "FP003-04 角色设定生成助手",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        0
+      ],
+      "id": "d606a8d8-8b67-41d0-8d86-713c9fa9de1e",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        48,
+        0
+      ],
+      "id": "e8d86faa-42a5-4ed9-9792-5f1da5c4d03b",
+      "name": "读世界设定和已有角色",
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        736,
+        0
+      ],
+      "id": "cb6bd3c1-4c08-4141-a151-d951cab31620",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "读世界设定和已有角色",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP003-04 角色设定生成助手": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读世界设定和已有角色": {
+      "main": [
+        [
+          {
+            "node": "FP003-04 角色设定生成助手",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a8555a64-45fb-4a1e-b3d0-4407aee49dd0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"
+  },
+  "id": "jXyjrlofGgwUY1Kx",
+  "tags": []
+}

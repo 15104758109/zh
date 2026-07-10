@@ -1,0 +1,167 @@
+{
+  "name": "世界设定生成助手",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "9f4adf5e-d40b-4c9d-8f0a-1b849c3ccb2b",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -192,
+        0
+      ],
+      "id": "084e2fd9-2666-48df-b8b4-956248fd3036",
+      "name": "Webhook",
+      "webhookId": "9f4adf5e-d40b-4c9d-8f0a-1b849c3ccb2b"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "你将基于以下原则生成一条世界规则：\n1.基于地理、物理、冲突、价值观差异。\n2.基于呈现内容、脑洞、商业价值等方面的推演。\n3.基于主角爽点、痛点、长期承诺价值的充分挖掘。\n4.基于伏笔、差异性、剧情张力的强化。\n5.基于普遍流行的该题材的统一认知补全。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "47c13991-fe1a-46a6-8c20-fe98b855d184",
+      "name": "FP002-04 世界设定生成/校验助手",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "id": "d1e06ffb-a850-44f8-a73c-1ad7b97b5a8e",
+      "name": "json修复"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        768,
+        0
+      ],
+      "id": "02217a98-a855-43c6-b01d-99803e31f898",
+      "name": "返回结果"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        16,
+        0
+      ],
+      "id": "31438258-b7d9-4a35-945c-f19137f27735",
+      "name": "读取已有设定及书本设定",
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "读取已有设定及书本设定",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP002-04 世界设定生成/校验助手": {
+      "main": [
+        [
+          {
+            "node": "json修复",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "json修复": {
+      "main": [
+        [
+          {
+            "node": "返回结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读取已有设定及书本设定": {
+      "main": [
+        [
+          {
+            "node": "FP002-04 世界设定生成/校验助手",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f029c83f-0cdc-4afe-b3c7-7fc09080f2da",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"
+  },
+  "id": "O3irY0thoN3iqgsZ",
+  "tags": []
+}

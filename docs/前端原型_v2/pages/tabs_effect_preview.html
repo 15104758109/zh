@@ -1,0 +1,162 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>顶栏按钮组特效预览</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
+<link href="../common/theme.css" rel="stylesheet">
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  body { display: flex; flex-direction: column; align-items: center; gap: 60px; padding: 80px 40px; min-height: 100vh; background: var(--color-base-200); }
+  h2 { font-size: 14px; font-weight: 700; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
+  .demo-row { display: flex; flex-direction: column; align-items: center; }
+
+  /* 通用容器 */
+  .tabs-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+  }
+  .tab-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  /* ====== A: Aura 光晕 ====== */
+  .tabs-aura {
+    background: var(--color-neutral);
+    position: relative;
+  }
+  .tabs-aura::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 14px;
+    background: transparent;
+    box-shadow: 0 0 16px 4px oklch(62.45% 0.278 3.836 / 25%),
+                0 0 32px 8px oklch(62.45% 0.278 3.836 / 10%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  .tabs-aura:hover::before { opacity: 1; }
+  .tab-aura {
+    color: var(--color-neutral-content);
+    opacity: 0.55;
+  }
+  .tab-aura:hover { opacity: 0.8; }
+  .tab-aura.active {
+    opacity: 1;
+    background: var(--color-base-300);
+    color: var(--color-base-content);
+    box-shadow: 0 0 8px 2px oklch(62.45% 0.278 3.836 / 30%);
+  }
+
+  /* ====== B: Glass 毛玻璃 ====== */
+  .tabs-glass {
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 4px;
+  }
+  .tab-glass {
+    color: var(--color-base-content);
+    opacity: 0.5;
+    position: relative;
+  }
+  .tab-glass:hover { opacity: 0.75; background: rgba(255,255,255,0.08); }
+  .tab-glass.active {
+    opacity: 1;
+    background: rgba(255,255,255,0.22);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  /* ====== C: Mask 渐变遮罩 ====== */
+  .tabs-mask {
+    background: var(--color-neutral);
+    position: relative;
+    overflow: hidden;
+  }
+  .tabs-mask::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background: linear-gradient(135deg, oklch(62.45% 0.278 3.836 / 15%), transparent 60%);
+    pointer-events: none;
+  }
+  .tab-mask {
+    color: var(--color-neutral-content);
+    opacity: 0.5;
+    position: relative;
+  }
+  .tab-mask:hover { opacity: 0.75; }
+  .tab-mask.active {
+    opacity: 1;
+    color: var(--color-base-content);
+    background: var(--color-base-300);
+  }
+  .tab-mask.active::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 60%; height: 2px;
+    background: linear-gradient(90deg, transparent, oklch(62.45% 0.278 3.836), transparent);
+    border-radius: 1px;
+  }
+</style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body>
+
+  <!-- A: Aura -->
+  <div class="demo-row">
+    <h2>A · Aura 光晕</h2>
+    <div class="tabs-wrap tabs-aura">
+      <a href="#" class="tab-item tab-aura active">世界设定</a>
+      <a href="#" class="tab-item tab-aura">角色设定</a>
+      <a href="#" class="tab-item tab-aura">L1A 设定</a>
+    </div>
+  </div>
+
+  <!-- B: Glass -->
+  <div class="demo-row">
+    <h2>B · Glass 毛玻璃</h2>
+    <div class="tabs-wrap tabs-glass">
+      <a href="#" class="tab-item tab-glass active">世界设定</a>
+      <a href="#" class="tab-item tab-glass">角色设定</a>
+      <a href="#" class="tab-item tab-glass">L1A 设定</a>
+    </div>
+  </div>
+
+  <!-- C: Mask -->
+  <div class="demo-row">
+    <h2>C · Mask 渐变遮罩</h2>
+    <div class="tabs-wrap tabs-mask">
+      <a href="#" class="tab-item tab-mask active">世界设定</a>
+      <a href="#" class="tab-item tab-mask">角色设定</a>
+      <a href="#" class="tab-item tab-mask">L1A 设定</a>
+    </div>
+  </div>
+
+</body>
+</html>

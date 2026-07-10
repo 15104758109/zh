@@ -1,0 +1,811 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>AI 提示词迭代管理 - 纵横叙事引擎</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+        <!-- Tailwind CSS & DaisyUI v4 via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="../common/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="../common/sidebar.css">
+    <script src="../common/theme.js"></script>
+    <script src="./new_book_wizard_data.js"></script>
+    <script src="../common/header.js"></script>
+
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-effect {
+            background: rgba(21, 25, 33, 0.75);
+            backdrop-3: blur(12px);
+            -webkit-backdrop-3: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .sample-active {
+            background: rgba(0, 242, 255, 0.06);
+            border: 1px solid rgba(0, 242, 255, 0.3) !important;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.08);
+        }
+        
+        
+    
+        /* Rainbow Glow Button animation */
+        @keyframes rainbow-flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(255, 0, 127, 0.4), 0 0 30px rgba(127, 0, 255, 0.2); }
+            50% { box-shadow: 0 0 25px rgba(255, 0, 127, 0.7), 0 0 50px rgba(127, 0, 255, 0.4), 0 0 10px #00f0ff; }
+        }
+        .btn-rainbow-glow {
+            background: linear-gradient(90deg, #ff007f, #7f00ff, #00f0ff, #ff007f) !important;
+            background-size: 300% 100% !important;
+            animation: rainbow-flow 3s linear infinite, pulse-glow 2s ease-in-out infinite !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+            transition: transform 0.2s ease, filter 0.2s ease !important;
+        }
+        .btn-rainbow-glow:hover {
+            transform: scale(1.05) !important;
+            filter: brightness(1.2);
+        }
+    
+        /* --- Quick Settings Glass (Auto-injected) --- */
+        .quick-settings-glass {
+            background: var(--color-base-100, rgba(15, 18, 25, 0.9)) !important;
+            backdrop-3: blur(20px);
+            -webkit-backdrop-3: blur(20px);
+            border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1)) !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+        }
+        /* -------------------------------------------- */
+        /* 顶栏随侧栏折叠隐藏 */
+        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
+        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
+        .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
+        .header-tab:hover { opacity: 0.85; }
+        .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        .settings-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-base-300); cursor: pointer; transition: background 0.2s ease; flex-shrink: 0; }
+        .settings-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.2s ease; }
+        .settings-switch.on { background: var(--color-accent); }
+        .settings-switch.on::after { transform: translateX(16px); }
+        .settings-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; cursor: pointer; transition: all 0.15s ease; }
+        .settings-btn:hover { background: var(--color-accent); color: white; }
+
+</style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-base-200 text-base-content font-sans overflow-hidden flex h-screen selection:bg-primary/30 selection:text-base-content">
+<a href="#main-content" class="skip-link">跳到主内容</a>
+
+<nav class="sidebar-glass" aria-label="主菜单">
+  <div class="sidebar-brand">
+    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
+    <div class="sidebar-text">
+      <div class="brand-title">纵横</div>
+      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
+    </div>
+  </div>
+  <div class="sidebar-separator" aria-hidden="true"></div>
+  <ul class="menu sidebar-menu" id="sidebarMenu">
+    <li><a href="workbench.html" aria-label="总控设置面板"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
+    <li><a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
+    <li><a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
+    <li><a href="audit_stage.html" aria-label="审计阶段：正文审计、主编裁决"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
+    <li><a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析" class="active"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
+  </ul>
+  <footer class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">U</div>
+      <span class="sidebar-text sidebar-user-name">用户</span>
+    </div>
+  </footer>
+</nav>
+<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
+</button>
+
+<!-- TopNavBar -->
+        <!-- TopNavBar -->
+        <!-- TopNavBar -->
+    <header class="header-glass h-16 fixed top-0 right-0 z-[60] flex justify-between items-center px-6 bg-base-100">
+        <div class="flex items-center gap-4 h-full">
+            <nav class="flex h-full items-center ml-2">
+                <!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
+                                <div class="header-tabs">
+                    <a href="production_stage.html" class="header-tab">套路展开</a>
+                    <a href="multi_agent_deduction.html" class="header-tab">多代理推演</a>
+                    <a href="audit_review.html" class="header-tab active">结果审核</a>
+                </div>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- 当前书籍标识 -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-content/10 text-[11px] font-medium text-base-content/80">
+                <span class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></span>
+                <span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+                <span id="header-book-name"></span>
+            </div>
+            <button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">notifications</span>
+            </button>
+            
+            <!-- 快捷设置齿轮与弹窗 -->
+            <div class="relative flex items-center">
+                <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                </button>
+                <!-- Quick Settings Popover -->
+                        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
+                    <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
+                </div>
+                <div class="flex flex-col gap-2 mb-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
+                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
+                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
+                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-base-content/5">
+                    <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        应用当前配置
+                    </button>
+                </div>
+            </div>
+
+            <div class="h-8 w-[1px] bg-base-content/5 mx-1"></div>
+            
+        </div>
+    </header>
+
+<!-- Main Workspace -->
+<main id="main-content" class="main-content pt-16 overflow-y-auto custom-scrollbar p-6 space-y-6">
+
+    <!-- Dashboard Row 1: Metrics (升级为 Stats 卡片对齐亮色 Garden 质感，圆角升级为 rounded-3xl) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Card 1 -->
+        <div class="glass-panel p-5 rounded-3xl border border-base-content/5 bg-base-100 flex flex-col gap-2 relative overflow-hidden shadow-sm">
+            <div class="flex justify-between items-start">
+                <div class="flex flex-col">
+                    <span class="text-base-content opacity-60 text-[11px] uppercase font-bold tracking-wider">待分析样本</span>
+                    <span class="text-3xl font-extrabold text-base-content mt-1">128</span>
+                </div>
+                <div class="w-9 h-9 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-primary text-[20px]">layers</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 mt-2">
+                <span class="text-[11px] text-primary font-semibold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">trending_up</span>较昨日 +12
+                </span>
+                <div class="h-6 flex-1 flex items-end gap-[2px] justify-end">
+                    <div class="w-1 bg-primary/10 h-[30%] rounded-full"></div>
+                    <div class="w-1 bg-primary/20 h-[50%] rounded-full"></div>
+                    <div class="w-1 bg-primary/30 h-[40%] rounded-full"></div>
+                    <div class="w-1 bg-primary/50 h-[70%] rounded-full"></div>
+                    <div class="w-1 bg-primary h-[90%] rounded-full"></div>
+                </div>
+            </div>
+        </div>
+        <!-- Card 2 -->
+        <div class="glass-panel p-5 rounded-3xl border border-base-content/5 bg-base-100 flex flex-col gap-2 relative overflow-hidden shadow-sm">
+            <div class="flex justify-between items-start">
+                <div class="flex flex-col">
+                    <span class="text-base-content opacity-60 text-[11px] uppercase font-bold tracking-wider">已分析样本</span>
+                    <span class="text-3xl font-extrabold text-base-content mt-1">356</span>
+                </div>
+                <div class="w-9 h-9 bg-secondary/10 border border-secondary/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-secondary text-[20px]">check_circle</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 mt-2">
+                <span class="text-[11px] text-secondary font-semibold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">trending_up</span>较昨日 +28
+                </span>
+                <div class="h-6 flex-1 flex items-end gap-[2px] justify-end">
+                    <div class="w-1 bg-secondary/10 h-[40%] rounded-full"></div>
+                    <div class="w-1 bg-secondary/20 h-[60%] rounded-full"></div>
+                    <div class="w-1 bg-secondary/35 h-[80%] rounded-full"></div>
+                    <div class="w-1 bg-secondary/50 h-[70%] rounded-full"></div>
+                    <div class="w-1 bg-secondary h-[100%] rounded-full"></div>
+                </div>
+            </div>
+        </div>
+        <!-- Card 3 -->
+        <div class="glass-panel p-5 rounded-3xl border border-base-content/5 bg-base-100 flex flex-col gap-2 relative overflow-hidden shadow-sm">
+            <div class="flex justify-between items-start">
+                <div class="flex flex-col">
+                    <span class="text-base-content opacity-60 text-[11px] uppercase font-bold tracking-wider">废弃样本</span>
+                    <span class="text-3xl font-extrabold text-base-content mt-1">42</span>
+                </div>
+                <div class="w-9 h-9 bg-error/10 border border-error/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-error text-[20px]">delete</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 mt-2">
+                <span class="text-[11px] text-error font-semibold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">trending_down</span>较昨日 +5
+                </span>
+                <div class="h-6 flex-1 flex items-end gap-[2px] justify-end">
+                    <div class="w-1 bg-error/10 h-[60%] rounded-full"></div>
+                    <div class="w-1 bg-error/25 h-[50%] rounded-full"></div>
+                    <div class="w-1 bg-error/40 h-[40%] rounded-full"></div>
+                    <div class="w-1 bg-error/60 h-[30%] rounded-full"></div>
+                    <div class="w-1 bg-error h-[20%] rounded-full"></div>
+                </div>
+            </div>
+        </div>
+        <!-- Card 4 -->
+        <div class="glass-panel p-5 rounded-3xl border border-base-content/5 bg-base-100 flex flex-col gap-2 relative overflow-hidden shadow-sm">
+            <div class="flex justify-between items-start">
+                <div class="flex flex-col">
+                    <span class="text-base-content opacity-60 text-[11px] uppercase font-bold tracking-wider">迭代抽取样本</span>
+                    <span class="text-3xl font-extrabold text-base-content mt-1">78</span>
+                </div>
+                <div class="w-9 h-9 bg-tertiary/10 border border-tertiary/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-tertiary text-[20px]">star</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 mt-2">
+                <span class="text-[11px] text-accent font-semibold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">trending_up</span>较昨日 +15
+                </span>
+                <div class="h-6 flex-1 flex items-end gap-[2px] justify-end">
+                    <div class="w-1 bg-tertiary/10 h-[20%] rounded-full"></div>
+                    <div class="w-1 bg-tertiary/25 h-[40%] rounded-full"></div>
+                    <div class="w-1 bg-tertiary/50 h-[80%] rounded-full"></div>
+                    <div class="w-1 bg-tertiary/75 h-[60%] rounded-full"></div>
+                    <div class="w-1 bg-tertiary h-[90%] rounded-full"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Master Grid Workspace: Left Wizard Container + Right Controller Column -->
+    <div class="grid grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Workspace (9 Columns) -->
+        <div class="col-span-9 flex flex-col gap-6">
+            
+            <!-- AI 提示词迭代生成向导 (只保留字符) -->
+            <div class="flex items-center justify-center gap-6 select-none py-3">
+                <!-- Step 1 -->
+                <span id="step-text-1" class="cursor-pointer text-xs font-bold text-base-content/90 transition-colors duration-300 hover:text-primary" onclick="goToStep(1)">样本分析</span>
+                
+                <span class="text-base-content opacity-30 text-xs select-none">➔</span>
+                
+                <!-- Step 2 -->
+                <span id="step-text-2" class="cursor-pointer text-xs font-bold text-base-content/90 transition-colors duration-300 hover:text-primary" onclick="goToStep(2)">选择样本</span>
+                
+                <span class="text-base-content opacity-30 text-xs select-none">➔</span>
+                
+                <!-- Step 3 -->
+                <span id="step-text-3" class="cursor-pointer text-xs font-bold text-primary transition-colors duration-300 hover:text-primary" onclick="goToStep(3)">提示词实验</span>
+                
+                <span class="text-base-content opacity-30 text-xs select-none">➔</span>
+                
+                <!-- Step 4 -->
+                <span id="step-text-4" class="cursor-pointer text-xs font-medium text-base-content opacity-40 transition-colors duration-300 hover:text-primary" onclick="goToStep(4)">选择与采取</span>
+            </div>
+
+            <!-- 四个阶段卡片（独立容器，间距露出背景色） -->
+            <div class="grid grid-cols-4 gap-4">
+                
+                <!-- Column 1: 选择样本区 -->
+                <section id="select-sample-col" class="glass-panel rounded-box flex flex-col bg-base-100 border border-base-content/5 shadow-sm min-w-0 transition-all duration-300 h-[480px] overflow-hidden">
+                    <div class="px-4 py-3 bg-base-200/60 rounded-t-2xl border-b border-dashed border-base-content/10 flex justify-between items-center shrink-0">
+                        <h3 class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-primary text-[16px]">ads_click</span>
+                            选择样本区
+                        </h3>
+                        <span class="text-[10px] text-base-content opacity-50 font-normal">样本数: 3</span>
+                    </div>
+                    <div class="p-4 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-3 min-h-0 relative">
+                        <!-- 贯穿线 -->
+                        <div class="absolute left-[35px] top-6 bottom-6 w-[2px] bg-base-300/80" id="timeline-line"></div>
+                        
+                        <!-- Sample 1 (Active) -->
+                        <div class="relative pl-9 pr-3 py-3 bg-base-300 rounded-2xl cursor-pointer hover:bg-base-300 transition-all flex flex-col gap-1 shadow-sm border border-base-content/5 sample-card" data-sample-id="1" onclick="selectSample(1, this)">
+                            <!-- 左侧定位圆点 -->
+                            <div class="timeline-dot absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-primary text-primary-content flex items-center justify-center text-[9px] shadow-sm font-bold border-2 border-base-100 z-10">1</div>
+                            <span class="text-[9px] font-mono text-primary font-bold">SAMPLE-001</span>
+                            <h4 class="text-xs font-bold text-base-content truncate">神秘组织的真实目的</h4>
+                            <p class="text-[9px] text-base-content opacity-60 truncate">L1A-002 全量审计</p>
+                        </div>
+                        
+                        <!-- Sample 2 -->
+                        <div class="relative pl-9 pr-3 py-3 bg-base-100 rounded-2xl cursor-pointer hover:bg-base-200 transition-all flex flex-col gap-1 border border-base-content/5 sample-card" data-sample-id="2" onclick="selectSample(2, this)">
+                            <!-- 左侧定位圆点 -->
+                            <div class="timeline-dot absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-neutral text-neutral-content flex items-center justify-center text-[9px] font-bold border-2 border-base-100 z-10">2</div>
+                            <span class="text-[9px] font-mono text-base-content opacity-50">SAMPLE-002</span>
+                            <h4 class="text-xs font-bold text-base-content opacity-85 truncate">古代遗迹 of 发现</h4>
+                            <p class="text-[9px] text-base-content opacity-60 truncate">L1A-003 推演审计</p>
+                        </div>
+                        
+                        <!-- Sample 3 -->
+                        <div class="relative pl-9 pr-3 py-3 bg-base-100 rounded-2xl cursor-pointer hover:bg-base-200 transition-all flex flex-col gap-1 border border-base-content/5 sample-card" data-sample-id="3" onclick="selectSample(3, this)">
+                            <!-- 左侧定位圆点 -->
+                            <div class="timeline-dot absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-neutral text-neutral-content flex items-center justify-center text-[9px] font-bold border-2 border-base-100 z-10">3</div>
+                            <span class="text-[9px] font-mono text-base-content opacity-50">SAMPLE-003</span>
+                            <h4 class="text-xs font-bold text-base-content opacity-85 truncate">盟友的背叛</h4>
+                            <p class="text-[9px] text-base-content opacity-60 truncate">历史推演差异版本测试</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Column 2: 旧输入内容 -->
+                <section id="old-input-col" class="glass-panel rounded-box flex flex-col bg-base-100 border border-base-content/5 shadow-sm min-w-0 transition-all duration-300 h-[480px] overflow-hidden">
+                    <div class="px-4 py-3 bg-base-200/60 rounded-t-2xl border-b border-dashed border-base-content/10 flex justify-between items-center shrink-0">
+                        <h3 class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-primary text-[16px]">input</span>
+                            旧输入内容
+                        </h3>
+                        <span class="text-[10px] text-base-content opacity-50" id="old-token-count">812 / 2000</span>
+                    </div>
+                    <div class="p-4 flex-1 flex flex-col min-h-0">
+                        <div class="flex-1 overflow-y-auto text-xs text-base-content opacity-70 leading-relaxed custom-scrollbar flex flex-col justify-between pr-1" id="old-input-content">
+                            <div class="space-y-2">
+                                <p class="text-base-content font-bold"># L1A 原始约束</p>
+                                <p>神秘组织主要内容是找出遗迹之谜，必须包含情节突变与分叉推演，且字数限制为 10000 字。</p>
+                            </div>
+                            <div class="pt-4 border-t border-base-content/5 text-[10px] flex flex-col gap-1 text-base-content opacity-50">
+                                <p>历史运行：2026-05-18 10:15</p>
+                                <p>版本：v1.2.0-STABLE</p>
+                                <p>Token 消耗：1,245</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Column 3: 新提示词 -->
+                <section id="new-prompt-col" class="glass-panel rounded-box flex flex-col bg-base-100 border border-base-content/5 shadow-sm min-w-0 transition-all duration-300 h-[480px] overflow-hidden">
+                    <div class="px-4 py-3 bg-base-200/60 rounded-t-2xl border-b border-dashed border-base-content/10 flex justify-between items-center shrink-0">
+                        <h3 class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-primary text-[16px]">auto_fix_high</span>
+                            新提示词
+                        </h3>
+                        <span class="text-[10px] bg-primary/20 text-primary px-1 rounded text-[9px] font-bold">AI</span>
+                    </div>
+                    <div class="p-4 flex-1 flex flex-col min-h-0">
+                        <div class="bg-base-200/40 border border-base-content/5 rounded-box p-4 flex-1 overflow-y-auto custom-scrollbar flex flex-col justify-between" id="new-prompt-content">
+                            <div class="space-y-3 font-mono text-[10px] leading-relaxed text-base-content opacity-85">
+                                <p class="text-primary font-bold"># 角色 (Role)</p>
+                                <p>你是一个纵横叙事引擎的首席 AI 构架师。</p>
+                                <p class="text-primary font-bold"># 行动与审计步骤</p>
+                                <p>1. 针对 L1A-002 进行全量情节覆盖度审计。<br>2. 结合世界推进，检查虚空异常是否满足 60% 指标。</p>
+                            </div>
+                            <div class="pt-4 border-t border-base-content/5 text-[10px] text-base-content opacity-50">
+                                <p>生成时间：2026-05-18 10:17</p>
+                                <p>预计 Token 消耗：45,230</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Column 4: 新输出内容 -->
+                <section id="new-output-col" class="glass-panel rounded-box flex flex-col bg-base-100 border border-base-content/5 shadow-sm min-w-0 transition-all duration-300 h-[480px] overflow-hidden">
+                    <div class="px-4 py-3 bg-base-200/60 rounded-t-2xl border-b border-dashed border-base-content/10 flex justify-between items-center shrink-0">
+                        <h3 class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-primary text-[16px]">output</span>
+                            新输出内容
+                        </h3>
+                        <span class="text-[10px] text-base-content opacity-50" id="new-token-count">856 / 2000</span>
+                    </div>
+                    <div class="p-4 flex-1 flex flex-col min-h-0">
+                        <div class="flex-1 overflow-y-auto text-xs text-base-content opacity-85 leading-relaxed custom-scrollbar flex flex-col justify-between pr-1" id="new-output-content">
+                            <div class="space-y-2">
+                                <p class="text-primary font-mono text-[10px]"># AUDIT RESULT V2</p>
+                                <p>神秘组织真实目的覆盖率达 100%。已在“世界推进”与“阶段性任务”中完美投影。</p>
+                            </div>
+                            <div class="pt-4 border-t border-base-content/5 text-[10px] text-base-content opacity-50">
+                                <p>运行耗时：42秒</p>
+                                <p>状态：SUCCESS</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+
+
+        <!-- Right Workspace (3 Columns): 右侧控制台 (对齐亮色播放器滑块、开关组件) -->
+        <div class="col-span-3 flex flex-col gap-4 text-xs select-none">
+                
+            <!-- Card 1: 试验操作 (已锁定，亮色玻璃卡片容器恢复) -->
+            <div class="glass-panel bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm relative overflow-hidden shrink-0">
+                <!-- 高品质只读置灰遮罩 -->
+                <div class="absolute inset-0 bg-base-200/40 backdrop-blur-[0.5px] pointer-events-none z-10"></div>
+                
+                <!-- 头部容器风格 (对齐附件 2) -->
+                <div class="px-4 py-3 bg-base-200/60 rounded-t-2xl border-b border-dashed border-base-content/10 flex justify-between items-center shrink-0 relative z-20">
+                    <h3 class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-primary text-[16px]">science</span>
+                        试验操作
+                    </h3>
+                    <span class="material-symbols-outlined text-base-content opacity-50 text-[14px]">lock</span>
+                </div>
+                
+                <div class="p-4 flex flex-col">
+                    <!-- 并列交互按钮 (置于最顶，可点击) -->
+                    <div class="pb-3 border-b border-dashed border-base-content/10 relative z-30">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="action-btn" class="py-2.5 px-2 text-primary-content font-extrabold rounded-lg text-xs flex items-center justify-center gap-1 hover:brightness-110 active:scale-[0.98] transition-all btn-rainbow-glow" onclick="handleActionButton()">
+                                <span id="action-btn-icon" class="material-symbols-outlined text-[14px]">play_arrow</span>
+                                <span id="action-btn-text">开始实验</span>
+                            </button>
+                            <button class="py-2.5 px-2 border border-base-content/5 bg-base-200 text-base-content opacity-70 hover:text-base-content hover:bg-base-300 rounded-lg font-extrabold text-xs flex items-center justify-center gap-1 transition-all" onclick="discardSample()">
+                                <span class="material-symbols-outlined text-[14px]">delete_forever</span>
+                                <span>废弃样本</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 参数组只读区 (规律虚线浅纹隔开) -->
+                    <div class="relative z-20 flex flex-col">
+                        <!-- 当前执行模型 -->
+                        <div class="py-3 border-b border-dashed border-base-content/10 flex justify-between items-center">
+                            <span class="text-base-content opacity-70">当前执行模型</span>
+                            <span class="font-mono text-xs font-bold text-base-content opacity-85">opencode/deepseek-v4</span>
+                        </div>
+                        
+                        <!-- 温度 (Temperature) -->
+                        <div class="py-3 border-b border-dashed border-base-content/10 flex flex-col gap-1.5">
+                            <div class="flex justify-between text-[11px]">
+                                <span class="text-base-content opacity-70">温度 (Temperature)</span>
+                                <span class="text-primary font-mono font-bold">0.2</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="20" class="range range-xs range-primary cursor-not-allowed" disabled>
+                        </div>
+                        
+                        <!-- 最大 Token 数 -->
+                        <div class="py-3 border-b border-dashed border-base-content/10 flex justify-between items-center">
+                            <span class="text-base-content opacity-70">最大 Token 数</span>
+                            <span class="font-mono text-xs font-bold text-base-content opacity-85">2048</span>
+                        </div>
+                        
+                        <!-- Top P -->
+                        <div class="py-3 border-b border-dashed border-base-content/10 flex flex-col gap-1.5">
+                            <div class="flex justify-between text-[11px]">
+                                <span class="text-base-content opacity-70">Top P</span>
+                                <span class="text-primary font-mono font-bold">0.9</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="90" class="range range-xs range-primary cursor-not-allowed" disabled>
+                        </div>
+                    </div>
+
+                    <!-- 预计消耗 Token (对齐为单行键值对属性行) -->
+                    <div class="relative z-20 flex flex-col text-primary">
+                        <!-- 预计消耗 Token -->
+                        <div class="py-3 border-b border-dashed border-base-content/10 flex justify-between items-center font-semibold">
+                            <span class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[14px]">info</span>
+                                预计消耗 Token
+                            </span>
+                            <span class="font-mono">~67,890</span>
+                        </div>
+                        <!-- 预计运行时间 -->
+                        <div class="py-3 flex justify-between items-center font-semibold">
+                            <span class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[14px]">schedule</span>
+                                预计运行时间
+                            </span>
+                            <span class="font-mono">~1分56秒</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: 迭代建议 (亮色卡片容器恢复) -->
+            <div class="glass-panel bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm min-w-0">
+                <!-- 头部容器风格 (对齐附件 2) -->
+                <div class="px-4 py-3 bg-base-200/60 rounded-t-2xl border-b border-dashed border-base-content/10 flex justify-between items-center shrink-0">
+                    <h3 class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-primary text-[16px]">feedback</span>
+                        迭代审核建议
+                    </h3>
+                </div>
+                
+                <div class="p-4 flex flex-col gap-3">
+                    <div class="flex gap-2 items-start py-1">
+                        <span class="material-symbols-outlined text-secondary text-sm mt-0.5" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        <p class="text-[11px] text-base-content opacity-85 leading-relaxed">当前样本实验通过。新提示词显著提升了分析的准确性和完整性，建议采取当前新版本 (v1.2.1)。</p>
+                    </div>
+                    <div class="text-[10px] text-base-content opacity-50 italic text-center leading-normal">
+                        提示：采取后将触发引擎版本迭代，做当前 L1A 清单最新版本留痕
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+
+    </div>
+
+</main>
+
+<script>
+    const sampleData = {
+        1: {
+            oldInput: `<div class="space-y-2">
+                <p class="text-base-content font-bold"># L1A 原始约束</p>
+                <p>神秘组织主要内容是找出遗迹之谜，必须包含情节突变与分叉推演，且字数限制为 10000 字。</p>
+            </div>
+            <div class="pt-4 border-t border-base-content/5 text-[10px] flex flex-col gap-1 text-base-content opacity-50">
+                <p>历史运行：2026-05-18 10:15</p>
+                <p>版本：v1.2.0-STABLE</p>
+                <p>Token 消耗：1,245</p>
+            </div>`,
+            newPrompt: `<div class="space-y-3 font-mono text-[10px] leading-relaxed text-base-content opacity-85">
+                <p class="text-primary font-bold"># 角色 (Role)</p>
+                <p>你是一个纵横叙事引擎的首席 AI 构架师。</p>
+                <p class="text-primary font-bold"># 行动与审计步骤</p>
+                <p>1. 针对 L1A-002 进行全量情节覆盖度审计。<br>2. 结合世界推进，检查虚空异常是否满足 60% 指标。</p>
+            </div>
+            <div class="pt-4 border-t border-base-content/5 text-[10px] text-base-content opacity-50">
+                <p>生成时间：2026-05-18 10:17</p>
+                <p>预计 Token 消耗：45,230</p>
+            </div>`,
+            newOutput: `<div class="space-y-2">
+                <p class="text-primary font-mono text-[10px]"># AUDIT RESULT V2</p>
+                <p>神秘组织真实目的覆盖率达 100%。已在“世界推进”与“阶段性任务”中完美投影。</p>
+            </div>
+            <div class="pt-4 border-t border-base-content/5 text-[10px] text-base-content opacity-50">
+                <p>运行耗时：42秒</p>
+                <p>状态：SUCCESS</p>
+            </div>`
+        },
+        2: {
+            oldInput: `<div class="space-y-2">
+                <p class="text-base-content font-bold"># L1A 原始约束</p>
+                <p>寻找世界格物理异常古代遗迹，绑定已推演数据，要求在 L1A-003 产生新一轮变体。</p>
+            </div>
+            <div class="pt-4 border-t border-base-content/5 text-[10px] flex flex-col gap-1 text-base-content opacity-50">
+                <p>历史运行：2026-05-17 18:24</p>
+                <p>版本：v1.1.9</p>
+                <p>Token 消耗：2,560</p>
+            </div>`,
+            newPrompt: `<div class="space-y-3 font-mono text-[10px] leading-relaxed text-base-content opacity-85">
+                <p class="text-primary font-bold"># 核心使命</p>
+                <p>全量推演出 L1A-003 古代遗迹大门开启的物理规律参数。</p>
+                <p class="text-primary font-bold"># JSON 约束条件</p>
+                <p>输出必须严格包含 "physical_anomaly" 字段，且置信度大于 90%。</p>
+            </div>
+            <div class="pt-4 border-t border-base-content/5 text-[10px] text-base-content opacity-50">
+                <p>生成时间：2026-05-18 08:30</p>
+                <p>预计 Token 消耗：58,900</p>
+            </div>`,
+            newOutput: `<div class="space-y-2">
+                <p class="text-primary font-mono text-[10px]"># DEDUCTION REPORT</p>
+                <p>遗迹在局部引发了重力改变。虚空浪潮高涨 20%，符合重塑世界框架的所有上位参数！</p>
+            </div>
+            <div class="pt-4 border-t border-base-content/5 text-[10px] text-base-content opacity-50">
+                <p>运行耗时：56秒</p>
+                <p>状态：SUCCESS</p>
+            </div>`
+        },
+        3: {
+            oldInput: `<div class="space-y-2">
+                <p class="text-base-content font-bold"># L1A 原始约束</p>
+                <p>盟友的背叛需包含极其深刻的情绪承诺，使读者能感受到被至交背叛的强烈痛苦。</p>
+            </div>
+            <div class="pt-4 border-t border-base-content/5 text-[10px] flex flex-col gap-1 text-base-content opacity-50">
+                <p>历史运行：2026-05-16 11:42</p>
+                <p>版本：v1.1.8</p>
+                <p>Token 消耗：3,410</p>
+            </div>`,
+            newPrompt: `<div class="space-y-3 font-mono text-[10px] leading-relaxed text-base-content opacity-85">
+                <p class="text-primary font-bold"># 角色与立场</p>
+                <p>你是情绪渲染的大师。针对最信任盟友的叛变细节进行全量心理推演。</p>
+                <p class="text-primary font-bold"># 限制约束</p>
+                <p>情绪崩溃的起伏需达 -80%，完美投影到 L1A-004 的主线结局。</p>
+            </div>
+            <div class="pt-4 border-t border-base-content/5 text-[10px] text-base-content opacity-50">
+                <p>生成时间：2026-05-18 09:10</p>
+                <p>预计 Token 消耗：84,000</p>
+            </div>`,
+            newOutput: `<div class="space-y-2">
+                <p class="text-primary font-mono text-[10px]"># EMOTION AUDIT</p>
+                <p>已成功推演出背叛的多重情感反差，符合情绪量化指标中的 92% 主线致郁体验！</p>
+            </div>
+            <div class="pt-4 border-t border-base-content/5 text-[10px] text-base-content opacity-50">
+                <p>运行耗时：74秒</p>
+                <p>状态：SUCCESS</p>
+            </div>`
+        }
+    };
+
+    function selectSample(id, element) {
+        // Remove active timeline state from all cards
+        const cards = element.parentNode.children;
+        for (let card of cards) {
+            if (!card.classList.contains('sample-card')) continue;
+            card.classList.remove('bg-base-300', 'shadow-sm');
+            card.classList.add('bg-base-100');
+            
+            // Restore timeline dot color
+            const dot = card.querySelector('.timeline-dot');
+            if (dot) {
+                dot.classList.remove('bg-primary', 'text-primary-content');
+                dot.classList.add('bg-neutral', 'text-neutral-content');
+            }
+            
+            // Restore header text style
+            const innerSpan = card.querySelector('span:first-child');
+            if (innerSpan) {
+                innerSpan.classList.remove('text-primary', 'font-bold');
+                innerSpan.classList.add('text-base-content', 'opacity-50');
+            }
+        }
+        
+        // Activate clicked card
+        element.classList.remove('bg-base-100');
+        element.classList.add('bg-base-300', 'shadow-sm');
+        
+        // Highlight timeline dot
+        const dot = element.querySelector('.timeline-dot');
+        if (dot) {
+            dot.classList.remove('bg-neutral', 'text-neutral-content');
+            dot.classList.add('bg-primary', 'text-primary-content');
+        }
+        
+        // Highlight header text
+        const innerSpan2 = element.querySelector('span:first-child');
+        if (innerSpan2) {
+            innerSpan2.classList.remove('text-base-content', 'opacity-50');
+            innerSpan2.classList.add('text-primary', 'font-bold');
+        }
+
+        // Load mock data
+        const data = sampleData[id];
+        if (data) {
+            document.getElementById('old-input-content').innerHTML = data.oldInput;
+            document.getElementById('new-prompt-content').innerHTML = data.newPrompt;
+            document.getElementById('new-output-content').innerHTML = data.newOutput;
+        }
+    }
+
+    let currentStep = 3;
+
+    window.goToStep = function(stepNum) {
+        currentStep = stepNum;
+        
+        // 1. 更新步骤文本高亮 (只保留字符)
+        for (let i = 1; i <= 4; i++) {
+            const text = document.getElementById(`step-text-${i}`);
+            if (!text) continue;
+            
+            if (i < stepNum) {
+                // 已完成的步骤
+                text.className = "cursor-pointer text-xs font-bold text-base-content/90 transition-colors duration-300 hover:text-primary";
+            } else if (i === stepNum) {
+                // 当前激活步骤
+                text.className = "cursor-pointer text-xs font-bold text-primary transition-colors duration-300 hover:text-primary";
+            } else {
+                // 未激活步骤
+                text.className = "cursor-pointer text-xs font-medium text-base-content opacity-40 transition-colors duration-300 hover:text-primary";
+            }
+        }
+        
+        // 3. 重置开始实验按钮的 Loading 状态
+        const btn = document.getElementById('action-btn');
+        const icon = document.getElementById('action-btn-icon');
+        const txt = document.getElementById('action-btn-text');
+        if (btn && icon && txt) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-80', 'cursor-not-allowed');
+            icon.classList.remove('animate-spin');
+            icon.innerText = 'play_arrow';
+            txt.innerText = '开始实验';
+        }
+        
+        // 4. 高亮对应的列卡片 (采用 classList 精细控制边框和透明度，避免覆盖 HTML 原有的 h-[480px] 与 overflow-hidden 基础布局类)
+        const cols = ['select-sample-col', 'old-input-col', 'new-prompt-col', 'new-output-col'];
+        cols.forEach((colId, index) => {
+            const col = document.getElementById(colId);
+            if (!col) return;
+            const isActive = (index + 1 === stepNum);
+            
+            if (isActive) {
+                // 激活状态：加上高亮边框和阴影，移除低透和普通边框
+                col.classList.remove('border-base-content/5', 'shadow-sm', 'opacity-75');
+                col.classList.add('border-2', 'border-primary/50', 'shadow-md', 'scale-[1.01]');
+            } else {
+                // 普通状态：移除高亮边框和缩放，加上普通边框和低透
+                col.classList.remove('border-2', 'border-primary/50', 'shadow-md', 'scale-[1.01]');
+                col.classList.add('border', 'border-base-content/5', 'shadow-sm', 'opacity-75');
+            }
+        });
+    };
+
+    function handleActionButton() {
+        const btn = document.getElementById('action-btn');
+        const icon = document.getElementById('action-btn-icon');
+        const txt = document.getElementById('action-btn-text');
+        
+        btn.disabled = true;
+        btn.classList.add('opacity-80', 'cursor-not-allowed');
+        icon.classList.add('animate-spin');
+        icon.innerText = 'sync';
+        txt.innerText = '实验中...';
+        
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.classList.remove('opacity-80', 'cursor-not-allowed');
+            icon.classList.remove('animate-spin');
+            icon.innerText = 'play_arrow';
+            txt.innerText = '开始实验';
+            
+            goToStep(4); // 运行完后自动跳转到步骤 4 并高亮
+            alert('提示词推演实验完成！已在工作区输出最新版本。');
+        }, 1500);
+    }
+
+    // 新增废弃样本函数
+    window.discardSample = function() {
+        if (confirm('确定要废弃当前提示词迭代样本吗？此操作不可恢复。')) {
+            alert('样本已成功废弃，并计入 iteration_log 归档。');
+            goToStep(1); // 自动回滚到步骤 1 重新选择样本
+            // 可以将下方第四个列清空展示
+            const outputContent = document.getElementById('new-output-content');
+            if (outputContent) {
+                outputContent.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-base-content opacity-40 py-12">
+                        <span class="material-symbols-outlined text-3xl mb-2">delete_sweep</span>
+                        <p class="text-xs">当前样本已废弃</p>
+                    </div>
+                `;
+            }
+        }
+    };
+
+    // 初始化默认激活第 3 步
+    setTimeout(() => {
+        if (typeof goToStep === 'function') {
+            goToStep(3);
+        }
+    }, 100);
+    
+    
+    // Close quick settings when clicking outside
+
+</script>
+
+
+<script>
+window.toggleSidebar = function() {
+    document.body.classList.toggle('sidebar-collapsed');
+    const icon = document.getElementById('sidebarIcon');
+    if (icon) {
+        icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
+    }
+};
+</script>
+</body>
+</html>

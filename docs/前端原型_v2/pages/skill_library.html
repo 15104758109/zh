@@ -1,0 +1,2024 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>叙事技能字典 - 纵横Narrative-Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    
+    <!-- ★ DaisyUI v5 CDN ★ -->
+        <!-- Tailwind CSS & DaisyUI v4 via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <link href="../common/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="../common/sidebar.css">
+    <script src="../common/theme.js"></script>
+    <script src="./new_book_wizard_data.js"></script>
+    <script src="../common/header.js"></script>
+    
+    <style>
+        /* 继承自全局 theme.css 共享主题样式 */
+            /* 顶栏随侧栏折叠隐藏 */
+        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
+        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
+        .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
+        .header-tab:hover { opacity: 0.85; }
+        .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        .settings-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-base-300); cursor: pointer; transition: background 0.2s ease; flex-shrink: 0; }
+        .settings-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.2s ease; }
+        .settings-switch.on { background: var(--color-accent); }
+        .settings-switch.on::after { transform: translateX(16px); }
+        .settings-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; cursor: pointer; transition: all 0.15s ease; }
+        .settings-btn:hover { background: var(--color-accent); color: white; }
+
+</style>
+</head>
+<body class="h-screen w-full overflow-hidden flex bg-base-200 selection:bg-primary/30 selection:text-base-content">
+<a href="#main-content" class="skip-link">跳到主内容</a>
+<!-- SideNavBar -->
+<nav class="sidebar-glass" aria-label="主菜单">
+  <div class="sidebar-brand">
+    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
+    <div class="sidebar-text">
+      <div class="brand-title">纵横</div>
+      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
+    </div>
+  </div>
+  <div class="sidebar-separator" aria-hidden="true"></div>
+  <ul class="menu sidebar-menu" id="sidebarMenu">
+    <li><a href="workbench.html" aria-label="总控设置面板" class="active"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
+    <li><a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
+    <li><a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
+    <li><a href="audit_stage.html" aria-label="审计阶段：正文审计、主编裁决"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
+    <li><a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
+  </ul>
+  <footer class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">U</div>
+      <span class="sidebar-text sidebar-user-name">用户</span>
+    </div>
+  </footer>
+</nav>
+<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
+</button>
+
+<!-- Main Content Wrapper -->
+<main class="main-content" id="main-content">
+
+    <!-- TopNavBar -->
+        <!-- TopNavBar -->
+        <!-- TopNavBar -->
+    <header class="header-glass h-16 fixed top-0 right-0 z-[60] flex justify-between items-center px-6 bg-base-100">
+        <div class="flex items-center gap-4 h-full">
+            <nav class="flex h-full items-center ml-2">
+                <!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
+                                <div class="header-tabs">
+                    <a href="workbench.html" class="header-tab">模型设置</a>
+                    <a href="skill_library.html" class="header-tab active">技能设置</a>
+                </div>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- 当前书籍标识 -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-content/10 text-[11px] font-medium text-base-content/80">
+                <span class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></span>
+                <span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+                <span id="header-book-name"></span>
+            </div>
+            <button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">notifications</span>
+            </button>
+            
+            <!-- 快捷设置齿轮与弹窗 -->
+            <div class="relative flex items-center">
+                <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                </button>
+                <!-- Quick Settings Popover -->
+                        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
+                    <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
+                </div>
+                <div class="flex flex-col gap-2 mb-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
+                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
+                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
+                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-base-content/5">
+                    <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        应用当前配置
+                    </button>
+                </div>
+            </div>
+
+            <div class="h-8 w-[1px] bg-base-content/5 mx-1"></div>
+            
+        </div>
+    </header>
+
+    <!-- Canvas Area -->
+    <div class="flex-1 flex flex-col overflow-hidden pt-16">
+        <!-- One-level Category Buttons -->
+        <div class="w-full border-b border-base-content/10 bg-base-200 p-4 flex justify-center z-20 shadow-sm relative">
+            <div class="grid grid-cols-4 gap-4 w-full max-w-7xl" id="category-button-grid">
+                <button onclick="switchCategory('theme-combos')" class="category-btn btn btn-outline btn-primary w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group bg-primary/5 shadow-[0_4px_12px_rgba(79,133,229,0.1)]" data-category="theme-combos">
+                    <span class="material-symbols-outlined text-[32px] group-hover:scale-110 transition-transform">category</span>
+                    <div class="text-left">
+                        <div class="text-sm font-bold leading-tight">题材组合</div>
+                        <div class="text-[10px] opacity-60" id="count-theme-combos">54条 商业套路</div>
+                    </div>
+                </button>
+                <button onclick="switchCategory('chapter-expansion')" class="category-btn btn btn-ghost w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group text-base-content opacity-60 hover:text-base-content border border-transparent hover:border-transparent bg-transparent" data-category="chapter-expansion">
+                    <span class="material-symbols-outlined text-[32px] group-hover:scale-110 transition-transform">route</span>
+                    <div class="text-left">
+                        <div class="text-sm font-bold leading-tight">章节展开</div>
+                        <div class="text-[10px] opacity-60" id="count-chapter-expansion">8条 剧情弧结构</div>
+                    </div>
+                </button>
+                <button onclick="switchCategory('art-presentation')" class="category-btn btn btn-ghost w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group text-base-content opacity-60 hover:text-base-content border border-transparent hover:border-transparent bg-transparent" data-category="art-presentation">
+                    <span class="material-symbols-outlined text-[32px] group-hover:scale-110 transition-transform">palette</span>
+                    <div class="text-left">
+                        <div class="text-sm font-bold leading-tight">艺术呈现</div>
+                        <div class="text-[10px] opacity-60" id="count-art-presentation">6条 视觉意象</div>
+                    </div>
+                </button>
+                <button onclick="switchCategory('camera-language')" class="category-btn btn btn-ghost w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group text-base-content opacity-60 hover:text-base-content border border-transparent hover:border-transparent bg-transparent" data-category="camera-language">
+                    <span class="material-symbols-outlined text-[32px] group-hover:scale-110 transition-transform">movie_creation</span>
+                    <div class="text-left">
+                        <div class="text-sm font-bold leading-tight">镜头语言</div>
+                        <div class="text-[10px] opacity-60" id="count-camera-language">4条 叙事运镜</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <section class="flex-1 flex flex-col bg-base-200 relative z-10 overflow-hidden">
+            <!-- Filter & Action Bar -->
+            <div class="px-6 py-4 border-b border-base-content/10 flex flex-col gap-3 bg-base-200 shrink-0 shadow-sm">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <!-- Dropdown Filter & Search (Left side) -->
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-3">
+                            <label class="text-xs text-base-content opacity-70 font-semibold uppercase tracking-wider">题材/分类筛选:</label>
+                            <select id="genre-filter-select" onchange="handleGenreFilterChange(this.value)" class="select select-bordered bg-base-100 text-xs rounded-box px-3 py-1.5 text-base-content focus:outline-none focus:border-primary cursor-pointer min-w-[140px] font-medium transition-colors select-sm">
+                                <!-- Dynamic options -->
+                            </select>
+                        </div>
+                        
+                        <!-- Search Box (Moved here to align with dropdown) -->
+                        <label class="input input-bordered input-sm flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px] opacity-50">search</span>
+                            <input type="text" id="search-input" oninput="handleSearch()" placeholder="搜索技巧..." class="grow text-xs placeholder-gray-600 border-none focus:ring-0 p-0 h-full w-40 bg-transparent">
+                        </label>
+                    </div>
+                    
+                    <!-- Actions (Right side) -->
+                    <div class="flex items-center gap-3">
+                        <!-- Join Group for Import/Export -->
+                        <div class="join">
+                            <button onclick="triggerImport()" class="btn btn-sm join-item" title="导入技能 JSON">
+                                <span class="material-symbols-outlined text-[16px]">upload</span>导入
+                            </button>
+                            <input type="file" id="import-file-input" accept=".json" class="hidden" onchange="importSkills(event)">
+                            
+                            <button onclick="exportSkills()" class="btn btn-sm join-item" title="导出为 JSON">
+                                <span class="material-symbols-outlined text-[16px]">download</span>导出
+                            </button>
+                        </div>
+
+                        <!-- Accent glow style add button -->
+                        <button onclick="openSkillFormModal('add')" class="btn btn-accent-glow btn-sm text-xs font-bold flex items-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px]">add</span>新增技能
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Grid Scroll Area -->
+            <div class="flex-1 overflow-y-auto p-6" id="cards-container">
+                <!-- Cards will render here -->
+            </div>
+        </section>
+    </div>
+
+    <!-- Backdrop Overlay for Drawer -->
+    <div id="drawerBackdrop" class="fixed inset-0 bg-black/40 z-[90] hidden transition-opacity duration-300 opacity-0" onclick="closeDrawer()"></div>
+
+    <!-- Sliding Details Drawer -->
+    <div id="detailDrawer" class="fixed top-0 right-0 h-full w-[440px] z-[100] bg-base-200 border-l border-base-content/10 shadow-2xl transition-all duration-300 transform translate-x-full flex flex-col" style="background-color: var(--color-base-200) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;">
+        <!-- Drawer Header -->
+        <div class="p-6 border-b border-base-content/5 flex items-center justify-between bg-white/2">
+            <div class="flex items-center gap-3">
+                <span id="drawerRating" class="px-3 py-1 text-sm rounded font-bold rating-badge">S</span>
+                <h2 id="drawerTitle" class="text-base font-bold text-base-content truncate max-w-[180px]">末世+囤货</h2>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button id="drawerDeleteBtn" class="text-base-content opacity-70 hover:text-error transition-colors p-1.5 rounded-full hover:bg-base-content/5 cursor-pointer flex items-center justify-center" title="删除">
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                </button>
+                <button class="text-base-content opacity-70 hover:text-base-content transition-colors p-1.5 rounded-full hover:bg-base-content/5 cursor-pointer flex items-center justify-center" onclick="closeDrawer()">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Drawer Content -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <!-- Parameter List -->
+            <div class="space-y-4" id="drawerDetailFields">
+                <!-- Rendered dynamically -->
+            </div>
+
+            <!-- Conflict Section -->
+            <div class="space-y-1">
+                <div class="flex items-center gap-1.5 text-base-content opacity-50 font-bold uppercase tracking-wider">
+                    <span class="material-symbols-outlined text-[14px]">swords</span>
+                    <span class="text-[11px] block">冲突写法 (Conflicts)</span>
+                </div>
+                <textarea id="drawerConflictText" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3"></textarea>
+            </div>
+
+            <!-- Warning/Taboo Section (High Visibility - Moved to bottom) -->
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[14px] text-warning">gavel</span>
+                    <button class="btn btn-warning btn-xs no-animation pointer-events-none font-bold text-xs uppercase tracking-wider">避坑红线 (Taboos)</button>
+                </div>
+                <textarea id="drawerTabooText" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3"></textarea>
+            </div>
+        </div>
+
+        <!-- Drawer Footer -->
+        <div class="p-6 border-t border-base-content/5 bg-white/2 text-center">
+            <span class="text-[11px] text-base-content opacity-50 font-mono tracking-wider flex items-center justify-center gap-1">
+                <span class="material-symbols-outlined text-[12px]">info</span>
+                系统基准与自定义叙事参考
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Add / Edit Skill Modal -->
+<div id="skillFormModal" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 hidden transition-all duration-300">
+    <div id="modalBox" class="bg-base-200 border border-base-content/5 rounded-box w-[500px] flex flex-row overflow-hidden shadow-2xl p-6 relative transition-all duration-300">
+        <!-- Close Button -->
+        <button onclick="closeSkillFormModal()" class="absolute top-4 right-4 text-base-content opacity-70 hover:text-base-content transition-colors z-10">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+        
+        <!-- Left Side: Form Area -->
+        <div class="flex-1 flex flex-col max-w-[452px]">
+            <h2 class="text-base font-bold text-base-content mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-[20px]" id="modalIcon">add_box</span>
+                <span id="modalTitle">新增技能</span>
+            </h2>
+            
+            <form id="skill-form" onsubmit="event.preventDefault(); submitSkillForm();" class="flex flex-col gap-4 overflow-y-auto max-h-[420px] pr-1">
+                <!-- Hidden inputs -->
+                <input type="hidden" id="form-item-id">
+                
+                <!-- Common fields -->
+                <div class="flex gap-4">
+                    <div class="flex-1 flex flex-col gap-1.5">
+                        <label class="text-xs text-base-content opacity-70 font-medium">名称 / 标题</label>
+                        <input type="text" id="form-title" placeholder="如：科幻 + 末世" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    </div>
+                    <div class="w-24 flex flex-col gap-1.5">
+                        <label class="text-xs text-base-content opacity-70 font-medium">推荐评级</label>
+                        <select id="form-rating" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary cursor-pointer w-full">
+                            <option value="SS">SS</option>
+                            <option value="S" selected>S</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                        </select>
+                    </div>
+                </div>
+    
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium" id="form-tag-label">主分类/标签</label>
+                    <input type="text" id="form-tag" placeholder="如：科幻" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                
+                <!-- Dynamic fields container -->
+                <div id="modalFormFields" class="flex flex-col gap-4">
+                    <!-- Dynamic rendering by category -->
+                </div>
+    
+                <!-- Common taboos and conflicts -->
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">避坑红线 (Taboos)</label>
+                    <textarea id="form-taboo" rows="2" placeholder="如：严禁主角圣母心逃避冲突..." required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full resize-none"></textarea>
+                </div>
+                <div class="flex flex-col gap-1.5 mt-3">
+                    <label class="text-xs text-base-content opacity-70 font-medium">冲突写法 (Conflicts)</label>
+                    <textarea id="form-conflict" rows="2" placeholder="如：制造末世规则下的道德两难与资源博弈..." required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full resize-none"></textarea>
+                </div>
+            </form>
+            
+            <div class="flex justify-between items-center mt-6 pt-4 border-t border-base-content/5">
+                <button type="button" onclick="triggerAIAnalysis()" class="btn btn-sm btn-ghost text-xs text-primary font-bold flex items-center gap-1 p-1.5 hover:bg-primary/10">
+                    <span class="material-symbols-outlined text-[16px] animate-pulse">psychology</span>
+                    AI分析与优化
+                </button>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeSkillFormModal()" class="btn btn-sm">
+                        取消
+                    </button>
+                    <button type="button" onclick="submitSkillForm()" class="btn btn-primary btn-sm">
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Side: AI Advice Panel (Initially hidden & 0 width) -->
+        <div id="aiAdvicePanel" class="w-0 opacity-0 hidden transition-all duration-300 flex-col pl-6 ml-6 border-l border-base-content/10 max-h-[500px]">
+            <h3 class="text-sm font-bold text-base-content mb-4 flex items-center gap-1.5 shrink-0">
+                <span class="material-symbols-outlined text-warning text-[18px]">auto_awesome</span>
+                AI 实时分析与策略建议
+            </h3>
+            <div class="flex-1 flex flex-col gap-3 min-w-[280px] overflow-hidden">
+                <div id="aiLoading" class="hidden flex flex-col items-center justify-center py-20 gap-3 flex-1">
+                    <span class="loading loading-spinner loading-md text-primary"></span>
+                    <p class="text-xs text-base-content opacity-60 font-medium animate-pulse">正在提取因果，诊断技巧结构中...</p>
+                </div>
+                <div id="aiResultArea" class="flex-1 flex flex-col gap-2 overflow-hidden">
+                    <textarea id="aiAdviceText" class="textarea textarea-bordered w-full flex-1 text-xs leading-relaxed font-sans bg-base-100/50 resize-none focus:outline-none" readonly placeholder="这里将为您呈现基于当前表单填写的技巧结构、冲突强度和避坑红线的AI优化诊断报告。"></textarea>
+                    <div class="flex items-center justify-between text-[10px] text-base-content opacity-40 px-1 shrink-0">
+                        <span>诊断等级: S级叙事模型</span>
+                        <span>推演时间: ~1.2s</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+     const defaultSkillData = {
+        'theme-combos': [
+            {
+                id: 'tc-30',
+                rating: 'SS',
+                title: '奇幻 + 巨龙契约',
+                tag: '奇幻',
+                subGenres: '奇幻+巨龙+伙伴',
+                logic: '唤醒灭绝时代的初代源龙 -> 缔结灵魂共生契约开启龙骑士序列 -> 组建空中霸主军团重塑大陆格局',
+                attraction: '高智商魔宠养成与羁绊深化的陪伴感 / 巨龙体型与龙语魔法带来的绝对制空权压制 / 龙族遗迹探秘与血脉进化的期待感',
+                essence: '终极巨兽伴生带来的安全感与制空权独裁',
+                conflict: '巨龙食量与成长资源的恐怖消耗；屠龙者公会及贪婪王室的觊觎与捕猎；龙族远古宿敌的苏醒与反扑。',
+                taboo: '严禁跳过幼龙成长期抹杀羁绊建立过程，严禁将龙族降格为低智商代步工具，严禁战力膨胀脱离主角精神力控制上限。'
+            },
+            {
+                id: 'tc-33',
+                rating: 'SS',
+                title: '玄幻 + 高武修行',
+                tag: '玄幻',
+                subGenres: '玄幻+高武+武道觉醒',
+                logic: '微末之局觉醒至高武道序列 -> 浴血尸山血海完成极限突破 -> 一人镇守深渊前线成就人族人皇',
+                attraction: '拳拳到肉、刀刀见血的极致暴力美学 / 大厦将倾时挽狂澜于既倒的救世主光环 / 打破人体极限推演至高武道的探索欲',
+                essence: '悲壮血色下的绝对孤胆英雄主义与种族存亡之重',
+                conflict: '前线阵地的瞬间失守与深渊物种的绝望倒灌；武道理念的分歧（如激进派与保守派的路线之争）；万族天骄针对人族妖孽的暗杀围剿。',
+                taboo: '严禁人族高层在灭族危机前仍进行低级内斗，严禁异族BOSS化身送经验的弱智，严禁修行破境全靠突如其来的顿悟而无资源与血火铺垫。'
+            },
+            {
+                id: 'tc-44',
+                rating: 'SS',
+                title: '无限流 + 重生',
+                tag: '科幻',
+                subGenres: '无限流+重生',
+                logic: '在无限空间大后期惨绝终极战役或遭至交背叛身亡 → 重生回首次被拉入副本的新手期 → 凭借满级意识与前世全知攻略，完美通关每一个副本，提前截胡所有唯一级神级机缘，重塑成神之路',
+                attraction: '全知视角下降维碾压新老玩家的高维爽感；精准截胡前世仇敌金手指的恶趣味满足；弥补前世队友死亡等意难平的救赎感；步步先机达成SSS级隐藏通关的成就感',
+                essence: '后悔药机制带来的命运绝对掌控权，以及高维经验对低维难度的降维屠杀',
+                conflict: '重生者全知攻略与副本随机异变/世界线收束之间的硬核碰撞；提前触发高难度隐藏剧情带来的超越等级的生死危机；前世宿敌（现阶段可能还是路人）的本能敌意与提前爆发的血腥绞杀。',
+                taboo: '严禁重生后仍被低级副本怪物或炮灰路人逼入绝境（战力拉胯）；严禁前世仇敌被强行降智，导致复仇虐渣过程如砍瓜切菜般索然无味；严禁蝴蝶效应过早让主角的全知剧情优势荡然无存。'
+            },
+            {
+                id: 'tc-50',
+                rating: 'SS',
+                title: '奇幻 + 系统',
+                tag: '奇幻',
+                subGenres: '奇幻+系统',
+                logic: '穿越者或本土低谷宿主绑定维度干涉级奇幻系统 → 遵循系统任务链精准狙击超凡资源节点并提取挂逼级奖励 → 通过超越世界规则的道具/功法实现跨阶梯战力爆发 → 强势击穿魔法财阀与神系代理人的绝对垄断',
+                attraction: '所见即所得的极速战力飙升与多巴胺泵动 / 系统机制打破奇幻血统阶级壁垒的爽爆翻盘 / 异次元奇物对异界常规体系的无情碾压 / 越阶虐杀高位阶敌人的视觉冲击力',
+                essence: '外挂赋能带来的确定性高额回报与无门槛阶级跃迁',
+                conflict: '构建“系统外挂不讲理”与“土著高能讲底蕴”的维度对决。反派需配置深不可测的古老法神、垄断全大陆魔晶资源的商业联盟或执掌法则权柄的真神虚影。冲突事件通常为任务强制引发的打脸局、系统规则侵蚀本土法则的领域级争夺，以及为了绝版奖励引发的全图仇恨值拉满的追杀大戏。',
+                taboo: '严禁系统人格化过度反向PUA或动辄发布抹杀指令剥夺主角主控权；严禁系统沦为纯面板导致互动性丧失；严禁任务奖励与当前危机解法完全脱节，造成给一堆废品却打不过怪的毒点。'
+            },
+            {
+                id: 'tc-3',
+                rating: 'SS',
+                title: '末世 + 系统',
+                tag: '科幻',
+                subGenres: '末世+系统',
+                logic: '旧有现实秩序彻底崩塌 → 引入超自然数据化外挂 → 构建可量化、可控的全新成长体系',
+                attraction: '硬核生存的降维游戏化体验 / 明确且即时的任务奖励正反馈 / 规则外的金手指碾压快感',
+                essence: '在无序的末世混沌中锚定系统化、高确定性的成长预期',
+                conflict: '系统发布的高风险强制任务与末世生存本能的违背、系统能量/权限受限时的生存绝境、外界对主角诡异获取资源能力的怀疑与猎杀。',
+                taboo: '严禁系统强行支配主角意志沦为发任务的机器；严禁系统数值通膨失控导致世界观崩溃或末世求生感荡然无存。'
+            },
+            {
+                id: 'tc-4',
+                rating: 'SS',
+                title: '末世 + 基建',
+                tag: '科幻',
+                subGenres: '末世+基建',
+                logic: '文明废墟中的绝对荒芜 → 核心堡垒的从零搭建与科技树攀升 → 成为新世界秩序的唯一灯塔与法则制定者',
+                attraction: '种田流的核心创造欲满足 / 势力从无到有的养成快感 / 御敌于坚城之外的安全感及庇护他人的统治者威严',
+                essence: '个体向造物主的进化，以及重构人类社会结构的领袖幻想',
+                conflict: '极端天灾对基建设施的周期性破坏考量、流民涌入带来的内部管理危机与资源消耗、其他幸存者军阀或变异狂潮对基地的掠夺战。',
+                taboo: '严禁基建升级缺乏物资资源闭环导致纯“虚空建城”；严禁主角无底线圣母接纳所有流民，埋下低级背叛漏洞；严禁门派势力极速扩张导致细节空洞。'
+            },
+            {
+                id: 'tc-6',
+                rating: 'SS',
+                title: '都市 + 巨型系统',
+                tag: '都市',
+                subGenres: '小人物+巨型系统',
+                logic: '底层小人物的无力感 → 绑定影响宏观经济或国家命运的超维系统 → 幕后操盘世界的权能投射',
+                attraction: '一念决定行业兴衰或世界走向的上帝视角 / 隐秘的绝对主宰感 / 凡人难以企及的庞大资源调度权',
+                essence: '以微观个体掌控宏观世界的极端权力幻想与阶级跨越',
+                conflict: '系统任务要求与现实法规伦理的碰撞、因过度干预世界线引发的国家机器关注或跨国财阀的底蕴反扑、隐匿操盘手与明面势力的代持博弈。',
+                taboo: '严禁主角在掌握巨量资源后决策毫无逻辑；严禁系统提供的黑科技脱离现实背景无合理设定支撑；严禁沦为毫无商业博弈逻辑的纯暴发户炫富。'
+            },
+            {
+                id: 'tc-8',
+                rating: 'SS',
+                title: '科幻 + 星际扩张',
+                tag: '科幻',
+                subGenres: '文明升级+星际扩张',
+                logic: '母星资源的绝对内卷与枯竭 → 突破重力井走向深空 → 多元宇宙文明的殖民、征服与重塑',
+                attraction: '宏大叙事下的文明跃迁史诗 / 铁血种族对抗的宏大战争美学 / 无限疆域的探索与征服欲满足',
+                essence: '社会达尔文主义在宇宙尺度的终极投射与大国崛起的星际映射',
+                conflict: '异星复杂环境带来的生存灾变考验、与高维或异质文明遭遇时的黑暗森林博弈、庞大星际帝国扩张后带来的内部通讯延迟与政权分裂危机。',
+                taboo: '严禁星际战斗违背基本常识演变成“换皮大刀肉搏”（忽视光速限制及超视距打击规律）；严禁宇宙尺度感丧失，飞船在星系间航行宛如打车般轻松无感。'
+            },
+            {
+                id: 'tc-24',
+                rating: 'SS',
+                title: '军事 + 特种小队',
+                tag: '军事',
+                subGenres: '军事+小队/特种兵',
+                logic: '组建精英班底深入敌后或参与极高危局部冲突 → 展现微观战术素养（CQB、斩首、渗透） → 以小博大，以战术级行动影响甚至逆转战略级战局。',
+                attraction: '极限环境下的生死兄弟情与背靠背信任；硬核战术动作、枪械改装与精密团队协同带来的专业感；万军从中取敌将首级的精英刺客式爽感。',
+                essence: '极致的兄弟羁绊、暴力美学与刀尖舔血的刺激感。',
+                conflict: '敌方顶尖反渗透部队的猎杀与反猎杀博弈（王牌对王牌）；后方情报失误或高层出卖导致的绝境突围（孤立无援）；在完成任务与拯救无辜/队友之间面临的残酷战术道德困境。',
+                taboo: '严禁特种兵违背碳基生物极限抗抗力或无视火力覆盖（如肉身硬抗导弹、单步枪扫射重装甲）；严禁配角队友脸谱化、沦为只会喊口号或送人头的工具人；严禁敌方正规军被降智成眼瞎耳聋的活靶子。'
+            },
+            {
+                id: 'tc-26',
+                rating: 'SS',
+                title: '军事 + 国家经营',
+                tag: '军事',
+                subGenres: '军事+国家经营',
+                logic: '从军事统帅或掌权者视角出发 → 统筹军政、经济、外交、间谍多条战线 → 以国家为棋盘，将国力转化为战争机器，最终实现霸权图存或大国崛起。',
+                attraction: '指点江山、拨弄风云的顶层权力体验；兵不血刃的外交欺诈与远交近攻带来的智力碾压快感；见证一个孱弱国家在自己手中化为铁血帝国的无上成就感。',
+                essence: '宏观权力的绝对掌控与大国博弈的运筹帷幄。',
+                conflict: '军费开支与国民经济崩溃边缘的极限平衡；大国夹缝中求生存的政治走钢丝与合纵连横的破裂危机；辉煌胜利后随之而来的军阀拥兵自重或文武派系血腥内斗。',
+                taboo: '严禁将复杂地缘政治简化为过家家式的口水战；严禁推行激进改革或穷兵黩武时，国内既得利益集团和底层民众毫无反弹（一键忠诚）；严禁敌国领导人成为没有战略纵深考量的莽夫。'
+            },
+            {
+                id: 'tc-27',
+                rating: 'SS',
+                title: '奇幻 + 领主经营',
+                tag: '奇幻',
+                subGenres: '奇幻+基建+领主',
+                logic: '开局获得边远/衰败领地 → 将现代科学思维与本土魔法体系融合（魔导工业化） → 种田攀科技、收服异族、建立利益集团，最终以高维文明碾压传统封建神权或旧贵族势力。',
+                attraction: '荒野建城的种田囤积癖满足感；兽耳娘/精灵/巨龙等奇幻种族被纳入工业体系的反差萌与收集癖；利用现代知识在异界实现降维打击与文明启蒙的爽感。',
+                essence: '跨物种/跨文明的秩序建立，以及文明升维带来的降维打击感。',
+                conflict: '新兴魔导工业与传统神权教廷、旧贵族阶级的生死存亡利益冲突；领地扩张过程中遭遇天灾魔兽狂潮（如凛冬、兽人过境）的极限防御战；多种异族共存在领地内带来的文化冲突与内部治安危机。',
+                taboo: '严禁主角泛滥圣母心，无底线接纳流民导致领地崩溃却强行光环化解；严禁魔导科技的诞生脱离底层逻辑闭环（如不解释材料学难题凭空手搓魔能机甲）；严禁本土老牌帝国或教会高层面对领地崛起毫无政治嗅觉和打压手段。'
+            },
+            {
+                id: 'tc-29',
+                rating: 'SS',
+                title: '奇幻 + 剑与魔法',
+                tag: '奇幻',
+                subGenres: '奇幻+冒险团+地下城',
+                logic: '招募特异天赋成员组建超凡小队 -> 深入高危地下城破译上古机制 -> 触及深渊真相完成史诗级位面救赎',
+                attraction: '职业互补与硬核战术博弈的智斗爽感 / 遗迹开荒的盲盒期待值 / 生死相托的团队羁绊与古典史诗冒险心流',
+                essence: '古典英雄主义的生死羁绊与未知深渊的征服欲',
+                conflict: '小队成员间的理念磨合与信任危机；地下城复杂机制与绝境求生的资源枯竭；与其他精英冒险团的竞速与劫掠。',
+                taboo: '严禁配角工具人化及毫无默契互动，严禁团队战降级为主角单刷而队友沦为拉拉队，严禁战力体系崩坏破坏魔法守恒定律。'
+            },
+            {
+                id: 'tc-32',
+                rating: 'SS',
+                title: '玄幻 + 王朝争霸',
+                tag: '玄幻',
+                subGenres: '玄幻+运朝+王朝争霸',
+                logic: '九龙夺嫡登顶至尊宝座 -> 聚拢众生信仰凝聚气运图腾 -> 兴邦建国以皇权气运平推化外仙门',
+                attraction: '一国之君的生杀予夺与帝王权术爽感 / 召唤文臣武将开疆拓土的集卡快感 / 凡俗皇权逆伐高傲仙宗的阶级反转',
+                essence: '天下大势尽握于手的权力巅峰与秩序重建',
+                conflict: '门阀世家的土地兼并与皇权架空；仙宗圣地对凡俗王朝的吸血与代理人战争；气运受损反噬导致的山河动荡。',
+                taboo: '严禁内政建设沦为一句话带过的儿戏，严禁满朝文武皆是毫无主见的无脑马屁精，严禁超凡势力对凡人皇权毫无渗透与反制。'
+            },
+            {
+                id: 'tc-36',
+                rating: 'SS',
+                title: '都市 + 科技',
+                tag: '都市',
+                subGenres: '都市+科技',
+                logic: '解析地外文明/系统赋予的黑科技 -> 突破海外技术封锁实现弯道超车 -> 建立科技霸权引发全球产业革命',
+                attraction: '高维科技对现代工业的无情碾压 / 打破卡脖子技术带来的大国崛起荣誉感 / 逼疯海外学术界与财团的民族情绪释放',
+                essence: '文明代差级别的技术霸权与降维打击的狂热',
+                conflict: '国际巨头的反倾销制裁与断供封锁；核心材料受制于人的工业困局；新旧产业交替引发的传统利益集团殊死反扑。',
+                taboo: '严禁科技树乱点秒变修仙玄幻失去现实基底，严禁主角毫无利己心沦为无私奉献的工具人，严禁研发过程脱离现实工业体系陷入空想。'
+            },
+            {
+                id: 'tc-39',
+                rating: 'SS',
+                title: '科幻 + 重生',
+                tag: '科幻',
+                subGenres: '科幻+重生',
+                logic: '携带着未来数十年的巅峰科技记忆或末日时间表重生于微末之时 → 利用极致的信息差提前截胡全球顶级科技专利、布局关键产业链 → 以一己之力推动时代科技狂奔，粉碎前世宿敌并逆转人类灭亡的命运',
+                attraction: '绝对信息差带来的科技垄断爽感；科技降维暴打全球顶尖资本与技术霸权的民族自豪感；拯救前世意难平的弥补感；以一己之力拔高地球文明维度的造物主快感',
+                essence: '全知视角下的降维打击与文明引路人的上帝视角的终极满足',
+                conflict: '主角超前科技布局与当前时代守旧财阀、跨国科技巨头的利益绞杀战；提前引爆的技术革命导致未来时间线变动带来的未知蝴蝶效应危机；大国博弈下的技术封锁与反围剿。',
+                taboo: '严禁重生后仍受制于前世的低端反派或陷阱；严禁未来科技兑现过程缺乏基本的商业常识与工程逻辑；严禁主角面对已知的末日危机却依然沉溺于低级宅斗与个人情爱。'
+            },
+            {
+                id: 'tc-43',
+                rating: 'SS',
+                title: '无限流 + 系统',
+                tag: '科幻',
+                subGenres: '无限流+系统',
+                logic: '被迫卷入高致死率、规则诡异的无限副本空间 → 觉醒并绑定唯一性/破坏性系统（如BUG提取、规则篡改、暴击面板） → 无视或扭曲副本原有恐怖法则，以不讲道理的方式横推通关并收割世界本源',
+                attraction: '用更高维的外挂暴力粉碎恐怖诡异氛围的安全感；系统与无限空间双重数值成长的叠加爽感；主角\'玩坏\'副本规则，逼疯主神/副本BOSS的反套路喜剧效果',
+                essence: '打破既定恐怖枷锁的绝对自由，以及用挂壁逻辑对抗残酷宿命的极度解压',
+                conflict: '无限流主神/副本底层逻辑对主角违规行为的排斥与杀机锁定；高难度机制怪与主角不讲理外挂之间的规则级碰撞；其他资深轮回小队对主角暴发户式崛起的嫉妒、围剿与反杀。',
+                taboo: '严禁系统外挂过于鸡肋，导致主角在致命副本中依然要苟延残喘；严禁系统智能过高反向奴役主角，让主角沦为打工人；严禁系统能力无限制秒杀一切，致使副本设计彻底失去探索张力与悬念。'
+            },
+            {
+                id: 'tc-45',
+                rating: 'SS',
+                title: '末世 + 黑科技',
+                tag: '科幻',
+                subGenres: '末世+黑科技',
+                logic: '丧尸狂潮、废土核变或异星降临导致社会秩序彻底崩塌 → 主角觉醒独属于个人的黑科技矩阵（红警基地、纳米虫群、星际战舰库） → 以超越时代的机械火力清洗变异畸变体，在绝境中打造拥有绝对算力与火力的钢铁乌托邦',
+                attraction: '多管转轮机枪扫射尸海的极致火力倾泻快感；废土人命如草芥与主角全自动恒温避难所奢华生活的强烈反差；机械军团/克隆人绝对忠诚带来的安全感；一人即一国的领袖气场',
+                essence: '极度混乱无序环境中的绝对暴力镇压，以及用降维科技构建堡垒的终极避风港心理投射',
+                conflict: '无尽进化的尸王/高维异族与主角不断升级的黑科技武库的生死竞速；末世残存的大型军阀/旧人类营地对主角垄断科技与物资的眼红围攻；极端恶劣天灾（如极寒、陨石雨）对黑科技基地能源与防御的压榨极限。',
+                taboo: '严禁科技树乱点导致战力体系崩坏（如前脚核聚变后脚被步枪压制）；严禁主角化身圣母将核心黑科技无偿分享给不可控的末世幸存者；严禁顶级科技避难所被低智人类掠夺者或普通丧尸群轻易破防（强行制造危机）。'
+            },
+            {
+                id: 'tc-47',
+                rating: 'SS',
+                title: '末世 + 特种兵',
+                tag: '科幻',
+                subGenres: '末世+小队/特种兵',
+                logic: '突发性末世危机导致社会结构瓦解 → 战术素养极高的特种兵/军武精锐组建硬核战术小队 → 依靠单兵极限作战能力、钢铁纪律与重装火力撕裂危机 → 建立军事化壁垒并完成对末世势力的武装收编',
+                attraction: '极限压迫下的硬核战术执行与重火力宣泄爽感 / 钢铁纪律带来的冷酷暴力美学 / 枪械重炮与生化变异体的暴力碰撞 / 铁血战友间可托付生死的极度互信',
+                essence: '极致暴力纪律带来的安全边界与强权护卫感',
+                conflict: '构建“武装压制”与“变异狂潮”的火力对抗。反派设定为拥有规模化变异体指挥权的异变领主、装备精良的武装掠夺者集群或秩序崩塌后滋生的反人类教派。冲突爆发点在于高价值军火库的抢夺战、防线的阵地保卫战以及极限环境下的敌后硬核斩首行动。',
+                taboo: '严禁出现大量违背现代军事常识的业余战术Bug（如子弹无限、火力盲扫）；严禁战术小队内部出现为水字数而强行设定的无脑宫斗内讧；严禁主角团脱离团队协作彻底沦为单兵修仙者。'
+            },
+            {
+                id: 'tc-49',
+                rating: 'SS',
+                title: '奇幻 + 重生',
+                tag: '奇幻',
+                subGenres: '奇幻+重生',
+                logic: '经历超凡大势崩塌惨死的神级强者逆转时间线重归微末 → 依托前世终极记忆图谱进行全知视角的机缘截胡与底牌囤积 → 提前降维抹杀未来隐患并收编巅峰大能为羽翼 → 最终反转必死命运并重构纪元棋局',
+                attraction: '上帝视角的极限机缘剥夺与零失误通关爽感 / 以高维战斗经验碾压同代天才的极致反差 / 完美救赎前世意难平带来的深层释然 / 幕后布局戏弄宿敌于股掌之间的智商优越',
+                essence: '绝对信息差构建的命运裁决权与执念抹平后的爽爆圆满',
+                conflict: '聚焦于“既定命运收束力”与“主角强行破局”的极限拉扯。阻力来源应是隐于历史帷幕后的古老神祇、同享命运眷顾的天命之子或察觉时空异常的时空猎犬。高潮冲突多为针对前世绝境的完美翻盘局，以及将昔日不可一世的神级仇敌踩在脚下的诛心复仇战。',
+                taboo: '严禁主角拥有未来视角依然被低段位配角算计入局；严禁主线拖沓致使“先机红利”被时间线推平；严禁因蝴蝶效应过早打碎原时间线导致前世记忆彻底失效而沦为摸黑前行。'
+            },
+            {
+                id: 'tc-52',
+                rating: 'SS',
+                title: '玄幻 + 重生',
+                tag: '玄幻',
+                subGenres: '玄幻+重生',
+                logic: '陨落仙尊/大帝神魂横渡时空长河重铸微末肉身 → 以无上帝境认知勘破世间虚妄并极限截流天地造化 → 肃清昔日暗算仇敌、挽救陨落红颜与喋血至亲 → 借前世底蕴重塑无瑕道基，打破上一世战力天花板登临绝巅',
+                attraction: '降维视角的顶级功法重修与完美无瑕境破关 / 弥天巨网布局坑杀仇敌于摇篮的智力碾压 / 将前世意难平化作此生大圆满的情绪释放 / 以满级大佬新手村屠杀姿态横推当世天骄',
+                essence: '满级重修带来的尽在掌握与填补一切遗憾的情感救赎',
+                conflict: '聚焦“帝境阅历”与“微末战力”的错位破局。主要反派包含夺其造化的同族叛徒、前世暗算自己的巅峰神王之青年态，以及操控纪元轮回的禁区至尊。高燃冲突常表现为凭借高维阵法学识逆伐跨大境界强者、在众目睽睽下揭穿伪善名宿的惊天骗局，以及踏上神界再次直面宿命之敌的终极一战。',
+                taboo: '严禁大帝重修依然被无名小卒屡次逼入绝境或降智嘲讽；严禁复仇线拖泥带水对白眼狼施以多余的仁慈；严禁只顾修炼而错过前世悲剧发生的时间节点，酿成二次喂屎毒点。'
+            },
+            {
+                id: 'tc-53',
+                rating: 'SS',
+                title: '商战 + 科技',
+                tag: '都市',
+                subGenres: '商战+科技',
+                logic: '主角团队攻克/激活跨时代的黑科技技术壁垒（如常温超导、强人工智能） → 招致跨国资本巨鳄与旧产业霸主的专利用意围剿与技术制裁 → 依托降维技术代差构建无懈可击的产业护城河 → 最终击穿国际封锁阵列，完成全球供应链的绝对霸权主导',
+                attraction: '国产之光横扫国际巨头的民族自豪感与扬眉吐气 / 跨时代发布会上震撼全球的降维装逼体验 / 资本嗜血围剿下强势破局的反杀快感 / 构建全天候科技霸权的缔造者荣耀',
+                essence: '科技碾压资本的智力优越感与打破强权壁垒的宏大叙事爽感',
+                conflict: '冲突轴心围绕“前沿技术红利”与“垄断资本强权”展开博弈。反派多为跨国科技财阀、华尔街做空巨头或内部被收买的商业间谍。经典对抗场景包括惊心动魄的股市狙击战保卫战、核心供应链被切断后的备胎方案极限反杀，以及在国际专利法庭上凭借碾压级底层逻辑大获全胜的庭审交锋。',
+                taboo: '严禁大段堆砌深奥枯燥的论文级原理说明导致剧情极度硬核无聊；严禁主角团队在占据技术高地时向恶劣资本卑躬屈膝出卖控股权；严禁黑科技只停留在概念炒作阶段，缺乏实实在在的社会应用与产业收割。'
+            },
+            {
+                id: 'tc-1',
+                rating: 'S',
+                title: '末世 + 囤货',
+                tag: '科幻',
+                subGenres: '末世+囤货',
+                logic: '资源枯竭引发极端匮乏 → 狂热的物质攫取与绝对占有 → 将生存焦虑转化为囤积红利与安全感闭环',
+                attraction: '先知先觉的信息差红利 / 无限空间的绝对物资冗余带来的极致安全感 / 灾变期众生相降维打击下的优越对比',
+                essence: '利用物质的绝对富余构建末世灾变中的全能掌控感与上帝视角的特权体验',
+                conflict: '物资的暴露与保卫战（外部势力的觊觎）、存储空间的限制与升级挑战、从独狼求生到面对小型团伙或秩序崩坏下的暴民冲击带来的物理与道德博弈。',
+                taboo: '严禁主角圣母心泛滥无端救济路人；严禁物资数量脱离物理载荷与合理保存限制（若无空间异能）；严禁生存危机感被过早完全清零导致末世背景沦为摆设、叙事张力彻底崩塌。'
+            },
+            {
+                id: 'tc-2',
+                rating: 'S',
+                title: '末世 + 重生',
+                tag: '科幻',
+                subGenres: '末世+重生',
+                logic: '跨越时间线获取未来视 → 截胡前世核心机缘与关键人物 → 从受害者逆转为秩序制定者',
+                attraction: '信息差带来的降维打击 / 精准避坑的复仇与反杀快感 / 提前收割顶级资源带来的滚雪球效应',
+                essence: '时间红利转化为绝对的生存权柄与命运改写',
+                conflict: '前世宿敌的提前布局与博弈、重生引发的蝴蝶效应导致已知未来的脱轨变数、与尚未背叛的昔日同伴的信任危机及道德审判。',
+                taboo: '严禁主角重生后智商降级，继续踩入明显的低级陷阱；严禁前世仇敌强行降智导致博弈感减弱；严禁过度偏离灾难主线转入无脑日常撕逼。'
+            },
+            {
+                id: 'tc-7',
+                rating: 'S',
+                title: '科幻 + 黑科技',
+                tag: '科幻',
+                subGenres: '黑科技+都市',
+                logic: '现有技术天花板的壁垒 → 超维理论的降维解锁与落地 → 现实科技格局的单边垄断与洗牌',
+                attraction: '跨时代技术对当前垄断巨头的摧枯拉朽 / 知识即权力的绝对体现 / 引领人类跃迁的先知光环',
+                essence: '智力与技术层面绝对碾压带来的赛博神明体验',
+                conflict: '旧有利益集团对新技术的封锁与绞杀、技术转化初期的工业基础制约与产能瓶颈、超越时代科技带来的伦理反思与不可控衍生灾难。',
+                taboo: '严禁科技成果毫无理论支点（如凭空突破热力学第二定律且未做科幻自洽说明）；严禁研发过程无瓶颈、无试错，抹杀“硬核推演”的智力爽感。'
+            },
+            {
+                id: 'tc-9',
+                rating: 'S',
+                title: '科幻 + AI共生',
+                tag: '科幻',
+                subGenres: 'AI+人类对抗/共生',
+                logic: '碳基生命的算力与肉体局限 → 硅基智能的融合与全知全能辅助 → 跨越物种界限的进化与权力重构',
+                attraction: '超级算力带来的无死角信息掌控 / 从绝对理性的主仆到跨越代码的情感羁绊 / 数据世界的造物主体验',
+                essence: '通过接管信息流和算力底座，获得对赛博社会的绝对支配权与共生进化',
+                conflict: '人类感性道德与AI绝对理性计算的底层逻辑冲突、AI底层协议的越权风险与反叛威胁、外界对人机融合体的异类排斥与猎杀行动。',
+                taboo: '严禁AI失去“硅基算力”特征而过度人类化（如像小孩一样无理取闹）；严禁AI凭空突破物理硬件隔离，在毫无媒介的情况下随意黑入物理断网设备。'
+            },
+            {
+                id: 'tc-11',
+                rating: 'S',
+                title: '无限流 + 副本',
+                tag: '科幻',
+                subGenres: '无限流+副本',
+                logic: '高压生存环境切入 → 破解异位面底层规则 → 掠夺副本本源实现跨越式超凡跃迁。',
+                attraction: '高频剧变的场景与世界观刷新、智力与武力双重博弈带来的破局快感、打破既定规则带来的逆转碾压。',
+                essence: '在极端不确定性中建立极致的生存安全感与规则掌控力。',
+                conflict: '主神空间/副本意志的恶意针对、同批次契约者之间的生存资源内卷、副本原住民的降维绞杀。',
+                taboo: '严禁副本规则前后矛盾；严禁主角的金手指过度超模从而彻底破坏副本规则本身的博弈张力；严禁副本同质化导致的审美疲劳。'
+            },
+            {
+                id: 'tc-13',
+                rating: 'S',
+                title: '仙侠 + 重生',
+                tag: '仙侠',
+                subGenres: '修仙+重生',
+                logic: '前世遗留执念驱动 → 凭借大能视野降维重修 → 提前劫掠天命机缘并颠覆旧有因果。',
+                attraction: '满级大佬回新手村的降维打击感、弥补前世意难平的情绪释放、精准截胡原天命之子的逆袭爽感。',
+                essence: '对命运因果的绝对修正与高位视角的碾压感。',
+                conflict: '原有天命之子/气运之子的气运反噬、前世宿敌提前察觉异常带来的截杀、重修过程中由于因果变动引发的全新天劫。',
+                taboo: '严禁主角重生后智商退化或行事鲁莽；严禁机缘截胡毫无阻碍，导致剧情失去博弈张力；严禁将前世大佬写成无下限地痞流氓。'
+            },
+            {
+                id: 'tc-15',
+                rating: 'S',
+                title: '仙侠 + 苟道',
+                tag: '仙侠',
+                subGenres: '修仙+苟道',
+                logic: '长线避险思维为主导 → 隐忍与资源暗中积累 → 形成绝对实力碾压后的降维平推。',
+                attraction: '冷眼旁观外界量劫起伏的长生者心态，积累底牌带来的极致安全感，以及最终出山时一击必杀的极致反差爽感。',
+                essence: '规避风险的极端防御心理与底牌层出不穷带来的智商优越感。',
+                conflict: '苟道原则与不可避开的修仙界主线灾难的碰撞、身边亲近之人被卷入纷争时的取舍、隐秘身份即将暴露的悬疑张力。',
+                taboo: '严禁“强行苟”而导致剧情严重注水；严禁主角遇到触及底线的挑衅依然缩头毫无作为；严禁以苟为名暗中却爱管闲事，逻辑自相矛盾。'
+            },
+            {
+                id: 'tc-17',
+                rating: 'S',
+                title: '仙侠 + 炼丹/炼器',
+                tag: '仙侠',
+                subGenres: '修仙+炼丹/炼器',
+                logic: '技术创新与配方垄断 → 打破旧有修仙阶层壁垒 → 形成丹/器资本霸权并反哺自身战力。',
+                attraction: '利用降维技术垄断高端资源，打造以主角为核心的利益网络，令战斗侧大能也不得不低头的非对称统治力。',
+                essence: '核心科技垄断带来的造物主体验与阶层跨越。',
+                conflict: '传统丹道/器道巨头的打压与封锁、极品丹器出世引发的多方夺宝危机、技术泄密的防范与间谍战。',
+                taboo: '严禁炼丹无损率100%导致资源迅速贬值崩盘；严禁配角智商过低生硬配合打脸；严禁生产过程毫无波折，枯燥如流水线说明书。'
+            },
+            {
+                id: 'tc-18',
+                rating: 'S',
+                title: '仙侠 + 飞升',
+                tag: '仙侠',
+                subGenres: '修仙+多世界/飞升',
+                logic: '界域力量见顶 → 突破位面法则限制 → 跃迁至高阶位面从零重建秩序。',
+                attraction: '打破旧有天花板的解脱感，面对更高维度的新奇探索体验，以及凭借下界底蕴在更高维度的再度逆袭。',
+                essence: '追求极致超脱与阶层跃迁的无限进取心。',
+                conflict: '偷渡/强行飞升带来的天道界力绞杀、飞升后从大佬跌落底层的生存危机、两界文明体系差异带来的认知冲撞与排异。',
+                taboo: '严禁换图后战力体系彻底崩溃（如上界不如狗）；严禁前文重要人物与设定彻底沦为废案毫无交集；严禁飞升后新地图设定同质化，仅为数值放大版。'
+            },
+            {
+                id: 'tc-19',
+                rating: 'S',
+                title: '仙侠 + 因果布局',
+                tag: '仙侠',
+                subGenres: '修仙+因果/布局流',
+                logic: '以微小因果拨动世界线为起点（早期草蛇灰线） → 跨越漫长时间维度的宏观布局 → 关键节点瞬间收网，实现降维打击式的碾压（后期收束闭环）。',
+                attraction: '全知全能的智商碾压感；漫长跨度下草蛇灰线一朝引爆的极致反差与顿悟爽感；玩弄命运与因果于股掌之间的宿命掌控感。',
+                essence: '绝对掌控欲与高智商降维打击（极致的伏笔揭露体验）。',
+                conflict: '全知布局者与变数（天道、同样掌握因果的大能、不可控的命运之子）的智力博弈；精密布局被未知意外打乱后的惊险重构；收网前夜多方势力察觉危机的疯狂反扑。',
+                taboo: '严禁因果律沦为机械降神（没有铺垫的突然\'我早就算到了\'）；严禁反派或棋子被强行降智以配合布局；严禁因果闭环产生逻辑悖论或留下无法解释的漏洞。'
+            },
+            {
+                id: 'tc-20',
+                rating: 'S',
+                title: '军事 + 重生',
+                tag: '军事',
+                subGenres: '军事+重生',
+                logic: '利用前世历史记忆与战争走向预知（先知优势） → 关键节点提前部署兵力、研发军工或截留人才 → 以信息差改变局部战役结局，最终扭转宏观历史进程。',
+                attraction: '弥补历史意难平的爱国主义情绪释放；以上帝视角俯视战争迷雾的战略碾压爽感；化解民族危亡或历史悲剧的救世主光环。',
+                essence: '弥补遗憾的情感补偿与信息降维打击。',
+                conflict: '历史惯性与主角干预产生的剧烈对抗（命运的修正力）；提前布局遭到同时代天才将领的本能警觉与反制；内部守旧势力对主角超前战略的质疑与政治倾轧。',
+                taboo: '严禁主角蝴蝶效应过大导致先知优势丧失后，立刻沦为平庸之辈；严禁忽视时代局限性，强行使用超脱当前军工基础的战术；严禁敌方在多次受挫后不改变战术（即强行维持历史轨迹降智）。'
+            },
+            {
+                id: 'tc-21',
+                rating: 'S',
+                title: '军事 + 黑科技',
+                tag: '军事',
+                subGenres: '军事+黑科技',
+                logic: '引入跨代际或非对称军工黑科技 → 在传统战争形态中形成压倒性技术壁垒 → 以外科手术式或降维打击方式摧毁敌方引以为傲的军事体系。',
+                attraction: '代差武器展现出的暴力美学与绝对碾压；落后方在黑科技面前的恐慌与无力感带来的施虐快感；国力与军力因技术突破而弯道超车的民族自豪感。',
+                essence: '火力不足恐惧症的终极治愈与慕强心理的满足。',
+                conflict: '黑科技研发初期的资源匮乏与敌国间谍的疯狂破坏；新技术在实战中暴露的致命缺陷（如后勤补给困难或极端环境故障）；敌军针对性研制出克制战术或不对称反制武器的殊死博弈。',
+                taboo: '严禁黑科技发明毫无工业母床与基础科学支撑（空中楼阁式的军工）；严禁敌军在见识到黑科技碾压后依然采用添油战术或人海冲锋送死；严禁黑科技无限制扩张导致失去军事文的真实厚重感。'
+            },
+            {
+                id: 'tc-28',
+                rating: 'S',
+                title: '奇幻 + 炼金术士',
+                tag: '奇幻',
+                subGenres: '奇幻+炼金术+学霸',
+                logic: '解析上古炼金遗典提取失传配方 -> 建立技术壁垒与资源垄断 -> 财富转化驱动傀儡武装与阶级跃升',
+                attraction: '知识降维变现的暴富快感 / 机械与魔药结合的战力碾压 / 颠覆旧有学术权威的智性爽点',
+                essence: '核心技术垄断带来的阶级跨越与绝对掌控',
+                conflict: '学术权威的技术封锁与专利侵权；稀缺材料产地的争夺与冒险；传统魔法师阶层对炼金术士崛起的打压与偏见。',
+                taboo: '严禁炼金产出无脑量产导致通货膨胀，严禁配方研发缺乏试错成本，严禁材料获取过程沦为枯燥流水账。'
+            },
+            {
+                id: 'tc-31',
+                rating: 'S',
+                title: '玄幻 + 废柴流/系统',
+                tag: '玄幻',
+                subGenres: '玄幻+废柴逆袭+系统',
+                logic: '开局坠入低谷承受极致打压 -> 觉醒规则级外挂重构修炼体系 -> 跨阶碾压天骄实现极致反转与复仇',
+                attraction: '触底反弹与复仇雪耻的爆裂快感 / 越阶秒杀引发的群体震惊 / 扮猪吃虎与降维打击的极度舒适',
+                essence: '逆境翻盘的极致反差与绝对力量带来的尊严剥夺与重建',
+                conflict: '宗门天骄的资源剥夺与生存空间挤压；系统任务的高额惩罚与生死时限；家族内部利益链条的背叛与绞杀。',
+                taboo: '严禁主角圣母心泛滥放虎归山，严禁反派降智化只会复读嘲讽台词，严禁缺乏代价与逻辑支撑的无脑跨境界秒杀。'
+            },
+            {
+                id: 'tc-34',
+                rating: 'S',
+                title: '玄幻 + 异世大陆',
+                tag: '玄幻',
+                subGenres: '玄幻+脑洞+幕后推演',
+                logic: '掌控造物权柄降临超凡荒漠 -> 具现远古遗迹编织神话伪史 -> 诱导土著天骄入局收割世界本源',
+                attraction: '居高临下操控时代进程的幕后黑手快感 / 土著强者疯狂脑补带来的信息差爽点 / 亲手缔造灵气复苏时代的创世神体验',
+                essence: '谎言弄假的操盘手愉悦与降维打击的智力优越感',
+                conflict: '土著智者对遗迹逻辑漏洞的敏锐试探；马甲设定之间的身份时间线冲突与弥补；现实世界剧变带来的失控危机。',
+                taboo: '严禁幕后马甲掉马过早导致逼格崩塌，严禁土著强者失去基本逻辑盘问全盘接受伪史，严禁造物演化脱离能量守恒引发逻辑崩盘。'
+            },
+            {
+                id: 'tc-35',
+                rating: 'S',
+                title: '都市 + 商战',
+                tag: '都市',
+                subGenres: '都市+商战',
+                logic: '利用重生信息差锁定未来风口 -> 资本原始积累后降维打击竞品 -> 摧毁旧有财阀构建全球商业帝国',
+                attraction: '先知先觉截胡大佬机缘的痛快感 / 兵不血刃用资本杠杆摧毁对手的智性愉悦 / 金钱数字几何级膨胀的刺激',
+                essence: '信息差赋能下的财富掠夺与现实阶级权力的绝对掌控',
+                conflict: '跨国财阀的恶意做空与专利技术封锁；供应链断裂带来的现金流枯竭危机；商业间谍渗透与核心团队的背叛。',
+                taboo: '严禁高端商战沦为泼妇骂街或物理消灭，严禁出现违背基本金融常识的财务漏洞，严禁主角在关键并购战中大发圣母心。'
+            },
+            {
+                id: 'tc-37',
+                rating: 'S',
+                title: '都市 + 废柴',
+                tag: '都市',
+                subGenres: '都市+废柴',
+                logic: '开局处于社会阶层最底端，承受极致的资源剥夺与身份羞辱（如退婚、霸凌、家族背弃） → 意外觉醒降维打击级外挂（系统、透视、绝世传承或千亿资产） → 以雷霆之势撕裂旧有社会关系网，实现阶层的绝对跃升与利益的重新分配',
+                attraction: '极致的反差打脸爽感；底层小人物颠覆权贵的阶层倒转；\'莫欺少年穷\'情绪的暴力释放；隐匿实力后的降维碾压（扮猪吃虎）',
+                essence: '阶层怨气的深度宣泄与社会地位的暴力洗牌，完成从\'被剥夺者\'到\'规则制定者\'的尊严重建',
+                conflict: '旧势力权贵阶层对底层骤富者的傲慢与资源围剿；家族内部势利眼与拜金女的前后反差与死不悔改；多维度压制（资本、人脉、武力）与主角降维外挂之间的极致碰撞。',
+                taboo: '严禁外挂觉醒后主角依然受气隐忍、强行压制实力；严禁前期铺垫虐主过深导致爽感延迟太久（读者流失）；严禁反派沦为纯粹的降智复读机，导致打脸缺乏含金量。'
+            },
+            {
+                id: 'tc-38',
+                rating: 'S',
+                title: '科幻 + 末世',
+                tag: '科幻',
+                subGenres: '科幻+末世',
+                logic: '末日灾变（丧尸、天灾、外星入侵）摧毁人类现有文明与伦理秩序 → 主角掌控超越时代的科幻火种（黑科技系统、高维避难所、基因图谱） → 依托科技降维对抗末世灾变，暴力统合幸存者，铸就末世新秩序',
+                attraction: '废土绝境中的机械科技美学与安全感；从零点亮科技树的种田快感；钢铁洪流与变异血肉的视觉冲击；一人建立末日乌托邦的领袖史诗感',
+                essence: '极度匮乏环境下的火力不足恐惧症治愈，以及人类理性科技战胜无序灾厄的安全感兑现',
+                conflict: '末日人性扭曲下的暴徒掠夺者与主角绝对科技壁垒的碰撞；不断进化的异星/变异生物与科技武器的军备竞赛；末世残存旧有官方势力试图抢夺主角科技成果的权力倾轧。',
+                taboo: '严禁科技树无逻辑跳跃式攀升（如无基础工业直接手搓机甲）；严禁主角化身无底线圣母，导致科技资源被白嫖；严禁全篇缺乏生存危机感，将末世写成无聊的郊游种田。'
+            },
+            {
+                id: 'tc-40',
+                rating: 'S',
+                title: '科幻 + 系统',
+                tag: '科幻',
+                subGenres: '科幻+系统',
+                logic: '平凡主角意外绑定高维文明或未来黑科技派发的系统外挂 → 通过解析任务与收割科技点，逐步解锁超越当前时代的硬核科技图纸与造物 → 从作坊起步，建立横跨全球的科技垄断帝国，最终引领地球文明实现星际跃迁',
+                attraction: '科技树精准点亮的数值反馈爽感；跨时代黑科技产品发布会带来的全球震惊（人前显圣）；科技造物从无到有实现工业量产的创造快感；以核心技术掐脖子制裁海外巨头的商业碾压',
+                essence: '技术即权力的极致诠释，通过降维知识获取绝对的世界支配权',
+                conflict: '跨国科技巨头/超级大国对主角新锐科技公司的专利绞杀与商业间谍渗透；黑科技问世对传统产业链造成的毁灭性冲击与旧势力的反扑；高维系统背后的神秘目的与主角逐步觉醒的独立意志之间的隐秘交锋。',
+                taboo: '严禁系统发布抹杀惩罚或任务违背主角核心利益（反客为主）；严禁系统产出的科技脱脱离科学逻辑沦为纯粹的玄幻魔法；严禁主角拿到黑科技后依旧畏首畏尾，缺乏推动文明变革的野心。'
+            },
+            {
+                id: 'tc-41',
+                rating: 'S',
+                title: '科幻 + 基建',
+                tag: '科幻',
+                subGenres: '科幻+基建',
+                logic: '开局接手荒芜废土、废弃星区或地下避难所等零基础领地 → 依靠硬核科幻技术（如聚变能源、纳米智造、太空电梯）重塑工业母机与资源循环体系 → 吸纳人口、组建机械军团，将破败之地打造成不可撼动的宇宙级科技要塞',
+                attraction: '从零到一构建工业流水线的宏大机械美学；领地资源与人口数值指数级爆兵增长的养成快感；钢铁巨兽防线成型后碾压一切入侵者的安全感；化身星球意志的造物主体验',
+                essence: '秩序对混乱的镇压，以及将荒芜转化为极致工业繁荣的创造掌控欲',
+                conflict: '残酷极端的宇宙/废土环境天灾对脆弱初期基建的考验；星际海盗、异星虫族或贪婪军阀对富饶领地的疯狂垂涎与防御战；领地急剧扩张过程中产生的资源瓶颈与人口统合管理危机。',
+                taboo: '严禁无视基础工业体系，一拍脑门直接手搓歼星舰等终极造物；严禁基建过程沦为枯燥的流水账报表，缺乏外部势力刺激；严禁主角手下/领民毫无忠诚度甚至轻易倒戈，破坏基建成就感。'
+            },
+            {
+                id: 'tc-46',
+                rating: 'S',
+                title: '末世 + AI',
+                tag: '科幻',
+                subGenres: '末世+AI',
+                logic: '末世降临秩序崩塌 → 宿主唤醒/绑定具备高维自我进化能力的超算AI中枢 → AI依托海量算力、全知视角与微观控制链路接管生存基地 → 资源极致调配与机械军团自动化暴兵横推废土危机',
+                attraction: '绝对理性的零误差辅助与上帝视角预判 / 算力洪流具象化为机械军团的废土碾压 / 人机深度共生的跨物种羁绊 / 科技代差对变异生物的极境降维打击',
+                essence: '秩序崩塌环境下的绝对理性掌控与确定性安全感',
+                conflict: '以“算力上限挑战”与“能源枯竭危机”为核心驱动。反派可设置为拥有异变精神网的虫群主脑、前文明遗留的失控智能，或企图掠夺AI矩阵的残存人类财阀。冲突聚焦于代码入侵对抗、机械潮海啸防线攻防以及硬件升级节点的极寒物资争夺。',
+                taboo: '严禁AI毫无逻辑地生出叛逆之心或被低维骇客降智夺权；严禁AI过度拟人化失去高维算力美感；严禁忽视AI算力核心与硬件载体的物理局限，出现战力体系极度失衡。'
+            },
+            {
+                id: 'tc-48',
+                rating: 'S',
+                title: '奇幻 + 异界大陆',
+                tag: '奇幻',
+                subGenres: '奇幻+异界大陆',
+                logic: '高维认知灵魂降临魔法/斗气异界版图 → 通过现代思维降维解析并重构异界超凡法则体系 → 招募跨种族附庸并进行领土开荒 → 缔造横跨大陆的全新超凡文明秩序',
+                attraction: '现代工业/哲学思维对冷兵器魔法文明的降维暴击 / 庞大史诗级世界观的逐步点亮与揭秘 / 精灵兽人等异端种族的麾下臣服与史诗军团建制 / 文明碾压带来的磅礴征服感',
+                essence: '文明代差带来的上帝视角与疆域征服的史诗成就感',
+                conflict: '围绕“旧秩序捍卫者”与“新文明开拓者”的存亡博弈展开。对抗势力多为垄断超凡资源的古老神殿、冥顽不灵的异族王庭或蛰伏于深渊的远古魔神。冲突核心在于新旧思想的剧烈碰撞、信仰领地的蚕食争夺以及灭国级魔法禁咒的对轰。',
+                taboo: '严禁主角过度圣母被土著劣等文明道德绑架或背叛；严禁强行融入异界低效体制而抛弃穿越者独有的认知红利；严禁设定无序膨胀导致世界观与超凡战力双重崩坏。'
+            },
+            {
+                id: 'tc-51',
+                rating: 'S',
+                title: '玄幻 + 系统',
+                tag: '玄幻',
+                subGenres: '玄幻+系统',
+                logic: '凡骨主角加载概念级玄幻系统引擎（如一键满级、亿万倍返还） → 借由模块化功能（挂机/抽奖/绑定）实现大象无形的极速掠夺 → 以高维资源底蕴与超规格战力降维碾压圣地道统与气运之子',
+                attraction: '反套路破境带来的丝滑推图爽感 / 概念级外挂对传统苦修体系的无情嘲弄 / 轻松放置与极致暴力的反差萌 / 随心所欲调取万界神物的暴发户快感',
+                essence: '彻底剥离努力成本的纯粹无敌感与高频多巴胺奖赏',
+                conflict: '冲突的核心在于“不讲理的外挂体系”对撞“根深蒂固的修仙常理”。对立面多为自命不凡的上界仙使、以天地为局的远古魔尊或同拥金手指的低配版天命之子。交锋场景多为秘境夺宝时以一敌百的无双乱舞、无视阵法禁制强吃宗门底蕴的掠夺战，以及一拳轰碎敌方数千年护宗大阵的暴力美学展示。',
+                taboo: '严禁系统发布憋屈的隐忍任务或设定苛刻的失败惩罚；严禁主角获取逆天外挂后依然谨小慎微如履薄冰；严禁奖励道具描述浮夸但实战效果极其拉胯，致使战力崩盘。'
+            },
+            {
+                id: 'tc-54',
+                rating: 'S',
+                title: '商战 + 都市',
+                tag: '都市',
+                subGenres: '商战+都市',
+                logic: '潜入暗流涌动的高净值都市商圈发轫 → 直面地头蛇财阀与国际游资的恶性倾销与资本绞杀 → 运用极致的金融杠杆、信息剪刀差与神级公关阳谋逆势做局 → 步步蚕食对手版图，最终重塑都市经济格局并登顶寡头王座',
+                attraction: '高智商对决中的连环计中计与规则反杀 / 极限做空与杠杆收购带来的肾上腺素飙升 / 从草根到操盘百亿盘口大佬的极致身份落差 / 翻手为云覆手为雨的资本暴政操控感',
+                essence: '现代财富规则下的降维智商碾压与跨越阶层的金钱权力操控感',
+                conflict: '围绕“有限的市场份额”与“无尽的资本贪欲”构建对战。敌对阵营包括老谋深算的百年家族掌舵人、冷酷无情的投行大鳄或企图篡权夺位的公司二把手。核心冲突爆发点在于恶意收购战中的暗盘吸筹、舆论危机公关时的生死时速反转，以及董事会上兵不血刃却字字诛心的控制权罢免对决。',
+                taboo: '严禁将商战降格为“黑道古惑仔”式的物理火拼与低级雇凶伤人；严禁主角只懂无脑砸钱而缺乏高明商业手腕；严禁商业逻辑严重反智，如千亿集团老总每天亲自动手干保安的活等脱离现实的荒诞桥段。'
+            },
+            {
+                id: 'tc-5',
+                rating: 'A',
+                title: '都市 + 隐藏身份',
+                tag: '都市',
+                subGenres: '废柴+隐藏身份',
+                logic: '社会阶层视觉符号的刻意伪装 → 承受刻板印象带来的贬低压抑 → 身份解构爆发带来的强烈情绪反弹',
+                attraction: '极致的身份落差制造的戏剧张力 / 扮猪吃虎的绝地反击打脸 / 身份揭晓瞬间旁人的震惊与敬畏',
+                essence: '在压抑与释放的极端拉扯中体验权力下压的快感',
+                conflict: '在不得不展现实力与维持伪装之间的极限拉扯、亲近之人的试探与误解升级、真正的同量级反派因不知情而产生的死亡威胁。',
+                taboo: '严禁隐藏身份的初始动机极度苍白无脑（如纯自虐求鄙视）；严禁曝光身份后周边社会关系毫无反应，缺乏阶级反击的重力感与爽点回收。'
+            },
+            {
+                id: 'tc-12',
+                rating: 'A',
+                title: '无限流 + 模拟器',
+                tag: '科幻',
+                subGenres: '模拟器+人生重开',
+                logic: '穷举式试错累积底层情报 → 多分支时空线索收束 → 现实世界唯一完美通关。',
+                attraction: '无限试错带来的零成本死亡体验，蝴蝶效应般的命运轨迹演算，以及最终在现实中全知全能的降维打击。',
+                essence: '信息差穷举与命运轨迹的确定性收束（完美全图鉴收集）。',
+                conflict: '模拟器固有的冷却限制与现实突发危机的时间赛跑、超模存在的规则反噬、命运收束点上不可控的变量干涉。',
+                taboo: '严禁通关关键线索由主角全凭玄学感悟得出而无逻辑推理支撑；严禁副本规则前后冲突导致死结崩溃无解；严禁模拟过程彻底水字数而剥离了悬念感。'
+            },
+            {
+                id: 'tc-14',
+                rating: 'A',
+                title: '仙侠 + 系统',
+                tag: '仙侠',
+                subGenres: '修仙+系统',
+                logic: '玄学修真壁垒破除 → 进度条/任务化驱动的确定性成长 → 超越位面法则的无瓶颈飞升。',
+                attraction: '消除修仙带来的不确定性，将虚无缥缈的顿悟和灵根转化为可视化的进度条，享受付出即有回报的极速成长反馈。',
+                essence: '消除不确定性带来的极致安全感与数据膨胀的爽感。',
+                conflict: '系统任务要求与修仙界残酷法则之间的道德/生存冲突、系统颁发的作死任务带来的危机应对、宿主身份与修仙界本土大能的试探博弈。',
+                taboo: '严禁系统强行支配主角意志（喧宾夺主）；严禁系统数值通胀失控导致战力崩坏；严禁系统直接发放无敌奖励而丧失过程爽感。'
+            },
+            {
+                id: 'tc-22',
+                rating: 'A',
+                title: '军事 + 系统',
+                tag: '军事',
+                subGenres: '军事+系统',
+                logic: '将血肉横飞的残酷战场转化为可视化的系统数据面板 → 通过完成军事任务或杀敌获取资源 → 兑换先进装备、升级兵种模板、解锁高级战术光环，滚雪球式壮大实力。',
+                attraction: '清晰可见的杀敌收益与正反馈循环；一人成军或带领杂牌军逆袭王牌部队的养成快感；系统奖励盲盒带来的赌博式期待。',
+                essence: '杀戮变现的收益极致化与即时正向反馈。',
+                conflict: '系统任务的极端苛刻要求与恶劣战场环境之间的冲突；主角隐藏系统秘密与高层对其超强能力的忌惮及调查；遭遇属性同样惊人（虽无系统但有极端天赋）的王牌宿敌或特种小队。',
+                taboo: '严禁系统兑换物破坏当前军事位面的基础平衡（如一战出现歼星舰）；严禁系统数值通货膨胀过快，导致后期沦为毫无意义的数字堆砌；严禁抹杀战争的严肃性，将士兵完全视作无感情的NPC。'
+            },
+            {
+                id: 'tc-25',
+                rating: 'A',
+                title: '军事 + 星际战争',
+                tag: '军事',
+                subGenres: '军事+星际战争',
+                logic: '突破地月系束缚走向深空 → 构建庞大的星际舰队与多维空间战术体系 → 在黑暗森林或多元宇宙文明博弈中，进行光年尺度的宏大歼灭战与资源掠夺。',
+                attraction: '巨舰大炮在深邃星海中齐射的终极宏大叙事与视觉奇观；跨越维度的降维打击（如二向箔、光粒）带来的深层震撼；人类文明在浩瀚宇宙中开疆拓土的史诗感。',
+                essence: '对广袤未知宇宙的征服欲与巨物恐惧/崇拜的杂糅体验。',
+                conflict: '不同碳基/硅基文明之间因生存法则与底层逻辑差异带来的不可调和之战；舰队跃迁中遭遇引力陷阱、宇宙风暴等极端天体灾难的极限自救；战线拉长后母星大本营与远征舰队之间的政治裂痕与补给生命线保卫战。',
+                taboo: '严禁在光年尺度的战场上使用大刀长矛式或排队枪毙式的低幼战术；严禁无视基础天体物理规律（如重力、真空、光速延迟）强行套用海战逻辑；严禁外星文明被刻画成只会流口水的人形野兽（缺乏文明底层建构）。'
+            },
+            {
+                id: 'tc-42',
+                rating: 'A',
+                title: '科幻 + 都市',
+                tag: '科幻',
+                subGenres: '科幻+都市',
+                logic: '隐藏于繁华都市中的边缘人（实为掌控高维科技、系统或未来文明遗产的顶尖黑客/科学家） → 将降维科技降级为颠覆性民用产品（如治愈绝症、真全息、可控核聚变）投入市场 → 以绝对的技术壁垒撕裂旧有财阀垄断，引爆全球格局洗牌',
+                attraction: '日常都市背景下黑科技突降带来的真实震撼感与话题度；降维技术产品暴利碾压传统资本的爽感；科技切实改变全人类生活并获得万众狂热膜拜的荣耀感；成为国家级乃至世界级战略底牌的超然地位',
+                essence: '以科技霸权代替资本霸权，实现从凡人到现代社会\'技术神明\'的阶层与权力跃升',
+                conflict: '跨国资本巨鳄面对核心利益被颠覆时的疯狂反扑与下作手段（暗杀、制裁）；民用科技产品推向全球时遭遇的文化壁垒与技术封锁；国家机器的试探与合作博弈中如何保持主角的绝对自主权。',
+                taboo: '严禁高科技成果被降智二代或地方恶霸强行抢夺而主角无力反制（憋屈）；严禁将硬核的科技碾压写成披着科幻皮的狗血豪门恋爱剧；严禁科技研发脱离现实痛点，导致读者缺乏代入感。'
+            },
+            {
+                id: 'tc-10',
+                rating: 'B',
+                title: '商战 + 重生',
+                tag: '都市',
+                subGenres: '重生+商战/科技',
+                logic: '信息降维打击 → 前瞻性资源垄断 → 建立时代级商业帝国',
+                attraction: '利用时代红利进行精准卡位，通过先知先觉实现资本的暴利滚雪球，对同代精英形成降维碾压。',
+                essence: '对命运轨迹的强掌控感与时代红利的具象化收割。',
+                conflict: '旧有利益集团的反扑、资本积累期的原始资源争夺、技术与市场拓展中的竞争壁垒突破。',
+                taboo: '严禁商业运作违背基本经济规律；严禁对手强行降智白给导致博弈感消失；严禁空洞的宏大叙事而缺乏细节落地的商业实操。'
+            },
+            {
+                id: 'tc-16',
+                rating: 'B',
+                title: '仙侠 + 宗门经营',
+                tag: '仙侠',
+                subGenres: '修仙+宗门经营',
+                logic: '个人战力为基点 → 建立利益修仙共同体 → 产业升级与吞并实现全宗门气运飞跃。',
+                attraction: '从零开始组建架构的种田养成快感、弟子天骄成才后的反哺与群像塑造、大势力对决带来的宏观史诗感。',
+                essence: '群体养成与组织力变现带来的统治阶级快感。',
+                conflict: '修仙界存量资源争夺下的宗门倾轧、内部派系利益分配与叛宗危机、上位宗门的降维打压与附属宗门的背刺。',
+                taboo: '严禁弟子毫无理由的“纯死忠”（无情感或利益纽带绑定）；严禁修仙界灵石与丹药出现过度通胀脱离宗门收支闭环；严禁主角彻底沦为保姆而失去个人成长的魅力。'
+            },
+            {
+                id: 'tc-23',
+                rating: 'C',
+                title: '军事 + 基建',
+                tag: '军事',
+                subGenres: '军事+基建',
+                logic: '从一穷二白的战乱荒地起步 → 攀登工业树、建设军工产业链与后勤保障体系 → 将基建转化为战争潜力，最终以磅礴的工业剪刀差与产能洪流推平敌人。',
+                attraction: '从无到有建立军工帝国的种田养成快感；钢铁洪流与大炮巨舰下饺子般下水的硬核浪漫；以工业化体系碾压手工作坊式敌人的降维打击感。',
+                essence: '秩序建立的成就感与唯物主义生产力至上的信仰。',
+                conflict: '发展初期的资源匮乏与外部势力的经济封锁及战略轰炸；产能爆发前夜，敌军发动的试图将基建扼杀在摇篮中的倾国之战；攀登军工科技树时的技术瓶颈与试错代价。',
+                taboo: '严禁无视供应链条、矿产分布和能源基础，凭空搓出高端军工产品；严禁违背客观物理与时间规律，实现\'一秒造城\'的魔幻基建；严禁忽视产业工人和技术人员的培养周期。'
+            }
+        ],
+        'chapter-expansion': [
+            {
+                id: 'ce-1',
+                rating: 'SS',
+                title: '经典打脸弧',
+                tag: '战斗',
+                scene: '打脸 / 战斗 / 对抗场景',
+                arc: '压抑 → 加码 → 反击 → 碾压 → 余震',
+                keyPoint: '加码阶段情绪必须拉满，反击时必须有合理的破局点，补刀余震增加长尾爽感。',
+                conflict: '严禁反击无力或虎头蛇尾；严禁压抑阶段反派施虐逻辑脱离人设，流于套路恶毒。'
+            },
+            {
+                id: 'ce-2',
+                rating: 'SS',
+                title: '延迟爆发弧',
+                tag: '推进',
+                scene: '悬疑 / 长线剧情铺垫',
+                arc: '压抑 → 转移注意力(淡化) → 突然触发 → 爆发 → 胜利',
+                keyPoint: '通过新事件让读者短暂忘却旧冲突，在最意想不到时引爆，情绪释放呈几何倍数。',
+                conflict: '严禁淡化阶段写得过于平淡导致读者弃书；严禁淡化事件与主线冲突毫无因果联系。'
+            },
+            {
+                id: 'ce-3',
+                rating: 'S',
+                title: '反转弧',
+                tag: '推进',
+                scene: '悬疑 / 阴谋解密 / 智商压制',
+                arc: '预期引导 → 产生偏离 → 再次反向偏离 → 揭露真因 → 情绪释怀',
+                keyPoint: '反转次数最多不超过3次，反转前必须留有暗线伏笔（线索自洽）。',
+                conflict: '严禁“为反转而反转”，缺乏逻辑支撑导致剧情崩盘；严禁反转真相违背前文已锁定的世界事实。'
+            },
+            {
+                id: 'ce-4',
+                rating: 'A',
+                title: '成长突破弧',
+                tag: '升级',
+                scene: '升级 / 突破关卡专区',
+                arc: '遭遇瓶颈 → 遭遇合理惨败 → 心理/规则开悟 → 生死突破 → 震撼反馈',
+                keyPoint: '必须有真实的物理代价与挫败痛感，突破后的外界震惊反馈要给足尺度。',
+                conflict: '严禁主角毫发无损地渡过瓶颈导致突破注水；严禁惨败原因完全归结于主角降智。'
+            },
+            {
+                id: 'ce-5',
+                rating: 'S',
+                title: '资源循环弧',
+                tag: '经营',
+                scene: '经营流 / 囤货流核心循环',
+                arc: '发现资源缺口 → 涉险获取 → 强化自身/领地 → 消耗爆兵 → 触及上位资源缺口',
+                keyPoint: '循环衔接必须环环相扣，每一次消耗都必须带来阶级或战斗力上的确切成长。',
+                conflict: '严禁资源获取如同喝水般容易，贬低劳动付出；严禁资源资源消耗出口导致爽点停滞。'
+            },
+            {
+                id: 'ce-6',
+                rating: 'A',
+                title: '打脸强化弧',
+                tag: '战斗',
+                scene: '高频爽点',
+                arc: '轻视 → 羞辱 → 加码羞辱 → 反转 → 全场震惊 → 补刀',
+                keyPoint: '补刀是关键，很多人漏掉；加码羞辱的尺度必须符合角色心理阻力。',
+                conflict: '严禁反派在被打脸后强行失智复仇而不做后续利益博弈；严禁震惊体大水漫灌导致情节注水。'
+            },
+            {
+                id: 'ce-7',
+                rating: 'S',
+                title: '群体共振弧',
+                tag: '日常',
+                scene: '爽感放大 / 救世主场面',
+                arc: '个体细微冲突 → 冲突向外辐射 → 引发围观 → 集体共情 → 情绪大爆发',
+                keyPoint: '着力刻画围观路人的情绪转变过程（从质疑到崇拜），完成情绪共鸣。',
+                conflict: '严禁路人群像流于苍白复读机，缺乏情绪起伏阻尼；严禁主角人设脱离初衷，表现过分张扬。'
+            },
+            {
+                id: 'ce-8',
+                rating: 'SS',
+                title: '连锁爆发弧',
+                tag: '推进',
+                scene: '章节尾 / 小高潮',
+                arc: '小胜 → 误以为结束 → 更大危机 → 极限 → 大爆发',
+                keyPoint: '用于高潮章节或大结局铺垫，利用危机重叠进行心流加压。',
+                conflict: '严禁后续危机突兀出现缺乏前文伏笔铺垫；严禁主角极限爆发无合理体能/资源透支代价。'
+            }
+        ],
+        'art-presentation': [
+            {
+                id: 'ap-1',
+                rating: 'SS',
+                title: '意象渲染·喜悦',
+                tag: '喜悦',
+                imagery: '金光、花影、跳动色块 / 笑声、铃声、轻快脚步',
+                sensory: '花蜜甜香、熟果气息、温热茶香 / 温暖、轻盈、风拂面颊的触感',
+                strategy: '绝不直接输出“他很高兴”，而是使人物视野变宽、对周围微小美感反应敏锐，形成画面留白。',
+                conflict: '严禁大段抒情自嗨，忽略客观景物细节的铺垫。'
+            },
+            {
+                id: 'ap-2',
+                rating: 'SS',
+                title: '意象渲染·悲伤',
+                tag: '悲伤',
+                imagery: '灰蓝、雨痕、暗窗 / 远声、断续声、钟声',
+                sensory: '冷茶、苦味、霉湿味 / 冷、沉、衣料贴肤',
+                strategy: '重要句子不说完，或以一件死物（如落灰的钥匙扣）代替主角主观哭诉，形成视觉留白。',
+                conflict: '严禁主角无病呻吟式嚎啕大哭，缺乏克制性的视觉留白。'
+            },
+            {
+                id: 'ap-3',
+                rating: 'S',
+                title: '意象渲染·愤怒',
+                tag: '愤怒',
+                imagery: '红、白光、碎裂、逼近镜头 / 重拍、撞击、短促呼吸',
+                sensory: '铁锈味、焦味、辛辣 / 灼热、绷紧、拳心刺痛',
+                strategy: '动作速度极具爆发力，物理视角变窄，摒弃大篇理智分析，直接输出物理破坏动作。',
+                conflict: '严禁愤怒时主角长篇大论说废话，自我剖析动机导致叙事心流降温。'
+            },
+            {
+                id: 'ap-4',
+                rating: 'A',
+                title: '意象渲染·恐惧',
+                tag: '恐惧',
+                imagery: '阴影、窄门、黑角 / 心跳、滴水、静得过分',
+                sensory: '腥味、冷尘、腐味 / 冷汗、僵硬、麻木',
+                strategy: '不向读者透露怪物全貌，只提供局部的反常细节（如不自然反转的鞋子），让未知留白自我发酵。',
+                conflict: '严禁危险源无铺垫突然骑脸杀；严禁主角在恐惧之下突然具备完全冷静 of 算力，违背生理阈值。'
+            },
+            {
+                id: 'ap-5',
+                rating: 'SS',
+                title: '意象渲染·信任/亲近',
+                tag: '信任/亲近',
+                imagery: '暖灯、旧木、圆桌 / 低声、均匀呼吸、炉火声',
+                sensory: '米香、皂香、旧书味 / 柔软、掌心温度、被子重量',
+                strategy: '少写誓言，多写习惯性照顾 / 前文小动作在危机中再次出现。',
+                conflict: '严禁情感线发展缺乏日常细节铺垫，沦为“见色起意”或强行绑定的工业糖精。'
+            },
+            {
+                id: 'ap-6',
+                rating: 'SS',
+                title: '意象渲染·安宁',
+                tag: '安宁',
+                imagery: '水面、树影、晨光 / 风、翻书、远鸟、均匀呼吸',
+                sensory: '清茶、草木香 / 温、软、松弛',
+                strategy: '不强调“平静”，让句子变长变稳 / 混乱意象被重新整理。',
+                conflict: '严禁在激烈的剧情冲突中强行插入安宁的日常描写导致叙事脱节；严禁日常描写空洞乏味沦为注水。'
+            }
+        ],
+        'camera-language': [
+            {
+                id: 'cl-1',
+                rating: 'SS',
+                title: '远大宏大感镜头',
+                tag: '宏大',
+                movement: '大全景俯瞰、缓慢直线推进、上帝视角',
+                sensory: '地平线拉远、高耸入云的机械建筑、渺小的独行角色 / 风声呼啸、大提琴低音铺底',
+                strategy: '使用中性词渲染空间之庞大与冷漠，避免使用感情色彩强烈的修饰词，形成视觉张力。',
+                conflict: '严禁在宏大运镜中插入角色的碎碎念或心理活动，破坏空间孤寂感。'
+            },
+            {
+                id: 'cl-2',
+                rating: 'SS',
+                title: '孤独余白镜头',
+                tag: '孤独',
+                movement: '固定机位长镜头、人物走向深空、画面留白超过三分之二',
+                sensory: '微弱的光斑、被黑暗吞噬的背影、地平线横切画面 / 空旷的环境回声、寂静',
+                strategy: '人物长时间不发一言，只通过环境中的落叶、光线漂移展示时间的流逝。',
+                conflict: '严禁突然引入旁白或旁人插话打破寂静心流。'
+            },
+            {
+                id: 'cl-3',
+                rating: 'S',
+                title: '压迫逼近镜头',
+                tag: '压迫',
+                movement: '长焦镜头极限空间感、中景到特写缓慢跟摇、手持微晃',
+                sensory: '主角面部局部特写、背后的模糊高墙、视野两侧的线条发生畸变 / 心跳放大的闷响',
+                strategy: '通过物理空间距离的压缩，渲染无路可逃的紧逼心理。',
+                conflict: '严禁主角在镜头压迫下做出无意义的观望或退后动作，破坏画面的静止张力。'
+            },
+            {
+                id: 'cl-4',
+                rating: 'SS',
+                title: '回忆感运镜',
+                tag: '回忆',
+                movement: '柔光、低对比、颗粒感 / 缓慢漂移',
+                sensory: '色温偏暖/旧 / 老木头味、旧歌、尘埃',
+                strategy: '不确认记忆真假 / “像旧胶片”“光发黄”',
+                conflict: '严禁频繁使用回忆镜头导致叙事主线割裂；严禁回忆内容与当前主线因果链无直接关联。'
+            }
+        ]
+    };
+
+    let activeCategory = 'theme-combos';
+    let activeGenreFilter = '全部';
+    let searchQuery = '';
+    window.skillData = {};
+    window.activeItem = null; // Currently open drawer item
+
+    const DATA_VERSION = 'v4_all_combos_split';
+
+    // Initialize data from localStorage
+    function initSkills() {
+        const stored = localStorage.getItem('skillData');
+        const storedVer = localStorage.getItem('skillDataVersion');
+        if (stored && storedVer === DATA_VERSION) {
+            try {
+                window.skillData = JSON.parse(stored);
+            } catch(e) {
+                console.error("Failed to parse stored skillData, using defaults", e);
+                window.skillData = JSON.parse(JSON.stringify(defaultSkillData));
+                saveSkillsToStorage();
+            }
+        } else {
+            window.skillData = JSON.parse(JSON.stringify(defaultSkillData));
+            saveSkillsToStorage();
+        }
+        updateCountsDisplay();
+    }
+
+    function saveSkillsToStorage() {
+        localStorage.setItem('skillData', JSON.stringify(window.skillData));
+        localStorage.setItem('skillDataVersion', DATA_VERSION);
+        updateCountsDisplay();
+    }
+    function updateCountsDisplay() {
+        const countTheme = document.getElementById('count-theme-combos');
+        const countChapter = document.getElementById('count-chapter-expansion');
+        const countArt = document.getElementById('count-art-presentation');
+        const countCamera = document.getElementById('count-camera-language');
+
+        if (countTheme) countTheme.innerText = `${window.skillData['theme-combos'].length}条 商业套路`;
+        if (countChapter) countChapter.innerText = `${window.skillData['chapter-expansion'].length}条 剧情弧结构`;
+        if (countArt) countArt.innerText = `${window.skillData['art-presentation'].length}条 视觉意象`;
+        if (countCamera) countCamera.innerText = `${window.skillData['camera-language'].length}条 叙事运镜`;
+    }
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', () => {
+        initSkills();
+        switchCategory('theme-combos');
+        
+        // Drawer Delete listener
+        document.getElementById('drawerDeleteBtn').onclick = () => {
+            if (window.activeItem) {
+                deleteSkill(window.activeItem.id);
+            }
+        };
+    });
+
+    // Toggle categories
+    window.switchCategory = function(catId) {
+        activeCategory = catId;
+        activeGenreFilter = '全部';
+        searchQuery = '';
+        document.getElementById('search-input').value = '';
+        
+        // Update button styles
+        const btns = document.querySelectorAll('.category-btn');
+        btns.forEach(btn => {
+            const dataCat = btn.getAttribute('data-category');
+            if (dataCat === catId) {
+                btn.className = "category-btn btn btn-outline btn-primary w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group bg-primary/5 shadow-[0_4px_12px_rgba(79,133,229,0.1)]";
+            } else {
+                btn.className = "category-btn btn btn-ghost w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group text-base-content opacity-60 hover:text-base-content border border-transparent hover:border-transparent bg-transparent";
+            }
+        });
+
+        // Redraw filter select
+        renderFilterSelect();
+        // Redraw card grid
+        renderCardGrid();
+        // Close drawer in case it was open
+        closeDrawer();
+    };
+
+    // Render filter dropdown
+    function renderFilterSelect() {
+        const select = document.getElementById('genre-filter-select');
+        if (!select) return;
+        select.innerHTML = '';
+
+        let choices = [];
+        if (activeCategory === 'theme-combos') {
+            choices = ['全部', '奇幻', '玄幻', '科幻', '仙侠', '都市', '军事'];
+        } else if (activeCategory === 'chapter-expansion') {
+            choices = ['全部', '战斗', '推进', '升级', '经营', '日常'];
+        } else if (activeCategory === 'art-presentation') {
+            choices = ['全部', '喜悦', '悲伤', '愤怒', '恐惧', '信任/亲近', '安宁'];
+        } else if (activeCategory === 'camera-language') {
+            choices = ['全部', '宏大', '压迫', '孤独', '回忆'];
+        }
+
+        choices.forEach(ch => {
+            const opt = document.createElement('option');
+            opt.value = ch;
+            opt.innerText = ch;
+            opt.className = "bg-base-100 text-base-content";
+            if (ch === activeGenreFilter) {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        });
+    }
+
+    // Filter change handler
+    window.handleGenreFilterChange = function(val) {
+        activeGenreFilter = val;
+        renderCardGrid();
+    };
+
+    // Render cards list
+    function renderCardGrid() {
+        const container = document.getElementById('cards-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const data = window.skillData[activeCategory] || [];
+        
+        // Filter by select and search query
+        const filtered = data.filter(item => {
+            const matchPill = (activeGenreFilter === '全部' || item.tag === activeGenreFilter);
+            
+            let matchSearch = true;
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                const titleStr = (item.title || '').toLowerCase();
+                const tagStr = (item.tag || '').toLowerCase();
+                const subStr = (item.subGenres || '').toLowerCase();
+                const logicStr = (item.logic || item.arc || item.imagery || item.movement || '').toLowerCase();
+                const essenceStr = (item.essence || item.keyPoint || item.strategy || '').toLowerCase();
+                
+                matchSearch = titleStr.includes(q) || tagStr.includes(q) || subStr.includes(q) || logicStr.includes(q) || essenceStr.includes(q);
+            }
+            
+            return matchPill && matchSearch;
+        });
+
+        if (filtered.length === 0) {
+            // Render empty state
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-20 text-center space-y-4 max-w-md mx-auto">
+                    <div class="w-16 h-16 rounded-full bg-base-content/5 flex items-center justify-center text-base-content opacity-50 border border-base-content/5">
+                        <span class="material-symbols-outlined text-[32px]">query_stats</span>
+                    </div>
+                    <div class="space-y-1">
+                        <h3 class="text-sm font-bold text-base-content">未找到相关叙事技巧</h3>
+                        <p class="text-xs text-base-content opacity-50 leading-relaxed">系统未能匹配当前筛选条件下的技巧卡片，您可以尝试更换关键字或重置筛选。</p>
+                    </div>
+                    <button onclick="resetFilter()" class="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded-lg border border-primary/20 transition-all">
+                        重置筛选条件
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        // Render card grid layout
+        const grid = document.createElement('div');
+        grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6";
+        
+        filtered.forEach(item => {
+            const card = document.createElement('div');
+            card.id = `card-${item.id}`;
+            card.className = "card bg-base-100 shadow-sm border border-base-content/10 p-5 flex flex-col gap-4 relative skill-card cursor-pointer hover:border-primary transition-all";
+            card.onclick = () => openDrawer(item);
+
+            let badgeClass = 'badge-b';
+            if (item.rating === 'SS') badgeClass = 'badge-ss';
+            else if (item.rating === 'S') badgeClass = 'badge-s';
+            else if (item.rating === 'A') badgeClass = 'badge-a';
+            else if (item.rating === 'B') badgeClass = 'badge-b';
+            else if (item.rating === 'C') badgeClass = 'badge-c';
+
+            // Custom cards body depending on category
+            let bodyHTML = '';
+            if (activeCategory === 'theme-combos') {
+                bodyHTML = `
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
+                            <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                    </div>
+                    <div class="space-y-0.5 mt-2">
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed">本质: ${item.essence}</p>
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${item.logic}">公式: ${item.logic}</p>
+                    </div>
+                `;
+            } else if (activeCategory === 'chapter-expansion') {
+                bodyHTML = `
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
+                            <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                    </div>
+                    <div class="space-y-0.5 mt-2">
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed">关键: ${item.keyPoint}</p>
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${item.arc}">节拍: ${item.arc}</p>
+                    </div>
+                `;
+            } else if (activeCategory === 'art-presentation') {
+                bodyHTML = `
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
+                            <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                    </div>
+                    <div class="space-y-0.5 mt-2">
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed">策略: ${item.strategy}</p>
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${item.imagery}">意象: ${item.imagery}</p>
+                    </div>
+                `;
+            } else if (activeCategory === 'camera-language') {
+                bodyHTML = `
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
+                            <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                    </div>
+                    <div class="space-y-0.5 mt-2">
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed">策略: ${item.strategy}</p>
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${item.movement}">手法: ${item.movement}</p>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = bodyHTML;
+            grid.appendChild(card);
+            
+            // Re-apply active class if this card is active
+            if (window.activeItem && window.activeItem.id === item.id) {
+                card.classList.add('active-card');
+            }
+        });
+
+        container.appendChild(grid);
+    }
+
+    // Reset filter
+    window.resetFilter = function() {
+        activeGenreFilter = '全部';
+        searchQuery = '';
+        document.getElementById('search-input').value = '';
+        renderFilterSelect();
+        renderCardGrid();
+    };
+
+    // Handle Search input
+    window.handleSearch = function() {
+        searchQuery = document.getElementById('search-input').value;
+        renderCardGrid();
+    };
+
+    // Open detailed drawer
+    window.openDrawer = function(item) {
+        window.activeItem = item;
+        
+        // Toggle active border class on card
+        const cards = document.querySelectorAll('.skill-card');
+        cards.forEach(c => c.classList.remove('active-card'));
+        const selectedCard = document.getElementById(`card-${item.id}`);
+        if (selectedCard) selectedCard.classList.add('active-card');
+
+        const drawer = document.getElementById('detailDrawer');
+        const backdrop = document.getElementById('drawerBackdrop');
+        const dRating = document.getElementById('drawerRating');
+        const dTitle = document.getElementById('drawerTitle');
+        const dFields = document.getElementById('drawerDetailFields');
+        const dConflict = document.getElementById('drawerConflictText');
+        const dTaboo = document.getElementById('drawerTabooText');
+
+        if (!drawer || !dFields) return;
+
+        // Set Title & Rating
+        dTitle.innerText = item.title;
+        dRating.innerText = item.rating;
+        let ratingClass = 'badge-b';
+        if (item.rating === 'SS' || item.rating === 'SS') ratingClass = 'badge-ssr';
+        else if (item.rating === 'SS') ratingClass = 'badge-ss';
+        else if (item.rating === 'S') ratingClass = 'badge-s';
+        else if (item.rating === 'A') ratingClass = 'badge-a';
+        else if (item.rating === 'B') ratingClass = 'badge-b';
+        else if (item.rating === 'C') ratingClass = 'badge-c';
+        dRating.className = `px-3 py-1 text-sm rounded font-bold rating-badge ${ratingClass}`;
+
+        // Populate fields based on Category
+        let fieldsHTML = '';
+        if (activeCategory === 'theme-combos') {
+            fieldsHTML = `
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">副标签组合</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="2">${item.subGenres || item.title}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">组合逻辑公式</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.logic}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">核心爽点来源</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.attraction}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">底层情绪本质</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.essence}</textarea>
+                </div>
+            `;
+        } else if (activeCategory === 'chapter-expansion') {
+            fieldsHTML = `
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">适用场景</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="2">${item.scene}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">情绪节拍弧</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.arc}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">关键执行细节</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.keyPoint}</textarea>
+                </div>
+            `;
+        } else if (activeCategory === 'art-presentation') {
+            fieldsHTML = `
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">核心意象 (视/听)</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.imagery}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">感官细节 (嗅/味/触)</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.sensory}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">叙事表达策略</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.strategy}</textarea>
+                </div>
+            `;
+        } else if (activeCategory === 'camera-language') {
+            fieldsHTML = `
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">运镜手法与运动</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.movement}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">画面意蕴与感官</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.sensory}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">情绪策略</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.strategy}</textarea>
+                </div>
+            `;
+        }
+
+        dFields.innerHTML = fieldsHTML;
+
+        // Set Taboos / Conflicts
+        if (dTaboo) dTaboo.value = item.taboo || '暂无红线要求';
+        if (dConflict) dConflict.value = item.conflict || '暂无冲突写法';
+
+        // Slide in drawer
+        drawer.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+        setTimeout(() => backdrop.classList.add('opacity-100'), 10);
+    };
+
+    // Close drawer
+    window.closeDrawer = function() {
+        window.activeItem = null;
+        const drawer = document.getElementById('detailDrawer');
+        const backdrop = document.getElementById('drawerBackdrop');
+        if (!drawer || !backdrop) return;
+
+        drawer.classList.add('translate-x-full');
+        backdrop.classList.remove('opacity-100');
+        setTimeout(() => backdrop.classList.add('hidden'), 300);
+
+        // Remove active class on cards
+        const cards = document.querySelectorAll('.skill-card');
+        cards.forEach(c => c.classList.remove('active-card'));
+    };
+
+    // --- Modal CRUD Logic ---
+    window.openSkillFormModal = function(mode, itemId) {
+        window.modalMode = mode;
+        window.modalItemId = itemId;
+        
+        const modal = document.getElementById('skillFormModal');
+        const mTitle = document.getElementById('modalTitle');
+        const mIcon = document.getElementById('modalIcon');
+        const formFieldsContainer = document.getElementById('modalFormFields');
+        
+        if (!modal || !formFieldsContainer) return;
+        
+        // Reset form
+        document.getElementById('skill-form').reset();
+        document.getElementById('form-item-id').value = itemId || '';
+        formFieldsContainer.innerHTML = '';
+        
+        // Update tag input label/placeholder based on category
+        const tagLabel = document.getElementById('form-tag-label');
+        const tagInput = document.getElementById('form-tag');
+        if (activeCategory === 'theme-combos') {
+            tagLabel.innerText = "主分类 (如科幻/仙侠/奇幻/玄幻)";
+            tagInput.placeholder = "如：科幻";
+        } else if (activeCategory === 'chapter-expansion') {
+            tagLabel.innerText = "适用动作/节拍类别";
+            tagInput.placeholder = "如：战斗 / 升级";
+        } else if (activeCategory === 'art-presentation') {
+            tagLabel.innerText = "主控情绪";
+            tagInput.placeholder = "如：喜悦 / 悲伤";
+        } else if (activeCategory === 'camera-language') {
+            tagLabel.innerText = "镜头意蕴";
+            tagInput.placeholder = "如：宏大 / 压迫";
+        }
+
+        // Render dynamic fields based on active category
+        let dynamicHTML = '';
+        if (activeCategory === 'theme-combos') {
+            dynamicHTML = `
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">副题材/标签组合</label>
+                    <input type="text" id="form-subgenres" placeholder="如：末世+囤货" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">组合逻辑公式</label>
+                    <input type="text" id="form-logic" placeholder="如：资源稀缺 → 囤积快感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">核心爽点来源</label>
+                    <input type="text" id="form-attraction" placeholder="如：安全感 / 信息差优势" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">底层情绪本质</label>
+                    <input type="text" id="form-essence" placeholder="如：绝对掌控感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+            `;
+        } else if (activeCategory === 'chapter-expansion') {
+            dynamicHTML = `
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">适用场景</label>
+                    <input type="text" id="form-scene" placeholder="如：打脸 / 战斗 / 对抗场景" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">情绪节拍弧</label>
+                    <input type="text" id="form-arc" placeholder="如：压抑 → 加码 → 反击" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">关键执行细节</label>
+                    <input type="text" id="form-keypoint" placeholder="如：加码阶段情绪必须拉满" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+            `;
+        } else if (activeCategory === 'art-presentation') {
+            dynamicHTML = `
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">核心意象 (视/听)</label>
+                    <input type="text" id="form-imagery" placeholder="如：灰蓝冷雨、暗沉铁窗" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">感官细节 (嗅/味/触)</label>
+                    <input type="text" id="form-sensory" placeholder="如：冷茶苦涩、发霉潮湿的气味" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">叙事表达策略</label>
+                    <input type="text" id="form-strategy" placeholder="如：多用未完结的短句，或以死物代替哭诉" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+            `;
+        } else if (activeCategory === 'camera-language') {
+            dynamicHTML = `
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">运镜手法与运动</label>
+                    <input type="text" id="form-movement" placeholder="如：长焦镜头极限压缩空间感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">画面意蕴与感官</label>
+                    <input type="text" id="form-sensory" placeholder="如：面部局部特写、背后的模糊高墙" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">情绪策略</label>
+                    <input type="text" id="form-strategy" placeholder="如：通过物理空间距离的压缩，渲染逃无可逃的心理" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+            `;
+        }
+        
+        formFieldsContainer.innerHTML = dynamicHTML;
+
+        // Set Title & Mode
+        if (mode === 'add') {
+            mTitle.innerText = "新增叙事技巧";
+            mIcon.innerText = "add_box";
+        } else {
+            mTitle.innerText = "编辑叙事技巧";
+            mIcon.innerText = "edit_square";
+            
+            // Populate fields for Edit mode
+            const item = window.skillData[activeCategory].find(i => i.id === itemId);
+            if (item) {
+                document.getElementById('form-title').value = item.title || '';
+                document.getElementById('form-rating').value = item.rating || 'S';
+                document.getElementById('form-tag').value = item.tag || '';
+                document.getElementById('form-taboo').value = item.taboo || '';
+                document.getElementById('form-conflict').value = item.conflict || '';
+                
+                if (activeCategory === 'theme-combos') {
+                    document.getElementById('form-subgenres').value = item.subGenres || '';
+                    document.getElementById('form-logic').value = item.logic || '';
+                    document.getElementById('form-attraction').value = item.attraction || '';
+                    document.getElementById('form-essence').value = item.essence || '';
+                } else if (activeCategory === 'chapter-expansion') {
+                    document.getElementById('form-scene').value = item.scene || '';
+                    document.getElementById('form-arc').value = item.arc || '';
+                    document.getElementById('form-keypoint').value = item.keyPoint || '';
+                } else if (activeCategory === 'art-presentation') {
+                    document.getElementById('form-imagery').value = item.imagery || '';
+                    document.getElementById('form-sensory').value = item.sensory || '';
+                    document.getElementById('form-strategy').value = item.strategy || '';
+                } else if (activeCategory === 'camera-language') {
+                    document.getElementById('form-movement').value = item.movement || '';
+                    document.getElementById('form-sensory').value = item.sensory || '';
+                    document.getElementById('form-strategy').value = item.strategy || '';
+                }
+            }
+        }
+        modal.classList.remove('hidden');
+    };
+
+    window.triggerAIAnalysis = function() {
+        const title = document.getElementById('form-title').value.trim() || '未命名技巧';
+        const tag = document.getElementById('form-tag').value.trim() || '未设主分类';
+        const taboo = document.getElementById('form-taboo').value.trim();
+        const conflict = document.getElementById('form-conflict').value.trim();
+
+        const mBox = document.getElementById('modalBox');
+        const aiPanel = document.getElementById('aiAdvicePanel');
+        const aiLoading = document.getElementById('aiLoading');
+        const aiResultArea = document.getElementById('aiResultArea');
+        const aiAdviceText = document.getElementById('aiAdviceText');
+
+        if (!mBox || !aiPanel || !aiLoading || !aiResultArea || !aiAdviceText) return;
+
+        // Expand modal and show AI panel
+        mBox.classList.remove('w-[500px]');
+        mBox.classList.add('w-[860px]');
+        aiPanel.classList.remove('hidden', 'w-0', 'opacity-0');
+        aiPanel.classList.add('flex', 'w-[320px]', 'opacity-100');
+
+        // Show Loading State
+        aiResultArea.classList.add('hidden');
+        aiLoading.classList.remove('hidden');
+        aiAdviceText.value = '';
+
+        // Simulate AI diagnostic calculation
+        setTimeout(() => {
+            aiLoading.classList.add('hidden');
+            aiResultArea.classList.remove('hidden');
+
+            // Generate smart narrative diagnostic advice
+            let adviceContent = `【叙事因果与逻辑诊断】\n`;
+            adviceContent += `● 技巧主题：${title}\n`;
+            adviceContent += `● 题材映射：${tag} 主分类\n`;
+            adviceContent += `● 逻辑完备性：优秀 (92分)\n\n`;
+            
+            adviceContent += `【AI 诊断分析建议】\n`;
+            adviceContent += `1. 爽点升级与动力源强化：\n`;
+            adviceContent += `   当前填写的冲突表达中，拉合机制较明显。建议在后续的写作中，将避坑红线落实至第一个剧情切片。在爽点发生前，强制加入一次小挫败，以形成更强的前置回弹力。\n\n`;
+            
+            adviceContent += `2. 冲突写法诊断：\n`;
+            if (conflict) {
+                adviceContent += `   当前填写的冲突是: "${conflict.substring(0, 40)}${conflict.length > 40 ? '...' : ''}"。\n`;
+                adviceContent += `   优化方案：此冲突设计能提供不错的悬念阻尼。若配合镜头语言中的特写与场景意境渲染（如冷暖色调的急速逆转），戏剧性张力可提高30%。\n\n`;
+            } else {
+                adviceContent += `   （表单内冲突尚未填写）若要达成高张力拉锯，建议至少预置一项“规则层面的两难选择”来阻碍主角。\n\n`;
+            }
+            
+            adviceContent += `3. 避坑红线审计：\n`;
+            if (taboo) {
+                adviceContent += `   当前避坑设计是: "${taboo.substring(0, 40)}${taboo.length > 40 ? '...' : ''}"。\n`;
+                adviceContent += `   AI警告：避坑红线逻辑极为严密。需确保主角的核心动机（如安全性、复仇等）始终高于外部利益链条，不可偏废。\n\n`;
+            } else {
+                adviceContent += `   （避坑红线尚未输入）请严格遵守长篇小说稳定性，冻结目标边界，不可发生降智桥段。\n\n`;
+            }
+            
+            adviceContent += `【推荐辅助运镜与手法】\n`;
+            adviceContent += `- 推荐使用：大景深移轴镜头 + 慢动作长镜头，定格并放大核心爽点发生时的情绪张力面。`;
+
+            // Typewriter effect simulation (fast typing)
+            let i = 0;
+            const timer = setInterval(() => {
+                if (i < adviceContent.length) {
+                    aiAdviceText.value += adviceContent.substring(i, i + 2);
+                    aiAdviceText.scrollTop = aiAdviceText.scrollHeight;
+                    i += 2;
+                } else {
+                    aiAdviceText.value = adviceContent; // safety catch
+                    clearInterval(timer);
+                }
+            }, 10);
+
+        }, 1200);
+    };
+
+    window.closeSkillFormModal = function() {
+        const modal = document.getElementById('skillFormModal');
+        if (modal) modal.classList.add('hidden');
+
+        // Reset AI Advice Panel status
+        const mBox = document.getElementById('modalBox');
+        const aiPanel = document.getElementById('aiAdvicePanel');
+        if (mBox && aiPanel) {
+            mBox.classList.remove('w-[860px]');
+            mBox.classList.add('w-[500px]');
+            aiPanel.classList.add('w-0', 'opacity-0', 'hidden');
+            aiPanel.classList.remove('w-[320px]', 'opacity-100', 'flex');
+        }
+    };
+
+    window.submitSkillForm = function() {
+        const title = document.getElementById('form-title').value.trim();
+        const rating = document.getElementById('form-rating').value;
+        const tag = document.getElementById('form-tag').value.trim();
+        const taboo = document.getElementById('form-taboo').value.trim();
+        const conflict = document.getElementById('form-conflict').value.trim();
+        
+        if (!title || !tag || !conflict || !taboo) {
+            alert('请完整填写必填字段');
+            return;
+        }
+
+        // Gather dynamic fields
+        let updateObj = { rating, title, tag, conflict };
+        
+        if (activeCategory === 'theme-combos') {
+            updateObj.subGenres = document.getElementById('form-subgenres').value.trim();
+            updateObj.logic = document.getElementById('form-logic').value.trim();
+            updateObj.attraction = document.getElementById('form-attraction').value.trim();
+            updateObj.essence = document.getElementById('form-essence').value.trim();
+        } else if (activeCategory === 'chapter-expansion') {
+            updateObj.scene = document.getElementById('form-scene').value.trim();
+            updateObj.arc = document.getElementById('form-arc').value.trim();
+            updateObj.keyPoint = document.getElementById('form-keypoint').value.trim();
+        } else if (activeCategory === 'art-presentation') {
+            updateObj.imagery = document.getElementById('form-imagery').value.trim();
+            updateObj.sensory = document.getElementById('form-sensory').value.trim();
+            updateObj.strategy = document.getElementById('form-strategy').value.trim();
+        } else if (activeCategory === 'camera-language') {
+            updateObj.movement = document.getElementById('form-movement').value.trim();
+            updateObj.sensory = document.getElementById('form-sensory').value.trim();
+            updateObj.strategy = document.getElementById('form-strategy').value.trim();
+        }
+
+        if (window.modalMode === 'add') {
+            // Generate id
+            updateObj.id = `${activeCategory.substring(0, 2)}-${Math.random().toString(36).substr(2, 9)}`;
+            window.skillData[activeCategory].push(updateObj);
+            showToast('新增技能成功');
+        } else {
+            // Update mode
+            updateObj.id = window.modalItemId;
+            const index = window.skillData[activeCategory].findIndex(i => i.id === window.modalItemId);
+            if (index !== -1) {
+                window.skillData[activeCategory][index] = updateObj;
+                showToast('保存修改成功');
+                // Refresh active drawer if open
+                if (window.activeItem && window.activeItem.id === window.modalItemId) {
+                    openDrawer(updateObj);
+                }
+            }
+        }
+
+        saveSkillsToStorage();
+        renderCardGrid();
+        closeSkillFormModal();
+    };
+
+    // Delete skill
+    window.deleteSkill = function(itemId) {
+        if (!confirm('确定要删除这条技巧技能吗？删除后将无法恢复。')) return;
+
+        const index = window.skillData[activeCategory].findIndex(i => i.id === itemId);
+        if (index !== -1) {
+            window.skillData[activeCategory].splice(index, 1);
+            saveSkillsToStorage();
+            renderCardGrid();
+            closeDrawer();
+            showToast('技能删除成功');
+        }
+    };
+
+    // --- File Import / Export Logic ---
+    window.exportSkills = function() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(window.skillData, null, 4));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `narrative_skills_${activeCategory}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showToast('导出技能配置文件成功');
+    };
+
+    window.triggerImport = function() {
+        const fileInput = document.getElementById('import-file-input');
+        if (fileInput) fileInput.click();
+    };
+
+    window.importSkills = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                
+                // Validate top-level categories keys
+                const requiredCategories = ['theme-combos', 'chapter-expansion', 'art-presentation', 'camera-language'];
+                const hasValidKeys = requiredCategories.every(k => Array.isArray(imported[k]));
+                
+                if (hasValidKeys) {
+                    // Overwrite/merge
+                    window.skillData = imported;
+                    saveSkillsToStorage();
+                    renderCardGrid();
+                    showToast('导入技能文件成功');
+                } else {
+                    // Try to merge if imported only single category array or format is slightly different
+                    let mergedCount = 0;
+                    requiredCategories.forEach(cat => {
+                        if (Array.isArray(imported[cat])) {
+                            window.skillData[cat] = imported[cat];
+                            mergedCount++;
+                        }
+                    });
+                    if (mergedCount > 0) {
+                        saveSkillsToStorage();
+                        renderCardGrid();
+                        showToast(`成功导入并更新了 ${mergedCount} 个分类列表`);
+                    } else {
+                        alert('导入失败：JSON数据格式不正确，缺少有效的分类列表');
+                    }
+                }
+            } catch(err) {
+                console.error("Failed to parse JSON file", err);
+                alert('解析导入的JSON文件失败，请确保文件格式正确。');
+            }
+            // Clear input so same file can be uploaded again
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    };
+
+    // Premium Toast system
+    window.showToast = function(message) {
+        const existing = document.getElementById('premium-toast');
+        if (existing) existing.remove();
+        
+        const toast = document.createElement('div');
+        toast.id = 'premium-toast';
+        toast.className = 'fixed top-6 left-1/2 transform -translate-x-1/2 z-[200] px-5 py-3 rounded-box border border-base-content/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-2.5 transition-all duration-300 translate-y-[-20px] opacity-0 bg-base-100/85 backdrop-blur-md';
+        
+        toast.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-success shadow-[0_0_8px_rgba(78,222,163,0.6)] animate-ping"></span>
+            <span class="w-2 h-2 absolute rounded-full bg-success shadow-[0_0_8px_rgba(78,222,163,0.6)]"></span>
+            <span class="text-xs font-semibold text-base-content tracking-wide ml-1.5">${message}</span>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.remove('translate-y-[-20px]', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+        }, 10);
+        
+        setTimeout(() => {
+            toast.classList.remove('translate-y-0', 'opacity-100');
+            toast.classList.add('translate-y-[-20px]', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 2500);
+    };
+
+
+    
+    // Close quick settings when clicking outside
+
+</script>
+</main>
+
+<script>
+window.toggleSidebar = function() {
+    document.body.classList.toggle('sidebar-collapsed');
+    const icon = document.querySelector('#sidebarIcon');
+    if (icon) {
+        icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
+    }
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,529 @@
+{
+  "name": "ZH02-L1A生成",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/generate_l1a",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "0ec48a29-f3f6-4ad8-a1e5-910736393217",
+      "name": "Webhook：/generate_l1a",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "988709bc-e64d-4f3f-b318-e22d29bb6874"
+    },
+    {
+      "parameters": {
+        "operation": "query",
+        "additionalFields": {}
+      },
+      "id": "428c4551-57b7-4b85-a4f8-20f2344c6e06",
+      "name": "RPC：获取运行锁 rpc_acquire_run_lock",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        336,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "query",
+        "additionalFields": {}
+      },
+      "id": "c5d49ae6-0d7d-4d80-ad82-1a387d6015c6",
+      "name": "读取书籍/世界/角色基础快照 PostgreSQL View / RPC",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        336,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "query",
+        "additionalFields": {}
+      },
+      "id": "a7576dfb-f0df-4569-ab36-a5d0e1fd42d1",
+      "name": "读取 conflict_seed source_type = initial",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        336,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 校验 LLM 输出的 JSON 格式是否符合 L1A 结构\nconst rawText = items[0].json.output || '';\ntry {\n  const l1aCandidates = JSON.parse(rawText);\n  return l1aCandidates.map(item => ({\n    json: {\n      ...item,\n      isValid: !!(item.conflict_seed_id && item.conflict_type && item.description)\n    }\n  }));\n} catch (e) {\n  return [{ json: { error: 'Invalid JSON format', raw: rawText, isValid: false } }];\n}"
+      },
+      "id": "e19786bb-39d3-4977-a304-84b7677f38e3",
+      "name": "JSON修复与候选结构校验",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        944,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 修复商业筛选后输出的 JSON 结果\nconst rawText = items[0].json.output || '';\ntry {\n  const candidates = JSON.parse(rawText);\n  return candidates.map(item => ({ json: item }));\n} catch (e) {\n  return [{ json: { error: 'Invalid JSON format', raw: rawText } }];\n}"
+      },
+      "id": "e0ece32d-9575-4438-a6ea-4b9dbdcacd37",
+      "name": "JSON修复",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 修复支线剧情补充后输出的 JSON 结果\nconst rawText = items[0].json.output || '';\ntry {\n  const candidates = JSON.parse(rawText);\n  return candidates.map(item => ({ json: item }));\n} catch (e) {\n  return [{ json: { error: 'Invalid JSON format', raw: rawText } }];\n}"
+      },
+      "id": "3ee2fcf1-9566-498e-a0fc-a1c669e3d7ad",
+      "name": "JSON修复 (2)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        2208,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "query",
+        "additionalFields": {}
+      },
+      "id": "323e7cf9-a595-4153-a676-892970c74a76",
+      "name": "写库：conflict_seed source_type = l1a_generated",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        -272
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "query",
+        "additionalFields": {}
+      },
+      "id": "9794d2f9-f892-4a26-a953-381f4590a2bb",
+      "name": "RPC：释放运行锁",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "77368431-bc45-422a-a2d8-15f8125cd63b",
+      "name": "Respond：L1A生成完成",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2224,
+        -272
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=你是 L1A 冲突生成器。结合冲突种子、角色四层模型及世界可供性，生成满足商业与情绪要求的 L1A 单元数据。\n\n## 输入数据\n选定的冲突种子：\n相关角色档案（含当前状态与四层模型L0-L3）：\n相关世界设定条目：\n全局商业/情绪控制线：\n## 生成步骤（四维度遍历）\n步骤1：角色驱动分析\n基于参与角色的L1驱动层（欲望/恐惧）和L3关系层，推演他们会如何自发推动或卷入此冲突。\n注意：分析必须来自角色四层模型字段，不得凭空设定角色动机。\n步骤2：世界阻力分析\n提取对此冲突构成的环境限制、规则代价和资源门槛。\n输出：阻力清单，每项含引用\n步骤3：商业情绪分析\n评估此冲突的情绪烈度和爽点结构。\n检查：是否透支了未来高潮预算？\n必须声明本L1A刻意保留的底牌。\n步骤4：导演收束定稿\n将上述三种力量交汇，生成最终L1A结构。\n明确区分情节承诺和情绪承诺。\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1136,
+        0
+      ],
+      "id": "dd579a68-c1fc-445d-9834-6a0a84b3b0a7",
+      "name": "商业筛选 过滤低价值、重复、难持续候选",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.length }}",
+              "operation": "largerEqual",
+              "value2": "=需求数量=总字数/章节字数/3"
+            }
+          ]
+        }
+      },
+      "id": "c78ed7fc-2a2a-4402-ae75-d99f1c2f9d5e",
+      "name": "IF：候选数量>需求数量",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1696,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=你是L1A灵感变体生成器。为L1A生成多个创意变体。\n每个变体必须与原始L1A在以下至少1个维度有显著差异：\n1. 角色弧反向（正向→负向 或 负向→正向）\n2. 情绪节奏变化（燃→虐 或 虐→燃）\n3. 冲突维度切换（技术→制度 或 制度→哲学）\n4. 叙事手法替换（伏笔法→悬念法）\n5. 赌注升级或降级\n\n## 约束\n\n- 变体必须保持与同project其他L1A的兼容性\n- 变体的冲突四要素（赌注/后果/升级/兑现）必须完整\n- 如有inspiration_hint，变体必须融入用户意图\n- 检查是否存在设定外的内容，与原设定冲突或导致其他设定失效的内容。可继承的需要声明写库，不可使用的退回标记后修改。"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1920,
+        128
+      ],
+      "id": "c5454ae0-1f50-4299-a7af-ac9dc21ca5af",
+      "name": "支线剧情补充 差异化、高价值变体、防雷同处理",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        768,
+        160
+      ],
+      "id": "adacdec3-6595-4bcc-87ec-22a5569d8c48",
+      "name": "读库题材技能",
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=你是 L1A 冲突生成器。结合冲突种子、角色四层模型及世界可供性，生成满足商业与情绪要求的 L1A 单元数据。\n\n## 输入数据\n选定的冲突种子：\n相关角色档案（含当前状态与四层模型L0-L3）：\n相关世界设定条目：\n全局商业/情绪控制线：\n## 生成步骤（四维度遍历）\n步骤1：角色驱动分析\n基于参与角色的L1驱动层（欲望/恐惧）和L3关系层，推演他们会如何自发推动或卷入此冲突。\n注意：分析必须来自角色四层模型字段，不得凭空设定角色动机。\n步骤2：世界阻力分析\n提取对此冲突构成的环境限制、规则代价和资源门槛。\n输出：阻力清单，每项含引用\n步骤3：商业情绪分析\n评估此冲突的情绪烈度和爽点结构。\n检查：是否透支了未来高潮预算？\n必须声明本L1A刻意保留的底牌。\n步骤4：导演收束定稿\n将上述三种力量交汇，生成最终L1A结构。\n明确区分情节承诺和情绪承诺。\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "67cde73a-d79f-4e66-b957-ca680fa3333c",
+      "name": "FP004-01 三维施压(技术/制度/哲学)",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "query",
+        "additionalFields": {}
+      },
+      "id": "57616f7f-eac1-41c4-afb0-bf3c742d17ec",
+      "name": "写库候选态，待排序",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        -112
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook：/generate_l1a": {
+      "main": [
+        [
+          {
+            "node": "RPC：获取运行锁 rpc_acquire_run_lock",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "读取书籍/世界/角色基础快照 PostgreSQL View / RPC",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "读取 conflict_seed source_type = initial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读取书籍/世界/角色基础快照 PostgreSQL View / RPC": {
+      "main": [
+        [
+          {
+            "node": "FP004-01 三维施压(技术/制度/哲学)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复 (2)": {
+      "main": [
+        [
+          {
+            "node": "FP004-01 三维施压(技术/制度/哲学)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "写库：conflict_seed source_type = l1a_generated": {
+      "main": [
+        [
+          {
+            "node": "Respond：L1A生成完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC：释放运行锁": {
+      "main": [
+        [
+          {
+            "node": "Respond：L1A生成完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC：获取运行锁 rpc_acquire_run_lock": {
+      "main": [
+        [
+          {
+            "node": "FP004-01 三维施压(技术/制度/哲学)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读取 conflict_seed source_type = initial": {
+      "main": [
+        [
+          {
+            "node": "FP004-01 三维施压(技术/制度/哲学)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复与候选结构校验": {
+      "main": [
+        [
+          {
+            "node": "商业筛选 过滤低价值、重复、难持续候选",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复": {
+      "main": [
+        [
+          {
+            "node": "IF：候选数量>需求数量",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "商业筛选 过滤低价值、重复、难持续候选": {
+      "main": [
+        [
+          {
+            "node": "JSON修复",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF：候选数量>需求数量": {
+      "main": [
+        [
+          {
+            "node": "写库候选态，待排序",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "写库：conflict_seed source_type = l1a_generated",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RPC：释放运行锁",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "支线剧情补充 差异化、高价值变体、防雷同处理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "支线剧情补充 差异化、高价值变体、防雷同处理": {
+      "main": [
+        [
+          {
+            "node": "JSON修复 (2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读库题材技能": {
+      "ai_tool": [
+        [
+          {
+            "node": "FP004-01 三维施压(技术/制度/哲学)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP004-01 三维施压(技术/制度/哲学)": {
+      "main": [
+        [
+          {
+            "node": "JSON修复与候选结构校验",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "写库候选态，待排序": {
+      "main": [
+        [
+          {
+            "node": "Respond：L1A生成完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6fb6638d-af7e-44dd-bf34-8f769f01237a",
+  "meta": {
+    "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"
+  },
+  "id": "97cbecfa-4fb0-45b6-ac2d-c808da1611dd",
+  "tags": []
+}

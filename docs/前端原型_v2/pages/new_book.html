@@ -1,0 +1,2800 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>纵横叙事引擎｜新书创世 · 还原版</title>
+  <link rel="stylesheet" href="../common/daisyui-garden-full.css">
+  <link rel="stylesheet" href="../common/sidebar.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --color-base-100: #e9e7e7;
+      --color-base-200: #d4d2d2;
+      --color-base-300: #bebdbd;
+      --color-base-content: #100f0f;
+      --color-primary: oklch(62.45% 0.278 3.836);
+      --color-primary-content: #fff;
+      --color-secondary: oklch(48.495% 0.11 355.095);
+      --color-secondary-content: oklch(89.699% 0.022 355.095);
+      --color-accent: #5c7f67;
+      --color-accent-content: #fff;
+      --color-neutral: oklch(24.155% 0.049 89.07);
+      --color-neutral-content: oklch(92.951% 0.002 17.197);
+      --color-info: oklch(72.06% 0.191 231.6);
+      --color-success: oklch(64.8% 0.15 160);
+      --color-warning: oklch(84.71% 0.199 83.87);
+      --color-error: oklch(71.76% 0.221 22.18);
+      --radius-selector: 1rem;
+      --radius-field: 0.5rem;
+      --radius-box: 1rem;
+      --border: 1px;
+      --header-h: 64px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: var(--color-base-200);
+      color: var(--color-base-content);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      overflow: hidden;
+      line-height: 1.5;
+    }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    .material-symbols-outlined {
+      font-family: "Material Symbols Outlined";
+      font-weight: normal;
+      font-style: normal;
+      font-size: 20px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-feature-settings: "liga";
+      -webkit-font-smoothing: antialiased;
+      font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+      vertical-align: -5px;
+    }
+    .cyber-grid {
+      background-image:
+        linear-gradient(rgba(0,0,0,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .glass-panel, .glass-effect {
+      background: rgba(255,255,255,.72);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(0,0,0,.06);
+      border-radius: var(--radius-box);
+      box-shadow: 0 4px 20px rgba(0,0,0,.035);
+    }
+
+    .header-glass {
+      display: none;
+      position: fixed; top: 0; right: 0; left: var(--sidebar-w);
+      height: var(--header-h); z-index: 40; align-items: center; justify-content: space-between;
+      padding: 0 24px;
+      background: rgba(255,255,255,.72);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      transition: left .2s ease;
+    }
+    
+    .header-left, .header-right, .row { display: flex; align-items: center; gap: 12px; }
+    .btn-icon {
+      width: 38px; height: 38px; border-radius: 999px; border: 0;
+      background: transparent; color: inherit; display: grid; place-items: center;
+    }
+    .btn-icon:hover { background: rgba(0,0,0,.05); }
+    .btn {
+      border: 1px solid rgba(0,0,0,.08); border-radius: 999px;
+      padding: 8px 14px; background: rgba(255,255,255,.7);
+      display: inline-flex; align-items: center; gap: 8px;
+      color: inherit; font-size: 13px; font-weight: 700;
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(0,0,0,.08); }
+    .btn-primary {
+      background: var(--color-accent); color: var(--color-accent-content); border-color: transparent;
+      box-shadow: 0 0 16px color-mix(in oklab, var(--color-accent) 28%, transparent);
+    }
+    .btn-rose { background: #da7b86; color: #fff; border-color: transparent; box-shadow: 0 0 16px rgba(218,123,134,.35); }
+    .btn-danger { color: #a13142; background: rgba(255,255,255,.65); }
+    .btn-ghost { background: transparent; box-shadow: none; }
+    .quick-settings {
+      position: absolute; top: 52px; right: 24px; width: 330px; padding: 14px; z-index: 100;
+      background: oklch(12% 0.004 17 / .96); color: oklch(92% .002 17);
+      border: 1px solid var(--color-accent); border-radius: var(--radius-box);
+      box-shadow: 0 10px 40px rgba(0,0,0,.3);
+      display: none;
+    }
+    .quick-settings.open { display: block; }
+    .switch-line { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid rgba(255,255,255,.08); }
+    .toggle-switch { position: relative; width: 44px; height: 24px; }
+    .toggle-switch input { display: none; }
+    .toggle-slider { position: absolute; inset: 0; border-radius: 20px; background: rgba(255,255,255,.16); }
+    .toggle-slider::before {
+      content: ""; position: absolute; width: 16px; height: 16px; left: 4px; top: 4px; border-radius: 50%;
+      background: #fff; transition: transform .2s ease;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: var(--color-accent); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+    .book-pill {
+      display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+      border-radius: 999px; background: rgba(0,0,0,.04); border: 1px solid rgba(0,0,0,.06);
+      font-size: 13px; font-weight: 800;
+    }
+    .step-shell {
+      display: none !important;
+      flex: 0 0 auto; padding: 12px 12px 12px 22px; border-bottom: 1px solid rgba(0,0,0,.06);
+      display: grid; grid-template-columns: 1fr 316px; gap: 16px; align-items: stretch;
+      background: rgba(255,255,255,.38);
+    }
+    .steps { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+    .step-chip {
+      display: flex; align-items: center; gap: 8px;
+      min-height: 42px; padding: 7px 12px; border: 1px solid rgba(0,0,0,.06);
+      border-radius: 14px; background: rgba(255,255,255,.45);
+      font-size: 12px; font-weight: 800; color: inherit; opacity: .72;
+    }
+    .step-chip.active { opacity: 1; border-color: color-mix(in oklab, var(--color-primary) 40%, transparent); box-shadow: 0 0 12px color-mix(in oklab, var(--color-primary) 22%, transparent); }
+    .step-chip.locked { opacity: 1; border-color: color-mix(in oklab, var(--color-accent) 34%, transparent); }
+    .step-num {
+      width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%;
+      background: rgba(0,0,0,.06); font-family: "JetBrains Mono", monospace; font-size: 11px;
+    }
+    .step-num.locked, .timeline-dot.locked { background: var(--color-success); color: var(--color-success-content); }
+    .step-num.active, .timeline-dot.active { background: var(--color-info); color: var(--color-info-content); }
+    .step-num.pending, .timeline-dot.pending { background: var(--color-base-300); color: color-mix(in oklab, var(--color-base-content) 62%, transparent); }
+    .label { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .52; }
+    .book-meta-rating { grid-template-columns: 1fr; gap: 4px; padding-top: 6px; }
+    .stars { display: inline-flex; gap: 0; color: #d68a00; vertical-align: -4px; }
+    .stars .material-symbols-outlined { font-size: 18px; }
+    .workspace {
+      flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(360px, 1fr) 316px;
+      gap: 16px; padding: 16px 22px 22px; overflow: hidden;
+      transition: grid-template-columns .25s ease;
+    }
+    .workspace.drawer-mode {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .workspace.drawer-mode .chat-pane,
+    .workspace.drawer-mode .timeline-pane { display: none; }
+    .chat-pane, .timeline-pane, .work-pane { min-height: 0; display: flex; flex-direction: column; }
+    .timeline-pane { padding: 16px; gap: 14px; overflow: auto; }
+
+    @keyframes cs-work-slide-in {
+      from { opacity: 0; transform: translateX(40px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .work-pane.slide-in {
+      animation: cs-work-slide-in .35s ease-out both;
+    }
+    .work-pane .pane-title small { display: block; font-weight: 500; opacity: .55; margin-top: 2px; }
+    .work-pane .work-body { padding: 18px; }
+    .book-meta { display: grid; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,.06); }
+    .book-meta h2 { margin: 0; font-size: 18px; }
+    .book-meta-row { display: grid; grid-template-columns: 76px 1fr; gap: 8px; font-size: 12px; }
+    .book-meta-row span:first-child { opacity: .52; font-weight: 800; }
+    .timeline { display: grid; gap: 0; padding: 4px 0; position: relative; }
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 25px;
+      top: 20px;
+      bottom: 20px;
+      width: 2px;
+      border-radius: 999px;
+      background: color-mix(in oklab, var(--color-base-content) 16%, transparent);
+    }
+    .timeline-step {
+      position: relative;
+      z-index: 1;
+      display: grid; grid-template-columns: 32px 1fr; gap: 10px; align-items: center;
+      min-height: 58px; padding: 9px 11px; border: 1px solid transparent;
+      border-radius: var(--radius-field); background: rgba(255,255,255,.52);
+      color: inherit; text-align: left;
+    }
+    .timeline-step:hover { background: var(--color-base-100); }
+    .timeline-step.active { border-color: var(--color-primary); background: color-mix(in oklab, var(--color-primary) 10%, white 90%); }
+    .timeline-step.locked { border-color: color-mix(in oklab, var(--color-accent) 42%, transparent); }
+    .timeline-dot {
+      width: 30px; height: 30px; display: grid; place-items: center; border-radius: var(--radius-field);
+      background: var(--color-base-300); font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 900;
+    }
+    .timeline-content { display: grid; gap: 3px; padding-top: 2px; }
+    .timeline-title-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .timeline-title-line b { font-size: 13px; }
+    .timeline-title-line .tooltip { display: inline-flex; min-width: 0; }
+    .timeline-title-line .badge { min-height: 20px; height: 20px; padding-inline: 7px; font-size: 10px; font-weight: 800; white-space: nowrap; }
+    .timeline-guide { font-size: 11px; line-height: 1.35; opacity: .68; font-style: normal; }
+    .stage-card { padding: 4px 0 0; display: grid; gap: 12px; align-content: start; }
+    .form-section {
+      border: 1px solid rgba(0,0,0,.06); border-radius: var(--radius-box);
+      background: rgba(255,255,255,.45); padding: 14px; display: grid; gap: 12px;
+    }
+    .form-section h4 { margin: 0; font-size: 13px; font-weight: 900; }
+    .section-note { margin: 0; font-size: 12px; opacity: .62; }
+    .category-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+    .category-tab {
+      border: 1px solid rgba(0,0,0,.08); border-radius: var(--radius-field);
+      padding: 7px 10px; background: rgba(255,255,255,.62);
+      font-size: 12px; font-weight: 800;
+    }
+    .category-tab.active { border-color: var(--color-accent); background: color-mix(in oklab, var(--color-accent) 12%, white 88%); }
+    .setting-grid, .review-module-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .setting-item, .review-module {
+      border: 1px solid rgba(0,0,0,.06); border-radius: var(--radius-field);
+      background: rgba(255,255,255,.56); padding: 10px; display: grid; gap: 6px;
+    }
+    .setting-item b, .review-module b { font-size: 12px; }
+    .setting-item small, .review-module small { opacity: .62; line-height: 1.45; }
+    .binding-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+    .philosophy-grid { display: grid; gap: 8px; }
+    .missing-list { margin: 0; padding-left: 18px; font-size: 12px; opacity: .72; }
+    .stage-summary { display: grid; gap: 8px; }
+    .summary-line { display: grid; grid-template-columns: 86px 1fr; gap: 10px; font-size: 13px; padding: 9px 0; border-bottom: 1px dashed rgba(0,0,0,.08); }
+    .summary-line strong { font-size: 11px; opacity: .56; }
+    .pane-head {
+      padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+    .pane-title { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+    .pane-title small { display: block; font-weight: 500; opacity: .55; margin-top: 2px; }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 999px;
+      background: rgba(92,127,103,.12); color: #446a4f; font-size: 11px; font-weight: 800;
+    }
+    .status-success { background: color-mix(in oklab, var(--color-success) 24%, white 76%); color: var(--color-success-content); border-color: color-mix(in oklab, var(--color-success) 58%, transparent); }
+    .status-info { background: color-mix(in oklab, var(--color-info) 24%, white 76%); color: var(--color-info-content); border-color: color-mix(in oklab, var(--color-info) 58%, transparent); }
+    .status-warning { background: color-mix(in oklab, var(--color-warning) 24%, white 76%); color: var(--color-warning-content); border-color: color-mix(in oklab, var(--color-warning) 58%, transparent); }
+    .chat-history {
+      flex: 1; min-height: 0; overflow: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px;
+    }
+    .chat-pane .chat { display: grid; gap: 4px; }
+    .chat-pane .chat-header { font-size: 11px; font-weight: 800; opacity: .54; }
+    .chat-pane .chat-bubble {
+      max-width: min(82%, 560px);
+      border: 1px solid rgba(0,0,0,.06);
+      box-shadow: 0 4px 20px rgba(0,0,0,.035);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .quick-prompts {
+      padding: 0 18px 12px; display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .prompt-chip {
+      border: 1px solid rgba(0,0,0,.07); background: rgba(255,255,255,.56);
+      border-radius: 999px; padding: 7px 10px; font-size: 12px; font-weight: 700;
+    }
+    .prompt-chip:hover { border-color: var(--color-accent); }
+    .chat-input {
+      margin: 0 16px 16px; padding: 8px; border-radius: 18px; background: rgba(255,255,255,.72);
+      border: 1px solid rgba(0,0,0,.06); display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    }
+    .chat-input textarea {
+      border: 0; outline: 0; resize: none; min-height: 46px; max-height: 90px;
+      border-radius: 12px; background: transparent; padding: 8px 10px;
+    }
+    .work-body { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .field { display: grid; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { font-size: 11px; font-weight: 800; opacity: .62; }
+    .input, .textarea, .select {
+      width: 100%; border: 1px solid rgba(0,0,0,.07); background: rgba(255,255,255,.72);
+      color: inherit; border-radius: 12px; padding: 10px 11px; outline: none;
+    }
+    .textarea { min-height: 86px; resize: vertical; }
+    .input:focus, .textarea:focus, .select:focus {
+      border-color: color-mix(in oklab, var(--color-accent) 50%, rgba(0,0,0,.07));
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 12%, transparent);
+    }
+    .tags { display: flex; flex-wrap: wrap; gap: 7px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 5px; border-radius: 999px;
+      padding: 4px 8px; font-size: 11px; font-weight: 800;
+      background: rgba(0,0,0,.055); border: 1px solid rgba(0,0,0,.055);
+    }
+    .tag.primary { background: color-mix(in oklab, var(--color-primary) 13%, white 87%); color: color-mix(in oklab, var(--color-primary) 70%, black 30%); }
+    .tag.accent { background: color-mix(in oklab, var(--color-accent) 15%, white 85%); color: #335b3e; }
+    .tag.warn { background: color-mix(in oklab, var(--color-warning) 20%, white 80%); color: #72521c; }
+    .card-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .mini-card {
+      border: 1px solid rgba(0,0,0,.06); border-radius: 14px; background: rgba(255,255,255,.56);
+      padding: 12px; display: grid; gap: 6px; min-height: 96px;
+    }
+    .mini-card h4 { margin: 0; font-size: 13px; }
+    .mini-card p { margin: 0; font-size: 12px; opacity: .68; }
+    .mini-card.active { border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(92,127,103,.10); }
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid rgba(0,0,0,.08); margin-bottom: 12px; overflow-x: auto; }
+    .world-tabs {
+      border: 0;
+      border-radius: 14px;
+      background: transparent;
+      padding: 0;
+      overflow: visible;
+      display: grid;
+      gap: 12px;
+    }
+    .world-category-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0;
+      background: transparent;
+      border: 0;
+    }
+    .world-category-bar .join { flex-wrap: wrap; }
+    .world-category-btn.btn {
+      border-radius: 0;
+      border: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent);
+      background: var(--color-base-100);
+      color: color-mix(in oklab, var(--color-base-content) 62%, transparent);
+      font-size: 12px;
+      font-weight: 800;
+      padding: 7px 14px;
+      box-shadow: none;
+    }
+    .world-category-btn.btn:hover {
+      transform: none;
+      background: color-mix(in oklab, var(--color-primary) 10%, var(--color-base-100));
+      color: var(--color-primary);
+      box-shadow: none;
+    }
+    .world-category-btn.btn.btn-active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: var(--color-primary-content);
+      box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 40%, transparent);
+    }
+    .world-layout {
+      display: grid; grid-template-columns: 270px 1fr 290px; gap: 12px; min-height: 540px;
+    }
+    .list-panel, .editor-panel, .bind-panel {
+      border: 1px solid rgba(0,0,0,.06); border-radius: 14px; background: rgba(255,255,255,.42);
+      min-width: 0; overflow: hidden; display: flex; flex-direction: column;
+    }
+    .panel-title { padding: 12px; border-bottom: 1px solid rgba(0,0,0,.06); font-size: 12px; font-weight: 900; display: flex; align-items: center; justify-content: space-between; }
+    .item-list { padding: 10px; display: grid; gap: 8px; overflow: auto; }
+    .setting-card {
+      border: 1px solid rgba(0,0,0,.06); border-radius: 12px; background: rgba(255,255,255,.6);
+      padding: 10px; display: grid; gap: 5px; text-align: left;
+    }
+    .setting-card:hover, .setting-card.selected { border-color: var(--color-accent); }
+    .setting-card b { font-size: 13px; }
+    .setting-card span { font-size: 11px; opacity: .56; }
+    .setting-card-subline { display: flex; flex-wrap: wrap; gap: 6px; }
+    .setting-card-badge {
+      display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px;
+      border-radius: 999px; background: rgba(0,0,0,.05); font-size: 10px; font-weight: 800;
+    }
+    .editor-content { padding: 12px; display: grid; gap: 10px; overflow: auto; }
+    .bind-pool { padding: 10px; display: grid; gap: 8px; overflow: auto; }
+    .bind-card {
+      border: 1px dashed rgba(0,0,0,.16); border-radius: 12px; padding: 10px; background: rgba(255,255,255,.55);
+      display: grid; gap: 6px; cursor: grab;
+    }
+    .bind-card b { font-size: 12px; }
+    .bind-card small { opacity: .58; }
+    .bind-card[draggable="true"]:active { cursor: grabbing; }
+    .drop-zone {
+      margin: 10px; min-height: 72px; border: 1px dashed color-mix(in oklab, var(--color-accent) 45%, transparent);
+      border-radius: 12px; display: grid; place-items: center; padding: 12px; color: #4e7458; font-size: 12px; font-weight: 800;
+      background: color-mix(in oklab, var(--color-accent) 8%, transparent);
+    }
+    .drop-zone.drag-over {
+      border-color: var(--color-accent);
+      background: color-mix(in oklab, var(--color-accent) 14%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 12%, transparent);
+    }
+    .binding-list { padding: 0 10px 10px; display: grid; gap: 6px; }
+    .binding-line {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 8px 9px; border-radius: 10px; background: rgba(0,0,0,.04); font-size: 11px;
+    }
+    .characters-grid { display: grid; grid-template-columns: 220px 1fr; gap: 0; height: 62vh; min-height: 380px; }
+    /* 左侧角色列表 */
+    .char-list-panel { display: flex; flex-direction: column; min-width: 0; height: 100%; }
+    .char-list-panel-head { flex-shrink: 0; padding: 10px 12px 8px; border-bottom: 1px solid rgba(0,0,0,.06); display: flex; align-items: center; justify-content: space-between; }
+    .char-list-panel-head h5 { margin: 0; font-size: 12px; font-weight: 900; opacity: .55; letter-spacing: .04em; }
+    .char-card-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .char-name { font-size: 16px; font-weight: 900; line-height: 1.3; }
+    .char-role-badge { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+    .char-role-badge.protagonist { background: color-mix(in oklab, var(--color-primary) 14%, transparent); color: var(--color-primary); }
+    .char-role-badge.supporting { background: color-mix(in oklab, var(--color-accent) 14%, transparent); color: var(--color-accent); }
+    .char-role-badge.villain { background: rgba(0,0,0,.08); color: rgba(0,0,0,.6); }
+    .char-role-badge.npc { background: rgba(0,0,0,.05); color: rgba(0,0,0,.45); }
+    /* 可切换 badge — 叠层暗示 */
+    .char-role-badge[style*="cursor"] {
+      position: relative;
+    }
+    .char-role-badge[style*="cursor"]::before,
+    .char-role-badge[style*="cursor"]::after {
+      content: '';
+      position: absolute; inset: 0; border-radius: inherit;
+      background: inherit; opacity: .35;
+      pointer-events: none;
+    }
+    .char-role-badge[style*="cursor"]::before { transform: translate(2px, 2px) scale(.97); z-index: -1; }
+    .char-role-badge[style*="cursor"]::after  { transform: translate(4px, 4px) scale(.94); z-index: -2; opacity: .2; }
+    .char-role-badge[style*="cursor"]:hover { filter: brightness(1.08); }
+    .char-card-quick { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+    .char-quick-btn {
+      border: 1px solid rgba(0,0,0,.1); border-radius: 999px; padding: 3px 8px; font-size: 10px; font-weight: 800;
+      background: transparent; cursor: pointer; opacity: .65; transition: all .12s;
+    }
+    .char-quick-btn:hover { opacity: 1; border-color: var(--color-accent); color: var(--color-accent); }
+    .char-quick-btn.q-active { opacity: 1; border-color: var(--color-primary); color: var(--color-primary); background: color-mix(in oklab, var(--color-primary) 8%, transparent); }
+    .char-add-btn {
+      flex-shrink: 0; width: 100%; border-radius: 12px; border: 1.5px dashed var(--color-accent);
+      padding: 10px 11px; font-size: 13px; font-weight: 800;
+      color: var(--color-accent); background: rgba(255,255,255,.7);
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+      transition: background .18s, border-color .18s, box-shadow .18s;
+    }
+    .char-add-btn:hover {
+      background: color-mix(in oklab, var(--color-accent) 10%, white);
+      border-style: solid;
+      box-shadow: 0 4px 14px rgba(0,0,0,.08);
+    }
+    /* 右侧角色详情 */
+    .char-detail { flex: 1; display: flex; flex-direction: column; min-width: 0; border-radius: 0 14px 14px 0; }
+    .char-detail-head { flex-shrink: 0; padding: 10px 14px 8px; border-bottom: 1px solid rgba(0,0,0,.06); display: flex; align-items: center; gap: 8px; }
+    .char-name-editor { display: flex; align-items: center; gap: 4px; }
+    .char-name-input { font-size: 15px; font-weight: 900; padding: 2px 6px; border-radius: 6px; border: 1px solid transparent; background: transparent; width: auto; min-width: 50px; color: inherit; }
+    .char-name-input:hover { border-color: rgba(0,0,0,.12); }
+    .char-name-input:focus { border-color: var(--color-accent); outline: none; background: rgba(255,255,255,.5); }
+    .char-gender-toggle-sm {
+      flex-shrink: 0; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;
+      padding: 2px 8px; border-radius: 6px; border: 1px solid transparent; color: inherit; opacity: .75;
+    }
+    .char-gender-toggle-sm:hover { opacity: 1; border-color: rgba(0,0,0,.12); }
+    .char-age-group { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .char-age-group label { font-size: 14px; font-weight: 700; opacity: .75; white-space: nowrap; }
+    .char-age-input {
+      flex-shrink: 0; font-size: 14px; font-weight: 700; padding: 2px 4px; border-radius: 6px; border: 1px solid transparent;
+      background: transparent; width: 36px; text-align: right; color: inherit; opacity: .75;
+    }
+    .char-age-input:focus { border-color: var(--color-accent); outline: none; background: rgba(255,255,255,.5); opacity: 1; }
+    .char-age-suffix { font-size: 14px; font-weight: 700; opacity: .75; }
+    .char-profile-section { display: grid; gap: 12px; }
+    .char-bg-field label, .char-obsession-field label { display: block; font-size: 11px; font-weight: 700; opacity: .55; margin-bottom: 4px; }
+    .char-bg-field textarea { min-height: 90px; }
+    .char-obsession-field textarea { min-height: 64px; }
+    .char-bind-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .char-bind-field { display: flex; flex-direction: column; gap: 4px; }
+    .char-bind-box {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+      padding: 6px 10px; border-radius: 8px;
+      border: 1px solid rgba(0,0,0,.08); background: rgba(255,255,255,.5);
+      min-height: 32px;
+    }
+    .char-bind-label { font-size: 11px; font-weight: 700; opacity: .55; }
+    .char-bind-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 700; padding: 3px 8px;
+      border-radius: 999px; background: color-mix(in oklab, var(--color-accent) 16%, var(--color-base-100));
+      border: 1px solid color-mix(in oklab, var(--color-accent) 28%, transparent);
+    }
+    .char-bind-tag .material-symbols-outlined { font-size: 11px; cursor: pointer; opacity: .5; }
+    .char-bind-tag .material-symbols-outlined:hover { opacity: 1; }
+    .char-relation-section { margin-top: 10px; }
+    .char-relation-section > label { font-size: 11px; font-weight: 700; opacity: .55; display: block; margin-bottom: 4px; }
+    .char-rel-row {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 6px 8px; border-radius: 8px;
+      border: 1px solid rgba(0,0,0,.06); background: rgba(255,255,255,.35);
+      margin-bottom: 4px;
+    }
+    .char-rel-name { font-size: 12px; font-weight: 700; white-space: nowrap; min-width: 56px; flex-shrink: 0; padding-top: 2px; }
+    .char-rel-box {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+      padding: 4px 6px; border-radius: 8px;
+      border: 1px solid rgba(0,0,0,.06); background: rgba(255,255,255,.4);
+      min-height: 28px; flex: 1;
+    }
+    .char-bind-add-btn {
+      font-size: 10px; font-weight: 700; color: var(--color-accent);
+      padding: 3px 10px; border-radius: 999px; cursor: pointer;
+      background: color-mix(in oklab, var(--color-accent) 12%, var(--color-base-100));
+      border: 1px solid color-mix(in oklab, var(--color-accent) 24%, transparent);
+      line-height: 1.4; white-space: nowrap; flex-shrink: 0;
+    }
+    .char-bind-add-btn:hover { background: color-mix(in oklab, var(--color-accent) 20%, var(--color-base-100)); }
+    .char-rel-dropdown { display: inline-flex; }
+    .char-rel-dropdown summary { list-style: none; display: flex; }
+    .char-rel-dropdown summary::-webkit-details-marker { display: none; }
+    .char-rel-dropdown summary::marker { display: none; content: ''; }
+    .char-bind-dropdown { display: inline-flex; }
+    .char-bind-dropdown summary { list-style: none; display: flex; }
+    .char-bind-dropdown summary::-webkit-details-marker { display: none; }
+    .char-bind-dropdown summary::marker { display: none; content: ''; }
+    .char-bind-popup {
+      background: rgba(255,255,255,.96); border-radius: 12px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.14); border: 1px solid rgba(0,0,0,.08);
+      padding: 6px; min-width: 160px;
+    }
+    .char-bind-popup-item {
+      display: block; font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 8px;
+      cursor: pointer; white-space: nowrap;
+    }
+    .char-bind-popup-item:hover { background: color-mix(in oklab, var(--color-accent) 10%, transparent); }
+    .char-rel-popup {
+      background: rgba(255,255,255,.96); border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.16); border: 1px solid rgba(0,0,0,.08);
+      padding: 10px 12px; min-width: 380px; max-height: 260px; overflow-y: auto;
+    }
+    .char-rel-popup .char-rel-popup-tag { cursor: pointer; }
+    .char-rel-dropdown .dropdown-content,
+    .char-bind-dropdown .dropdown-content {
+      position: fixed !important;
+      z-index: 9999 !important;
+    }
+    .char-rel-popup-group { margin-bottom: 8px; }
+    .char-rel-popup-group:last-child { margin-bottom: 0; }
+    .char-rel-popup-group-title { font-size: 9px; font-weight: 900; opacity: .35; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+    .char-rel-popup-tag {
+      display: inline-block; font-size: 10px; font-weight: 700; padding: 4px 10px; margin: 2px;
+      border-radius: 999px; cursor: pointer;
+      background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+      border: 1px solid color-mix(in oklab, var(--color-accent) 20%, transparent);
+      color: var(--color-accent); transition: background .12s;
+    }
+    .char-rel-popup-tag:hover { background: color-mix(in oklab, var(--color-accent) 24%, transparent); }
+    .char-rel-popup-tag.is-used { opacity: .3; pointer-events: none; }
+    .char-philosophy-section { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.35); border: 1px solid rgba(0,0,0,.05); }
+    .char-detail-body { flex: 1; overflow-y: auto; padding: 12px 14px; display: grid; gap: 14px; }
+    .char-section-title { font-size: 11px; font-weight: 900; opacity: .45; letter-spacing: .06em; margin-bottom: 4px; }
+    .char-world-bindings { display: flex; flex-wrap: wrap; gap: 6px; }
+    .char-bind-chip {
+      display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px;
+      border-radius: 999px; font-size: 11px; font-weight: 800;
+      background: color-mix(in oklab, var(--color-accent) 10%, white);
+      border: 1px solid color-mix(in oklab, var(--color-accent) 25%, transparent);
+      color: var(--color-accent); cursor: pointer;
+    }
+    .char-bind-chip .material-symbols-outlined { font-size: 13px; }
+    .char-bind-empty { font-size: 12px; opacity: .4; cursor: default; }
+    .char-phil-grid { display: grid; gap: 7px; }
+    .char-phil-row { display: grid; grid-template-columns: 80px 1fr 30px; align-items: center; gap: 8px; font-size: 11px; }
+    /* 哲学文本描述式 */
+    .char-phil-list { display: grid; gap: 8px; }
+    .char-phil-item { display: grid; gap: 3px; }
+    .char-phil-header { display: flex; justify-content: space-between; align-items: baseline; }
+    .char-phil-name { font-size: 11px; font-weight: 900; }
+    .char-phil-val { font-size: 13px; font-weight: 900; color: var(--color-accent); }
+    .char-phil-bar { height: 4px; border-radius: 2px; background: rgba(0,0,0,.08); overflow: hidden; }
+    .char-phil-fill { height: 100%; background: var(--color-accent); border-radius: 2px; transition: width .2s; }
+    .char-phil-desc { font-size: 11px; opacity: .56; line-height: 1.4; }
+    /* 世界绑定分组 */
+    .char-bind-section { display: grid; gap: 10px; }
+    .char-bind-group { display: grid; gap: 5px; padding: 9px; border-radius: 10px; background: rgba(255,255,255,.45); border: 1px solid rgba(0,0,0,.06); cursor: default; }
+    /* 性格标签状态色 */
+    .trait-btn.trait-primary { border-color: var(--color-primary); color: var(--color-primary); background: color-mix(in oklab, var(--color-primary) 10%, transparent); opacity: 1; }
+    .trait-btn.trait-accent  { border-color: var(--color-accent);  color: var(--color-accent);  background: color-mix(in oklab, var(--color-accent)  10%, transparent); opacity: 1; }
+    .trait-btn.trait-warn    { border-color: #d97706; color: #b45309; background: rgba(251,191,36,.12); opacity: 1; }
+    /* 性别 toggle 开关 */
+    .char-gender-toggle {
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+      user-select: none;
+    }
+    .char-gender-toggle:hover .char-gender-track {
+      border-color: var(--color-accent);
+      background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+    }
+    .char-gender-track {
+      position: relative; width: 40px; height: 22px; border-radius: 999px;
+      background: var(--color-base-200); border: 1px solid rgba(0,0,0,.08);
+      flex-shrink: 0; transition: all .2s;
+    }
+    .char-gender-thumb {
+      position: absolute; top: 3px; width: 14px; height: 14px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.18);
+      transition: left .2s cubic-bezier(.4,0,.2,1);
+    }
+    .char-gender-track[data-state="0"] .char-gender-thumb { left: 3px; }
+    .char-gender-track[data-state="1"] .char-gender-thumb { left: 21px; }
+    .char-gender-icon { font-size: 13px; font-weight: 800; line-height: 1; opacity: .4; transition: opacity .2s; }
+    .char-gender-icon.active { opacity: 1; }
+    .char-gender-icon.i-male { color: #4a7caf; }
+    .char-gender-icon.i-female { color: #c95a7a; }
+    /* 三极象限 */
+    .char-quadrant-wrap { margin-bottom: 10px; }
+    .char-quadrant {
+      position: relative; width: 82%; aspect-ratio: 200/85;
+      margin: 6px auto 4px;
+    }
+    .char-quadrant svg { width: 100%; height: 100%; display: block; }
+    .quadrant-dot {
+      position: absolute; width: 12px; height: 12px; border-radius: 50%;
+      background: var(--color-accent); border: 2px solid #fff;
+      box-shadow: 0 0 14px color-mix(in oklab, var(--color-accent) 55%, transparent);
+      transform: translate(-50%, -50%);
+      pointer-events: none; z-index: 2;
+      transition: left .35s ease, top .35s ease;
+    }
+    .qtrait-btn {
+      position: absolute; transform: translate(-50%,-50%);
+      border: 0; background: rgba(255,255,255,.55);
+      font-size: 10px; font-weight: 500; line-height: 1.3;
+      color: rgba(0,0,0,.45); cursor: pointer;
+      padding: 2px 6px; white-space: nowrap;
+      transition: all .15s; z-index: 3;
+      border-radius: 4px; letter-spacing: .01em;
+      backdrop-filter: blur(2px);
+    }
+    .qtrait-btn:hover {
+      color: var(--color-accent); font-weight: 800;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0,0,0,.1);
+      z-index: 10;
+    }
+    .qtrait-btn.trait-primary { color: var(--color-primary); font-weight: 800; }
+    .qtrait-btn.trait-accent { color: var(--color-accent); font-weight: 800; }
+    .qtrait-btn.trait-warn { color: #b45309; font-weight: 800; }
+    /* 哲学维度 chip 网格 */
+    .char-phil-chips { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; }
+    .char-phil-chip {
+      position: relative; display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 8px; border-radius: 8px;
+      background: rgba(255,255,255,.55); border: 1px solid rgba(0,0,0,.07);
+      cursor: default; gap: 4px;
+    }
+    .char-phil-chip:hover { border-color: var(--color-accent); z-index: 10; }
+    .char-phil-chip-name { font-size: 10px; font-weight: 900; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .char-phil-chip-val  { font-size: 13px; font-weight: 900; color: var(--color-accent); flex-shrink: 0; }
+    .char-phil-chip-tip {
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+      background: rgba(30,26,24,.92); color: #fff; font-size: 11px; line-height: 1.5;
+      padding: 6px 10px; border-radius: 8px; white-space: nowrap; pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,.3); z-index: 100;
+    }
+    .char-phil-chip-tip * { color: #fff; }
+    .char-phil-chip:hover .char-phil-chip-tip { display: block; }
+    /* 角色卡 stack 堆叠感 */
+    .char-list { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 10px; display: flex; flex-direction: column; gap: 8px; }
+    .char-card {
+      border-radius: 12px; padding: 10px 11px; background: rgba(255,255,255,.7);
+      border: 1.5px solid transparent; cursor: pointer; display: grid; gap: 5px;
+      transition: box-shadow .18s, border-color .15s, background .15s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+      position: relative;
+    }
+    .char-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,.12); z-index: 5; }
+    .char-card.active {
+      border-color: var(--color-accent); background: color-mix(in oklab, var(--color-accent) 8%, white);
+      box-shadow: 0 4px 18px rgba(0,0,0,.16); z-index: 10;
+    }
+    /* 性格标签区—限高可滚动 */
+    .char-trait-tags { max-height: 104px; overflow-y: auto; display: flex; gap: 4px; flex-wrap: wrap;
+      margin-top: 4px; padding-top: 5px; border-top: 1px solid rgba(0,0,0,.06); }
+    .char-trait-tags::-webkit-scrollbar { width: 3px; }
+    .char-trait-tags::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 2px; }
+    .gender-control, .segmented-control { display: inline-flex; background: var(--color-base-200); border-radius: 999px; padding: 3px; gap: 2px; }
+    .segmented-item {
+      border: 0; border-radius: 999px; background: transparent; padding: 7px 10px; font-size: 12px; font-weight: 800; opacity: .62;
+    }
+    .segmented-item.active { background: var(--color-base-100); opacity: 1; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .slider-row { display: grid; grid-template-columns: 86px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; }
+    input[type=range] { accent-color: var(--color-accent); }
+    .conflict-board { display: grid; grid-template-columns: 1fr 300px; gap: 14px; }
+    .conflict-card { padding: 14px; display: grid; gap: 12px; }
+    .review-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .review-card { padding: 16px; display: grid; gap: 10px; }
+    .review-card h3 { margin: 0; }
+    .review-card ul { margin: 0; padding-left: 18px; font-size: 13px; opacity: .72; }
+    .review-board { display: grid; gap: 12px; }
+    .review-board-head { display: grid; gap: 10px; }
+    .review-board-head .row { flex-wrap: wrap; }
+    .review-stage.collapse {
+      border: 1px solid rgba(0,0,0,.08);
+      background: rgba(255,255,255,.5);
+      border-radius: var(--radius-box);
+    }
+    .review-stage > .collapse-title {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 44px 14px 16px; min-height: 0;
+      font-weight: 800; letter-spacing: -.01em;
+    }
+    .review-stage .collapse-title .material-symbols-outlined { font-size: 20px; opacity: .7; }
+    .review-stage-index {
+      font-size: 12px; font-weight: 900; letter-spacing: .04em;
+      color: var(--color-primary); opacity: .85; min-width: 22px;
+    }
+    .review-stage-heading { display: grid; gap: 2px; }
+    .review-stage-heading b { font-size: 14px; }
+    .review-stage-heading small { font-size: 11px; font-weight: 500; opacity: .55; }
+    .review-stage-count { margin-left: auto; }
+    .review-stage > .collapse-content { padding: 0 16px; }
+    .review-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-bottom: 4px; }
+    .review-field {
+      border: 1px solid rgba(0,0,0,.06); border-radius: var(--radius-field);
+      background: rgba(255,255,255,.55); padding: 10px 12px; display: grid; gap: 6px;
+    }
+    .review-field.full { grid-column: 1 / -1; }
+    .review-field label { font-size: 11px; font-weight: 800; opacity: .56; }
+    .review-field p { margin: 0; font-size: 13px; line-height: 1.5; opacity: .82; }
+    .review-subsection { display: grid; gap: 8px; padding: 4px 0 8px; }
+    .review-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .review-subsection h5 { margin: 0; font-size: 12px; font-weight: 800; opacity: .6; }
+    .review-book-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      background: rgba(255,255,255,.45);
+      border-radius: var(--radius-box);
+      border: 1px solid rgba(0,0,0,.04);
+    }
+    .review-book-cell {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 6px;
+      align-items: baseline;
+      font-size: 12px;
+    }
+    .review-book-cell .rbm-label { opacity: .5; font-weight: 800; font-size: 10px; }
+    .review-book-cell .rbm-value { font-weight: 600; }
+    .review-char-card {
+      padding: 10px 12px;
+      border-radius: var(--radius-box);
+      background: rgba(255,255,255,.45);
+      border: 1px solid rgba(0,0,0,.04);
+      display: grid;
+      gap: 4px;
+    }
+    .review-char-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .review-char-name { font-weight: 700; font-size: 14px; }
+    .review-char-role { font-size: 10px !important; }
+    .review-char-detail {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .review-char-detail .rcd-label { opacity: .5; font-weight: 800; font-size: 10px; }
+    .review-binding-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      border: 1px solid color-mix(in oklab, var(--color-accent) 30%, white 70%);
+      background: color-mix(in oklab, var(--color-accent) 10%, white 90%);
+      border-radius: var(--radius-field); padding: 4px 8px; font-size: 12px; font-weight: 700;
+    }
+    .review-binding-chip .material-symbols-outlined { font-size: 15px; }
+    .review-philosophy { display: flex; flex-wrap: wrap; gap: 8px; }
+    @media (max-width: 1180px) { .review-fields { grid-template-columns: 1fr; } }
+    .locked-mask {
+      margin-top: 12px; padding: 10px 12px; border-radius: 12px;
+      background: rgba(92,127,103,.12); border: 1px solid rgba(92,127,103,.2);
+      font-size: 12px; color: #335b3e; display: none;
+    }
+    .locked .locked-mask { display: block; }
+    .stage-modal-panel.locked .editable-field { pointer-events: none; opacity: .74; }
+    .stage-modal-panel.editing .editable-field { pointer-events: auto; opacity: 1; }
+    .stage-modal-panel.locked .unlock-btn { color: var(--color-warning-content); border-color: color-mix(in oklab, var(--color-warning) 55%, transparent); background: color-mix(in oklab, var(--color-warning) 20%, white 80%); }
+    .stage-modal-panel.editing .unlock-btn { color: var(--color-success-content); border-color: color-mix(in oklab, var(--color-success) 55%, transparent); background: color-mix(in oklab, var(--color-success) 20%, white 80%); }
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 120; display: none; place-items: center;
+      background: rgba(40,36,34,.56); backdrop-filter: blur(6px);
+      padding: 24px;
+    }
+    .modal-backdrop.open { display: grid; }
+    .stage-modal-panel {
+      width: min(1040px, 96vw); max-height: 88vh;
+      background: var(--color-base-100); border: 1px solid rgba(0,0,0,.1); border-radius: 22px;
+      color: var(--color-base-content);
+      box-shadow: 0 24px 80px rgba(0,0,0,.28);
+      display: flex; flex-direction: column;
+      visibility: visible; opacity: 1;
+    }
+    .stage-modal-panel :where(button, input, textarea, select, label, b, small, span, div) { color: inherit; }
+    .stage-modal-panel .char-phil-chip-tip,
+    .stage-modal-panel .char-phil-chip-tip * { color: #fff; }
+    .stage-modal-panel .btn-primary { color: var(--color-accent-content); }
+    .modal-head, .modal-foot { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .modal-head {
+      border-bottom: 1px solid rgba(0,0,0,.08);
+      background: color-mix(in oklab, var(--color-base-content) 3%, var(--color-base-100));
+      border-radius: 22px 22px 0 0;
+    }
+    .modal-head #confirmTitle { font-size: 15px; font-weight: 900; letter-spacing: -.01em; }
+    .modal-foot {
+      border-top: 1px solid rgba(0,0,0,.08);
+      background: color-mix(in oklab, var(--color-base-content) 3%, var(--color-base-100));
+      border-radius: 0 0 22px 22px;
+    }
+    .modal-body { padding: 16px 20px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; background: color-mix(in oklab, var(--color-base-content) 5%, var(--color-base-100)); }
+    .modal-body > .stage-card { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0; padding: 0; }
+    .modal-body > .stage-card > .characters-grid { flex: 1; min-height: 380px; }
+    .world-tab-panel {
+      display: flex; flex-direction: column;
+      padding: 0;
+      background: transparent;
+      border-top: 0;
+    }
+    .world-tab-shell-head {
+      flex-shrink: 0;
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 900;
+      background: color-mix(in oklab, var(--color-base-content) 4%, var(--color-base-100));
+      border-bottom: 1px solid rgba(0,0,0,.07);
+    }
+    .world-tab-shell-head .muted { font-weight: 600; opacity: .55; }
+    .world-tab-shell-head .world-category-bar { width: 100%; }
+    .world-tab-shell-body {
+      flex: 1;
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      padding: 14px;
+    }
+    .world-items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .world-item {
+      border: 1px solid rgba(0,0,0,.1);
+      border-radius: 14px;
+      background: #fff;
+      padding: 12px 14px 10px;
+      display: grid;
+      gap: 6px;
+      transition: background .15s ease;
+    }
+    .world-item.drag-over {
+      border-color: var(--color-accent);
+      background: color-mix(in oklab, var(--color-accent) 10%, white 90%);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 14%, transparent);
+    }
+    .world-item-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .world-item-title { display: flex; align-items: center; gap: 8px; }
+    .world-item-title b { font-size: 13px; font-weight: 800; }
+    .world-item-text { margin: 0; font-size: 12px; line-height: 1.5; opacity: .72; }
+    .world-binding-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .world-binding-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: color-mix(in oklab, var(--color-accent) 18%, var(--color-base-100));
+      color: color-mix(in oklab, var(--color-accent) 80%, var(--color-base-content));
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid color-mix(in oklab, var(--color-accent) 35%, transparent);
+    }
+    .world-binding-chip .material-symbols-outlined { font-size: 13px; }
+    .world-binding-chip.world-binding-out {
+      background: color-mix(in oklab, var(--color-primary) 14%, var(--color-base-100));
+      color: color-mix(in oklab, var(--color-primary) 82%, var(--color-base-content));
+      border-color: color-mix(in oklab, var(--color-primary) 34%, transparent);
+    }
+    .world-item-del {
+      color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+      flex: none;
+    }
+    .world-item-del:hover {
+      color: var(--color-error, #c0392b);
+      background: color-mix(in oklab, var(--color-error, #c0392b) 14%, transparent);
+    }
+    .world-item-del .material-symbols-outlined { font-size: 17px; }
+    .world-item-drop {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 6px;
+      padding: 16px 12px;
+      border: 1.5px dashed color-mix(in oklab, var(--color-accent) 55%, transparent);
+      border-radius: 10px;
+      background: color-mix(in oklab, var(--color-accent) 6%, transparent);
+      font-size: 12px;
+      font-weight: 800;
+      color: color-mix(in oklab, var(--color-accent) 75%, var(--color-base-content));
+      letter-spacing: .02em;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    .world-item.drag-over .world-item-drop {
+      background: color-mix(in oklab, var(--color-accent) 18%, transparent);
+      border-color: var(--color-accent);
+    }
+    .world-item-drop .material-symbols-outlined { font-size: 18px; }
+    .world-card-pool { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; overflow: visible; }
+    .world-pool-block {
+      margin-top: 4px;
+      padding-top: 14px;
+      border-top: 1px dashed color-mix(in oklab, var(--color-base-content) 18%, transparent);
+      display: grid;
+      gap: 10px;
+    }
+    .world-pool-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .world-pool-head .muted { font-weight: 600; opacity: .55; }
+    .world-card {
+      position: relative;
+      isolation: isolate;
+      border: 1px solid color-mix(in oklab, var(--color-accent) 55%, rgba(255,255,255,.4));
+      border-radius: 14px;
+      background:
+        linear-gradient(155deg, color-mix(in oklab, var(--color-accent) 82%, #0c1a12) 0%, var(--color-accent) 48%, color-mix(in oklab, var(--color-accent) 70%, #000) 100%);
+      padding: 12px 11px 11px;
+      cursor: grab;
+      -webkit-user-drag: element;
+      user-select: none;
+      display: grid;
+      gap: 7px;
+      min-height: 118px;
+      align-content: start;
+      color: var(--color-accent-content);
+      transition: border-color .14s ease;
+    }
+    .world-card::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+      z-index: -2;
+      left: 50%;
+      bottom: -18%;
+      width: 78%;
+      height: 60%;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, color-mix(in oklab, var(--color-accent) 65%, transparent), transparent 70%);
+      filter: blur(16px);
+      opacity: 0;
+      transition: opacity .18s ease;
+    }
+    .world-card:hover {
+      border-color: color-mix(in oklab, var(--color-accent) 40%, #fff);
+    }
+    .world-card:hover::after { opacity: .95; }
+    .world-card:active { cursor: grabbing; transform: translateY(-1px) scale(.99); }
+    .world-card-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    .world-card > * { pointer-events: none; }
+    .world-card *, .world-card { -webkit-user-select: none; user-select: none; }
+    .world-card-head .badge {
+      flex: none;
+      background: rgba(255,255,255,.18);
+      border-color: rgba(255,255,255,.35);
+      color: var(--color-accent-content);
+    }
+    .world-card b { font-size: 12px; font-weight: 800; line-height: 1.3; color: var(--color-accent-content); }
+    .world-card p {
+      margin: 0; font-size: 11px; line-height: 1.45; color: color-mix(in oklab, var(--color-accent-content) 82%, transparent);
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .world-ai-add {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 120px;
+      padding: 14px;
+      border: 1.5px dashed color-mix(in oklab, var(--color-accent) 45%, rgba(0,0,0,.18));
+      border-radius: 14px;
+      background: color-mix(in oklab, var(--color-accent) 5%, var(--color-base-100));
+      color: color-mix(in oklab, var(--color-accent) 78%, var(--color-base-content));
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .world-ai-add:hover {
+      background: color-mix(in oklab, var(--color-accent) 12%, var(--color-base-100));
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
+    .world-ai-add .material-symbols-outlined { font-size: 24px; }
+    .world-empty {
+      padding: 18px 10px;
+      text-align: center;
+      font-size: 12px;
+      color: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+      border: 1px dashed rgba(0,0,0,.12);
+      border-radius: 10px;
+      background: rgba(255,255,255,.5);
+    }
+    .confirm-list { display: grid; gap: 8px; }
+    .confirm-item { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px dashed rgba(0,0,0,.09); font-size: 13px; }
+    .confirm-item strong { font-size: 11px; opacity: .55; }
+    .toast-container {
+      position: fixed; right: 24px; bottom: 24px; z-index: 200; display: grid; gap: 8px;
+    }
+    .toast-item {
+      padding: 11px 14px; border-radius: 12px; background: rgba(255,255,255,.95);
+      border-left: 3px solid var(--color-info); box-shadow: 0 8px 30px rgba(0,0,0,.12);
+      font-size: 13px; transform: translateX(115%); opacity: 0; transition: all .25s ease;
+    }
+    .toast-item.show { transform: translateX(0); opacity: 1; }
+    .toast-success { border-left-color: var(--color-success); }
+    .toast-error { border-left-color: var(--color-error); }
+    .toast-info { border-left-color: var(--color-info); }
+    .footer-actions {
+      padding: 12px 16px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid rgba(0,0,0,.06);
+    }
+    .muted { opacity: .62; }
+    .mono { font-family: "JetBrains Mono", monospace; }
+    .hidden { display: none !important; }
+    .scrollbar { scrollbar-width: thin; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-thumb { background: var(--color-base-300); border-radius: 99px; }
+    /* ——— 冲突种子：标签页 ——— */
+    .cs-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid rgba(0,0,0,.07);
+      margin-bottom: 2px;
+    }
+    .cs-tab {
+      padding: 8px 18px;
+      font-size: 12px;
+      font-weight: 700;
+      border: none;
+      background: none;
+      cursor: pointer;
+      opacity: .45;
+      border-bottom: 2px solid transparent;
+      transition: all .12s;
+      color: inherit;
+    }
+    .cs-tab:hover { opacity: .7; }
+    .cs-tab-active {
+      opacity: 1;
+      border-bottom-color: var(--color-accent);
+    }
+    /* ——— 冲突清单：表格式布局（带分割线） ——— */
+    .cs-table {
+      display: grid;
+      gap: 5px;
+    }
+    .cs-trow {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,.07);
+    }
+    .cs-trow-empty {
+      opacity: .45;
+      border-style: dashed;
+    }
+    .cs-trow-main {
+      display: grid;
+      grid-template-columns: 28px 1fr 88px 88px;
+    }
+    .cs-tcell {
+      padding: 5px 6px;
+      border-right: 1px solid rgba(0,0,0,.06);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 3px;
+    }
+    .cs-tcell:last-child { border-right: none; }
+    .cs-tcell-num {
+      justify-content: center;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      font-weight: 900;
+      opacity: .35;
+    }
+    .cs-tcell-body {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 2px;
+    }
+    .cs-tcell-rating {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 4px;
+      gap: 2px;
+    }
+    .cs-rating-label {
+      font-size: 8.5px;
+      font-weight: 800;
+      opacity: .4;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+    .cs-trow-sub {
+      padding: 4px 10px 5px;
+      border-top: 1px solid rgba(0,0,0,.06);
+      background: rgba(0,0,0,.015);
+    }
+    .cs-parties {
+      font-size: 11px;
+      font-weight: 700;
+      opacity: .72;
+      white-space: nowrap;
+    }
+    .cs-type-tags {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      align-items: center;
+    }
+    .cs-type-tag {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid rgba(0,0,0,.08);
+      white-space: nowrap;
+      line-height: 1.5;
+    }
+    .cs-type-tag-on {
+      opacity: 1;
+      border-color: var(--color-accent);
+      background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+      color: color-mix(in oklab, var(--color-accent) 75%, black);
+    }
+    .cs-bar {
+      display: inline-block;
+      width: 7px;
+      height: 12px;
+      border-radius: 2px;
+      background: rgba(0,0,0,.08);
+      transition: background .12s;
+      cursor: pointer;
+    }
+    .cs-bar:hover { opacity: .7; }
+    .cs-bar-on {
+      background: var(--color-accent);
+    }
+    /* ——— rating 图标 ——— */
+    .cs-rating-click {
+      cursor: pointer;
+      display: inline-flex;
+      gap: 1px;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .cs-rating-click:hover { opacity: .75; }
+    .cs-rating-on { color: var(--color-accent); }
+    .cs-rating-off { color: rgba(0,0,0,.1); }
+    .cs-summary-display {
+      font-size: 11.5px;
+      line-height: 1.45;
+      opacity: .62;
+      cursor: default;
+    }
+    .cs-leg-dot { border-radius: 3px; }
+    /* ——— 角色弧光标签页卡片 ——— */
+    .cs-arc-tab-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .cs-arc-tab-card {
+      border: 1px solid rgba(0,0,0,.07);
+      border-radius: 12px;
+      background: rgba(255,255,255,.5);
+      padding: 14px 16px;
+    }
+    .cs-arc-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cs-arc-head b { font-size: 14px; }
+    .cs-arc-dir {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.06);
+    }
+    .cs-arc-dir-成长 { background: color-mix(in oklab, var(--color-success) 18%, transparent); color: color-mix(in oklab, var(--color-success) 75%, black); }
+    .cs-arc-dir-堕落 { background: color-mix(in oklab, var(--color-error) 14%, transparent); color: color-mix(in oklab, var(--color-error) 75%, black); }
+    .cs-arc-dir-错位 { background: color-mix(in oklab, var(--color-warning) 18%, transparent); color: color-mix(in oklab, var(--color-warning) 72%, black); }
+    .cs-arc-dir-稳定 { background: color-mix(in oklab, var(--color-info) 14%, transparent); color: color-mix(in oklab, var(--color-info) 72%, black); }
+    /* ——— 角色弧光 2×2 矩阵 ——— */
+    .cs-arc-matrix {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .cs-arc-mcard {
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.38);
+      border: 1px solid rgba(0,0,0,.05);
+    }
+    .cs-arc-mcard-empty {
+      opacity: .5;
+      border-style: dashed;
+    }
+    .cs-arc-mcard-wide {
+      grid-column: 1 / -1;
+    }
+    .cs-arc-commit-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+    }
+    .cs-arc-mlabel {
+      font-size: 9px;
+      font-weight: 800;
+      opacity: .35;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .cs-arc-mval {
+      font-size: 12px;
+      line-height: 1.5;
+      opacity: .78;
+    }
+    .cs-arc-commit-card {
+      padding: 5px 8px;
+      border-radius: 6px;
+      background: rgba(255,255,255,.55);
+      border: 1px solid rgba(0,0,0,.04);
+    }
+    .cs-commit-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cs-commit-name {
+      font-weight: 700;
+      font-size: 11px;
+      opacity: .85;
+    }
+    .cs-commit-note {
+      margin: 2px 0 0;
+      font-size: 11px;
+      line-height: 1.45;
+      opacity: .65;
+    }
+    .cs-commit-note b {
+      font-weight: 700;
+      opacity: .5;
+      font-size: 10px;
+    }
+
+    .cs-arc-legend {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 12px;
+      font-size: 10.5px;
+      opacity: .5;
+      padding: 6px 2px 0;
+    }
+    .cs-leg-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .cs-leg-sep {
+      width: 1px;
+      height: 12px;
+      background: rgba(0,0,0,.1);
+    }
+
+    @media (max-width: 1180px) {
+      .workspace { grid-template-columns: 1fr; overflow: auto; }
+      .chat-pane, .work-pane { min-height: 620px; }
+      .world-layout, .characters-grid, .conflict-board { grid-template-columns: 1fr; }
+      .step-shell { grid-template-columns: 1fr; }
+      .cs-trow-main { grid-template-columns: 22px 1fr 64px 64px; }
+    }
+  </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="cyber-grid">
+  <a class="hidden" href="#main">跳到主内容</a>
+
+  <nav class="sidebar-glass" aria-label="主菜单">
+    <div class="sidebar-brand">
+      <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
+      <div class="sidebar-text">
+        <div class="brand-title">纵横</div>
+        <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
+      </div>
+    </div>
+    <div class="sidebar-separator" aria-hidden="true"></div>
+    <ul class="menu sidebar-menu" id="sidebarMenu">
+    </ul>
+
+    <footer class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar">U</div>
+        <span class="sidebar-text sidebar-user-name">用户</span>
+      </div>
+    </footer>
+  </nav>
+
+  <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+    <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
+  </button>
+
+
+  <main class="main-content" id="main">
+
+    <section class="workspace" id="workspace">
+      <aside class="chat-pane glass-panel" id="chatPane">
+        <div class="pane-head">
+          <div class="pane-title">
+            <span class="material-symbols-outlined">psychology</span>
+            <div>AI 开书助手</div>
+          </div>
+          <button class="btn-icon" id="chatMinimize" type="button" onclick="toggleChatDrawer()" aria-label="最小化聊天面板">
+            <span class="material-symbols-outlined" id="chatMinimizeIcon"></span>
+          </button>
+        </div>
+        <div class="chat-history scrollbar" id="chatHistory"></div>
+        <div class="quick-prompts" id="quickPrompts"></div>
+        <form class="chat-input" onsubmit="sendChat(event)">
+          <textarea id="chatInput" placeholder="请输入回答或拓展需求，例如：主角要在资源枯竭世界里靠剑修体系破局"></textarea>
+          <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">send</span>发送</button>
+        </form>
+      </aside>
+
+      <aside class="timeline-pane glass-panel" id="timelinePane">
+        <div class="book-meta">
+          <h2 id="sideBookTitle"></h2>
+          <div class="book-meta-row"><span>题材</span><b id="sideGenre"></b></div>
+          <div class="book-meta-row"><span>副题材</span><b id="sideSubGenre"></b></div>
+          <div class="book-meta-row"><span>字数</span><b id="sideTargetWords"></b></div>
+          <div class="book-meta-row"><span>章节字数</span><b id="sideChapterWords"></b></div>
+          <div class="book-meta-row book-meta-rating">
+            <span>预期商业评价</span>
+            <b>
+              <span class="stars" id="sideStars" aria-label="0星"></span>
+            </b>
+          </div>
+        </div>
+        <div class="timeline" id="sideTimeline"></div>
+      </aside>
+
+      <aside class="work-pane glass-panel hidden" id="workPane">
+        <div class="pane-head">
+          <div class="pane-title">
+            <span class="material-symbols-outlined" id="workPaneIcon">fact_check</span>
+            <div id="workPaneTitle">终审确认<small id="workPaneSubtitle">汇总内容，检查风险并开始创作</small></div>
+          </div>
+          <button class="btn-icon" type="button" onclick="closeWorkPane()" aria-label="关闭工作面板">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="work-body scrollbar" id="workPaneBody"></div>
+      </aside>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="confirmModal">
+    <div class="stage-modal-panel locked" id="stageModalPanel">
+      <div class="modal-head">
+        <div>
+          <b id="confirmTitle">01 创作原点</b>
+        </div>
+        <div class="row">
+          <button class="btn btn-ghost unlock-btn" id="unlockButton" type="button" onclick="unlockCurrentStep()"><span class="material-symbols-outlined">lock_open</span>解锁</button>
+          <button class="btn-icon" type="button" onclick="closeConfirmModal()"><span class="material-symbols-outlined">close</span></button>
+        </div>
+      </div>
+      <div class="modal-body" id="confirmBody"></div>
+      <div class="modal-foot">
+        <button class="btn" type="button" onclick="runIntegrityAnalysis()"><span class="material-symbols-outlined">analytics</span>完整性分析</button>
+        <button class="btn btn-primary" id="confirmAction" type="button" onclick="lockCurrentStep()"><span class="material-symbols-outlined">verified</span>确认锁死</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+  <script charset="utf-8" src="./new_book_wizard_data.js?v=20260705-rightpane"></script>
+  <script>
+    (() => {
+      const data = window.NEW_BOOK_WIZARD_DATA;
+      const steps = data.stages;
+      const WORLD_STATE_KEY = "NEW_BOOK_WIZARD_STATE_V1";
+      function getWorldStep() { return data.stages.find((s) => s.key === "world_settings"); }
+      function persistWorldState() {
+        const ws = getWorldStep();
+        if (!ws) return;
+        try {
+          localStorage.setItem(WORLD_STATE_KEY, JSON.stringify({ cards: ws.cards, bindings: ws.bindings || [] }));
+        } catch (e) { /* localStorage 不可用时静默降级 */ }
+      }
+      (function loadWorldState() {
+        const ws = getWorldStep();
+        if (!ws) return;
+        try {
+          const raw = localStorage.getItem(WORLD_STATE_KEY);
+          if (raw) {
+            const saved = JSON.parse(raw);
+            if (saved && Array.isArray(saved.cards)) ws.cards = saved.cards;
+            if (saved && Array.isArray(saved.bindings)) { ws.bindings = saved.bindings; data.worldBindings = saved.bindings; }
+          }
+        } catch (e) { /* 解析失败时用默认数据 */ }
+      })();
+      const CHAR_STATE_KEY = "NEW_BOOK_CHAR_STATE_V2";
+      function persistCharState() {
+        const cs = steps.find(s => s.key === "characters");
+        if (!cs) return;
+        try { localStorage.setItem(CHAR_STATE_KEY, JSON.stringify({ characters: cs.characters, activeCharIndex: cs.activeCharIndex })); } catch (e) {}
+      }
+      (function loadCharState() {
+        const cs = steps.find(s => s.key === "characters");
+        if (!cs) return;
+        try {
+          const raw = localStorage.getItem(CHAR_STATE_KEY);
+          if (!raw) return;
+          const saved = JSON.parse(raw);
+          if (saved && Array.isArray(saved.characters)) cs.characters = saved.characters;
+          if (saved && typeof saved.activeCharIndex === 'number') cs.activeCharIndex = saved.activeCharIndex;
+        } catch (e) {}
+      })();
+      let current = 0;
+      let viewing = 0;
+      let modalLocked = true;
+      const uiGet = (id) => document.getElementById(id);
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+      }
+
+      function worldCategoryName(value) {
+        const map = {
+          "职业": "职业/超能",
+          "职业/超能": "职业/超能",
+          "怪物": "怪物/灾难",
+          "怪物/灾难": "怪物/灾难",
+          "大事": "大事记",
+          "大事记": "大事记"
+        };
+        return map[value] || value || "";
+      }
+
+      function normalizeWorldStep(step) {
+        if (!step) return;
+        const categories = step.categories || [];
+        step.cards = (step.cards || []).map((card) => {
+          const category = worldCategoryName(card.category || card.board_type);
+          const text = card.text ?? card.description ?? "";
+          return {
+            ...card,
+            category,
+            board_type: card.board_type || category,
+            text,
+            description: card.description ?? text,
+            bindTo: Array.isArray(card.bindTo) ? card.bindTo.map(worldCategoryName) : categories.filter((name) => name !== category)
+          };
+        });
+        step.bindings = step.bindings || [];
+        data.worldBindings = step.bindings;
+      }
+
+      normalizeWorldStep(getWorldStep());
+
+      function bookCommercialScore(book) {
+        const raw = book?.commercial_score ?? book?.commercialStars ?? 0;
+        const score = Number(raw);
+        return Number.isFinite(score) ? Math.max(0, Math.min(10, Math.round(score))) : 0;
+      }
+
+      function statusMeta(index) {
+        if (index < current) return { text: "已锁定", tone: "success", dot: "locked" };
+        if (index === current) return { text: "进行中", tone: "info", dot: "active" };
+        return { text: "待完成", tone: "warning", dot: "pending" };
+      }
+
+      function renderSidebar() {
+        const menu = uiGet("sidebarMenu");
+        if (!menu) return;
+        menu.innerHTML = `
+          ${data.menu.map((item) => `
+            <li>
+              <a class="${item.active ? "menu-active" : ""}" href="${item.href}">
+                <span class="material-symbols-outlined">${item.icon}</span>
+                <span class="sidebar-text">${item.label}</span>
+              </a>
+            </li>
+          `).join("")}
+        `;
+      }
+
+      function renderBookMeta() {
+        const book = data.book;
+        uiGet("sideBookTitle").textContent = book.title;
+        uiGet("sideGenre").textContent = book.genre || book.intent_json?.genre || "";
+        uiGet("sideSubGenre").textContent = book.subGenre || book.intent_json?.subGenre || "";
+        uiGet("sideTargetWords").textContent = book.targetWords;
+        uiGet("sideChapterWords").textContent = book.chapterWords;
+        const stars = uiGet("sideStars");
+        const rating = bookCommercialScore(book);
+        if (stars) {
+          stars.setAttribute("aria-label", `${rating}星`);
+          stars.innerHTML = Array.from({ length: 10 }, (_, index) => `<span class="material-symbols-outlined" style="font-variation-settings:'FILL' ${index < rating ? 1 : 0};">star</span>`).join("");
+        }
+      }
+
+      function renderSteps() {
+        const bar = uiGet("stepBar");
+        if (!bar) return;
+        bar.innerHTML = steps.map((item, index) => {
+          const meta = statusMeta(index);
+          return `
+          <button class="step-chip ${index === current ? "active" : ""} ${index < current ? "locked" : ""}" type="button" data-step="${index}" onclick="window.__openStageEditor(${index})">
+            <span class="step-num ${meta.dot}">${item.step}</span>
+            <span>${item.title}</span>
+          </button>
+        `;
+        }).join("");
+      }
+
+      function renderTimeline() {
+        const side = uiGet("sideTimeline");
+        if (!side) return;
+        side.innerHTML = steps.map((item, index) => {
+          const meta = statusMeta(index);
+          return `
+          <button class="timeline-step ${index === current ? "active" : ""} ${index < current ? "locked" : ""}" type="button" data-step="${index}" onclick="window.__openStageEditor(${index})">
+            <span class="timeline-dot ${meta.dot}">${item.step}</span>
+            <span class="timeline-content">
+              <span class="timeline-title-line">
+                <b>${item.title}</b>
+                <span class="badge badge-outline status-${meta.tone}">${meta.text}</span>
+              </span>
+              <em class="timeline-guide">${item.guide}</em>
+            </span>
+          </button>
+        `;
+        }).join("");
+      }
+
+      function renderChat() {
+        const history = uiGet("chatHistory");
+        if (!history) return;
+        const chat = data.chat || [];
+        history.innerHTML = chat.map((item) => {
+          const isUser = item.role === "user";
+          return `
+            <div class="chat ${isUser ? "chat-end" : "chat-start"}">
+              <div class="chat-header">${isUser ? "作者" : "AI 向导"}</div>
+              <div class="chat-bubble ${isUser ? "chat-bubble-primary" : ""}">${escapeHtml(item.text)}</div>
+            </div>
+          `;
+        }).join("");
+        history.scrollTop = history.scrollHeight;
+
+        const prompts = uiGet("quickPrompts");
+        if (prompts) {
+          prompts.innerHTML = (data.prompts || []).map((prompt) => `<button class="prompt-chip" type="button" onclick="usePrompt('${escapeHtml(prompt)}')">${escapeHtml(prompt)}</button>`).join("");
+        }
+      }
+
+      function setModalLock(locked) {
+        modalLocked = locked;
+        const panel = uiGet("stageModalPanel");
+        const button = uiGet("unlockButton");
+        if (panel) {
+          panel.classList.toggle("locked", locked);
+          panel.classList.toggle("editing", !locked);
+        }
+        if (button) {
+          button.innerHTML = locked
+            ? `<span class="material-symbols-outlined">lock_open</span>解锁`
+            : `<span class="material-symbols-outlined">edit</span>编辑中`;
+          button.setAttribute("aria-pressed", String(!locked));
+        }
+        uiGet("confirmBody")?.querySelectorAll(".editable-field").forEach((field) => {
+          field.toggleAttribute("readonly", locked && !field.matches("select, input[type='range']"));
+          field.toggleAttribute("disabled", locked && field.matches("select, input[type='range']"));
+          field.setAttribute("aria-disabled", String(locked));
+          field.tabIndex = locked ? -1 : 0;
+        });
+        if (!locked) uiGet("confirmBody")?.querySelector(".editable-field")?.focus();
+      }
+
+      function editorTemplate(item) {
+        if (item.key === "world_settings") return worldSettingsTemplate(item);
+        if (item.key === "characters") return charactersTemplate(item);
+        if (item.key === "conflict_seed") return conflictSeedTemplate(item);
+        if (item.key === "final_review") return finalReviewTemplate(item);
+        return fieldsTemplate(item);
+      }
+
+      function stageShell(item, body) {
+        return `
+          <section class="stage-card">
+            ${body}
+          </section>
+        `;
+      }
+
+      function tagList(field) {
+        return `<div class="tags">${field.tags.map((tag, index) => {
+          const tone = field.tones ? field.tones[index] : field.tone;
+          return `<span class="tag ${tone || ""}">${tag}</span>`;
+        }).join("")}</div>`;
+      }
+
+      function fieldTemplate(field, index) {
+        const cls = `field ${field.full ? "full" : ""}`;
+        const bind = `data-field-index="${index}" oninput="window.updateCurrentField(this)" onchange="window.updateCurrentField(this)"`;
+        if (field.type === "textarea") return `<div class="${cls}"><label>${field.label}</label><textarea class="textarea editable-field" ${bind}>${escapeHtml(field.value)}</textarea></div>`;
+        if (field.type === "input") return `<div class="${cls}"><label>${field.label}</label><input class="input editable-field" ${bind} value="${escapeHtml(field.value)}"></div>`;
+        if (field.type === "select") return `<div class="${cls}"><label>${field.label}</label><select class="select editable-field" ${bind}>${field.options.map((option) => `<option>${option}</option>`).join("")}</select></div>`;
+        if (field.type === "tags") return `<div class="${cls}"><label>${field.label}</label>${tagList(field)}</div>`;
+        return "";
+      }
+
+      function fieldsTemplate(item) {
+        return stageShell(item, `
+            <div class="form-grid">
+              ${item.fields.map(fieldTemplate).join("")}
+            </div>
+        `);
+      }
+
+      function worldSettingsTemplate(item) {
+        return stageShell(item, `
+            <div class="world-tabs">
+              <div class="world-tab-panel" id="worldCategoryPanel"></div>
+            </div>
+        `);
+      }
+
+      /* ——— 冲突种子模板 ——— */
+      /* ——— 烈度 / 鲁棒性评级标签 ——— */
+      const INTENSITY_LABELS = ['', '轻度紧张', '明显冲突', '激烈对抗', '生死攸关'];
+      const ROBUST_LABELS   = ['', '单一触发', '有限支撑', '多重支撑', '体系稳固'];
+
+      function conflictSeedTemplate(item) {
+        const entries = item.conflictEntries || [];
+        const typeOpts = item.conflictTypeOptions || [];
+        const charStep = steps.find((s) => s.key === "characters");
+        const chars = (charStep && charStep.characters) || [];
+        const activeTab = window.__csActiveTab || 'list';
+        const nbsp = "\u00A0";
+
+        function barHtml(val, max, label, clickFn, labels) {
+          const l = labels ? labels[val] : (val + '/' + max);
+          return '<span style="display:inline-flex;gap:3px;cursor:pointer" onclick="' + clickFn + '" title="' + l + '">'
+            + Array.from({ length: max }, (_, i) => '<span class="cs-bar' + (i < val ? ' cs-bar-on' : '') + '"></span>').join('')
+            + '</span>';
+        }
+        /* ——— rating 图标辅助 ——— */
+        function ratingHtml(val, max, field, idx) {
+          return '<span class="cs-rating-click" onclick="window.__cycleCs(\'' + field + '\',' + idx + ')">'
+            + Array.from({ length: max }, (_, i) => '<span class="cs-rating-icon cs-rating-' + (i < val ? 'on' : 'off') + '">' + (i < val ? '★' : '☆') + '</span>').join('')
+            + '</span>';
+        }
+
+        function renderTabBar() {
+          return `<div class="cs-tabs">
+            <button class="cs-tab${activeTab === 'list' ? ' cs-tab-active' : ''}" onclick="window.__switchCsTab('list')">冲突清单</button>
+            <button class="cs-tab${activeTab === 'arcs' ? ' cs-tab-active' : ''}" onclick="window.__switchCsTab('arcs')">角色弧光</button>
+          </div>`;
+        }
+
+        function renderConflictList() {
+          return `<section class="form-section">
+            <p style="margin:0 0 10px;font-size:12px;opacity:.55">💡 若需要调整冲突类型或增加新的冲突维度，请在聊天窗口与 AI 声明。</p>
+            <div class="cs-table">
+              ${entries.map((entry, idx) => {
+                const rowNum = idx + 1;
+                const entryTypes = entry.types || [];
+                const hasContent = entryTypes.length > 0 || (entry.parties && entry.summary);
+                return `<div class="cs-trow${hasContent ? '' : ' cs-trow-empty'}">
+                  <div class="cs-trow-main">
+                    <div class="cs-tcell cs-tcell-num">${rowNum}</div>
+                    <div class="cs-tcell cs-tcell-body">
+                      <span class="cs-parties">${escapeHtml(entry.parties || '')}</span>
+                      <div class="cs-type-tags">
+                        ${entryTypes.map((opt) => `<span class="cs-type-tag cs-type-tag-on">${escapeHtml(opt)}</span>`).join('')}
+                      </div>
+                    </div>
+                    <div class="cs-tcell cs-tcell-rating"><span class="cs-rating-label">冲突烈度</span>${ratingHtml(entry.intensity, 4, 'intensity', idx)}</div>
+                    <div class="cs-tcell cs-tcell-rating"><span class="cs-rating-label">鲁棒性</span>${ratingHtml(entry.robustness, 4, 'robustness', idx)}</div>
+                  </div>
+                  <div class="cs-trow-sub">
+                    <span class="cs-summary-display">${escapeHtml(entry.summary || '')}</span>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+            <div style="display:flex;gap:16px;margin:8px 0 0;font-size:11px;opacity:.5">
+              <span>烈度：${INTENSITY_LABELS.slice(1).map((l, i) => `<span class="cs-leg-dot" style="display:inline-block;width:7px;height:7px;border-radius:2px;margin:0 2px 0 4px;vertical-align:middle;background:var(--color-accent)"></span>${l}`).join('')}</span>
+              <span>鲁棒：${ROBUST_LABELS.slice(1).map((l, i) => `<span class="cs-leg-dot" style="display:inline-block;width:7px;height:7px;border-radius:2px;margin:0 2px 0 4px;vertical-align:middle;background:var(--color-accent)"></span>${l}`).join('')}</span>
+            </div>
+          </section>`;
+        }
+
+        function renderCharArcs() {
+          const arcChars = chars.filter((c) => c.arc);
+          if (!arcChars.length) return '<p style="font-size:13px;opacity:.4;padding:16px 0">暂未设定角色弧光</p>';
+          return `<div class="cs-arc-tab-list">
+            ${arcChars.map((c) => {
+              const arc = c.arc;
+              const commitments = arc.commitments || [];
+              const hasCommitments = commitments.length > 0;
+              return `<section class="cs-arc-tab-card">
+                <div class="cs-arc-head">
+                  <b>${escapeHtml(c.name)}</b>
+                  <span class="cs-arc-dir cs-arc-dir-${arc.direction}">${escapeHtml(arc.direction)}</span>
+                </div>
+                <!-- 矩阵：愿望 / 弧光 / 长期承诺（内部分两列） -->
+                <div class="cs-arc-matrix">
+                  <div class="cs-arc-mcard">
+                    <div class="cs-arc-mlabel">愿望</div>
+                    <div class="cs-arc-mval">${escapeHtml(arc.desire || '')}</div>
+                  </div>
+                  <div class="cs-arc-mcard">
+                    <div class="cs-arc-mlabel">弧光</div>
+                    <div class="cs-arc-mval">${escapeHtml(arc.arcDesc || '')}</div>
+                  </div>
+                  <div class="cs-arc-mcard cs-arc-mcard-wide${hasCommitments ? '' : ' cs-arc-mcard-empty'}">
+                    <div class="cs-arc-mlabel">长期承诺</div>
+                    <div class="cs-arc-mval">
+                      ${hasCommitments ? `<div class="cs-arc-commit-grid">${commitments.map((cm) => {
+                        return `<div class="cs-arc-commit-card">
+                          <div class="cs-commit-header">
+                            <span class="cs-commit-name">${escapeHtml(cm.name || '')}</span>
+                          </div>
+                          <p class="cs-commit-note"><b>体现弧光/爽点：</b>${escapeHtml(cm.note || '')}</p>
+                        </div>`;
+                      }).join('')}</div>` : '<span style="opacity:.3;font-size:11px">暂无</span>'}
+                    </div>
+                  </div>
+                </div>
+              </section>`;
+            }).join('')}
+            <div class="cs-arc-legend">
+              烈度：${INTENSITY_LABELS.slice(1).map((l, i) => `<span class="cs-leg-item"><span class="cs-bar cs-bar-on" style="width:6px;height:6px;border-radius:50%"></span>${l}`).join('')}
+              <span class="cs-leg-sep"></span>
+              鲁棒：${ROBUST_LABELS.slice(1).map((l, i) => `<span class="cs-leg-item"><span class="cs-bar cs-bar-on" style="width:6px;height:6px;border-radius:50%"></span>${l}`).join('')}
+            </div>
+          </div>`;
+        }
+
+        return stageShell(item, `
+          <div style="display:grid;gap:16px">
+            ${renderTabBar()}
+            ${activeTab === 'list' ? renderConflictList() : renderCharArcs()}
+          </div>
+        `);
+      }
+
+      /* ——— 角色设定：性格-哲学映射数据（从数据文件加载） ——— */
+      const cc = data.charConstants || {};
+      const CHAR_TRAITS = cc.TRAITS || [];
+      const CHAR_QUADRANT = cc.QUADRANT || {};
+      const PHIL_DESC = cc.DESC || {};
+      function philDesc(dim, val) {
+        const d = PHIL_DESC[dim];
+        if (!d) return "";
+        if (val <= 33) return d.low;
+        if (val <= 66) return d.mid;
+        return d.high;
+      }
+      function getQuadrantStyle(tags) {
+        if (!tags || tags.length === 0) return 'left:50%;top:50%';
+        let sumS = 0, sumW = 0, sumT = 0;
+        tags.forEach(name => {
+          const q = CHAR_QUADRANT[name];
+          if (q) { sumS += q.s; sumW += q.w; sumT += q.t; }
+        });
+        const total = sumS + sumW + sumT;
+        if (total === 0) return 'left:50%;top:50%';
+        const ws = sumS / total, ww = sumW / total, wt = sumT / total;
+        const xPct = ws * 4 + ww * 50 + wt * 96;
+        const yPct = ws * 95.3 + ww * 4.7 + wt * 95.3;
+        return `left:${xPct.toFixed(1)}%;top:${yPct.toFixed(1)}%`;
+      }
+
+      /* ——— 角色设定辅助函数 ——— */
+      function charRoleBadgeClass(role) {
+        if (role === "核心主角") return "protagonist";
+        if (role === "重要配角") return "supporting";
+        if (role === "反派大佬") return "villain";
+        return "npc";
+      }
+
+      function charRoleOptions() {
+        return ["核心主角", "重要配角", "反派大佬", "常驻NPC"];
+      }
+
+      function charGenderOptions() {
+        return ["♂ 雄性/男性", "♀ 雌性/女性"];
+      }
+
+      function charCardTemplate(char, isActive) {
+        const roleClass = charRoleBadgeClass(char.role);
+        const isMale = char.gender && char.gender.includes('♂');
+        return `
+          <div class="char-card ${isActive ? "active" : ""}" onclick="window.selectChar('${char.id}')">
+            <div class="char-card-top" style="margin-bottom:2px">
+              <span class="char-name">${escapeHtml(char.name)}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="char-role-badge ${roleClass}" title="点击切换角色" style="cursor:pointer"
+                onclick="event.stopPropagation();window.charCycleRole('${char.id}')">${escapeHtml(char.role)}</span>
+              <div style="margin-left:auto;display:flex;align-items:center">
+                <div class="char-gender-toggle" onclick="event.stopPropagation();window.charCycleGender('${char.id}')">
+                  <span class="char-gender-icon i-male ${isMale ? "active" : ""}">♂</span>
+                  <span class="char-gender-track" data-state="${isMale ? "0" : "1"}">
+                    <span class="char-gender-thumb"></span>
+                  </span>
+                  <span class="char-gender-icon i-female ${isMale ? "" : "active"}">♀</span>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      function charDetailTemplate(item, char) {
+        if (!char) return `<div class="char-detail"><div class="char-detail-body" style="place-items:center;display:grid"><span style="opacity:.35;font-size:13px">请选择一个角色</span></div></div>`;
+        const worldStep = steps.find((s) => s.key === "world_settings");
+        const allCards = worldStep ? (worldStep.cards || []) : [];
+        const resCards   = allCards.filter((c) => c.category === "资源");
+        const forceCards = allCards.filter((c) => c.category === "势力");
+        const jobCards   = allCards.filter((c) => c.category === "职业/超能");
+        const bindRes    = char.bindRes   || [];
+        const bindForce  = char.bindForce || [];
+        const bindJob    = char.bindJob   || [];
+        const dims = item.philosophyDims || [];
+        const philValues = char.philosophy || {};
+        const activeTags = char.traitTags || [];
+        const charAge = char.age || '';
+        function freeCardsFor(cards, bound) {
+          return cards.filter((c) => !(bound || []).includes(c.id));
+        }
+        function bindSelectHtml(charId, field, label, allCards, bound) {
+          const free = freeCardsFor(allCards, bound);
+          const boundCards = (bound || []).map(id => allCards.find(c => c.id === id)).filter(Boolean);
+          return `
+            <div class="char-bind-field">
+              <div class="char-bind-label">${label}：</div>
+              <div class="char-bind-box">
+                ${boundCards.map(c => `
+                  <span class="char-bind-tag">
+                    ${escapeHtml(c.title)}
+                    <span class="material-symbols-outlined" onclick="window.charUnbindSlot('${charId}','${field}','${c.id}')">close</span>
+                  </span>
+                `).join('')}
+                <details class="dropdown dropdown-end char-bind-dropdown">
+                  <summary class="char-bind-add-btn">+ 添加</summary>
+                  <div class="dropdown-content char-bind-popup">
+                    ${free.map(c => `<span class="char-bind-popup-item" onclick="window.charBindSlot('${charId}','${field}','${c.id}')">${escapeHtml(c.title)}</span>`).join('')}
+                  </div>
+                </details>
+              </div>
+            </div>`;
+        }
+        // ── 人物关系（标签绑定，非量化）──
+        const relOtherChars = (item.characters || []).filter(c => c.id !== char.id);
+        const relData = char.relations || {};
+        const relTagGroups = [
+          { group: '情感维度', items: ['信任','猜疑','亲密','疏远','支配','顺从','依赖','独立','友善','敌意','志同道合','各怀鬼胎','坦诚','隐瞒','深情','冷漠'] },
+          { group: '关系类型', items: ['父亲','母亲','兄弟','姐妹','子女','妻子','丈夫','师徒','朋友','敌对','恋慕','合作','同门','君臣','主仆','交易'] },
+          { group: '关系层级', items: ['平等','上下级','导师-学徒','主从','合作者','同辈','长辈-晚辈'] }
+        ];
+        const relAllOptions = relTagGroups.reduce((a,g) => a.concat(g.items), []);
+        function relRowHtml(other) {
+          const tags = relData[other.id] || [];
+          return '<div class="char-rel-row"><span class="char-rel-name">' + escapeHtml(other.name) + '</span><div class="char-rel-box">'
+            + tags.map(t => '<span class="char-bind-tag" data-rel-tag="' + t + '">' + escapeHtml(t) + '<span class="material-symbols-outlined" onclick="window.charRelRemoveTag(this,\'" + char.id + "\',\'" + other.id + "\')">close</span></span>').join('')
+            + '<details class="dropdown dropdown-end char-rel-dropdown"><summary class="char-bind-add-btn">+ 添加</summary><div class="dropdown-content char-rel-popup" id="relp-' + char.id + '-' + other.id + '">'
+            + relTagGroups.map(g => '<div class="char-rel-popup-group"><div class="char-rel-popup-group-title">' + g.group + '</div>'
+              + g.items.map(o => '<span class="char-rel-popup-tag' + (tags.includes(o) ? ' is-used' : '') + '" onclick="window.charRelPopupAdd(\'' + char.id + '\',\'' + other.id + '\',\'' + o + '\')">' + o + '</span>').join('')
+              + '</div>').join('')
+            + '</div></details></div></div>';
+        }
+        const charRelationHtml = '<div class="char-relation-section"><label>人物关系</label>'
+          + (relOtherChars.length ? relOtherChars.map(c => relRowHtml(c)).join('') : '<div style="font-size:10px;opacity:.35;padding:6px 0">暂无可关联角色</div>')
+          + '</div>';
+        return `
+          <div class="char-detail">
+            <div class="char-detail-head">
+              <span style="font-size:14px;font-weight:700;opacity:.55;white-space:nowrap">姓名：</span>
+              <div class="char-name-editor">
+                <input class="input-ghost char-name-input" value="${escapeHtml(char.name)}"
+                  data-char-id="${char.id}" data-char-field="name"
+                  oninput="window.charUpdateField(this)" placeholder="角色姓名">
+              </div>
+              <div class="char-gender-toggle-sm" onclick="event.stopPropagation();window.charCycleGender('${char.id}')" title="点击切换性别">
+                性别：${char.gender && char.gender.includes('♂') ? '男' : '女'}
+              </div>
+              <div class="char-age-group">
+                <label>年龄：</label>
+                <input class="input-ghost char-age-input" value="${escapeHtml(charAge)}"
+                  data-char-id="${char.id}" data-char-field="age"
+                  oninput="window.charUpdateField(this)" placeholder="0">
+                <span class="char-age-suffix">岁</span>
+              </div>
+            </div>
+            <div class="char-detail-body">
+              <div class="char-profile-section">
+                <div class="char-bind-row">
+                  ${bindSelectHtml(char.id, 'bindJob', '职业 / 超能', jobCards, bindJob)}
+                  ${bindSelectHtml(char.id, 'bindForce', '势力', forceCards, bindForce)}
+                  ${bindSelectHtml(char.id, 'bindRes', '资源', resCards, bindRes)}
+                </div>
+                <div class="char-bg-field">
+                  <label>外观描述</label>
+                  <textarea class="textarea editable-field" data-char-id="${char.id}" data-char-field="appearance"
+                    oninput="window.charUpdateField(this)" style="min-height:48px">${escapeHtml(char.appearance || '')}</textarea>
+                </div>
+                <div class="char-bg-field">
+                  <label>角色背景</label>
+                  <textarea class="textarea editable-field" data-char-id="${char.id}" data-char-field="background"
+                    oninput="window.charUpdateField(this)" style="min-height:90px">${escapeHtml(char.background || '')}</textarea>
+                </div>
+                <div class="char-obsession-field">
+                  <label>表层执念</label>
+                  <textarea class="textarea editable-field" data-char-id="${char.id}" data-char-field="bio"
+                    oninput="window.charUpdateField(this)" style="min-height:64px">${escapeHtml(char.bio || '')}</textarea>
+                </div>
+              </div>
+              ${charRelationHtml}
+              <div class="char-philosophy-section">
+                <div class="char-section-title">角色哲学层</div>
+                <div style="font-size:10px;opacity:.4;margin-bottom:6px;letter-spacing:.04em">点击象限中标签影响哲学取向，再次点击可取消</div>
+                <div class="char-quadrant-wrap">
+                  <div class="char-quadrant">
+                    <svg viewBox="0 0 200 85" style="overflow:visible">
+                      <polygon points="100,4 8,81 192,81" fill="rgba(255,255,255,.25)" stroke="rgba(0,0,0,.07)" stroke-width="1"/>
+                      <line x1="100" y1="4" x2="100" y2="81" stroke="rgba(0,0,0,.04)" stroke-width="1" stroke-dasharray="3,3"/>
+                      <line x1="50" y1="43" x2="150" y2="43" stroke="rgba(0,0,0,.04)" stroke-width="1" stroke-dasharray="3,3"/>
+                      <text x="100" y="2" text-anchor="middle" font-size="13" font-weight="800" fill="var(--color-accent)">无私</text>
+                      <text x="4" y="80" text-anchor="end" font-size="13" font-weight="800" fill="#b45309">自私</text>
+                      <text x="196" y="80" text-anchor="start" font-size="13" font-weight="800" fill="#6b7280">躺平</text>
+                    </svg>
+                    <div class="quadrant-dot" style="${getQuadrantStyle(activeTags)}"></div>
+                    ${CHAR_TRAITS.map((t) => {
+                      const q = CHAR_QUADRANT[t.name];
+                      if (!q) return '';
+                      const total = q.s + q.w + q.t;
+                      const ws = q.s / total, ww = q.w / total, wt = q.t / total;
+                      const xPct = ws * 4 + ww * 50 + wt * 96;
+                      const yPct = ws * 95.3 + ww * 4.7 + wt * 95.3;
+                      const isActive = activeTags.includes(t.name);
+                      return `<button class="qtrait-btn ${isActive ? 'trait-' + t.tone : ''}"
+                        style="left:${xPct.toFixed(1)}%;top:${yPct.toFixed(1)}%"
+                        onclick="event.stopPropagation();window.charToggleTrait('${char.id}','${escapeHtml(t.name)}')"
+                        type="button">${escapeHtml(t.name)}</button>`;
+                    }).join('')}
+                  </div>
+                </div>
+                <div class="char-phil-chips">
+                  ${dims.map((name) => {
+                    const val = philValues[name] ?? 50;
+                    const desc = philDesc(name, val);
+                    return `<div class="char-phil-chip">
+                      <span class="char-phil-chip-name">${escapeHtml(name)}</span>
+                      <span class="char-phil-chip-val">${val}</span>
+                      <div class="char-phil-chip-tip">${escapeHtml(name)}<br>${escapeHtml(desc)}</div>
+                    </div>`;
+                  }).join('')}
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      function charactersTemplate(item) {
+        const chars = item.characters || [];
+        const activeIdx = item.activeCharIndex ?? 0;
+        const activeChar = chars[activeIdx] || null;
+        return stageShell(item, `
+          <div class="characters-grid">
+            <div class="char-list-panel">
+              <div class="char-list-panel-head">
+                <h5>登场角色</h5>
+                <span style="font-size:11px;opacity:.4">${chars.length} 人</span>
+              </div>
+              <div class="char-list" id="charList">
+                ${chars.map((c, i) => charCardTemplate(c, i === activeIdx)).join("")}
+                <button class="char-add-btn" type="button" onclick="window.charAdd()">
+                  <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span> AI生成新角色
+                </button>
+              </div>
+            </div>
+            <div id="charDetailPane" style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;">
+              ${charDetailTemplate(item, activeChar)}
+            </div>
+          </div>
+        `);
+      }
+
+      function finalReviewTemplate(item) {
+        return stageShell(item, `
+            <div class="review-module-grid">
+              ${item.modules.map(([title, desc]) => `<div class="review-module"><b>${title}</b><small>${desc}</small></div>`).join("")}
+            </div>
+            <div class="form-section">
+              <h4>AI分析结果</h4>
+              <ul class="missing-list">
+                ${item.risks.map((risk) => `<li>${risk}</li>`).join("")}
+              </ul>
+              <div class="row">
+                <button class="btn" type="button">详细配置</button>
+                <button class="btn btn-rose" type="button">开始创作</button>
+              </div>
+            </div>
+        `);
+      }
+
+      function openEditor(index = current) {
+        viewing = index;
+        renderSteps();
+        renderTimeline();
+        const item = steps[viewing];
+        if (item.key === "final_review") {
+          openFinalReviewDrawer(item);
+          return;
+        }
+        uiGet("confirmTitle").textContent = `${item.step} ${item.title}`;
+        uiGet("confirmBody").innerHTML = editorTemplate(item);
+        if (item.key === "world_settings") {
+          item.activeWorldCategory = item.activeWorldCategory || item.categories[0];
+          window.selectWorldCategory?.(item.activeWorldCategory);
+        }
+        const confirmAction = uiGet("confirmAction");
+        if (confirmAction) confirmAction.innerHTML = `<span class="material-symbols-outlined">verified</span>确认锁死`;
+        // 进行中步骤(viewing === current)默认可编辑;返回查看已完成步骤(viewing < current)默认锁定,需解锁
+        setModalLock(viewing < current);
+        uiGet("confirmModal").classList.add("open");
+      }
+
+      function openFinalReviewDrawer(item) {
+        const workspace = uiGet("workspace");
+        const workPane = uiGet("workPane");
+        const workTitle = uiGet("workPaneTitle");
+        const workSubtitle = uiGet("workPaneSubtitle");
+        const workIcon = uiGet("workPaneIcon");
+        const workBody = uiGet("workPaneBody");
+        if (!workspace || !workPane || !workBody) return;
+        workTitle.innerHTML = `${item.step} ${item.title}<small>${item.guide || ""}</small>`;
+        if (workSubtitle) workSubtitle.remove();
+        if (workIcon) workIcon.textContent = item.icon || "fact_check";
+        workBody.innerHTML = finalReviewBodyTemplate(item);
+        workspace.classList.add("drawer-mode");
+        workPane.classList.remove("hidden");
+        void workPane.offsetHeight;
+        workPane.classList.add("slide-in");
+        const minimizeIcon = uiGet("chatMinimizeIcon");
+        if (minimizeIcon) minimizeIcon.textContent = "";
+      }
+
+      function reviewFieldValue(field) {
+        if (field.type === "tags") {
+          return `<div class="review-philosophy">${(field.tags || []).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>`;
+        }
+        const value = field.value ?? (field.options ? field.options[0] : "");
+        return `<p>${escapeHtml(value) || "<span style=\"opacity:.4\">未填写</span>"}</p>`;
+      }
+
+      function reviewFieldsBlock(item) {
+        if (!item.fields || !item.fields.length) return "";
+        return `<div class="review-fields">${item.fields.map((field) => `
+          <div class="review-field ${field.full ? "full" : ""}">
+            <label>${escapeHtml(field.label)}</label>
+            ${reviewFieldValue(field)}
+          </div>`).join("")}</div>`;
+      }
+
+      function reviewWorldBlock(item) {
+        const worldStep = steps.find((step) => step.key === "world_settings");
+        if (!worldStep) return "";
+        const bindings = worldStep.bindings || [];
+        const chips = bindings.length
+          ? bindings.map((binding) => {
+              const from = worldStep.cards.find((card) => card.id === binding.from);
+              const to = worldStep.cards.find((card) => card.id === binding.to);
+              if (!from || !to) return "";
+              return `<span class="review-binding-chip"><span class="material-symbols-outlined">link</span>${escapeHtml(from.title)} · ${escapeHtml(binding.type)} · ${escapeHtml(to.title)}</span>`;
+            }).join("")
+          : `<span style="opacity:.5;font-size:12px">暂无绑定关系</span>`;
+        const categoryCount = worldStep.categories.map((name) => `<span class="badge badge-ghost badge-sm">${escapeHtml(name)} · ${worldStep.cards.filter((card) => card.category === name).length}</span>`).join(" ");
+        return `
+          <div class="review-subsection">
+            <h5>板块条目数量</h5>
+            <div class="review-philosophy">${categoryCount}</div>
+          </div>
+          <div class="review-subsection">
+            <h5>已建立绑定（${bindings.length}）</h5>
+            <div class="review-philosophy">${chips}</div>
+          </div>`;
+      }
+
+      function reviewPhilosophyBlock(item) {
+        if (!item.philosophy || !item.philosophy.length) return "";
+        return `
+          <div class="review-subsection">
+            <h5>人物哲学维度</h5>
+            <div class="review-philosophy">${item.philosophy.map((name) => `<span class="tag">${escapeHtml(name)}</span>`).join("")}</div>
+          </div>`;
+      }
+
+      function reviewConflictSeedBlock(item) {
+        const entries = (item.conflictEntries || []).filter((e) => (e.types || []).length > 0 && e.summary);
+        if (!entries.length) return '<div class="review-subsection"><p style="opacity:.5;font-size:12px">暂未设定冲突条目</p></div>';
+        return `
+          <div class="review-subsection">
+            <h5>冲突条目（${entries.length} / 10）</h5>
+            <div style="display:grid;gap:4px;margin-top:6px">
+              ${entries.map((e, i) => `
+                <div style="display:grid;grid-template-columns:24px 1fr 30px 30px;gap:5px;align-items:start;padding:4px 6px;border-radius:6px;background:rgba(255,255,255,.4);font-size:11px">
+                  <span style="font-family:'JetBrains Mono',monospace;opacity:.4;text-align:center;padding-top:2px">${i+1}</span>
+                  <div style="display:flex;flex-wrap:wrap;gap:3px;align-items:baseline">
+                    ${(e.types || []).map((t) => `<span class="tag" style="font-size:9px">${escapeHtml(t)}</span>`).join('')}
+                    <span style="opacity:.55;font-size:10px;margin:0 4px">${escapeHtml(e.parties || '')}</span>
+                    <span style="opacity:.78">${escapeHtml(e.summary)}</span>
+                  </div>
+                  <span style="font-size:10px;opacity:.55;text-align:center">烈${e.intensity}</span>
+                  <span style="font-size:10px;opacity:.55;text-align:center">鲁${e.robustness}</span>
+                </div>`).join('')}
+            </div>
+          </div>`;
+      }
+
+      function reviewStageBlock(item, body, expanded) {
+        if (!body) body = reviewFieldsBlock(item);
+        const fieldCount = (item.fields || item.conflictEntries || []).length;
+        return `
+          <details class="review-stage collapse collapse-arrow" ${expanded ? "open" : ""}>
+            <summary class="collapse-title">
+              <span class="review-stage-index">${item.step}</span>
+              <span class="material-symbols-outlined">${item.icon || "description"}</span>
+              <span class="review-stage-heading">
+                <b>${escapeHtml(item.title)}</b>
+                <small>${escapeHtml(item.guide || "")}</small>
+              </span>
+              ${fieldCount ? `<span class="review-stage-count badge badge-ghost badge-sm">${fieldCount} 项</span>` : ""}
+            </summary>
+            <div class="collapse-content">
+              ${body || `<p style="padding:4px 0 12px;opacity:.5;font-size:13px">该阶段以汇总内容为主。</p>`}
+            </div>
+          </details>`;
+      }
+
+      function reviewArcsBlock() {
+        const charStep = steps.find((s) => s.key === "characters");
+        const chars = (charStep && charStep.characters) || [];
+        if (!chars.length) return '';
+        return `<div class="review-subsection">
+          <h5>角色弧光总览</h5>
+          <div style="display:grid;gap:8px;margin-top:6px">${chars.map((ch) => {
+            const arc = ch.arc || {};
+            const dirLabel = arc.direction || '—';
+            const commits = (arc.commitments || []).map(c => c.name).filter(Boolean);
+            return `<div class="review-char-card">
+              <div class="review-char-head">
+                <span class="review-char-name">${escapeHtml(ch.name)}</span>
+                <span class="cs-arc-dir-badge cs-arc-dir-${dirLabel}">${escapeHtml(dirLabel)}</span>
+              </div>
+              <div class="review-char-detail"><span class="rcd-label">愿望</span><span>${escapeHtml(arc.desire || '未设定')}</span></div>
+              <div class="review-char-detail"><span class="rcd-label">弧光</span><span>${escapeHtml(arc.arcDesc || '未设定')}</span></div>
+              <div class="review-char-detail"><span class="rcd-label">一句话</span><span>${escapeHtml(arc.oneSentence || '未设定')}</span></div>
+              <div class="review-char-detail"><span class="rcd-label">长期承诺</span><span>${commits.length ? commits.join('、') : '暂无'}</span></div>
+            </div>`;
+          }).join('')}</div>
+        </div>`;
+      }
+
+      function reviewBookMeta() {
+        const b = data.book;
+        const rating = bookCommercialScore(b);
+        const stars = Array.from({ length: 10 }, (_, i) => `<span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' ${i < rating ? 1 : 0};color:${i < rating ? '#f59e0b' : '#d1d5db'}">star</span>`).join('');
+        return `<div class="review-book-meta">
+          <div class="review-book-cell"><span class="rbm-label">书名</span><span class="rbm-value">${escapeHtml(b.title || '')}</span></div>
+          <div class="review-book-cell"><span class="rbm-label">题材</span><span class="rbm-value">${escapeHtml((b.intent_json && b.intent_json.genre) || b.genre || '')}</span></div>
+          <div class="review-book-cell"><span class="rbm-label">副题材</span><span class="rbm-value">${escapeHtml((b.intent_json && b.intent_json.subGenre) || b.subGenre || '')}</span></div>
+          <div class="review-book-cell"><span class="rbm-label">字数</span><span class="rbm-value">${escapeHtml(b.targetWords || '')}</span></div>
+          <div class="review-book-cell"><span class="rbm-label">章节字数</span><span class="rbm-value">${escapeHtml(b.chapterWords || '')}</span></div>
+          <div class="review-book-cell"><span class="rbm-label">商业评级</span><span class="rbm-value">${stars}</span></div>
+        </div>`;
+      }
+
+      function reviewCharBlock(item) {
+        const chars = item.characters || [];
+        if (!chars.length) return '<p style="opacity:.5;font-size:12px;padding:4px 0">暂未设定角色</p>';
+        const roleMap = data.charConstants ? data.charConstants.roleMap : {};
+        return `<div style="display:grid;gap:8px">${chars.map((ch) => {
+          const roleLabel = Object.keys(roleMap).find(k => roleMap[k] === ch.char_type) || ch.role || '—';
+          return `<div class="review-char-card">
+            <div class="review-char-head">
+              <span class="review-char-name">${escapeHtml(ch.name)}</span>
+              <span class="review-char-role tag">${escapeHtml(roleLabel)}</span>
+            </div>
+            <div class="review-char-detail"><span class="rcd-label">简介</span><span>${escapeHtml(ch.background || '未设定')}</span></div>
+            <div class="review-char-detail"><span class="rcd-label">性格标签</span><span>${(ch.traitTags || []).map(t => `<span class="tag" style="font-size:9px">${escapeHtml(t)}</span>`).join(' ') || '未设定'}</span></div>
+          </div>`;
+        }).join('')}</div>`;
+      }
+
+      function finalReviewBodyTemplate(item) {
+        const stageBlocks = steps
+          .filter((step) => step.key !== "final_review")
+          .map((step, index) => {
+            let body = reviewFieldsBlock(step);
+            if (step.key === "creative_origin") body = reviewBookMeta() + body;
+            if (step.key === "world_settings") body += reviewWorldBlock(step);
+            if (step.key === "characters") body += reviewCharBlock(step);
+            if (step.key === "conflict_seed") body += reviewConflictSeedBlock(step) + reviewArcsBlock();
+            return reviewStageBlock(step, body, index === 0);
+          })
+          .join("");
+        return `
+          <div class="review-board">
+            ${stageBlocks}
+            <section class="form-section">
+              <h4>AI分析结果</h4>
+              <ul class="missing-list">
+                ${item.risks.map((risk) => `<li>${escapeHtml(risk)}</li>`).join("")}
+              </ul>
+            </section>
+            <div class="review-actions">
+              <button class="btn" type="button" onclick="window.runIntegrityAnalysis()"><span class="material-symbols-outlined">analytics</span>AI综合分析</button>
+              <button class="btn btn-rose" type="button" onclick="window.startProduction()"><span class="material-symbols-outlined">rocket_launch</span>开始创作</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function closeWorkPane() {
+        const workspace = uiGet("workspace");
+        const workPane = uiGet("workPane");
+        if (workPane) {
+          workPane.classList.remove("slide-in");
+          workPane.classList.add("hidden");
+        }
+        if (workspace) workspace.classList.remove("drawer-mode");
+        const chatPane = uiGet("chatPane");
+        if (chatPane) { chatPane.style.padding = ""; chatPane.style.alignItems = ""; }
+        const minimizeIcon = uiGet("chatMinimizeIcon");
+        if (minimizeIcon) minimizeIcon.textContent = "";
+      }
+
+      function toggleChatDrawer() {
+        const workspace = uiGet("workspace");
+        const workPane = uiGet("workPane");
+        if (!workspace) return;
+        const isDrawer = workspace.classList.contains("drawer-mode");
+        if (isDrawer) {
+          closeWorkPane();
+        } else if (workPane && !workPane.classList.contains("hidden")) {
+          closeWorkPane();
+        } else {
+          openEditor(4);
+        }
+      }
+
+      function bind() {
+        window.__openStageEditor = openEditor;
+        window.closeConfirmModal = () => uiGet("confirmModal").classList.remove("open");
+        window.openConfirmModal = () => openEditor(current);
+        window.selectWorldCategory = (category) => {
+          const item = steps.find((step) => step.key === "world_settings");
+          if (!item) return;
+          item.activeWorldCategory = category;
+          const tabs = uiGet("confirmBody")?.querySelectorAll("[data-world-category]");
+          tabs?.forEach((tab) => {
+            const active = tab.dataset.worldCategory === category;
+            tab.classList.toggle("btn-active", active);
+          });
+          const panel = uiGet("confirmBody")?.querySelector("#worldCategoryPanel");
+          if (panel) panel.innerHTML = worldCategoryPanelTemplate(item, category);
+        };
+        window.startWorldDrag = (event, id) => {
+          const item = steps[viewing];
+          if (!item || item.key !== "world_settings" || modalLocked) {
+            event.preventDefault();
+            return;
+          }
+          event.dataTransfer?.setData("text/plain", id);
+          event.dataTransfer?.setData("application/x-world-card-id", id);
+          if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+        };
+        window.allowWorldDrop = (event) => {
+          event.preventDefault();
+          event.currentTarget?.classList?.add("drag-over");
+        };
+        window.clearWorldDrop = (event) => {
+          event.currentTarget?.classList?.remove("drag-over");
+        };
+        window.dropWorldCard = (event, targetId) => {
+          event.preventDefault();
+          const target = event.currentTarget;
+          target?.classList.remove("drag-over");
+          const draggedId = event.dataTransfer?.getData("application/x-world-card-id") || event.dataTransfer?.getData("text/plain");
+          const item = steps.find((step) => step.key === "world_settings");
+          if (!item || !draggedId) return;
+          item.bindings = item.bindings || [];
+          const draggedCard = item.cards.find((card) => card.id === draggedId);
+          if (!draggedCard) return;
+          const targetCard = item.cards.find((card) => card.id === targetId);
+          if (!targetCard) return;
+          if (draggedCard.bindTo.length && !draggedCard.bindTo.includes(targetCard.category)) {
+            showToast("该设定类型无法建立此类绑定", "warn");
+            return;
+          }
+          const bindType = pickBindingType(draggedCard.category, targetCard.category);
+          const exists = item.bindings.some((b) => b.from === draggedId && b.to === targetId);
+          if (exists) {
+            showToast(`绑定已存在：「${draggedCard.title} → ${targetCard.title}」`, "warn");
+            return { ok: false, reason: "duplicate" };
+          }
+          item.bindings.push({ from: draggedId, to: targetId, type: bindType });
+          data.worldBindings = item.bindings;
+          persistWorldState();
+          const result = { ok: true, total: item.bindings.length, type: bindType, from: draggedCard.title, to: targetCard.title };
+          const panel = uiGet("confirmBody")?.querySelector("#worldCategoryPanel");
+          if (panel) panel.innerHTML = worldCategoryPanelTemplate(item, item.activeWorldCategory || item.categories[0]);
+          showToast(`已写入绑定「${result.from} → ${result.to} · ${result.type}」，当前共 ${result.total} 条绑定`, "success");
+          return result;
+        };
+        window.removeWorldBinding = (fromId, toId) => {
+          if (modalLocked) { showToast("解锁后可解绑", "info"); return; }
+          const item = steps.find((step) => step.key === "world_settings");
+          if (!item) return;
+          const before = (item.bindings || []).length;
+          item.bindings = (item.bindings || []).filter((binding) => !(binding.from === fromId && binding.to === toId));
+          data.worldBindings = item.bindings;
+          if (item.bindings.length === before) return;
+          persistWorldState();
+          const panel = uiGet("confirmBody")?.querySelector("#worldCategoryPanel");
+          if (panel) panel.innerHTML = worldCategoryPanelTemplate(item, item.activeWorldCategory || item.categories[0]);
+          showToast("已解除绑定", "success");
+        };
+        window.closeWorkPane = closeWorkPane;
+        window.toggleChatDrawer = toggleChatDrawer;
+        window.toggleSidebar = () => {
+          document.body.classList.toggle("sidebar-collapsed");
+          const icon = uiGet("sidebarIcon");
+          if (icon) icon.textContent = document.body.classList.contains("sidebar-collapsed") ? "chevron_right" : "chevron_left";
+        };
+        window.lockCurrentStep = () => {
+          // 仅当确认的是进行中步骤时推进进度指针;回看已完成步骤后锁定不重复推进
+          if (viewing === current && current < steps.length - 1) current += 1;
+          closeConfirmModal();
+          renderSteps();
+          renderTimeline();
+        };
+        window.unlockCurrentStep = () => {
+          setModalLock(false);
+        };
+        window.updateCurrentField = (field) => {
+          const index = Number(field.dataset.fieldIndex);
+          const item = steps[viewing];
+          if (!Number.isInteger(index) || !item?.fields?.[index]) return;
+          item.fields[index].value = field.value;
+        };
+
+        /* ——— 冲突种子事件 handlers ——— */
+        window.updateConflictEntry = (el) => {
+          const idx = Number(el.dataset.csIdx);
+          const field = el.dataset.csField;
+          const item = steps[viewing];
+          if (!Number.isInteger(idx) || item?.key !== "conflict_seed" || !item.conflictEntries?.[idx]) return;
+          item.conflictEntries[idx][field] = el.value;
+        };
+        /* ——— 冲突种子标签切换 & 烈度/鲁棒性循环 ——— */
+        window.__switchCsTab = (tab) => {
+          window.__csActiveTab = tab;
+          const item = steps[viewing];
+          if (item?.key !== "conflict_seed") return;
+          const modalBody = uiGet("confirmBody");
+          if (modalBody) modalBody.innerHTML = editorTemplate(item);
+        };
+        window.__cycleCs = (field, idx) => {
+          if (modalLocked) { showToast("解锁后可修改", "info"); return; }
+          const item = steps[viewing];
+          if (item?.key !== "conflict_seed" || !item.conflictEntries?.[idx]) return;
+          const e = item.conflictEntries[idx];
+          e[field] = (e[field] % 4) + 1;
+          const modalBody = uiGet("confirmBody");
+          if (modalBody) modalBody.innerHTML = editorTemplate(item);
+        };
+
+        /* ——— 角色设定事件 handlers ——— */
+        function getCharItem() { return steps[viewing]; }
+        function reRenderCharPanel() {
+          const item = getCharItem();
+          if (!item || item.key !== "characters") return;
+          const pane = document.getElementById("charDetailPane");
+          const body = pane?.querySelector(".char-detail-body");
+          const scrollTop = body ? body.scrollTop : 0;
+          if (pane) pane.innerHTML = charDetailTemplate(item, (item.characters || [])[item.activeCharIndex ?? 0] || null);
+          const newBody = pane?.querySelector(".char-detail-body");
+          if (newBody && scrollTop) newBody.scrollTop = Math.min(scrollTop, newBody.scrollHeight);
+          // 如果关系标签部分不可见，滚动到底部附近
+          const list = document.getElementById("charList");
+          if (list) list.innerHTML = (item.characters || []).map((c, i) => charCardTemplate(c, i === (item.activeCharIndex ?? 0))).join("") +
+            `<button class="char-add-btn" type="button" onclick="window.charAdd()">
+              <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span> AI生成新角色
+            </button>`;
+          persistCharState();
+        }
+        window.selectChar = (id) => {
+          const item = getCharItem();
+          if (!item) return;
+          const idx = (item.characters || []).findIndex((c) => c.id === id);
+          if (idx >= 0) { item.activeCharIndex = idx; reRenderCharPanel(); }
+        };
+        window.charSetGender = (id, gender) => {
+          if (modalLocked) { showToast("解锁后可修改", "info"); return; }
+          const item = getCharItem();
+          const char = (item?.characters || []).find((c) => c.id === id);
+          if (char) { char.gender = gender; reRenderCharPanel(); }
+        };
+        window.charCycleGender = (id) => {
+          if (modalLocked) { showToast("解锁后可修改", "info"); return; }
+          const item = getCharItem();
+          const char = (item?.characters || []).find((c) => c.id === id);
+          if (!char) return;
+          const opts = charGenderOptions();
+          const idx = opts.indexOf(char.gender);
+          char.gender = opts[(idx + 1) % opts.length];
+          reRenderCharPanel();
+        };
+        window.charSetRole = (id, role) => {
+          if (modalLocked) { showToast("解锁后可修改", "info"); return; }
+          const item = getCharItem();
+          const char = (item?.characters || []).find((c) => c.id === id);
+          if (char) { char.role = role; reRenderCharPanel(); }
+        };
+        window.charCycleRole = (id) => {
+          if (modalLocked) { showToast("解锁后可修改", "info"); return; }
+          const item = getCharItem();
+          const char = (item?.characters || []).find((c) => c.id === id);
+          if (!char) return;
+          const opts = charRoleOptions();
+          const idx = opts.indexOf(char.role);
+          char.role = opts[(idx + 1) % opts.length];
+          reRenderCharPanel();
+        };
+        window.charToggleTrait = (id, traitName) => {
+          if (modalLocked) { showToast("解锁后可修改", "info"); return; }
+          const item = getCharItem();
+          const char = (item?.characters || []).find((c) => c.id === id);
+          if (!char) return;
+          char.traitTags = char.traitTags || [];
+          char.philosophy = char.philosophy || {};
+          // 初始化未设定的维度
+          (item.philosophyDims || []).forEach((d) => { if (char.philosophy[d] == null) char.philosophy[d] = 50; });
+          const trait = CHAR_TRAITS.find((t) => t.name === traitName);
+          if (!trait) return;
+          const idx = char.traitTags.indexOf(traitName);
+          if (idx >= 0) {
+            // 反选：回滚 delta
+            char.traitTags.splice(idx, 1);
+            Object.entries(trait.delta).forEach(([dim, d]) => {
+              char.philosophy[dim] = Math.max(0, Math.min(100, (char.philosophy[dim] ?? 50) - d));
+            });
+          } else {
+            // 选中：应用 delta
+            char.traitTags.push(traitName);
+            Object.entries(trait.delta).forEach(([dim, d]) => {
+              char.philosophy[dim] = Math.max(0, Math.min(100, (char.philosophy[dim] ?? 50) + d));
+            });
+          }
+          reRenderCharPanel();
+        };
+        window.charUpdateField = (el) => {
+          if (modalLocked) return;
+          const item = getCharItem();
+          const char = (item?.characters || []).find((c) => c.id === el.dataset.charId);
+          if (!char) return;
+          char[el.dataset.charField] = el.value;
+          persistCharState();
+          if (el.dataset.charField === "name") reRenderCharPanel();
+        };
+        window.charBindSlot = (charId, field, cardId) => {
+          if (modalLocked) { showToast("解锁后可绑定", "info"); return; }
+          const item = getCharItem();
+          const char = (item?.characters || []).find((c) => c.id === charId);
+          if (!char) return;
+          char[field] = char[field] || [];
+          if (!char[field].includes(cardId)) char[field].push(cardId);
+          reRenderCharPanel();
+        };
+        window.charRelPopupAdd = (charId, otherId, tag) => {
+          if (modalLocked) { showToast("解锁后可添加", "info"); return; }
+          const item = getCharItem();
+          const char = (item?.characters || []).find(c => c.id === charId);
+          if (!char) return;
+          if (!char.relations) char.relations = {};
+          if (!char.relations[otherId]) char.relations[otherId] = [];
+          if (char.relations[otherId].includes(tag)) { showToast("已存在", "info"); return; }
+          char.relations[otherId].push(tag);
+          const popup = document.getElementById('relp-' + charId + '-' + otherId);
+          const box = popup ? popup.closest('.char-rel-box') : null;
+          if (box) {
+            const el = document.createElement('span');
+            el.className = 'char-bind-tag'; el.dataset.relTag = tag;
+            el.innerHTML = tag + '<span class="material-symbols-outlined" onclick="window.charRelRemoveTag(this,\'' + charId + '\',\'' + otherId + '\')">close</span>';
+            const refNode = box.querySelector('.char-rel-dropdown, .char-bind-dropdown');
+            if (refNode) {
+              box.insertBefore(el, refNode);
+            } else {
+              box.appendChild(el);
+            }
+            popup.querySelectorAll('.char-rel-popup-tag').forEach(el2 => { if (el2.textContent.trim() === tag) el2.classList.add('is-used'); });
+          }
+          persistCharState();
+        };
+        window.charRelRemoveTag = (el, charId, otherId) => {
+          if (modalLocked) return;
+          const tag = el.parentElement.dataset.relTag;
+          if (!tag) return;
+          const item = getCharItem();
+          const char = (item?.characters || []).find(c => c.id === charId);
+          if (!char || !char.relations) return;
+          if (char.relations[otherId]) {
+            char.relations[otherId] = char.relations[otherId].filter(t => t !== tag);
+            el.parentElement.remove();
+            const popup = document.getElementById('relp-' + charId + '-' + otherId);
+            if (popup) popup.querySelectorAll('.char-rel-popup-tag').forEach(el2 => { if (el2.textContent.trim() === tag) el2.classList.remove('is-used'); });
+            persistCharState();
+          }
+        };
+        window.charUnbindSlot = (charId, field, cardId) => {
+          if (modalLocked) { showToast("解锁后可解绑", "info"); return; }
+          const item = getCharItem();
+          const char = (item?.characters || []).find((c) => c.id === charId);
+          if (!char) return;
+          char[field] = (char[field] || []).filter((id) => id !== cardId);
+          reRenderCharPanel();
+        };
+        window.charAdd = () => {
+          if (modalLocked) { showToast("解锁后可新建角色", "info"); return; }
+          const item = getCharItem();
+          if (!item) return;
+          const newChar = { id: "char-" + Date.now(), name: "新角色", role: "常驻NPC", gender: "♂ 雄性/男性",
+            age: "", traitTags: [], background: "", bio: "", appearance: "", relations: {}, bindRes: [], bindForce: [], bindJob: [], philosophy: {} };
+          item.characters = [...(item.characters || []), newChar];
+          item.activeCharIndex = item.characters.length - 1;
+          reRenderCharPanel();
+        };
+        window.usePrompt = (text) => {
+          const input = uiGet("chatInput");
+          if (!input) return;
+          input.value = text;
+          input.focus();
+        };
+        window.sendChat = (event) => {
+          event.preventDefault();
+          const input = uiGet("chatInput");
+          const value = input?.value.trim();
+          if (!value) return;
+          data.chat = [...(data.chat || []), { role: "user", text: value }, { role: "assistant", text: "已收到，我会把这条补充纳入当前设计阶段。"}];
+          input.value = "";
+          renderChat();
+        };
+        window.runIntegrityAnalysis = () => {
+          const toast = document.createElement("div");
+          toast.className = "toast-item toast-info";
+          toast.textContent = "完整性分析已完成";
+          uiGet("toastContainer").appendChild(toast);
+          requestAnimationFrame(() => toast.classList.add("show"));
+          setTimeout(() => {
+            toast.classList.remove("show");
+            setTimeout(() => toast.remove(), 260);
+          }, 1600);
+        };
+        window.startProduction = () => {
+          showToast("已交接至生产阶段", "success");
+        };
+        window.aiAddWorldItem = () => {
+          const item = steps.find((step) => step.key === "world_settings");
+          if (!item) return;
+          const active = item.activeWorldCategory || item.categories[0];
+          if (modalLocked) {
+            showToast("解锁后让 AI 添加设定", "info");
+            return;
+          }
+          const id = `ai-${active}-${Date.now()}`;
+          item.cards.push({
+            id,
+            category: active,
+            title: `AI 提议：${active}新条目`,
+            text: "由 AI 根据当前分类上下文生成的占位设定，可在条目详情中进一步细化。",
+            bindTo: item.categories.filter((cat) => cat !== active)
+          });
+          persistWorldState();
+          const panel = uiGet("confirmBody")?.querySelector("#worldCategoryPanel");
+          if (panel) panel.innerHTML = worldCategoryPanelTemplate(item, active);
+          showToast(`AI 已在「${active}」追加一个条目，已写入数据`, "success");
+        };
+        window.deleteWorldItem = (cardId) => {
+          const item = steps.find((step) => step.key === "world_settings");
+          if (!item) return;
+          if (modalLocked) { showToast("解锁后可删除条目", "info"); return; }
+          const target = item.cards.find((c) => c.id === cardId);
+          if (!target) return;
+          const before = (item.bindings || []).length;
+          item.bindings = (item.bindings || []).filter((b) => b.from !== cardId && b.to !== cardId);
+          const removedBindings = before - item.bindings.length;
+          item.cards = item.cards.filter((c) => c.id !== cardId);
+          data.worldBindings = item.bindings;
+          persistWorldState();
+          const panel = uiGet("confirmBody")?.querySelector("#worldCategoryPanel");
+          if (panel) panel.innerHTML = worldCategoryPanelTemplate(item, item.activeWorldCategory || item.categories[0]);
+          showToast(`已删除条目「${target.title}」，同时移除 ${removedBindings} 条绑定`, "success");
+        };
+        function showToast(message, tone = "info") {
+          const toast = document.createElement("div");
+          toast.className = `toast-item toast-${tone}`;
+          toast.textContent = message;
+          uiGet("toastContainer").appendChild(toast);
+          requestAnimationFrame(() => toast.classList.add("show"));
+          setTimeout(() => {
+            toast.classList.remove("show");
+            setTimeout(() => toast.remove(), 260);
+          }, 1600);
+        }
+        function pickBindingType(sourceCategory, targetCategory) {
+          const matrix = {
+            "规则": { "地理": "管辖", "资源": "约束", "势力": "约束", "职业/超能": "限制", "怪物/灾难": "压制" },
+            "地理": { "规则": "受影响", "资源": "产出", "势力": "盘踞", "怪物/灾难": "栖息" },
+            "资源": { "规则": "抵偿", "地理": "产出", "势力": "控制", "职业/超能": "消耗", "怪物/灾难": "滋养" },
+            "势力": { "规则": "约束", "地理": "争夺", "资源": "控制", "职业/超能": "招募", "怪物/灾难": "驱使" },
+            "职业/超能": { "规则": "受限", "资源": "消耗", "势力": "归属", "怪物/灾难": "克制" },
+            "怪物/灾难": { "规则": "违反", "地理": "迁徙", "资源": "掠夺", "势力": "冲击", "职业/超能": "克制" },
+            "大事记": { "规则": "触发", "地理": "影响", "资源": "改写", "势力": "改写", "职业/超能": "起源", "怪物/灾难": "诱发" },
+          };
+          return matrix[sourceCategory]?.[targetCategory] || "绑定";
+        }
+        function worldCategoryPanelTemplate(item, activeCategory) {
+          const categoryCards = item.cards.filter((card) => card.category === activeCategory);
+          const usedCardIds = new Set((item.bindings || []).map((binding) => binding.from));
+          const poolCards = item.cards.filter((card) => !usedCardIds.has(card.id) && card.category !== activeCategory && (!card.bindTo?.length || card.bindTo.includes(activeCategory)));
+          const renderBindingChips = (card) => {
+            const incoming = (item.bindings || []).filter((binding) => binding.to === card.id);
+            const outgoing = (item.bindings || []).filter((binding) => binding.from === card.id);
+            if (!incoming.length && !outgoing.length) return "";
+            const inChips = incoming.map((binding) => {
+              const sourceCard = item.cards.find((source) => source.id === binding.from);
+              if (!sourceCard) return "";
+              return `<span class="world-binding-chip world-binding-in"><span class="material-symbols-outlined">south_west</span>${escapeHtml(sourceCard.title)} · ${escapeHtml(binding.type)}<button class="btn btn-ghost btn-xs btn-circle" type="button" title="解绑" onclick="event.stopPropagation();window.removeWorldBinding('${escapeHtml(binding.from)}','${escapeHtml(binding.to)}')"><span class="material-symbols-outlined" style="font-size:14px">close</span></button></span>`;
+            }).join("");
+            const outChips = outgoing.map((binding) => {
+              const targetCard = item.cards.find((t) => t.id === binding.to);
+              if (!targetCard) return "";
+              return `<span class="world-binding-chip world-binding-out"><span class="material-symbols-outlined">north_east</span>${escapeHtml(targetCard.title)} · ${escapeHtml(binding.type)}<button class="btn btn-ghost btn-xs btn-circle" type="button" title="解绑" onclick="event.stopPropagation();window.removeWorldBinding('${escapeHtml(binding.from)}','${escapeHtml(binding.to)}')"><span class="material-symbols-outlined" style="font-size:14px">close</span></button></span>`;
+            }).join("");
+            return `<div class="world-binding-chips">${inChips}${outChips}</div>`;
+          };
+          return `
+            <div class="world-tab-shell-head">
+              <div class="world-category-bar">
+                <div class="join" role="tablist">
+                  ${item.categories.map((name) => `<button class="btn btn-sm join-item world-category-btn ${name === activeCategory ? "btn-active" : ""}" type="button" data-world-category="${escapeHtml(name)}" onclick="window.selectWorldCategory('${escapeHtml(name)}')">${name}</button>`).join("")}
+                </div>
+              </div>
+            </div>
+            <div class="world-tab-shell-body">
+              <div class="world-items">
+                ${categoryCards.map((card) => `
+                  <article class="world-item" data-drop-target="${escapeHtml(card.id)}" ondragover="window.allowWorldDrop(event)" ondragleave="window.clearWorldDrop(event)" ondrop="window.dropWorldCard(event, '${escapeHtml(card.id)}')">
+                    <div class="world-item-head">
+                      <div class="world-item-title">
+                        <b>${card.title}</b>
+                      </div>
+                      <button class="btn btn-ghost btn-xs btn-circle world-item-del" type="button" title="删除该条目及其绑定" onclick="window.deleteWorldItem('${escapeHtml(card.id)}')">
+                        <span class="material-symbols-outlined">delete</span>
+                      </button>
+                    </div>
+                    <p class="world-item-text">${card.text}</p>
+                    ${renderBindingChips(card)}
+                    <div class="world-item-drop">
+                      <span class="material-symbols-outlined">swipe_down</span>将设定卡片拖到这里
+                    </div>
+                  </article>
+                `).join("")}
+                <button class="world-ai-add" type="button" onclick="window.aiAddWorldItem()">
+                  <span class="material-symbols-outlined">auto_awesome</span>AI 添加一个设定
+                </button>
+              </div>
+              <div class="world-pool-block">
+                <div class="world-pool-head">
+                  <span>待分配卡池</span>
+                  <span class="muted">${poolCards.length} 张可拖拽</span>
+                </div>
+                <div class="world-card-pool" id="worldBindingPool">
+                  ${poolCards.length === 0 ? `<div class="world-empty">当前分类下没有可分配的卡片</div>` : poolCards.map((card) => `
+                    <div class="world-card" draggable="true" data-world-card-id="${escapeHtml(card.id)}" ondragstart="window.startWorldDrag(event, '${escapeHtml(card.id)}')">
+                      <div class="world-card-head">
+                        <b>${card.title}</b>
+                        <span class="badge badge-ghost badge-sm">${card.category}</span>
+                      </div>
+                      <p>${card.text}</p>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      // 直接监听 <summary> 点击，手动控制 open + position: fixed 定位
+      document.addEventListener('click', function(e) {
+        const summary = e.target.closest('.char-rel-dropdown > summary, .char-bind-dropdown > summary');
+        if (!summary) return;
+        const details = summary.parentElement;
+        const popup = details.querySelector('.dropdown-content');
+        if (!popup) return;
+        e.preventDefault();
+        if (details.hasAttribute('open')) {
+          details.removeAttribute('open');
+        } else {
+          details.setAttribute('open', 'open');
+          const rect = summary.getBoundingClientRect();
+          popup.style.top = (rect.bottom + 4) + 'px';
+          popup.style.left = Math.max(8, rect.left) + 'px';
+        }
+      });
+      // 滚动时保持 fixed 弹窗跟随按钮
+      document.addEventListener('scroll', function(e) {
+        if (!e.target.closest('.modal,.char-detail-body,.stage-card')) return;
+        document.querySelectorAll('.char-rel-dropdown[open],.char-bind-dropdown[open]').forEach(function(details) {
+          const popup = details.querySelector('.dropdown-content');
+          const summary = details.querySelector('summary');
+          if (popup && summary && details.open) {
+            const rect = summary.getBoundingClientRect();
+            popup.style.top = (rect.bottom + 4) + 'px';
+            popup.style.left = Math.max(8, rect.left) + 'px';
+          }
+        });
+      }, true);
+      // 点击 dropdown 外部时关闭
+      document.addEventListener('click', function(e) {
+        if (e.target.closest('.char-rel-dropdown') || e.target.closest('.char-bind-dropdown')) return;
+        document.querySelectorAll('.char-rel-dropdown,.char-bind-dropdown').forEach(function(d) { d.removeAttribute('open'); });
+      });
+
+      renderSidebar();
+      renderBookMeta();
+      renderSteps();
+      renderTimeline();
+      renderChat();
+      bind();
+    })();
+
+    function openConfirmModal() {
+      if (window.__openStageEditor) window.__openStageEditor();
+    }
+  </script>
+<script>
+// TASK3_NEW_BOOK_BRIDGE_ACTIVE
+(function(){
+  if(window.TASK3_NEW_BOOK_BRIDGE_ACTIVE)return; window.TASK3_NEW_BOOK_BRIDGE_ACTIVE=true;
+  function cleanup(){
+    document.querySelectorAll('#v7-stage-lock-panel,#v7-conflict-seed-panel,#v7-modal-l1-fields,#v7-modal-conflict-seed-panel,.v7-l1-inline').forEach(function(x){x.remove();});
+  }
+  function wrapOpen(){var old=window.__openStageEditor;if(typeof old!=='function'||old.__v7Wrapped)return;window.__openStageEditor=function(){var ret=old.apply(this,arguments);setTimeout(cleanup,0);return ret;};window.__openStageEditor.__v7Wrapped=true;}
+  function wrapLock(){['lockCurrentStep','unlockCurrentStep'].forEach(function(name){var old=window[name];if(typeof old==='function'&&!old.__v7Wrapped){window[name]=function(){var ret=old.apply(this,arguments);setTimeout(cleanup,0);return ret;};window[name].__v7Wrapped=true;}});}
+  function mount(){cleanup();wrapOpen();wrapLock();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount); else mount();
+})();
+</script></body>
+</html>

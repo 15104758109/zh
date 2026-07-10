@@ -1,0 +1,650 @@
+{
+  "name": "ZH03-三线排序",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f97c9e23-b70a-4eff-a885-c8402caf5860",
+      "name": "IF：已有 L1A 候选？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        384,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 校验三线排序的 JSON 结构并进行容错修复\nconst input = $input.first().json;\nlet l1a_seq = [];\ntry {\n  const rawText = input.output || input.text || '';\n  const match = rawText.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (match) {\n    l1a_seq = JSON.parse(match[0]);\n  } else {\n    l1a_seq = JSON.parse(rawText);\n  }\n} catch (e) {\n  l1a_seq = input.l1a_seq || [];\n}\nreturn [{\n  json: {\n    ...input,\n    l1a_seq: l1a_seq,\n    isValid: Array.isArray(l1a_seq) && l1a_seq.length > 0\n  }\n}];"
+      },
+      "id": "a0081724-4329-43d0-aecf-47a50e3c35c6",
+      "name": "JSON修复与排序结构校验",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 修复审计 Agent 输出的 JSON\nconst input = $input.first().json;\nlet auditResult = { pass: false, reason: 'parse error' };\ntry {\n  const text = input.output || input.text || '';\n  const match = text.match(/\\{\\s*\"pass\"[\\s\\S]*\\}/);\n  if (match) {\n    auditResult = JSON.parse(match[0]);\n  } else {\n    auditResult = JSON.parse(text);\n  }\n} catch (e) {\n  if (input.text && input.text.includes('通过')) {\n    auditResult = { pass: true, reason: input.text };\n  } else {\n    auditResult = { pass: false, reason: '审计解析失败: ' + e.message };\n  }\n}\nreturn [{\n  json: {\n    ...input,\n    auditResult: auditResult\n  }\n}];"
+      },
+      "id": "d8a0dbaf-26a4-40c6-ae1c-c4970fc73eb5",
+      "name": "JSON修复",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        128
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "0e1db8c7-2180-41a5-aca4-3c8147c49ee3",
+      "name": "IF：审计通过？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "path": "/design_stage",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "a0649be5-8d1a-4d64-ae64-068c8441e5b0",
+      "name": "开始三线排序",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "6d33d3e1-d5c5-48b9-be8a-056c6ed8dc5c"
+    },
+    {
+      "parameters": {
+        "operation": "query",
+        "additionalFields": {}
+      },
+      "id": "96c33460-38eb-482b-a904-8060014b2a19",
+      "name": "读取设计阶段快照1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        192,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        592,
+        96
+      ],
+      "id": "6197d3d8-f737-45d4-96ae-ed9859424c7b",
+      "name": "Respond:请先生成L1A候选再进行排序"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 校验三线排序的 JSON 结构并进行容错修复\nconst input = $input.first().json;\nlet l1a_seq = [];\ntry {\n  const rawText = input.output || input.text || '';\n  const match = rawText.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (match) {\n    l1a_seq = JSON.parse(match[0]);\n  } else {\n    l1a_seq = JSON.parse(rawText);\n  }\n} catch (e) {\n  l1a_seq = input.l1a_seq || [];\n}\nreturn [{\n  json: {\n    ...input,\n    l1a_seq: l1a_seq,\n    isValid: Array.isArray(l1a_seq) && l1a_seq.length > 0\n  }\n}];"
+      },
+      "id": "b3c44b4d-8f82-4381-bfaf-9b3ccc2252f1",
+      "name": "JSON修复与排序结构校验1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        832,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "G1 角色利用缺口：审查主角角色是否有足够的专属 L1A 剧情段支撑，以及核心配角是否在主线中被边缘化或忽视。  G2 弧光连续性缺口：审查在相邻的 L1A 之间，同一角色的心理或状态弧光跳跃是否过大，是否因缺乏必要的铺垫和过渡导致人设割裂。  G3 情绪节奏缺口：审查排定顺序后，是否存在连续 3 个或更多相同情绪类型的 L1A 密集堆叠，导致读者产生审美和情绪疲劳。  G4 世界状态缺口：审查宏观世界的变迁与势力格局的剧变在前后剧情序列中是否具备充足的因果关系解释。  G5 支线缺口：审查重要配角和反派角色是否缺乏专属的叙事支线，防止其沦为扁平的剧情工具人"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1824,
+        -96
+      ],
+      "id": "cfbe9006-da8e-4d8d-8567-8f1d03ab6afa",
+      "name": "5类缺口诊断与补充",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 校验三线排序的 JSON 结构并进行容错修复\nconst input = $input.first().json;\nlet l1a_seq = [];\ntry {\n  const rawText = input.output || input.text || '';\n  const match = rawText.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (match) {\n    l1a_seq = JSON.parse(match[0]);\n  } else {\n    l1a_seq = JSON.parse(rawText);\n  }\n} catch (e) {\n  l1a_seq = input.l1a_seq || [];\n}\nreturn [{\n  json: {\n    ...input,\n    l1a_seq: l1a_seq,\n    isValid: Array.isArray(l1a_seq) && l1a_seq.length > 0\n  }\n}];"
+      },
+      "id": "272a8c00-a662-42c3-b890-84ad7abff15d",
+      "name": "JSON修复与排序结构校验4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        2128,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "G1 角色利用缺口：审查主角角色是否有足够的专属 L1A 剧情段支撑，以及核心配角是否在主线中被边缘化或忽视。  G2 弧光连续性缺口：审查在相邻的 L1A 之间，同一角色的心理或状态弧光跳跃是否过大，是否因缺乏必要的铺垫和过渡导致人设割裂。  G3 情绪节奏缺口：审查排定顺序后，是否存在连续 3 个或更多相同情绪类型的 L1A 密集堆叠，导致读者产生审美和情绪疲劳。  G4 世界状态缺口：审查宏观世界的变迁与势力格局的剧变在前后剧情序列中是否具备充足的因果关系解释。  G5 支线缺口：审查重要配角和反派角色是否缺乏专属的叙事支线，防止其沦为扁平的剧情工具人"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1376,
+        128
+      ],
+      "id": "46437497-e695-4c84-be70-f96a03641538",
+      "name": "阶段审计 判断排序是否可进入生产",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "additionalFields": {}
+      },
+      "id": "37e2198f-21aa-4545-8182-074b8318a8db",
+      "name": "更新候选数据",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        -96
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "query",
+        "additionalFields": {}
+      },
+      "id": "104abc75-17f9-4c05-a329-4248f357d5a8",
+      "name": "退回样本",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        288
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "1. 硬约束优先：hard类型依赖必须满足（from排在to前）\n2. 时间锚定：有明确时间锚的L1A按时间顺序\n3. 弧光节奏：同一角色弧光转换点之间至少间隔1个其他角色的L1A\n4. 情绪波函数：相邻L1A的情绪类型必须有变化（不得连续3个以上同类情绪）\n5. 商业节奏：每3-5个L1A中至少1个有明确爽点"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1328,
+        -96
+      ],
+      "id": "da994e56-5a28-46a1-a999-482a741fc058",
+      "name": "FP004-02 执行时间线/故事线/人物线物理排序",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ea356e29-b4ef-44e6-ad98-7e114cb3cace",
+      "name": "FP004-03 三线排序完成",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2224,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "query",
+        "additionalFields": {}
+      },
+      "id": "418a1592-eba4-4187-a4b6-afe55b867309",
+      "name": "FP004-04",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        112
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "1. 时间锚定：从L1A的jinzhan和payoff中提取时间线索\n2. 阶段识别：按情绪强度变化和世界状态变迁划分3-5个叙事阶段\n3. 转折点标注：标记阶段间转折L1A（情绪突变/世界剧变/角色弧反转）\n4. 依赖链构建：识别L1A间因果依赖（A的consequences是B的trigger条件）\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        560,
+        -320
+      ],
+      "id": "aaa1787f-a2e7-4037-8d60-edfccfdb641d",
+      "name": "大事纪划分",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 校验三线排序的 JSON 结构并进行容错修复\nconst input = $input.first().json;\nlet l1a_seq = [];\ntry {\n  const rawText = input.output || input.text || '';\n  const match = rawText.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (match) {\n    l1a_seq = JSON.parse(match[0]);\n  } else {\n    l1a_seq = JSON.parse(rawText);\n  }\n} catch (e) {\n  l1a_seq = input.l1a_seq || [];\n}\nreturn [{\n  json: {\n    ...input,\n    l1a_seq: l1a_seq,\n    isValid: Array.isArray(l1a_seq) && l1a_seq.length > 0\n  }\n}];"
+      },
+      "id": "675735c5-5846-4f9c-ba23-6c1f797f52e4",
+      "name": "JSON修复与排序结构校验2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "1. 依赖提取：从consequences/escalation/payoff.related_hook中提取对其他L1A的显式引用\n2. 硬约束识别：标记不可违反的因果链（A后果必须是B前提）\n3. 软约束识别：建议但不强制的顺序（情绪节奏建议的先后）\n4. 循环检测：检查循环依赖并提出解决方案\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1008,
+        -320
+      ],
+      "id": "6ffea3d1-df0e-43fb-8a45-fa0eacb3951a",
+      "name": "前提分析",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 校验三线排序的 JSON 结构并进行容错修复\nconst input = $input.first().json;\nlet l1a_seq = [];\ntry {\n  const rawText = input.output || input.text || '';\n  const match = rawText.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (match) {\n    l1a_seq = JSON.parse(match[0]);\n  } else {\n    l1a_seq = JSON.parse(rawText);\n  }\n} catch (e) {\n  l1a_seq = input.l1a_seq || [];\n}\nreturn [{\n  json: {\n    ...input,\n    l1a_seq: l1a_seq,\n    isValid: Array.isArray(l1a_seq) && l1a_seq.length > 0\n  }\n}];"
+      },
+      "id": "2e022a5a-312c-471a-9d38-b3cc4b300438",
+      "name": "JSON修复与排序结构校验3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        912,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "deepseek-v4-flash-free",
+          "mode": "list",
+          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "1. 弧光提取：从role_arcs提取各角色弧光方向（growth/fall/stable）\n2. 转换点识别：标记弧光方向反转的L1A（growth→fall 或 fall→growth）\n3. 一致性校验：检查弧光方向与角色L0层底盘是否一致\n4. 交叉影响：分析不同角色弧光在同一L1A中的交互张力\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        640,
+        -96
+      ],
+      "id": "33398b43-d37e-462e-bdee-1edea26863b2",
+      "name": "人物弧光分析",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "IF：已有 L1A 候选？": {
+      "main": [
+        [
+          {
+            "node": "大事纪划分",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond:请先生成L1A候选再进行排序",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复与排序结构校验": {
+      "main": [
+        [
+          {
+            "node": "5类缺口诊断与补充",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复": {
+      "main": [
+        [
+          {
+            "node": "IF：审计通过？",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF：审计通过？": {
+      "main": [
+        [
+          {
+            "node": "FP004-04",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FP004-02 执行时间线/故事线/人物线物理排序",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "退回样本",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "开始三线排序": {
+      "main": [
+        [
+          {
+            "node": "读取设计阶段快照1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读取设计阶段快照1": {
+      "main": [
+        [
+          {
+            "node": "IF：已有 L1A 候选？",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复与排序结构校验1": {
+      "main": [
+        [
+          {
+            "node": "前提分析",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5类缺口诊断与补充": {
+      "main": [
+        [
+          {
+            "node": "JSON修复与排序结构校验4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复与排序结构校验4": {
+      "main": [
+        [
+          {
+            "node": "阶段审计 判断排序是否可进入生产",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "阶段审计 判断排序是否可进入生产": {
+      "main": [
+        [
+          {
+            "node": "JSON修复",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "更新候选数据": {
+      "main": [
+        [
+          {
+            "node": "FP004-02 执行时间线/故事线/人物线物理排序",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP004-02 执行时间线/故事线/人物线物理排序": {
+      "main": [
+        [
+          {
+            "node": "JSON修复与排序结构校验",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP004-04": {
+      "main": [
+        [
+          {
+            "node": "FP004-03 三线排序完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "大事纪划分": {
+      "main": [
+        [
+          {
+            "node": "JSON修复与排序结构校验1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "前提分析": {
+      "main": [
+        [
+          {
+            "node": "JSON修复与排序结构校验2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复与排序结构校验2": {
+      "main": [
+        [
+          {
+            "node": "人物弧光分析",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "人物弧光分析": {
+      "main": [
+        [
+          {
+            "node": "JSON修复与排序结构校验3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON修复与排序结构校验3": {
+      "main": [
+        [
+          {
+            "node": "更新候选数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f3cdbf9b-9546-4485-9d30-758662090ef5",
+  "meta": {
+    "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"
+  },
+  "id": "7b19c1eb-8993-42ef-ac44-117a01b2fd48",
+  "tags": []
+}
