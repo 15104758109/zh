@@ -2,16 +2,14 @@
 
 
 <p align="center">
-  <a href="./README.md">简体中文</a> | <a href="./README_EN.md">English</a>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Stage-Design--Complete-success?style=for-the-badge&logo=github" alt="Stage">
+  <img src="https://img.shields.io/badge/G01-Approved-success?style=for-the-badge&logo=github" alt="G01 Approved">
+  <img src="https://img.shields.io/badge/G02-Approved-success?style=for-the-badge" alt="G02 Approved">
+  <img src="https://img.shields.io/badge/G03_A--D-Approved-success?style=for-the-badge" alt="G03 A-D Approved">
+  <img src="https://img.shields.io/badge/G04_r2-Approved-success?style=for-the-badge" alt="G04 revision 2 approved">
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License">
-  <img src="https://img.shields.io/badge/Architecture-6--Layers-orange?style=for-the-badge" alt="Architecture">
 </p>
 
-> **百万字小说不跑偏的 AI 叙事引擎。**
+> **面向长篇小说一致性治理的 AI 叙事引擎。**
 >
 > 💡先让角色在世界里活起来，再把发生的事写成小说。
 
@@ -102,28 +100,34 @@
 
 ---
 
-🗺️ 文档导航与开发状态
+## 文档导航
 
-| 文档 | 适合 |
+| 入口 | 职责 |
 |---|---|
-| [`doc/requirements.md`](./docs/Update zongheng_narrative_engine_RPD_v3_1.md) | 想读完整的产品需求规格（PRD） |
-| [`specs/`](./specs/) | 想看按阶段拆分的功能规格（001-004） |
+| [实施控制面](./docs/IMPLEMENTATION_CONTROL.md) | Gate、事实源职责、成熟度、术语/RPC、全局裁决、FP/Task 骨架和角色窗口 |
+| [V7 设计文档](./docs/v7设计文档_20260709_终版.md) | 业务意图、节点职责和上下游语义 |
+| [对齐版提示词](./docs/后端/对齐版提示词.md) | FP001-FP014 中 LLM 节点的模型行为设计 |
+| [开发窗口线束](./DEV_HARNESS.md) | 按实施控制面的角色/窗口协议执行和交接 |
+| [前端原型入口](./docs/前端原型_v2/pages/new_book.html) | 视觉与信息架构参考，不代表行为已实现 |
 
 ---
-📝开发状态
+## 当前状态
 
-**当前**：设计阶段完成（4 个 Spec），编码未开始。正在进行 Spec 对齐 CONTEXT.md 的工作。
-
-| 阶段 | 进度 |
+| 项目 | 状态 |
 |---|---|
-| 001 设计工作台 | Spec 已起草 |
-| 002 多代理生产 | Spec 已起草 |
-| 003 审计与写回 | Spec 已起草 |
-| 004 迭代管理 | Spec 已起草 |
-| 编码实施 | 待 Spec 对齐后启动 |
----
-**预览 **下面是前端原型，水平有限对付着看吧，有没有高手参与一起研究这个项目的？
-https://15104758109.github.io/zhNarrative-Engine/workbench.html
+| `G01_GATE` | `APPROVED` |
+| `G02_GATE` | `APPROVED`（2026-07-10） |
+| `G03-A_GATE` ~ `G03-D_GATE` | `APPROVED`（分组业务对齐；D 组于 2026-07-11 修订） |
+| `G04_R1_GATE` | `APPROVED`（历史 66-Task 蓝图；当前控制面不再提供其可执行 Task Index） |
+| `G04_GATE` / `G04_REVISION` | `APPROVED` / `2`（85 个 Task；仅 `F0-01-REPO` 为 `READY`，其余 84 个 `PLANNED`） |
+| MVP 身份/配置边界 | 本地单人、免登录、不跨设备；稳定 `local_operator_id`；第一次模型调用前安全默认预算可见可改；统一配置面显示五类生效值/版本 |
+| 业务意图 | V7 已基线化，仍有登记的对齐债 |
+| Prompt 源 | FP001-FP014 已识别 LLM 节点的源文本已基线化；未证明已部署或已验证 |
+| Schema / 迁移 | 当前仓库不存在 |
+| 源码 / 自动化测试 | 当前仓库不存在，不能宣称已实现或已验证 |
+| 原型 / n8n | 参考与实验部署材料，不是数据契约或行为证据 |
+
+G02 治理控制面、G03-A~D 分组业务对齐及 G04 revision 2 已获创作者批准。当前 Task Index 共 85 个 Task，仅 `F0-01-REPO` 为 `READY`；其余 84 个等待依赖。Schema/迁移、源码和测试证据尚不存在，因此任何 FP 都不能宣称已实现或已验证。
 
 ---
 ## License
