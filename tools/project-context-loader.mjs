@@ -17,9 +17,23 @@ const N8N_ROOT = "docs/后端/n8n";
 
 const ROLES = new Map([
   ["coordinator", "VIEW::COORDINATOR"],
+  ["gap_auditor", "VIEW::GAP_AUDITOR"],
   ["coder", "VIEW::CODER"],
+  ["prompt_editor", "VIEW::PROMPT_EDITOR"],
   ["auditor", "VIEW::AUDITOR"],
   ["reviewer", "VIEW::REVIEWER"],
+  ["architect", "VIEW::ARCHITECT"],
+]);
+
+const CROSS_FP_REVIEW_ROLES = new Set(["coordinator", "reviewer", "architect"]);
+const CONFLICT_LEVELS = new Set(["BLOCKING", "EXPECTED_GREENFIELD", "WARNING"]);
+const DECISION_LEVELS = new Set([
+  "CREATOR_REQUIRED",
+  "TASK_AUTONOMOUS",
+  "ARCHITECT_AUTONOMOUS",
+  "P2_TECH_DEBT",
+  "BLOCKED_TECHNICAL",
+  "ENVIRONMENT_APPROVAL_REQUIRED",
 ]);
 
 const EXCLUDED_SEGMENTS = new Set([
@@ -47,6 +61,19 @@ function normalizePath(value) {
 
 function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function conflict(level, kind, reason, details = {}) {
+  if (!CONFLICT_LEVELS.has(level)) throw new Error(`unknown conflict level: ${level}`);
+  return { level, kind, reason, ...details };
 }
 
 function gitBlobOid(buffer) {
@@ -389,8 +416,8 @@ class ProjectContextRouter {
   constructor(root) {
     this.root = path.resolve(root);
     this.control = readTextFile(this.root, CONTROL_PATH);
-    this.v7 = readTextFile(this.root, V7_PATH);
-    this.prompt = readTextFile(this.root, PROMPT_PATH);
+    this.v7 = null;
+    this.prompt = null;
     this.tables = parseTables(this.control);
     this.git = gitState(this.root);
     this.allProjectFiles = null;
@@ -403,6 +430,16 @@ class ProjectContextRouter {
     this.rpcRows = this.parseRpcRows();
     this.alignmentRows = this.parseAlignmentRows();
     this.gates = this.parseGateValues();
+  }
+
+  v7Source() {
+    if (!this.v7) this.v7 = readTextFile(this.root, V7_PATH);
+    return this.v7;
+  }
+
+  promptSource() {
+    if (!this.prompt) this.prompt = readTextFile(this.root, PROMPT_PATH);
+    return this.prompt;
   }
 
   parseTasks() {
@@ -481,6 +518,14 @@ class ProjectContextRouter {
       if (match) gates[match[1]] = match[2];
     }
     return gates;
+  }
+
+  deriveTaskFpIds(task) {
+    const coverage = task.values["FP覆盖（主/横切）"] ?? task.values["覆盖 FP（主/横切）"] ?? "";
+    const primary = [...coverage.matchAll(/FP::(FP\d{3}-\d{2})/g)].map((match) => match[1]);
+    const exact = [...coverage.matchAll(/\b(FP\d{3}-\d{2})\b/g)].map((match) => match[1]);
+    return [...new Set([...primary, ...exact])]
+      .filter((fpId) => Boolean(this.detailedFpRow(fpId)));
   }
 
   versionFor(relativePath, registeredSha256 = null) {
@@ -776,6 +821,7 @@ class ProjectContextRouter {
     const g06ArtifactPath = normalizePath(this.gates.G06_ARTIFACT_PATH ?? "");
     const g06ArtifactExists = Boolean(g06ArtifactPath) && fs.existsSync(path.join(this.root, ...g06ArtifactPath.split("/")));
     const g06ArtifactHash = g06ArtifactExists ? this.versionFor(g06ArtifactPath).sha256 : null;
+    const registeredAssertionCount = Number(this.gates.G06_TEST_ASSERTIONS);
     return {
       values: this.gates,
       active_execution_gate_valid: this.gates.G04_GATE === "APPROVED" && this.gates.G04_REVISION === "2",
@@ -789,14 +835,23 @@ class ProjectContextRouter {
       g06: {
         registered: Object.hasOwn(this.gates, "G06_GATE"),
         valid: this.gates.G06_GATE === "APPROVED"
-          && Boolean(this.gates.G06_APPROVED_AT)
-          && g06ApprovalEvidence.startsWith("CREATOR_EXPLICIT_")
-          && stripMd(g06Row?.cells[1] ?? "") === "APPROVED"
-          && this.gates.G06_TEST_ASSERTIONS === "58"
+           && Boolean(this.gates.G06_APPROVED_AT)
+           && g06ApprovalEvidence.startsWith("CREATOR_EXPLICIT_")
+           && stripMd(g06Row?.cells[1] ?? "") === "APPROVED"
+          && Number.isInteger(registeredAssertionCount)
+          && registeredAssertionCount >= 58
           && g06ArtifactHash === String(this.gates.G06_ARTIFACT_SHA256 ?? "").toLowerCase(),
         artifact_path: g06ArtifactPath || null,
         artifact_sha256: g06ArtifactHash,
+        registered_assertions: Number.isInteger(registeredAssertionCount) ? registeredAssertionCount : null,
         source_ref: g06Row ? rowRef(this.control, g06Row, "G06") : null,
+      },
+      g07: {
+        gate: this.gates.G07_GATE ?? "UNREGISTERED",
+        a_status: this.gates.G07_A_STATUS ?? "UNREGISTERED",
+        b_status: this.gates.G07_B_STATUS ?? "UNREGISTERED",
+        creator_approved: this.gates.G07_GATE === "APPROVED"
+          && String(this.gates.G07_APPROVAL_EVIDENCE ?? "").startsWith("CREATOR_EXPLICIT_"),
       },
       task_status_counts: counts,
       task_count: this.tasks.length,
@@ -807,25 +862,35 @@ class ProjectContextRouter {
     return [...this.git.statuses.entries()].map(([file, status]) => ({ path: file, status })).sort((a, b) => a.path.localeCompare(b.path));
   }
 
-  route({ role, taskId, fpIds }) {
+  route({ role, taskId, fpIds, crossFpReview = false, baseCommit = null, taskCommit = null }) {
     if (!ROLES.has(role)) throw new Error(`role must be one of: ${[...ROLES.keys()].join(", ")}`);
     if (!TASK_ID_RE.test(taskId)) throw new Error(`invalid task_id: ${taskId}`);
-    const normalizedFpIds = [...new Set(fpIds.map((value) => value.toUpperCase()))];
-    if (!normalizedFpIds.length || normalizedFpIds.some((value) => !FP_ID_RE.test(value))) {
-      throw new Error("fp_ids must contain one or more FPddd or FPddd-dd identifiers");
-    }
     const task = this.taskById.get(taskId);
     if (!task) throw new Error(`task_id not found in active Task Index: ${taskId}`);
+
+    const taskFpIds = this.deriveTaskFpIds(task);
+    const fpIdsWereExplicit = Array.isArray(fpIds) && fpIds.length > 0;
+    const normalizedFpIds = [...new Set((fpIdsWereExplicit ? fpIds : taskFpIds).map((value) => value.toUpperCase()))];
+    if (normalizedFpIds.some((value) => !FP_ID_RE.test(value))) {
+      throw new Error("fp_ids must contain only FPddd or FPddd-dd identifiers");
+    }
+    const outOfScopeFpIds = normalizedFpIds.filter((fpId) => !taskFpIds.includes(fpId));
+    const crossFpReviewAllowed = outOfScopeFpIds.length > 0
+      && crossFpReview
+      && CROSS_FP_REVIEW_ROLES.has(role);
+    const forcedReadOnly = Boolean(crossFpReview) || crossFpReviewAllowed;
 
     const viewId = ROLES.get(role);
     const roleView = this.roleViewRef(viewId);
     const taskGraph = this.taskGraph(task);
     const fpEdges = this.fpDependencyEdges(normalizedFpIds);
     const control = this.exactControlAnchors(task);
-    const v7 = this.sourceAnchors(normalizedFpIds, this.v7, "V7");
-    const prompt = this.sourceAnchors(normalizedFpIds, this.prompt, "PROMPT");
-    const prototype = this.prototypeAnchors(normalizedFpIds);
-    const n8n = this.n8nAnchors(normalizedFpIds);
+    const v7Source = normalizedFpIds.length ? this.v7Source() : null;
+    const promptSource = normalizedFpIds.length ? this.promptSource() : null;
+    const v7 = v7Source ? this.sourceAnchors(normalizedFpIds, v7Source, "V7") : { anchors: [], missing: [] };
+    const prompt = promptSource ? this.sourceAnchors(normalizedFpIds, promptSource, "PROMPT") : { anchors: [], missing: [] };
+    const prototype = normalizedFpIds.length ? this.prototypeAnchors(normalizedFpIds) : { anchors: [], missing: [] };
+    const n8n = normalizedFpIds.length ? this.n8nAnchors(normalizedFpIds) : { anchors: [], missing: [] };
     const rpcs = this.rpcAnchors(task, normalizedFpIds);
     const scopePatterns = this.expandWriteScope(task);
     const scopeMatches = this.matchedScopeFiles(scopePatterns);
@@ -841,58 +906,86 @@ class ProjectContextRouter {
     const gate = this.gateSnapshot();
     const taskRoleMatches = task.values["角色"] === viewId;
     const dependenciesVerified = taskGraph.upstream.every((dependency) => dependency.status === "VERIFIED");
-    const executionAuthorized = role === "coder"
-      && taskRoleMatches
-      && task.values["状态"] === "READY"
-      && dependenciesVerified
-      && gate.active_execution_gate_valid;
-    const auditorOwnedTask = role === "auditor" && task.values["角色"] === "VIEW::AUDITOR";
-    const auditorWriteAuthorized = auditorOwnedTask
-      && task.values["状态"] === "READY"
-      && dependenciesVerified
-      && gate.active_execution_gate_valid;
+    const promptTokens = new Set(extractStableTokens(task.values["精确读取锚点"]).filter((token) => token.startsWith("PROMPT::")));
 
-    const conflicts = [...control.missing, ...v7.missing, ...prototype.missing, ...n8n.missing];
-    const taskCoverage = task.values["FP覆盖（主/横切）"] ?? task.values["覆盖 FP（主/横切）"] ?? "";
-    for (const fpId of normalizedFpIds) {
-      if (!expressionContainsFp(taskCoverage, fpId)) {
-        conflicts.push({ kind: "task_fp_scope", fp_id: fpId, reason: "Requested FP is not named in the Task coverage cell; loaded only for explicit cross-FP review" });
-      }
+    const conflicts = [];
+    conflicts.push(...control.missing.map((item) => conflict("BLOCKING", item.kind, item.reason, item)));
+    conflicts.push(...v7.missing.map((item) => conflict("BLOCKING", item.kind, item.reason, item)));
+    conflicts.push(...prompt.missing.map((item) => conflict(
+      promptTokens.has(`PROMPT::${item.fp_id}`) ? "BLOCKING" : "WARNING",
+      item.kind,
+      item.reason,
+      item,
+    )));
+    conflicts.push(...prototype.missing.map((item) => conflict("WARNING", item.kind, item.reason, item)));
+    conflicts.push(...n8n.missing.map((item) => conflict("WARNING", item.kind, item.reason, item)));
+
+    if (outOfScopeFpIds.length) {
+      const level = crossFpReviewAllowed ? "WARNING" : "BLOCKING";
+      conflicts.push(conflict(level, "task_fp_scope", crossFpReviewAllowed
+        ? "Requested FP is outside the Task coverage and was admitted only for explicit read-only cross-FP review"
+        : "Requested FP is outside the Task coverage; this role/mode cannot load it", {
+        requested_fp_ids: outOfScopeFpIds,
+        task_fp_ids: taskFpIds,
+        cross_fp_review: Boolean(crossFpReview),
+      }));
+    }
+    if (crossFpReview && !CROSS_FP_REVIEW_ROLES.has(role)) {
+      conflicts.push(conflict("BLOCKING", "cross_fp_review_role", `${role} cannot enable cross-FP review mode`));
     }
     for (const rpc of rpcs.filter((rpc) => rpc.status !== "REGISTERED_DESIGN")) {
-      conflicts.push({ kind: "rpc_status", rpc_id: rpc.rpc_id, reason: `RPC status is ${rpc.status}; it is not an active implementation channel` });
+      conflicts.push(conflict("BLOCKING", "rpc_status", `RPC status is ${rpc.status}; it is not an active implementation channel`, { rpc_id: rpc.rpc_id }));
     }
-    const staleAcceptanceLine = this.control.lines.findIndex((line) => line.includes("G04-BA-07") && line.includes("全部 PLANNED"));
+    const staleAcceptanceLine = this.control.lines.findIndex((line) => line.includes("G04-BA-07") && line.includes("当前全部 PLANNED"));
     if ((gate.task_status_counts.READY ?? 0) > 0 && staleAcceptanceLine >= 0) {
-      conflicts.push({
-        kind: "control_status_narrative_drift",
-        reason: "G04-BA-07 says all tasks are PLANNED, while the active Task Index contains READY tasks",
+      conflicts.push(conflict("BLOCKING", "control_status_narrative_drift", "G04-BA-07 conflicts with active Task Index status counts", {
         source_ref: makeRef(this.control, staleAcceptanceLine + 1, staleAcceptanceLine + 1, "G04-BA-07"),
-      });
+      }));
     }
     if (!machineContractFiles.length) {
-      conflicts.push({
-        kind: "schema_or_machine_contract",
-        reason: `No machine Schema/contract file exists in the expanded task scope: ${scopePatterns.join(", ")}`,
-      });
+      conflicts.push(conflict("EXPECTED_GREENFIELD", "schema_or_machine_contract", `No machine Schema/contract file exists yet in the expanded Task scope: ${scopePatterns.join(", ")}`));
     }
     if (!codeFiles.length) {
-      conflicts.push({
-        kind: "code_anchor",
-        reason: `No implementation code file exists in the expanded task scope for ${task.id}`,
-      });
+      conflicts.push(conflict("EXPECTED_GREENFIELD", "code_anchor", `No implementation code file exists yet in the expanded Task scope for ${task.id}`));
+    }
+    if (missingScopePatterns.length) {
+      conflicts.push(conflict("EXPECTED_GREENFIELD", "unmaterialized_write_scope", `No current files match: ${missingScopePatterns.join(", ")}`));
     }
 
     const registeredHashes = this.registeredProtectedHashes();
     const versionPaths = new Set([
       CONTROL_PATH,
-      V7_PATH,
-      PROMPT_PATH,
+      ...(normalizedFpIds.length ? [V7_PATH, PROMPT_PATH] : []),
       ...prototype.anchors.map((anchor) => anchor.path),
       ...n8n.anchors.map((anchor) => anchor.path),
       ...matchedFiles,
     ]);
     const fileVersions = [...versionPaths].sort().map((file) => this.versionFor(file, registeredHashes.get(file) ?? null));
+    for (const version of fileVersions.filter((item) => item.matches_registered_sha256 === false)) {
+      conflicts.push(conflict("BLOCKING", "protected_hash_drift", `Protected source hash drifted for ${version.path}`, {
+        path: version.path,
+        expected_sha256: version.registered_sha256,
+        actual_sha256: version.sha256,
+      }));
+    }
+    if (!gate.active_execution_gate_valid) conflicts.push(conflict("BLOCKING", "active_gate", "G04_GATE or G04_REVISION is not the approved execution value"));
+    if (!gate.g05.valid) conflicts.push(conflict("BLOCKING", "g05_registration", "G05 approval registration is incomplete or inconsistent"));
+    if (!gate.g06.valid) conflicts.push(conflict("BLOCKING", "g06_artifact", "G06 registration, assertion count, or artifact hash does not match the current router"));
+    if (task.values["状态"] !== "READY") conflicts.push(conflict("BLOCKING", "task_status", `Task status is ${task.values["状态"]}, not READY`));
+    if (!dependenciesVerified) conflicts.push(conflict("BLOCKING", "task_dependencies", "One or more direct Task dependencies are not VERIFIED"));
+    if (role === "prompt_editor" && !task.id.includes("PROMPT-REVISION")) {
+      conflicts.push(conflict("BLOCKING", "prompt_revision_not_instantiated", "Prompt editor requires an instantiated TASKCLASS::PROMPT_REVISION Task"));
+    }
+
+    const blockingConflicts = conflicts.filter((item) => item.level === "BLOCKING");
+    const executionAuthorized = role === "coder"
+      && taskRoleMatches
+      && !forcedReadOnly
+      && blockingConflicts.length === 0;
+    const auditorOwnedTask = role === "auditor" && task.values["角色"] === "VIEW::AUDITOR";
+    const auditorWriteAuthorized = auditorOwnedTask
+      && !forcedReadOnly
+      && blockingConflicts.length === 0;
 
     const roleProjection = this.roleProjection({
       role,
@@ -907,6 +1000,7 @@ class ProjectContextRouter {
       codeFiles,
       scopePatterns,
       executionAuthorized,
+      conflicts,
     });
     const globalInvariants = this.globalInvariantRefs(task, roleView);
     const effectiveReadRefs = [
@@ -923,16 +1017,49 @@ class ProjectContextRouter {
       ...runtimeEvidenceFiles.map((file) => ({ path: file, anchor: "FILE", kind: "runtime_evidence_file" })),
     ];
 
-    const blockingConditions = [];
-    if (!gate.active_execution_gate_valid) blockingConditions.push("ACTIVE_G04_GATE_OR_REVISION_INVALID");
-    if (task.values["状态"] !== "READY") blockingConditions.push(`TASK_STATUS_${task.values["状态"]}`);
-    if (!dependenciesVerified) blockingConditions.push("DIRECT_DEPENDENCIES_NOT_ALL_VERIFIED");
-    if (!taskRoleMatches) blockingConditions.push(`TASK_ROLE_IS_${task.values["角色"]}`);
-    if (role !== "coder") blockingConditions.push("ROLE_IS_READ_ONLY_FOR_IMPLEMENTATION");
+    let decisionLevel = "TASK_AUTONOMOUS";
+    if (!gate.active_execution_gate_valid) decisionLevel = "CREATOR_REQUIRED";
+    else if (blockingConflicts.some((item) => ["protected_hash_drift", "g05_registration", "g06_artifact", "control_status_narrative_drift"].includes(item.kind))) decisionLevel = "BLOCKED_TECHNICAL";
+    else if (blockingConflicts.length) decisionLevel = "BLOCKED_TECHNICAL";
+    else if (conflicts.some((item) => item.level === "WARNING")) decisionLevel = "P2_TECH_DEBT";
+    if (!DECISION_LEVELS.has(decisionLevel)) throw new Error(`invalid decision level: ${decisionLevel}`);
 
-    return {
-      schema_version: "project-context-loader/v1",
-      input: { role, view_id: viewId, task_id: taskId, fp_ids: normalizedFpIds },
+    let recommendedNextRole = task.values["角色"].replace("VIEW::", "").toLowerCase();
+    if (decisionLevel === "CREATOR_REQUIRED") recommendedNextRole = "creator";
+    else if (blockingConflicts.some((item) => ["task_status", "task_dependencies"].includes(item.kind))) recommendedNextRole = "coordinator";
+    else if (blockingConflicts.some((item) => ["task_fp_scope", "prompt_revision_not_instantiated"].includes(item.kind))) recommendedNextRole = "architect";
+    else if (task.values["状态"] === "IMPLEMENTED") recommendedNextRole = "auditor";
+    else if (task.values["状态"] === "VERIFYING") recommendedNextRole = "reviewer";
+
+    const blockingConditions = blockingConflicts.map((item) => `BLOCKING:${item.kind}`);
+    if (!taskRoleMatches && role === "coder") blockingConditions.push(`TASK_ROLE_IS_${task.values["角色"]}`);
+    if (role !== "coder") blockingConditions.push("ROLE_IS_READ_ONLY_FOR_IMPLEMENTATION");
+    if (forcedReadOnly) blockingConditions.push("CROSS_FP_REVIEW_IS_READ_ONLY");
+
+    const result = {
+      schema_version: "project-context-loader/v2",
+      input: {
+        role,
+        view_id: viewId,
+        task_id: taskId,
+        fp_ids: normalizedFpIds,
+        fp_ids_source: fpIdsWereExplicit ? "explicit" : "task_index_coverage",
+        task_fp_ids: taskFpIds,
+        cross_fp_review: Boolean(crossFpReview),
+      },
+      version_context: {
+        base_commit: baseCommit ?? this.git.head,
+        task_commit: taskCommit ?? this.git.head,
+        git_head: this.git.head,
+        worktree_dirty: this.git.statuses.size > 0,
+      },
+      decision: {
+        level: decisionLevel,
+        recommended_next_role: recommendedNextRole,
+        blocking_count: blockingConflicts.length,
+        warning_count: conflicts.filter((item) => item.level === "WARNING").length,
+        expected_greenfield_count: conflicts.filter((item) => item.level === "EXPECTED_GREENFIELD").length,
+      },
       gate_snapshot: gate,
       role_view: roleView,
       required_global_invariants: globalInvariants,
@@ -959,12 +1086,13 @@ class ProjectContextRouter {
         matched_write_paths: matchedFiles,
         effective_write_scope: executionAuthorized || auditorWriteAuthorized ? scopePatterns : ["READ_ONLY"],
         execution_authorized: executionAuthorized,
+        cross_fp_read_only: forcedReadOnly,
       },
       role_projection: roleProjection,
       unloaded_materials: [
-        { material: V7_PATH, reason: "Only exact stable-heading ranges and hashes are emitted; source body is not copied into output" },
-        { material: PROMPT_PATH, reason: "Only exact stable-heading ranges and hashes are emitted; source body is not copied into output" },
-        { material: "unrequested FP sections", reason: "fp_ids is an allowlist" },
+        { material: V7_PATH, reason: normalizedFpIds.length ? "Only exact stable-heading ranges and hashes are emitted; source body is not copied into output" : "No FP was derived for this GLOBAL Task, so the source was not loaded" },
+        { material: PROMPT_PATH, reason: normalizedFpIds.length ? "Only exact stable-heading ranges and hashes are emitted; source body is not copied into output" : "No FP was derived for this GLOBAL Task, so the source was not loaded" },
+        { material: "unrequested FP sections", reason: fpIdsWereExplicit ? "fp_ids is an explicit allowlist" : "FP IDs were derived exactly from the Task coverage cell" },
         { material: "archive/backup/legacy/.tmp/.git paths", reason: "Excluded before discovery and never used as a fallback" },
         { material: "unmatched prototype and n8n assets", reason: "No exact stable ID or control-plane file route" },
         { material: "missing write-scope paths", reason: missingScopePatterns.length ? `No files match: ${missingScopePatterns.join(", ")}` : "NONE" },
@@ -972,18 +1100,20 @@ class ProjectContextRouter {
       file_versions: fileVersions,
       context_budget: {
         source_bodies_emitted: false,
-        v7_total_lines: this.v7.lines.length,
+        v7_total_lines: v7Source?.lines.length ?? 0,
         v7_referenced_ranges: v7.anchors.map((entry) => ({ fp_id: entry.fp_id, start_line: entry.source_ref.start_line, end_line: entry.source_ref.end_line })),
-        prompt_total_lines: this.prompt.lines.length,
+        prompt_total_lines: promptSource?.lines.length ?? 0,
         prompt_referenced_ranges: prompt.anchors.map((entry) => ({ fp_id: entry.fp_id, start_line: entry.source_ref.start_line, end_line: entry.source_ref.end_line })),
       },
-      blocking_conditions: blockingConditions,
+      blocking_conditions: [...new Set(blockingConditions)],
       conflicts_or_missing_references: conflicts,
     };
+    result.context_hash = sha256(stableJson(result));
+    return result;
   }
 
   roleProjection(context) {
-    const { role, task, taskGraph, fpEdges, detailedRows, alignments, rpcs, machineContractFiles, runtimeEvidenceFiles, codeFiles, scopePatterns, executionAuthorized } = context;
+    const { role, task, taskGraph, fpEdges, detailedRows, alignments, rpcs, machineContractFiles, runtimeEvidenceFiles, codeFiles, scopePatterns, executionAuthorized, conflicts } = context;
     if (role === "coordinator") {
       return {
         dependency_state: taskGraph,
@@ -991,6 +1121,15 @@ class ProjectContextRouter {
         all_slice_results_included: true,
         status: task.values["状态"],
         gate: "#/gate_snapshot",
+      };
+    }
+    if (role === "gap_auditor") {
+      return {
+        alignment_contracts: alignments.map((entry) => ({ ...entry.values, source_ref: entry.sourceRef })),
+        business_rows: detailedRows.map((entry) => ({ fp_id: entry.fp_id, source_ref: entry.row.sourceRef })),
+        evidence_gaps: conflicts.filter((item) => item.level !== "WARNING"),
+        source_maturity_only: true,
+        write_scope: ["READ_ONLY"],
       };
     }
     if (role === "coder") {
@@ -1005,6 +1144,17 @@ class ProjectContextRouter {
         execution_authorized: executionAuthorized,
       };
     }
+    if (role === "prompt_editor") {
+      return {
+        instantiated_revision_required: true,
+        target_prompt_refs: "#/anchors/prompt",
+        target_schema_paths: machineContractFiles,
+        forbidden_changes: task.values["禁止项"],
+        source_revision_only: true,
+        publish_or_activate_allowed: false,
+        write_scope: ["READ_ONLY"],
+      };
+    }
     if (role === "auditor") {
       return {
         business_acceptance: [task.values["业务验收场景"], ...detailedRows.flatMap((entry) => Object.entries(entry.row.values).filter(([key]) => key.includes("验收")).map(([, value]) => value))],
@@ -1012,6 +1162,19 @@ class ProjectContextRouter {
         runtime_evidence_paths: runtimeEvidenceFiles,
         machine_contract_paths: machineContractFiles,
         acceptance_command: task.values["验收命令"],
+      };
+    }
+    if (role === "architect") {
+      return {
+        replan_categories: {
+          A: "Alternative technical implementation inside the same approved write scope",
+          B: "Technical step or evidence redesign without changing business result, dependencies, or owner",
+          C: "Business, global decision, G04/Task meaning, dependency, ownership, or Gate change; CREATOR_REQUIRED",
+          D: "Tool, platform, or environment blockage; BLOCKED_TECHNICAL or ENVIRONMENT_APPROVAL_REQUIRED",
+        },
+        facts: { task_graph: taskGraph, fp_edges: fpEdges, conflicts },
+        permitted_decisions: ["REPLAN_A", "REPLAN_B", "REPLAN_D", "ESCALATE_REPLAN_C"],
+        write_scope: ["READ_ONLY"],
       };
     }
     return {
@@ -1026,13 +1189,16 @@ class ProjectContextRouter {
 }
 
 function parseCli(argv) {
-  const options = { format: "json", fpIds: [] };
+  const options = { format: "json", fpIds: null, crossFpReview: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--self-test") options.selfTest = true;
     else if (argument === "--role") options.role = argv[++index];
     else if (argument === "--task-id") options.taskId = argv[++index];
     else if (argument === "--fp-ids") options.fpIds = String(argv[++index] ?? "").split(",").map((value) => value.trim()).filter(Boolean);
+    else if (argument === "--cross-fp-review") options.crossFpReview = true;
+    else if (argument === "--base-commit") options.baseCommit = argv[++index];
+    else if (argument === "--task-commit") options.taskCommit = argv[++index];
     else if (argument === "--format") options.format = argv[++index];
     else if (argument === "--root") options.root = argv[++index];
     else if (argument === "--help" || argument === "-h") options.help = true;
@@ -1047,7 +1213,9 @@ function renderMarkdown(context) {
     "",
     `- Role: \`${context.input.role}\` (\`${context.input.view_id}\`)`,
     `- Task: \`${context.input.task_id}\` / status \`${context.task_index_row["状态"]}\``,
-    `- FP allowlist: ${context.input.fp_ids.map((fp) => `\`${fp}\``).join(", ")}`,
+    `- FP allowlist: ${context.input.fp_ids.map((fp) => `\`${fp}\``).join(", ") || "NONE"} (${context.input.fp_ids_source})`,
+    `- Context hash: \`${context.context_hash}\``,
+    `- Decision: \`${context.decision.level}\`; next \`${context.decision.recommended_next_role}\``,
     `- G05 valid: \`${context.gate_snapshot.g05.valid}\``,
     `- G06 valid: \`${context.gate_snapshot.g06.valid}\``,
     "",
@@ -1070,7 +1238,7 @@ function renderMarkdown(context) {
   lines.push("", "## Access", "", `- Effective write scope: ${context.access.effective_write_scope.map((item) => `\`${item}\``).join(", ")}`);
   lines.push(`- Execution authorized: \`${context.access.execution_authorized}\``);
   lines.push("", "## Missing Or Conflicting References", "");
-  for (const conflict of context.conflicts_or_missing_references) lines.push(`- ${conflict.kind}: ${conflict.reason}`);
+  for (const conflict of context.conflicts_or_missing_references) lines.push(`- ${conflict.level} / ${conflict.kind}: ${conflict.reason}`);
   return `${lines.join("\n")}\n`;
 }
 
@@ -1160,10 +1328,70 @@ function runSelfTest(router) {
     && contexts[3].role_projection.cross_fp_impact.length > 0
     && Boolean(contexts[3].role_projection.write_channels), contexts[3].role_projection);
 
-  const readyCoder = router.route({ role: "coder", taskId: "F0-01-REPO", fpIds: ["FP001-03"] });
+  const readyCoder = router.route({ role: "coder", taskId: "F0-01-REPO" });
   assertCheck(checks, "access:ready-coder-write-scope", readyCoder.access.execution_authorized
     && readyCoder.access.effective_write_scope[0] !== "READ_ONLY", readyCoder.access);
+  assertCheck(checks, "access:ready-coder-exact-write-scope", JSON.stringify(readyCoder.access.effective_write_scope) === JSON.stringify([
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "tsconfig.base.json",
+    "eslint.config.mjs",
+    ".github/workflows/ci.yml",
+    "apps/api/package.json",
+    "apps/api/src/bootstrap/**",
+    "apps/web/package.json",
+    "apps/web/src/bootstrap/**",
+  ]), readyCoder.access.effective_write_scope);
   assertCheck(checks, "access:planned-samples-read-only", contexts.every((context) => context.access.effective_write_scope[0] === "READ_ONLY"), contexts.map((context) => ({ task_id: context.input.task_id, scope: context.access.effective_write_scope })));
+
+  assertCheck(checks, "global-task:empty-fp-set", readyCoder.input.fp_ids.length === 0
+    && readyCoder.input.fp_ids_source === "task_index_coverage", readyCoder.input);
+  assertCheck(checks, "global-task:no-unrelated-fp-anchors", ["v7", "prompt", "prototype", "n8n"].every((kind) => readyCoder.anchors[kind].length === 0), readyCoder.anchors);
+  assertCheck(checks, "global-task:no-v7-or-prompt-load", readyCoder.context_budget.v7_total_lines === 0
+    && readyCoder.context_budget.prompt_total_lines === 0
+    && !readyCoder.file_versions.some((item) => item.path === V7_PATH || item.path === PROMPT_PATH), readyCoder.context_budget);
+  assertCheck(checks, "global-task:context-hash", /^[a-f0-9]{64}$/.test(readyCoder.context_hash), readyCoder.context_hash);
+  assertCheck(checks, "global-task:commit-context", Boolean(readyCoder.version_context.base_commit)
+    && Boolean(readyCoder.version_context.task_commit), readyCoder.version_context);
+
+  const plannedCoder = router.route({ role: "coder", taskId: "S1-FP001-03" });
+  assertCheck(checks, "access:planned-coder-blocked", !plannedCoder.access.execution_authorized
+    && plannedCoder.conflicts_or_missing_references.some((item) => item.level === "BLOCKING" && item.kind === "task_status"), plannedCoder.blocking_conditions);
+
+  const outOfScopeCoder = router.route({ role: "coder", taskId: "F0-01-REPO", fpIds: ["FP001-03"] });
+  assertCheck(checks, "scope:coder-outside-fp-blocked", !outOfScopeCoder.access.execution_authorized
+    && outOfScopeCoder.conflicts_or_missing_references.some((item) => item.level === "BLOCKING" && item.kind === "task_fp_scope"), outOfScopeCoder.conflicts_or_missing_references);
+  const outOfScopeAuditor = router.route({ role: "auditor", taskId: "F0-01-REPO", fpIds: ["FP001-03"] });
+  assertCheck(checks, "scope:auditor-outside-fp-blocked", outOfScopeAuditor.conflicts_or_missing_references.some((item) => item.level === "BLOCKING" && item.kind === "task_fp_scope"), outOfScopeAuditor.conflicts_or_missing_references);
+  const coordinatorWithoutCrossMode = router.route({ role: "coordinator", taskId: "F0-01-REPO", fpIds: ["FP001-03"] });
+  assertCheck(checks, "scope:coordinator-cross-mode-required", coordinatorWithoutCrossMode.conflicts_or_missing_references.some((item) => item.level === "BLOCKING" && item.kind === "task_fp_scope"), coordinatorWithoutCrossMode.conflicts_or_missing_references);
+  const coordinatorCrossReview = router.route({ role: "coordinator", taskId: "F0-01-REPO", fpIds: ["FP001-03"], crossFpReview: true });
+  assertCheck(checks, "scope:coordinator-explicit-cross-read-only", coordinatorCrossReview.access.cross_fp_read_only
+    && coordinatorCrossReview.access.effective_write_scope[0] === "READ_ONLY"
+    && !coordinatorCrossReview.conflicts_or_missing_references.some((item) => item.level === "BLOCKING" && item.kind === "task_fp_scope"), coordinatorCrossReview.access);
+
+  const gapAuditor = router.route({ role: "gap_auditor", taskId: "S1-FP001-03" });
+  const promptEditor = router.route({ role: "prompt_editor", taskId: "S1-FP001-03" });
+  const architect = router.route({ role: "architect", taskId: "S1-FP001-03" });
+  assertCheck(checks, "role:gap-auditor-projection", gapAuditor.input.view_id === "VIEW::GAP_AUDITOR"
+    && gapAuditor.role_projection.write_scope[0] === "READ_ONLY"
+    && Array.isArray(gapAuditor.role_projection.evidence_gaps), gapAuditor.role_projection);
+  assertCheck(checks, "role:prompt-editor-projection", promptEditor.input.view_id === "VIEW::PROMPT_EDITOR"
+    && promptEditor.role_projection.publish_or_activate_allowed === false
+    && promptEditor.conflicts_or_missing_references.some((item) => item.kind === "prompt_revision_not_instantiated"), promptEditor.role_projection);
+  assertCheck(checks, "role:architect-projection", architect.input.view_id === "VIEW::ARCHITECT"
+    && architect.role_projection.replan_categories.C.includes("CREATOR_REQUIRED")
+    && architect.role_projection.write_scope[0] === "READ_ONLY", architect.role_projection);
+
+  assertCheck(checks, "conflict:expected-greenfield-does-not-block", readyCoder.conflicts_or_missing_references.some((item) => item.level === "EXPECTED_GREENFIELD")
+    && !readyCoder.conflicts_or_missing_references.some((item) => item.level === "BLOCKING")
+    && readyCoder.access.execution_authorized, readyCoder.conflicts_or_missing_references);
+  assertCheck(checks, "conflict:blocking-denies-execution", outOfScopeCoder.conflicts_or_missing_references.some((item) => item.level === "BLOCKING")
+    && !outOfScopeCoder.access.execution_authorized, outOfScopeCoder.blocking_conditions);
+  assertCheck(checks, "conflict:all-levels-valid", [readyCoder, plannedCoder, outOfScopeCoder, ...contexts]
+    .flatMap((context) => context.conflicts_or_missing_references)
+    .every((item) => CONFLICT_LEVELS.has(item.level)), "all routed conflicts use the three registered levels");
 
   const gate = router.gateSnapshot();
   assertCheck(checks, "gate:g05-exact", gate.g05.valid, gate.g05);
@@ -1176,6 +1404,26 @@ function runSelfTest(router) {
   const promptVersion = router.versionFor(PROMPT_PATH, protectedHashes.get(PROMPT_PATH));
   assertCheck(checks, "source:v7-protected-hash", v7Version.matches_registered_sha256, v7Version);
   assertCheck(checks, "source:prompt-protected-hash", promptVersion.matches_registered_sha256, promptVersion);
+
+  const originalG04Gate = router.gates.G04_GATE;
+  router.gates.G04_GATE = "PENDING";
+  const gateDrift = router.route({ role: "coder", taskId: "F0-01-REPO" });
+  router.gates.G04_GATE = originalG04Gate;
+  assertCheck(checks, "drift:gate-blocks", !gateDrift.access.execution_authorized
+    && gateDrift.conflicts_or_missing_references.some((item) => item.level === "BLOCKING" && item.kind === "active_gate"), gateDrift.blocking_conditions);
+
+  const originalArtifactHash = router.gates.G06_ARTIFACT_SHA256;
+  router.gates.G06_ARTIFACT_SHA256 = "0".repeat(64);
+  const artifactDrift = router.route({ role: "coder", taskId: "F0-01-REPO" });
+  router.gates.G06_ARTIFACT_SHA256 = originalArtifactHash;
+  assertCheck(checks, "drift:artifact-blocks", !artifactDrift.access.execution_authorized
+    && artifactDrift.conflicts_or_missing_references.some((item) => item.level === "BLOCKING" && item.kind === "g06_artifact"), artifactDrift.blocking_conditions);
+
+  const originalProtectedHashReader = router.registeredProtectedHashes.bind(router);
+  router.registeredProtectedHashes = () => new Map([[V7_PATH, "0".repeat(64)], [PROMPT_PATH, protectedHashes.get(PROMPT_PATH)]]);
+  const protectedDrift = router.route({ role: "reviewer", taskId: "S1-FP001-03" });
+  router.registeredProtectedHashes = originalProtectedHashReader;
+  assertCheck(checks, "drift:protected-source-blocks", protectedDrift.conflicts_or_missing_references.some((item) => item.level === "BLOCKING" && item.kind === "protected_hash_drift"), protectedDrift.blocking_conditions);
 
   let unknownTaskRejected = false;
   try {
@@ -1198,7 +1446,7 @@ function runSelfTest(router) {
   ];
 
   return {
-    schema_version: "project-context-loader-self-test/v1",
+    schema_version: "project-context-loader-self-test/v2",
     passed: passed === checks.length && businessAcceptance.every((item) => item.passed),
     assertions: { passed, failed: checks.length - passed, total: checks.length },
     samples: evidence,
@@ -1212,7 +1460,7 @@ function runSelfTest(router) {
 function usage() {
   return [
     "Usage:",
-    "  node tools/project-context-loader.mjs --role <coordinator|coder|auditor|reviewer> --task-id <Task ID> --fp-ids <FP IDs> [--format json|markdown]",
+    "  node tools/project-context-loader.mjs --role <coordinator|gap_auditor|coder|prompt_editor|auditor|reviewer|architect> --task-id <Task ID> [--fp-ids <FP IDs>] [--cross-fp-review] [--format json|markdown]",
     "  node tools/project-context-loader.mjs --self-test",
   ].join("\n");
 }
@@ -1231,7 +1479,7 @@ function main() {
       if (!report.passed) process.exitCode = 1;
       return;
     }
-    if (!options.role || !options.taskId || !options.fpIds.length) throw new Error(usage());
+    if (!options.role || !options.taskId) throw new Error(usage());
     const context = router.route(options);
     if (options.format === "markdown") process.stdout.write(renderMarkdown(context));
     else if (options.format === "json") process.stdout.write(`${JSON.stringify(context, null, 2)}\n`);
@@ -1242,4 +1490,21 @@ function main() {
   }
 }
 
-main();
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) main();
+
+export {
+  CONTROL_PATH,
+  DECISION_LEVELS,
+  FP_ID_RE,
+  ProjectContextRouter,
+  ROLES,
+  TASK_ID_RE,
+  conflict,
+  globToRegExp,
+  normalizePath,
+  parseDependsOn,
+  runSelfTest,
+  sha256,
+  stableJson,
+};

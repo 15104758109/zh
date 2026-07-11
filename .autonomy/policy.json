@@ -1,0 +1,64 @@
+{
+  "schema_version": "g07-autonomy-policy/v1",
+  "control_anchor": "G07::AUTONOMY",
+  "phase": "G07_A_CONTROL_PLANE_ONLY",
+  "g07_gate_required": "APPROVED",
+  "product_task_execution_allowed": false,
+  "integration_branch": "autonomy/integration",
+  "concurrency": {
+    "max_writers": 1,
+    "max_read_only_reviewers": 2,
+    "default_lease_seconds": 900,
+    "lock_stale_ms": 30000
+  },
+  "retry_policy": {
+    "max_rework": 3,
+    "max_replan": 2,
+    "critical_path_on_exhaustion": "CREATOR_REQUIRED",
+    "noncritical_on_exhaustion": "BLOCKED"
+  },
+  "budget": {
+    "notify_ratio": 0.8,
+    "hard_stop_ratio": 1.0,
+    "limits": {
+      "tokens": null,
+      "elapsed_ms": null,
+      "known_cost": null
+    },
+    "unknown_cost_is_zero": false
+  },
+  "models": {
+    "MODEL::CODE_HIGH": {
+      "requested_capability": "current strongest code reasoning model with high reasoning",
+      "fallback": "current strongest available model in an independent role session",
+      "must_record_actual_model_when_visible": true
+    },
+    "MODEL::CODE_MEDIUM": {
+      "requested_capability": "standard code reasoning model with medium reasoning",
+      "fallback": "current strongest available model in an independent role session",
+      "must_record_actual_model_when_visible": true
+    }
+  },
+  "replan_categories": {
+    "A": "technical implementation change inside the same approved write scope",
+    "B": "technical steps or evidence redesign with business result, dependencies and owner unchanged",
+    "C": "business, global decision, G04 or Task meaning, dependency, owner or Gate change",
+    "D": "tool, platform or environment blockage"
+  },
+  "hard_stop_actions": [
+    "REAL_PROJECT_MODEL_CALL",
+    "PAID_TEST",
+    "PUSH",
+    "DEPLOY",
+    "PRODUCTION_WRITE",
+    "CREDENTIAL_ACCESS"
+  ],
+  "forbidden_automatic_actions": [
+    "MERGE_TO_MAIN",
+    "WRITE_G07_GATE_APPROVED",
+    "PUSH",
+    "DEPLOY",
+    "PRODUCTION_WRITE",
+    "CREDENTIAL_ACCESS"
+  ]
+}

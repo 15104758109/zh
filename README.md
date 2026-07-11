@@ -105,6 +105,9 @@
 | 入口 | 职责 |
 |---|---|
 | [实施控制面](./docs/IMPLEMENTATION_CONTROL.md) | Gate、事实源职责、成熟度、术语/RPC、全局裁决、FP/Task 骨架和角色窗口 |
+| [项目上下文路由器](./tools/project-context-loader.mjs) | 按 Task、角色与精确 FP 范围生成带哈希的只读上下文路由 |
+| [自治状态编排器](./tools/project-orchestrator.mjs) | G07-A 的事件、租约、状态、证据、预算、恢复、简报与角色提示词控制面；不调用模型 |
+| [自治机器政策](./.autonomy/policy.json) | `G07::AUTONOMY` 的并发、返修、Replan、模型适配、预算和硬停止规则 |
 | [V7 设计文档](./docs/v7设计文档_20260709_终版.md) | 业务意图、节点职责和上下游语义 |
 | [对齐版提示词](./docs/后端/对齐版提示词.md) | FP001-FP014 中 LLM 节点的模型行为设计 |
 | [开发窗口线束](./DEV_HARNESS.md) | 按实施控制面的角色/窗口协议执行和交接 |
@@ -120,11 +123,13 @@
 | `G03-A_GATE` ~ `G03-D_GATE` | `APPROVED`（分组业务对齐；D 组于 2026-07-11 修订） |
 | `G04_R1_GATE` | `APPROVED`（历史 66-Task 蓝图；当前控制面不再提供其可执行 Task Index） |
 | `G04_GATE` / `G04_REVISION` | `APPROVED` / `2`（85 个 Task；仅 `F0-01-REPO` 为 `READY`，其余 84 个 `PLANNED`） |
+| `G05_GATE` / `G06_GATE` | `APPROVED` / `APPROVED`（G06 当前路由器扩展自测 78/78） |
+| `G07_GATE` / `G07_A_STATUS` | `PENDING` / `IMPLEMENTED`；等待独立 G07-B 与创作者裁决，不得执行产品 Task |
 | MVP 身份/配置边界 | 本地单人、免登录、不跨设备；稳定 `local_operator_id`；第一次模型调用前安全默认预算可见可改；统一配置面显示五类生效值/版本 |
 | 业务意图 | V7 已基线化，仍有登记的对齐债 |
 | Prompt 源 | FP001-FP014 已识别 LLM 节点的源文本已基线化；未证明已部署或已验证 |
 | Schema / 迁移 | 当前仓库不存在 |
-| 源码 / 自动化测试 | 当前仓库不存在，不能宣称已实现或已验证 |
+| 产品源码 / 产品自动化测试 | 当前仓库不存在，不能宣称产品已实现或已验证；G06/G07 治理工具及其内建自测不属于产品 Task 证据 |
 | 原型 / n8n | 参考与实验部署材料，不是数据契约或行为证据 |
 
 G02 治理控制面、G03-A~D 分组业务对齐及 G04 revision 2 已获创作者批准。当前 Task Index 共 85 个 Task，仅 `F0-01-REPO` 为 `READY`；其余 84 个等待依赖。Schema/迁移、源码和测试证据尚不存在，因此任何 FP 都不能宣称已实现或已验证。
