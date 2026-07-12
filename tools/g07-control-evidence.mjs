@@ -486,7 +486,11 @@ function driftedSha256(value) {
 }
 
 function registeredHashDriftProbes(root, candidateCommit, healthyInputs) {
+  const healthyPassed = allReportPassed(healthyInputs);
   return ACTIVE_HASH_REGISTRATIONS.map((hashKey) => {
+    if (!healthyPassed) {
+      return { hash_key: hashKey, drift_detected: false, all_rejected_drift: false, failure_mode: "HEALTHY_ALL_VERDICT_FALSE" };
+    }
     const values = new Map(controlValues(root));
     values.set(hashKey, driftedSha256(values.get(hashKey)));
     try {
@@ -496,10 +500,19 @@ function registeredHashDriftProbes(root, candidateCommit, healthyInputs) {
       const scope = hashKey === "G06_BASELINE_ARTIFACT_SHA256"
         ? healthyInputs.scope
         : fullBaselineScope(root, candidateCommit, { values });
+      const driftDetected = hashKey === "G07_A_EVIDENCE_SHA256"
+        ? scope.active_evidence.hash_matches === false
+        : scope.registered_artifacts.some((item) => item.hash_key === hashKey && item.matches === false);
       const passed = allReportPassed({ ...healthyInputs, baseline, scope });
-      return { hash_key: hashKey, all_rejected_drift: !passed, failure_mode: passed ? "UNEXPECTED_PASS" : "ALL_VERDICT_FALSE" };
+      return {
+        hash_key: hashKey,
+        drift_detected: driftDetected,
+        all_rejected_drift: driftDetected && !passed,
+        failure_mode: passed ? "UNEXPECTED_PASS" : (driftDetected ? "ALL_VERDICT_FALSE" : "DRIFT_NOT_DETECTED"),
+      };
     } catch (error) {
-      return { hash_key: hashKey, all_rejected_drift: true, failure_mode: error.code ?? "G07_EVIDENCE_ERROR" };
+      const driftDetected = hashKey === "G06_BASELINE_ARTIFACT_SHA256" && error.code === "G06_BASELINE_HASH_MISMATCH";
+      return { hash_key: hashKey, drift_detected: driftDetected, all_rejected_drift: driftDetected, failure_mode: error.code ?? "G07_EVIDENCE_ERROR" };
     }
   });
 }
