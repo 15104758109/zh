@@ -16,7 +16,7 @@ CURRENT_MODE=G04_R2_APPROVED_F0_01_READY
 G05_GATE=APPROVED
 G06_GATE=APPROVED
 G07_GATE=PENDING
-G07_A_STATUS=REWORK
+G07_A_STATUS=IMPLEMENTED
 ```
 
 - G02、G03-A~D 与历史 G04 revision 1 已由创作者批准；历史证据只登记在 `G04_R1_GATE=APPROVED`。
@@ -233,3 +233,4 @@ node tools/project-orchestrator.mjs report --run-id <run-id> [--slice-id <slice>
 - 预算任一已配置维度达到 80% 通知、100% 硬停；未知费用不得假报为 0。
 - G07 阶段禁止真实项目模型调用、付费测试、push、部署、生产写入、凭据访问和自动合并主分支。平台授权不可绕过；当前没有可信角色会话见证提供方时也必须返回 `ENVIRONMENT_APPROVAL_REQUIRED`，不得把不同 actor/session 字符串当机械独立性。
 - 当前 `G07_GATE=PENDING`，因此即使路由器确认 `F0-01-REPO` 为唯一 READY，G07-A dry-run 也必须拒绝产品执行。测试、dry-run、G07-A/G07-B 或 Architect 均不得自行写 `G07_GATE=APPROVED`。
+- 当前返修实现由 `G07_A_COMMIT=e68accecac93d60c533c63eddc4a18c1053667d6` 锁定，测试/dry-run/scope/秘密证据位于 `docs/G07_A_EVIDENCE.json`；登记提交只更新控制状态和证据引用，不改该实现 commit。

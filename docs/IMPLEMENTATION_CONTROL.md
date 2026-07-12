@@ -42,7 +42,7 @@ G06_UPGRADE_AUTHORITY=G07_A_CREATOR_EXPLICIT_IMPLEMENTATION_REQUEST
 G06_ARTIFACT_SHA256=10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47
 G06_TEST_ASSERTIONS=78
 G07_GATE=PENDING
-G07_A_STATUS=REWORK
+G07_A_STATUS=IMPLEMENTED
 G07_B_STATUS=PENDING
 G07_APPROVAL_EVIDENCE=NONE
 G07_POLICY_ANCHOR=G07::AUTONOMY
@@ -56,6 +56,14 @@ G07_A_ORCHESTRATOR_SHA256=4f84d5ff79111f8a40d7ccad43a04de10350574233d2f1613cd8b2
 G07_A_ORCHESTRATOR_TEST_ASSERTIONS=82
 G07_A_POLICY_PATH=.autonomy/policy.json
 G07_A_POLICY_SHA256=fcca5a4166d35997d8c021aa8ef006f56a4787c0ae6988021a910e003709759e
+G07_A_COMMIT=e68accecac93d60c533c63eddc4a18c1053667d6
+G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE.json
+G07_A_EVIDENCE_SHA256=7928d9194bb823dc3a2378879d33e31e1acf78f98bb78b33649d086c3fefd601
+G07_A_G06_TEST_STDOUT_SHA256=2ff971abc265fbc270db835e6288a45473775364d8046f7f20a69aa201e73874
+G07_A_ORCHESTRATOR_TEST_STDOUT_SHA256=87c1da13d0e27d0d410c1b15fb748e990b2eba66275a32194e9110cfe4ab4143
+G07_A_DRY_RUN_EVIDENCE_SHA256=65a1fb62d90d3474bdfebc7782f097dacf9c729d52c3218b865a389b5edb2970
+G07_A_SCOPE_EVIDENCE_SHA256=6ff6456108ee479f9b0b3270595ec30fad64593db0168d63c239b044f4c51dba
+G07_A_SECRET_SCAN_EVIDENCE_SHA256=0022f02d976924b5d3a02354dbb64b6f4983d02a036ba40f0e261f6fbc45c72c
 
 | Gate | 状态 | 批准主体 | 证据/进入条件 | 后续动作 |
 |---|---|---|---|---|
@@ -70,7 +78,7 @@ G07_A_POLICY_SHA256=fcca5a4166d35997d8c021aa8ef006f56a4787c0ae6988021a910e003709
 | G04-r2 | APPROVED | 创作者 | 2026-07-11，创作者先要求依据四组回写重做，审阅修订后的 85-Task 蓝图后在本任务明确回复“批准”；`G04_REVISION_APPROVAL_EVIDENCE=CREATOR_EXPLICIT_APPROVAL_IN_TASK` | revision 2 依赖图、切片和 Task Index 生效；当前只把无依赖的 `F0-01-REPO` 置为 `READY`，不代表任何实现完成 |
 | G05 | APPROVED | 创作者 | 2026-07-11，创作者明确批准独立 G04 审计结果：P0=0、P1=0、P2=2、`NEXT_GATE=YES` | G05 审计 Gate 生效；两个 P2 保留，不提升任何实现成熟度，Task 状态仍为 1 READY、84 PLANNED |
 | G06 | APPROVED | 创作者 | 2026-07-11，创作者审阅单一项目上下文加载器的四域样例、58/58 自测和 `G05-CTX-BA-01~08` 后明确回复“批准 G06”；旧制品哈希和断言数保留在 `G06_BASELINE_*`。本轮创作者明确要求在 G07-A 扩展路由，当前制品由 `G06_ARTIFACT_SHA256` 与 78 项自测锁定，但不因此批准 G07 | G06 上下文路由职责继续生效；加载器按角色、Task 与精确 FP 范围路由，不提升任何 Task、Schema、代码或行为证据成熟度，状态仍为 1 READY、84 PLANNED |
-| G07 | PENDING | 创作者 | 本轮只授权实现 G07-A 自治控制面；独立审查发现 P0/P1 后，G07-A 当前进入控制面返修；实现、自测、dry-run 或独立 G07-B 结论都不能代替创作者批准 | 完成返修和证据登记后等待新的独立 G07-B 与创作者裁决；不得自动写 `G07_GATE=APPROVED`，不得据此执行产品 Task |
+| G07 | PENDING | 创作者 | 本轮只授权实现 G07-A 自治控制面；独立审查发现的 P0/P1 已在单独实现 commit 返修，并由只读证据制品登记测试、dry-run、scope 与秘密哈希；这些结果仍不能代替创作者批准 | 等待新的独立 G07-B 与创作者裁决；不得自动写 `G07_GATE=APPROVED`，不得据此执行产品 Task |
 
 > Gate 规则：精确键值是自动检查入口，表格是人类可读解释。`G04_R1_GATE` 只保存历史；当前 Task Index 绑定 `G04_REVISION=2`，唯一活动执行键是 `G04_GATE`。其现值不是 APPROVED 时一律阻断。任何 Gate 不得由模型、开发代理、测试结果或 n8n 运行结果代替创作者批准。
 
@@ -116,7 +124,7 @@ G07_A_POLICY_SHA256=fcca5a4166d35997d8c021aa8ef006f56a4787c0ae6988021a910e003709
 
 | 检查点 | 当前状态 | 机械证据 | 批准边界 |
 |---|---|---|---|
-| G07-A 实现 | `REWORK` | 独立审查已发现政策绑定、证据完整性、状态回放和恢复控制的 P0/P1；返修后须重新登记独立分支 commit、G06 扩展自测、Orchestrator 自测、F0-01 dry-run、范围/秘密扫描 | 返修完成也只证明已实现，不能批准 Gate |
+| G07-A 实现 | `IMPLEMENTED` | `G07_A_COMMIT` 锁定返修实现；`G07_A_EVIDENCE_PATH/SHA256` 锁定 G06 78/78、Orchestrator 82/82、F0-01 dry-run 前后快照、完整治理 scope 和秘密扫描证据 | 只证明已实现并完成内部机械验证，不能批准 Gate |
 | G07-B 独立审查 | `PENDING` | 独立角色复核同一 G07-A commit 的政策、状态机、证据、失败和恢复 | Reviewer 不得自批 Gate |
 | `G07_GATE` | `PENDING` | 创作者明确批准证据 | 只有创作者可改为 `APPROVED` |
 

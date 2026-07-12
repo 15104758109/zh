@@ -1,3 +1,4 @@
 /tools/project-orchestrator.mjs text eol=lf
 /.autonomy/policy.json text eol=lf
 /.autonomy/.gitignore text eol=lf
+/docs/G07_A_EVIDENCE.json text eol=lf
