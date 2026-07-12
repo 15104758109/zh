@@ -100,7 +100,8 @@
     ],
     "auditor_owner_requires_independent_auditor_and_reviewer": true,
     "slice_gate_requires_read_only_lease": true,
-    "slice_gate_report_must_enter_event_chain": true
+    "slice_gate_report_must_enter_event_chain": true,
+    "slice_gate_execution_receipt_required": true
   },
   "secret_scan": {
     "version": "G07_CANDIDATE_BLOBS_V1",

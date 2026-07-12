@@ -901,7 +901,8 @@ class ProjectOrchestrator {
     invariant(sameStringSet(this.policy.role_lifecycle?.primary_task_writer_roles, ["coder", "prompt_editor", "auditor"])
       && this.policy.role_lifecycle.auditor_owner_requires_independent_auditor_and_reviewer === true
       && this.policy.role_lifecycle.slice_gate_requires_read_only_lease === true
-      && this.policy.role_lifecycle.slice_gate_report_must_enter_event_chain === true, "role lifecycle policy is incomplete", "POLICY_ROLE_LIFECYCLE_INVALID");
+      && this.policy.role_lifecycle.slice_gate_report_must_enter_event_chain === true
+      && this.policy.role_lifecycle.slice_gate_execution_receipt_required === true, "role lifecycle policy is incomplete", "POLICY_ROLE_LIFECYCLE_INVALID");
     invariant(this.policy.secret_scan?.version === "G07_CANDIDATE_BLOBS_V1"
       && this.policy.secret_scan?.scan_binary_blobs === true
       && this.policy.secret_scan?.oversize_result === "BLOCKING"
@@ -1207,6 +1208,53 @@ class ProjectOrchestrator {
     };
   }
 
+  sliceGateCommand(contextFacts) {
+    return `SLICE_GATE_USER_ENTRY:${contextFacts.slice_id}:${contextFacts.user_entry_acceptance_sha256}:${contextFacts.completion_boundary_sha256}`;
+  }
+
+  sliceGateExecutionClaims(report, entry, contextFacts) {
+    return {
+      slice_id: report.slice_id,
+      attempt_id: report.attempt_id,
+      base_commit: report.base_commit,
+      candidate_commit: report.candidate_commit,
+      context_hash: report.context_hash,
+      command: entry.command,
+      user_entry_acceptance_sha256: contextFacts.user_entry_acceptance_sha256,
+      completion_boundary_sha256: contextFacts.completion_boundary_sha256,
+      task_evidence_sha256: sha256(stableJson(contextFacts.task_evidence)),
+      exit_code: entry.exit_code,
+      stdout_sha256: entry.stdout_sha256,
+      regression_artifact_sha256: entry.regression_artifact_sha256,
+      read_only: true,
+    };
+  }
+
+  verifySliceGateAcceptance(report, contextFacts, { at = this.clock() } = {}) {
+    const commands = report.acceptance?.commands ?? [];
+    invariant(commands.length === 1, "slice gate requires exactly one platform-executed user-entry acceptance", "SLICE_GATE_EVIDENCE_INCOMPLETE");
+    const entry = commands[0];
+    invariant(entry.command === this.sliceGateCommand(contextFacts)
+      && Number.isInteger(entry.exit_code)
+      && isSha256(entry.stdout_sha256)
+      && isSha256(entry.regression_artifact_sha256), "slice gate execution evidence is malformed or does not target the registered user entry", "SLICE_GATE_EVIDENCE_INVALID");
+    invariant((report.acceptance?.diff_hash ?? null) === null
+      && (report.acceptance?.scope_evidence_hash ?? null) === null
+      && (report.acceptance?.secret_scan_evidence_hash ?? null) === null, "read-only slice gate cannot claim implementation diff/scope/secret evidence", "SLICE_GATE_EVIDENCE_INVALID");
+    const receipt = this.verifyPlatformReceipt(entry.receipt, "SLICE_GATE_EXECUTION", this.sliceGateExecutionClaims(report, entry, contextFacts), { at });
+    if (report.verdict === "PASS") invariant(entry.exit_code === 0, "slice gate PASS requires a successful platform execution", "SLICE_GATE_ACCEPTANCE_FAILED", { exit_code: entry.exit_code });
+    return {
+      receipt,
+      summary: {
+        command: entry.command,
+        exit_code: entry.exit_code,
+        stdout_sha256: entry.stdout_sha256,
+        regression_artifact_sha256: entry.regression_artifact_sha256,
+        receipt_id: receipt.receipt_id,
+      },
+    };
+  }
+
   auditReceiptClaims(report, entry) {
     return {
       task_id: report.task_id,
@@ -1330,6 +1378,15 @@ class ProjectOrchestrator {
             && event.base_commit === active.base_commit
             && event.candidate_commit === active.candidate_commit
             && event.context_hash === active.context_hash, "slice gate report is detached from its lease/context", "EVENT_REPORT_INVALID");
+          const acquiredEvent = [...events.slice(0, index)].reverse().find((prior) => prior.event_type === "SLICE_GATE_LEASE_ACQUIRED"
+            && prior.lease?.lease_id === active.lease_id);
+          const contextFacts = acquiredEvent?.payload?.slice_context;
+          invariant(contextFacts && sha256(stableJson(contextFacts)) === event.context_hash, "slice gate report lost its signed lease context", "EVENT_SLICE_CONTEXT_INVALID");
+          const gateEvidence = this.verifySliceGateAcceptance(report, contextFacts, { at: event.timestamp });
+          const eventExecutionReceipt = event.platform_receipts.find((receipt) => receipt.kind === "SLICE_GATE_EXECUTION");
+          invariant(stableJson(eventExecutionReceipt) === stableJson(report.acceptance.commands[0].receipt)
+            && event.payload?.slice_gate_execution_receipt_id === gateEvidence.receipt.receipt_id
+            && stableJson(event.acceptance) === stableJson({ ...emptyAcceptance(), commands: [gateEvidence.summary] }), "slice gate event does not preserve its mechanical execution evidence", "EVENT_SLICE_EVIDENCE_INVALID");
           trackReceipt(report.identity_attestation);
           trackReceipt(report.report_receipt);
           const trustedReport = this.verifyReportTrust(report, { at: event.timestamp });
@@ -2272,6 +2329,7 @@ class ProjectOrchestrator {
       invariant(report.branch === this.git.branch() && report.branch === this.policy.integration_branch, "slice gate report branch mismatch", "REPORT_BRANCH_MISMATCH");
       invariant(normalizePath(path.resolve(report.worktree)) === this.git.worktree(), "slice gate report worktree mismatch", "REPORT_WORKTREE_MISMATCH");
       invariant(["PASS", "FAIL"].includes(report.verdict), "slice gate verdict must be PASS or FAIL", "REPORT_VERDICT_INVALID");
+      const gateEvidence = this.verifySliceGateAcceptance(report, context.facts);
       const trustedReport = this.verifyReportTrust(report);
       const priorIdentities = projection.events
         .filter((event) => event.task_id && event.slice_id === report.slice_id && event.event_type === "ROLE_REPORT_RECORDED")
@@ -2288,11 +2346,12 @@ class ProjectOrchestrator {
         candidateCommit: report.candidate_commit,
         contextHash: report.context_hash,
         lease: { ...lease, action: "RELEASE" },
-        acceptance: report.acceptance,
+        acceptance: { commands: [gateEvidence.summary] },
         decisionLevel: "TASK_AUTONOMOUS",
         execution: report.execution,
         fingerprint: report.verdict === "FAIL" ? failureFingerprint(report.failure_fingerprint ?? report.summary ?? "SLICE_GATE_FAIL") : null,
-        payload: { slice_id: report.slice_id, report, trusted_report: trustedReport, independent_from: priorIdentities },
+        platformReceipts: [report.acceptance.commands[0].receipt],
+        payload: { slice_id: report.slice_id, report, trusted_report: trustedReport, independent_from: priorIdentities, slice_gate_execution_receipt_id: gateEvidence.receipt.receipt_id },
       })];
     });
     return finalized[0];
@@ -3234,9 +3293,10 @@ class ProjectOrchestrator {
         user_entry_acceptance: context.row?.values["创作者可演示验收"] ?? null,
         completion_boundary: context.row?.values["完成边界"] ?? null,
         report_schema: "g07-role-report/v4",
-        platform_receipts_required: ["LEASE_GRANT", "ROLE_IDENTITY", "ROLE_REPORT"],
+        acceptance_command: this.sliceGateCommand(context.facts),
+        platform_receipts_required: ["LEASE_GRANT", "SLICE_GATE_EXECUTION", "ROLE_IDENTITY", "ROLE_REPORT"],
         source_bodies_embedded: false,
-        instructions: "Acquire the slice_gate_runner lease, start from the registered user entry, run the slice acceptance only, return a platform-signed PASS/FAIL report for this exact slice context, and do not modify implementation, Task status, or any Gate.",
+        instructions: "Acquire the slice_gate_runner lease, start from the registered user entry, run the exact slice acceptance command through the platform, and return its signed exit/stdout/regression evidence with PASS/FAIL for this exact context. Do not modify implementation, Task status, or any Gate.",
       };
     }
     invariant(taskId && REPORT_ROLES.has(role), "prompt requires a Task role and taskId", "PROMPT_INPUT_INVALID");
@@ -3728,7 +3788,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     }));
     return orchestrator.lease({ runId, sliceId, role: "slice_gate_runner", actorId, attemptId, ttlSeconds, candidateCommit: commit, platformReceipt: receipt });
   };
-  const signedSliceGateReport = (harness, { runId, sliceId, actorId, attemptId, verdict = "PASS", principalId = null, sessionId = null }) => {
+  const signedSliceGateReport = (harness, { runId, sliceId, actorId, attemptId, verdict = "PASS", principalId = null, sessionId = null, withEvidence = true, commandExitCode = 0 }) => {
     const { orchestrator, platform, fakeGit } = harness;
     const lease = orchestrator.project().activeLeases.find((item) => item.role === "slice_gate_runner" && item.slice_id === sliceId && item.attempt_id === attemptId);
     invariant(lease, "self-test slice report requires an active lease");
@@ -3752,6 +3812,18 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       acceptance: emptyAcceptance(),
       execution: emptyExecution(),
     };
+    if (withEvidence) {
+      const context = orchestrator.sliceGateContext(sliceId, orchestrator.project());
+      const entry = {
+        command: orchestrator.sliceGateCommand(context.facts),
+        exit_code: commandExitCode,
+        stdout_sha256: sha256(`self-test-slice-stdout:${sliceId}:${attemptId}:${commandExitCode}`),
+        regression_artifact_sha256: sha256(stableJson({ sliceId, attemptId, candidateCommit: report.candidate_commit, commandExitCode })),
+        receipt: null,
+      };
+      entry.receipt = platform.issue("SLICE_GATE_EXECUTION", orchestrator.sliceGateExecutionClaims(report, entry, context.facts));
+      report.acceptance.commands = [entry];
+    }
     report.identity_attestation = platform.issue("ROLE_IDENTITY", {
       principal_id: principalId ?? `attested-slice-${attemptId}`,
       session_id: sessionId ?? `attested-slice-session-${attemptId}`,
@@ -4065,11 +4137,31 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     const slicePrompt = sliceGateHarness.orchestrator.rolePrompt({ runId: "slice-gate", role: "slice_gate_runner", sliceId: "S6" });
     assertCheck("slice-gate:prompt-binds-complete-verified-context", slicePrompt.task_evidence.length === 3
       && slicePrompt.task_evidence.every((item) => item.status === "VERIFIED" && isSha256(item.evidence_hash))
-      && isSha256(slicePrompt.context_hash), slicePrompt);
+      && isSha256(slicePrompt.context_hash)
+      && slicePrompt.acceptance_command.startsWith("SLICE_GATE_USER_ENTRY:S6:")
+      && slicePrompt.platform_receipts_required.includes("SLICE_GATE_EXECUTION"), slicePrompt);
     const sliceLease = signedSliceGateLease(sliceGateHarness, { runId: "slice-gate", sliceId: "S6", actorId: "slice-runner", attemptId: "slice-gate-1" });
+    expectError("slice-gate:pass-with-empty-acceptance-rejected", () => signedSliceGateReport(sliceGateHarness, {
+      runId: "slice-gate",
+      sliceId: "S6",
+      actorId: "slice-runner",
+      attemptId: "slice-gate-1",
+      verdict: "PASS",
+      withEvidence: false,
+    }), "SLICE_GATE_EVIDENCE_INCOMPLETE");
+    expectError("slice-gate:pass-with-failed-platform-execution-rejected", () => signedSliceGateReport(sliceGateHarness, {
+      runId: "slice-gate",
+      sliceId: "S6",
+      actorId: "slice-runner",
+      attemptId: "slice-gate-1",
+      verdict: "PASS",
+      commandExitCode: 1,
+    }), "SLICE_GATE_ACCEPTANCE_FAILED");
     const sliceReportEvent = signedSliceGateReport(sliceGateHarness, { runId: "slice-gate", sliceId: "S6", actorId: "slice-runner", attemptId: "slice-gate-1", verdict: "PASS" });
     assertCheck("slice-gate:lease-and-report-enter-trusted-event-chain", sliceLease.event_type === "SLICE_GATE_LEASE_ACQUIRED"
       && sliceReportEvent.event_type === "SLICE_GATE_REPORT_RECORDED"
+      && sliceReportEvent.acceptance.commands.length === 1
+      && sliceReportEvent.platform_receipts.some((receipt) => receipt.kind === "SLICE_GATE_EXECUTION")
       && sliceGateHarness.orchestrator.project().slices.get("S6").gate_verdict === "PASS", sliceReportEvent);
 
     const leaseHarness = makeHarness();

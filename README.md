@@ -106,10 +106,11 @@
 |---|---|
 | [实施控制面](./docs/IMPLEMENTATION_CONTROL.md) | Gate、事实源职责、成熟度、术语/RPC、全局裁决、FP/Task 骨架和角色窗口 |
 | [项目上下文路由器](./tools/project-context-loader.mjs) | 按 Task、角色与精确 FP 范围生成带哈希的只读上下文路由 |
-| [自治状态编排器](./tools/project-orchestrator.mjs) | G07-A v5 的外部单调事件 head、Ed25519 收据、平台写 capability、主责 Auditor/Slice Gate 生命周期、历史回放、原始 blob 证据、预算和恢复控制面；不调用模型 |
-| [自治证据复现器](./tools/g07-control-evidence.mjs) | 从 G01-G06 基线 Git 对象复现旧 58 项，并动态校验完整基线 scope、原始 blob 秘密、活动 evidence、实现 commit 制品及 LF 可复现性 |
+| [自治状态编排器](./tools/project-orchestrator.mjs) | G07-A v6 的外部单调事件 head、Ed25519 收据、平台写 capability、主责 Auditor/Slice Gate 机械执行证据、历史回放、原始 blob 证据、预算和恢复控制面；不调用模型 |
+| [自治证据复现器](./tools/g07-control-evidence.mjs) | 从 G01-G06 基线 Git 对象复现旧 58 项，并现场执行自测、语法和 Dry Run，与活动 evidence 的完整机械声明逐项比对 |
 | [自治机器政策](./.autonomy/policy.json) | `G07::AUTONOMY` 的阶段/Gate/制品哈希、平台信任根、外部 head、可信 inbox、写 capability、预算和硬停止规则 |
-| [当前 G07-A v5 机械证据](./docs/G07_A_EVIDENCE_V5.json) | 锁定 v5 实现、58/78/116/7 项测试、Dry Run、实现 commit 制品和全基线扫描；最终登记由证据复现器动态覆盖 |
+| [当前 G07-A v6 机械证据](./docs/G07_A_EVIDENCE_V6.json) | 锁定 v6 实现、58/78/118/9 项测试、Dry Run 语义、实现 commit 制品和全基线扫描；`--all` 对完整声明做结构相等验证 |
+| [历史 G07-A v5 机械证据](./docs/G07_A_EVIDENCE_V5.json) | 已被最新 G07-B 的两项 P1 取代，仅保留审计追溯，不代表当前返修通过 |
 | [历史 G07-A v4 机械证据](./docs/G07_A_EVIDENCE_V4.json) | 已被最新 G07-B 的七项 P1 取代，仅保留审计追溯，不代表当前返修通过 |
 | [历史 G07-A v3 机械证据](./docs/G07_A_EVIDENCE_V3.json) | 已被第三轮 G07-B 判为失效，仅保留审计追溯，不代表当前返修通过 |
 | [历史 G07-A 机械证据](./docs/G07_A_EVIDENCE.json) | 已被第二轮 G07-B 判为失效的上一版证据，仅保留审计追溯，不代表当前返修通过 |
@@ -129,7 +130,7 @@
 | `G04_R1_GATE` | `APPROVED`（历史 66-Task 蓝图；当前控制面不再提供其可执行 Task Index） |
 | `G04_GATE` / `G04_REVISION` | `APPROVED` / `2`（85 个 Task；仅 `F0-01-REPO` 为 `READY`，其余 84 个 `PLANNED`） |
 | `G05_GATE` / `G06_GATE` | `APPROVED` / `APPROVED`（G06 当前路由器扩展自测 78/78） |
-| `G07_GATE` / `G07_A_STATUS` | `PENDING` / `IMPLEMENTED`；最新 P0=0、P1=7 已完成 v5 返修并登记完整复现命令，等待新的独立 G07-B，不得执行产品 Task |
+| `G07_GATE` / `G07_A_STATUS` | `PENDING` / `IMPLEMENTED`；最新 P0=0、P1=2 已完成 v6 返修，等待新的独立 G07-B，不得执行产品 Task |
 | MVP 身份/配置边界 | 本地单人、免登录、不跨设备；稳定 `local_operator_id`；第一次模型调用前安全默认预算可见可改；统一配置面显示五类生效值/版本 |
 | 业务意图 | V7 已基线化，仍有登记的对齐债 |
 | Prompt 源 | FP001-FP014 已识别 LLM 节点的源文本已基线化；未证明已部署或已验证 |

@@ -52,13 +52,13 @@ G07_A_ROUTER_PATH=tools/project-context-loader.mjs
 G07_A_ROUTER_SHA256=10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47
 G07_A_ROUTER_TEST_ASSERTIONS=78
 G07_A_ORCHESTRATOR_PATH=tools/project-orchestrator.mjs
-G07_A_ORCHESTRATOR_SHA256=d0c6a89f88161f48ae5a17e1a140cdd2b91426e5fe19dfdd3f38be9985f38f43
-G07_A_ORCHESTRATOR_TEST_ASSERTIONS=116
+G07_A_ORCHESTRATOR_SHA256=2a39074b88bb96404171c6fcdb394cc6ff373bee408270a0217739b97f130713
+G07_A_ORCHESTRATOR_TEST_ASSERTIONS=118
 G07_A_POLICY_PATH=.autonomy/policy.json
-G07_A_POLICY_SHA256=f69a0625e0c73c853260469388f840907aa5c8c058bba1871a8b3a366edf49f3
+G07_A_POLICY_SHA256=2eb39d5c0a33bb9419a005379fa00c88eb377711fc6b834825fe6250d7627fd5
 G07_A_EVIDENCE_TOOL_PATH=tools/g07-control-evidence.mjs
-G07_A_EVIDENCE_TOOL_SHA256=763c2e6f3c819da4b5a930a8fb4791740ab5bb8622bccd5b0c66d9b5a8db685a
-G07_A_EVIDENCE_TOOL_TEST_ASSERTIONS=7
+G07_A_EVIDENCE_TOOL_SHA256=8faf56900e39940f2d3aa36d29f7180cd057661181e34d753c78673ccc734c61
+G07_A_EVIDENCE_TOOL_TEST_ASSERTIONS=9
 G07_A_FULL_EVIDENCE_COMMAND=node tools/g07-control-evidence.mjs --all
 G07_A_COMMIT=7753c3f3c6f9acf088e25b37dc393aa5f58b8048
 G07_A_SUPERSEDED_V4_COMMIT=4466caa862673d7aa168a851ba1dfaa52c2098c6
@@ -95,7 +95,7 @@ G07_A_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495e45837533f10e4
 | G04-r2 | APPROVED | 创作者 | 2026-07-11，创作者先要求依据四组回写重做，审阅修订后的 85-Task 蓝图后在本任务明确回复“批准”；`G04_REVISION_APPROVAL_EVIDENCE=CREATOR_EXPLICIT_APPROVAL_IN_TASK` | revision 2 依赖图、切片和 Task Index 生效；当前只把无依赖的 `F0-01-REPO` 置为 `READY`，不代表任何实现完成 |
 | G05 | APPROVED | 创作者 | 2026-07-11，创作者明确批准独立 G04 审计结果：P0=0、P1=0、P2=2、`NEXT_GATE=YES` | G05 审计 Gate 生效；两个 P2 保留，不提升任何实现成熟度，Task 状态仍为 1 READY、84 PLANNED |
 | G06 | APPROVED | 创作者 | 2026-07-11，创作者审阅单一项目上下文加载器的四域样例、58/58 自测和 `G05-CTX-BA-01~08` 后明确回复“批准 G06”；旧制品哈希和断言数保留在 `G06_BASELINE_*`。本轮创作者明确要求在 G07-A 扩展路由，当前制品由 `G06_ARTIFACT_SHA256` 与 78 项自测锁定，但不因此批准 G07 | G06 上下文路由职责继续生效；加载器按角色、Task 与精确 FP 范围路由，不提升任何 Task、Schema、代码或行为证据成熟度，状态仍为 1 READY、84 PLANNED |
-| G07 | PENDING | 创作者 | 最新独立审计为 P0=0、P1=7、P2=0；七项 P1 已完成 v5 返修，活动 evidence、实现 commit、制品哈希和完整复现命令均已登记 | 在最终登记 HEAD 运行 `G07_A_FULL_EVIDENCE_COMMAND` 后交新的独立 G07-B；不得自动批准 Gate 或执行产品 Task |
+| G07 | PENDING | 创作者 | 最新独立审计为 P0=0、P1=2、P2=0；Slice Gate 机械执行证据和活动 evidence 声明复现正在进入 v6 返修登记 | 在最终登记 HEAD 运行 `G07_A_FULL_EVIDENCE_COMMAND` 后交新的独立 G07-B；不得自动批准 Gate 或执行产品 Task |
 
 > Gate 规则：精确键值是自动检查入口，表格是人类可读解释。`G04_R1_GATE` 只保存历史；当前 Task Index 绑定 `G04_REVISION=2`，唯一活动执行键是 `G04_GATE`。其现值不是 APPROVED 时一律阻断。任何 Gate 不得由模型、开发代理、测试结果或 n8n 运行结果代替创作者批准。
 
@@ -122,7 +122,7 @@ G07_A_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495e45837533f10e4
 4. 所有可提升状态的租约、迁移、解锁、角色身份/报告、命令执行、审计、评审、Architect 边界、阻断解除、计量和最终 Gate 必须由登记平台 Ed25519 收据授权，并在投影前重新验签、验 claims、验 receipt 唯一性和状态机语义。私钥不得位于工作区或角色可读权限域；历史 `VERIFIED` 事件保存其不可变 control-context facts，回放使用历史验收命令、scope 和秘密扫描版本，不因后续合法 policy/tool/control 升级而失效。
 5. 写租约还必须取得 `WORKSPACE_CAPABILITY`：平台 sandbox 只开放该 Task 精确 write scope，并拒绝 `.git/**`、`.autonomy/**`、`.env*`、可信收据 inbox 和 scope 外路径；签名主体/会话必须与主责执行报告一致。Coder、Prompt Editor，以及 Task Index 明确登记为 `VIEW::AUDITOR` 的主责证据 Task 共用这一单写入者能力边界；后者不能借审计身份绕过 scope，也不能修改产品实现制造 PASS。普通 `git status` 或提示词不是能力隔离。CLI 只可读取登记在工作区外可信 inbox 内的普通单链接 JSON 文件，必须通过 lexical boundary、realpath、类型、大小、符号链接/目录联接和硬链接检查；平台公钥和外部 head 命令使用同等文件边界。
 6. 自动 Task Gate 的机械条件为：活动 G04 Gate/版本有效；直接依赖全部 `VERIFIED`；候选 commit 存在且未过期；工作树 tracked/untracked clean；平台 capability 有效；由稳定 control context 绑定 base/candidate commit、含删除路径的 diff/scope、验收命令和原始 candidate Git blobs。秘密扫描逐 blob 读取文本/二进制对象；超限或不可扫描对象直接阻断。登记平台还须签发精确命令、退出码、stdout 哈希与回归制品收据；主责执行者、独立 Auditor、Reviewer 必须针对同一 commit 且具有互异的平台主体和会话。调用方自报 actor/session、exit code 或任意 64 位字符串不是证据。
-7. 新 candidate commit 自动使旧 Auditor/Reviewer 证据失效。Architect lease/report 必须绑定投影中的真实 REPLAN candidate、当前 base/context 和同一租约，detached 或不存在的 candidate 一律拒绝。Slice Gate Runner 只有在切片全部必要 Task `VERIFIED` 且每个 Task 有机械证据哈希后，才可取得专用只读 slice lease，从用户入口执行验收；其 PASS/FAIL 必须进入同一可信事件链，但不得修改产品实现、Task 状态或项目 Gate。
+7. 新 candidate commit 自动使旧 Auditor/Reviewer 证据失效。Architect lease/report 必须绑定投影中的真实 REPLAN candidate、当前 base/context 和同一租约，detached 或不存在的 candidate 一律拒绝。Slice Gate Runner 只有在切片全部必要 Task `VERIFIED` 且每个 Task 有机械证据哈希后，才可取得专用只读 slice lease；PASS 还必须取得唯一 `SLICE_GATE_EXECUTION` 平台收据，绑定登记用户入口、完成边界、全部 Task evidence、同一 commit/context、退出码、stdout 和回归制品。空 acceptance、失败退出或任意自报哈希不得产生 PASS；报告与执行收据必须进入同一可信事件链，且不得修改产品实现、Task 状态或项目 Gate。
 8. `G07_GATE` 只能由创作者明确批准后登记。测试全绿、dry-run、Task/Slice `VERIFIED`、Architect 结论或独立 G07-B 都不得自动写 `G07_GATE=APPROVED`。
 
 ### 并发、返修与 Replan
@@ -134,7 +134,7 @@ G07_A_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495e45837533f10e4
 
 ### 分支、模型、预算与硬停止
 
-1. G01-G06 干净基线后，自治只在 `autonomy/integration` 工作；不得自动合并主分支、push、部署、写生产数据、读取/提交凭据或修改 `.env`。`tools/g07-control-evidence.mjs --all` 从 `G07_A_BASE_COMMIT` 动态扫描到调用时 `HEAD`，包含证据登记 commit，逐 candidate blob 执行 scope/秘密检查，并从 Git 对象直接复现旧 G06 58 项；它还必须验证活动 evidence 文件自身哈希、`G07_A_COMMIT` 存在且为当前候选祖先、该实现 commit 内制品哈希与登记一致，以及登记治理文件在 `core.autocrlf=true` 下仍由 `.gitattributes` 固定为 LF。上述条件不能由角色报告、测试或 Architect 放行。
+1. G01-G06 干净基线后，自治只在 `autonomy/integration` 工作；不得自动合并主分支、push、部署、写生产数据、读取/提交凭据或修改 `.env`。`tools/g07-control-evidence.mjs --all` 从 `G07_A_BASE_COMMIT` 动态扫描到调用时 `HEAD`，包含证据登记 commit，逐 candidate blob 执行 scope/秘密检查，并从 Git 对象直接复现旧 G06 58 项；它还必须验证活动 evidence 文件自身哈希、`G07_A_COMMIT` 存在且为当前候选祖先、该实现 commit 内制品哈希与登记一致，以及登记治理文件在 `core.autocrlf=true` 下仍由 `.gitattributes` 固定为 LF。活动 evidence 不登记随 HEAD 漂移的 stdout/base/context 常量，而登记完整 `mechanical_claims`；`--all` 必须现场执行 G06/G07/证据工具自测、语法检查和 Dry Run，并与声明对象做完整结构相等比较，任何遗漏或陈旧声明都使总结果失败。上述条件不能由角色报告、测试或 Architect 放行。
 2. `MODEL::CODE_HIGH` 映射为当前环境可用的最强代码推理能力，`MODEL::CODE_MEDIUM` 映射为当前环境的标准代码推理档。若平台不能按角色选择模型，可使用当前最强模型，但必须保持独立会话、角色和证据隔离，并把实际可见模型写入事件；不得伪造模型切换。当前平台若不能向 Orchestrator 提供可信会话见证，只能保存角色报告并转 `ENVIRONMENT_APPROVAL_REQUIRED`，不能用自报字符串补足独立性。
 3. 预算上限只取已登记 `.autonomy/policy.json`，run/角色报告不得覆盖；实际用量只累加登记平台签发且不可复用的计量收据。token、时间和已知费用任一已配置维度达到 80% 必须通知，达到 100% 在产生下一次外部/模型/付费动作前硬停。未配置或环境不可见的费用必须明确记为 `unknown`，不得由报告方少报或假报为 0。
 4. G07-A 只实现控制面、状态机、证据校验、提示词生成和 dry-run；不得真实调用项目模型、运行付费测试、执行产品 Task、push、部署、写生产或访问凭据。平台审批无法自动绕过时输出 `ENVIRONMENT_APPROVAL_REQUIRED`。
@@ -143,7 +143,7 @@ G07_A_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495e45837533f10e4
 
 | 检查点 | 当前状态 | 机械证据 | 批准边界 |
 |---|---|---|---|
-| G07-A 实现 | `IMPLEMENTED` | `G07_A_COMMIT` 锁定 v5 实现；`G07_A_EVIDENCE_PATH/SHA256` 锁定 58/78/116/7 项测试、Dry Run、实现 commit 制品和全基线证据；`G07_A_FULL_EVIDENCE_COMMAND` 动态覆盖到审计调用时 HEAD，包含登记提交 | 只证明控制面实现和内部机械验证，不能批准 Gate 或启动产品 Task |
+| G07-A 实现 | `IMPLEMENTED` | `G07_A_COMMIT` 锁定 v6 实现；`G07_A_EVIDENCE_PATH/SHA256` 锁定 58/78/118/9 项测试、机械复现的 Dry Run 语义、实现 commit 制品和全基线证据；`G07_A_FULL_EVIDENCE_COMMAND` 动态覆盖到审计调用时 HEAD，包含登记提交 | 只证明控制面实现和内部机械验证，不能批准 Gate 或启动产品 Task |
 | G07-B 独立审查 | `PENDING` | 独立角色复核同一 G07-A commit 的政策、状态机、证据、失败和恢复 | Reviewer 不得自批 Gate |
 | `G07_GATE` | `PENDING` | 创作者明确批准证据 | 只有创作者可改为 `APPROVED` |
 

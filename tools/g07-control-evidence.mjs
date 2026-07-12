@@ -22,6 +22,7 @@ const ALLOWED_G07_PATHS = new Set([
   "docs/G07_A_EVIDENCE_V3.json",
   "docs/G07_A_EVIDENCE_V4.json",
   "docs/G07_A_EVIDENCE_V5.json",
+  "docs/G07_A_EVIDENCE_V6.json",
   "docs/IMPLEMENTATION_CONTROL.md",
   "tools/g07-control-evidence.mjs",
   "tools/project-context-loader.mjs",
@@ -44,6 +45,7 @@ const LF_REPRODUCIBLE_PATHS = [
   "tools/project-orchestrator.mjs",
   "docs/IMPLEMENTATION_CONTROL.md",
   "docs/G07_A_EVIDENCE_V4.json",
+  "docs/G07_A_EVIDENCE_V5.json",
 ];
 
 function invariant(condition, message, code = "G07_EVIDENCE_ERROR", details = null) {
@@ -56,6 +58,14 @@ function invariant(condition, message, code = "G07_EVIDENCE_ERROR", details = nu
 
 function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map((item) => stableJson(item)).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function normalizePath(value) {
@@ -129,8 +139,8 @@ fs.readFileSync = (filePath, options) => {
   const marker = source.lastIndexOf("main();");
   invariant(marker >= 0, "baseline loader main marker is missing", "G06_BASELINE_SOURCE_INVALID");
   source = source.slice(0, marker) + injection + source.slice(marker);
-  const result = run(root, process.execPath, ["--input-type=module", "-", "--self-test", "--root", root], { input: Buffer.from(source), encoding: null });
-  const stdout = result.stdout ?? Buffer.alloc(0);
+  const execution = run(root, process.execPath, ["--input-type=module", "-", "--self-test", "--root", root], { input: Buffer.from(source), encoding: null });
+  const stdout = execution.stdout ?? Buffer.alloc(0);
   const parsed = JSON.parse(stdout.toString("utf8"));
   invariant(parsed.passed === true && parsed.assertions?.passed === 58 && parsed.assertions?.total === 58
     && (parsed.business_acceptance ?? []).every((item) => item.passed), "baseline G06 compatibility self-test failed", "G06_BASELINE_TEST_FAILED", parsed.failed_checks ?? null);
@@ -139,7 +149,7 @@ fs.readFileSync = (filePath, options) => {
     execution_mode: "REPOSITORY_EXECUTABLE_IN_MEMORY_GIT_OBJECTS",
     loader_sha256: sha256(loaderBytes),
     control_sha256: sha256(controlBytes),
-    exit_code: result.status,
+    exit_code: execution.status,
     stdout_sha256: sha256(stdout),
     assertions: parsed.assertions,
     business_acceptance_passed: true,
@@ -166,10 +176,7 @@ function scanBlob(bytes) {
   return [...SECRET_PATTERNS.entries()].filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
 }
 
-function fullBaselineScope(root, candidateCommit = "HEAD") {
-  const values = controlValues(root);
-  const baseCommit = values.get("G07_A_BASE_COMMIT");
-  invariant(baseCommit === BASELINE_COMMIT, "G07_A_BASE_COMMIT drifted from the approved G01-G06 baseline", "G07_BASE_COMMIT_MISMATCH", { registered: baseCommit, expected: BASELINE_COMMIT });
+function scanBaselineCandidate(root, baseCommit, candidateCommit) {
   const candidate = gitText(root, ["rev-parse", candidateCommit]);
   const paths = changedPaths(root, baseCommit, candidate);
   const unexpectedPaths = paths.filter((item) => !ALLOWED_G07_PATHS.has(item));
@@ -193,6 +200,30 @@ function fullBaselineScope(root, candidateCommit = "HEAD") {
     });
   }
   const diff = gitBuffer(root, ["diff", "--no-ext-diff", "--binary", baseCommit, candidate]);
+  return {
+    base_commit: baseCommit,
+    candidate_commit: candidate,
+    changed_paths: paths,
+    unexpected_paths: unexpectedPaths,
+    scope_passed: unexpectedPaths.length === 0,
+    candidate_diff_sha256: sha256(diff),
+    secret_scan: {
+      version: "G07_CANDIDATE_BLOBS_V1",
+      passed: hitTypes.size === 0,
+      hit_types: [...hitTypes].sort(),
+      scanned_blob_count: blobs.length,
+      binary_blob_count: blobs.filter((item) => item.binary).length,
+      blobs,
+    },
+  };
+}
+
+function fullBaselineScope(root, candidateCommit = "HEAD") {
+  const values = controlValues(root);
+  const baseCommit = values.get("G07_A_BASE_COMMIT");
+  invariant(baseCommit === BASELINE_COMMIT, "G07_A_BASE_COMMIT drifted from the approved G01-G06 baseline", "G07_BASE_COMMIT_MISMATCH", { registered: baseCommit, expected: BASELINE_COMMIT });
+  const scan = scanBaselineCandidate(root, baseCommit, candidateCommit);
+  const candidate = scan.candidate_commit;
   const status = run(root, "git", ["status", "--porcelain=v1", "--untracked-files=all"]);
   const artifactRegistrationKeys = [
     ["G06_ARTIFACT_PATH", "G06_ARTIFACT_SHA256"],
@@ -243,15 +274,15 @@ function fullBaselineScope(root, candidateCommit = "HEAD") {
       bytes_match_clean_checkout: Buffer.compare(worktreeBytes, committedBytes) === 0,
     };
   });
-  return {
+  const result = {
     base_commit: baseCommit,
     candidate_commit: candidate,
     worktree_clean: String(status.stdout ?? "").trim().length === 0,
-    changed_paths: paths,
+    changed_paths: scan.changed_paths,
     allowed_paths: [...ALLOWED_G07_PATHS].sort(),
-    unexpected_paths: unexpectedPaths,
-    scope_passed: unexpectedPaths.length === 0,
-    candidate_diff_sha256: sha256(diff),
+    unexpected_paths: scan.unexpected_paths,
+    scope_passed: scan.scope_passed,
+    candidate_diff_sha256: scan.candidate_diff_sha256,
     registered_artifacts: artifactRegistrations,
     registered_artifacts_match: artifactRegistrations.every((item) => item.matches),
     implementation_registration: {
@@ -278,15 +309,10 @@ function fullBaselineScope(root, candidateCommit = "HEAD") {
       g07_a_status: values.get("G07_A_STATUS"),
       g07_a_commit: values.get("G07_A_COMMIT"),
     },
-    secret_scan: {
-      version: "G07_CANDIDATE_BLOBS_V1",
-      passed: hitTypes.size === 0,
-      hit_types: [...hitTypes].sort(),
-      scanned_blob_count: blobs.length,
-      binary_blob_count: blobs.filter((item) => item.binary).length,
-      blobs,
-    },
+    secret_scan: scan.secret_scan,
   };
+  Object.defineProperty(result, "evidence_document", { value: evidenceDocument, enumerable: false });
+  return result;
 }
 
 function currentSelfTest(root, scriptPath) {
@@ -295,6 +321,130 @@ function currentSelfTest(root, scriptPath) {
   const parsed = JSON.parse(stdout.toString("utf8"));
   invariant(parsed.passed === true, `${scriptPath} self-test failed`, "CURRENT_SELF_TEST_FAILED", parsed.failed_checks ?? null);
   return { command: `node ${scriptPath} --self-test`, exit_code: result.status, stdout_sha256: sha256(stdout), assertions: parsed.assertions };
+}
+
+function currentSyntaxCheck(root) {
+  const result = run(root, process.execPath, ["--check", "tools/project-orchestrator.mjs"], { encoding: null });
+  return {
+    command: "node --check tools/project-orchestrator.mjs",
+    exit_code: result.status,
+    stdout_sha256: sha256(result.stdout ?? Buffer.alloc(0)),
+  };
+}
+
+function currentDryRun(root) {
+  const command = "node tools/project-orchestrator.mjs dry-run --run-id g07-a-evidence-replay";
+  const result = run(root, process.execPath, ["tools/project-orchestrator.mjs", "dry-run", "--run-id", "g07-a-evidence-replay"], { encoding: null });
+  const stdout = result.stdout ?? Buffer.alloc(0);
+  const parsed = JSON.parse(stdout.toString("utf8"));
+  return { command, exit_code: result.status, stdout_sha256: sha256(stdout), result: parsed };
+}
+
+function normalizedAssertions(value) {
+  return {
+    passed: Number(value?.passed),
+    failed: Number(value?.failed),
+    total: Number(value?.total),
+  };
+}
+
+function secretScanSummary(scan) {
+  return {
+    version: scan.version,
+    passed: scan.passed,
+    hit_types: scan.hit_types,
+    scanned_blob_count: scan.scanned_blob_count,
+    binary_blob_count: scan.binary_blob_count,
+  };
+}
+
+function buildMechanicalClaims(root, { baseline, currentTests, syntax, dryRun, implementationCommit }) {
+  const implementationScope = scanBaselineCandidate(root, BASELINE_COMMIT, implementationCommit);
+  const currentHead = gitText(root, ["rev-parse", "HEAD"]);
+  const dry = dryRun.result;
+  return {
+    validation_version: "G07_EVIDENCE_SEMANTIC_V1",
+    command: "node tools/g07-control-evidence.mjs --all",
+    baseline_compatibility: {
+      command: "node tools/g07-control-evidence.mjs --g06-baseline",
+      source_commit: baseline.source_commit,
+      execution_mode: baseline.execution_mode,
+      exit_code: baseline.exit_code,
+      assertions: normalizedAssertions(baseline.assertions),
+      business_acceptance_passed: baseline.business_acceptance_passed,
+    },
+    current_tests: {
+      g06: {
+        command: currentTests.g06.command,
+        exit_code: currentTests.g06.exit_code,
+        assertions: normalizedAssertions(currentTests.g06.assertions),
+      },
+      g07: {
+        command: currentTests.g07.command,
+        exit_code: currentTests.g07.exit_code,
+        assertions: normalizedAssertions(currentTests.g07.assertions),
+      },
+      evidence_tool: {
+        command: currentTests.evidence_tool.command,
+        exit_code: currentTests.evidence_tool.exit_code,
+        assertions: normalizedAssertions(currentTests.evidence_tool.assertions),
+      },
+      syntax: {
+        command: syntax.command,
+        exit_code: syntax.exit_code,
+      },
+    },
+    dry_run: {
+      command: dryRun.command,
+      exit_code: dryRun.exit_code,
+      selected_task_id: dry.selected_task_id,
+      selected_role: dry.selected_role,
+      selection_reason: dry.selection_reason,
+      ready_candidates: dry.ready_candidates,
+      task_status: dry.task_status,
+      fp_ids: dry.fp_ids,
+      base_commit_is_invocation_head: dry.base_commit === currentHead,
+      context_hash_is_sha256: /^[a-f0-9]{64}$/.test(String(dry.context_hash ?? "")),
+      router_execution_authorized: dry.router_execution_authorized,
+      policy_execution_allowed: dry.policy_execution_allowed,
+      policy_stop_reason: dry.policy_stop_reason,
+      event_log_unchanged: dry.event_log_unchanged,
+      event_count: dry.event_count,
+      product_files_written: dry.product_files_written,
+      task_status_changed: dry.task_status_changed,
+      g07_gate: dry.g07_gate,
+    },
+    implementation_scope: {
+      base_commit: implementationScope.base_commit,
+      candidate_commit: implementationScope.candidate_commit,
+      changed_paths: implementationScope.changed_paths,
+      unexpected_paths: implementationScope.unexpected_paths,
+      scope_passed: implementationScope.scope_passed,
+      candidate_diff_sha256: implementationScope.candidate_diff_sha256,
+      secret_scan: secretScanSummary(implementationScope.secret_scan),
+    },
+  };
+}
+
+function validateEvidenceClaims(scope, actualClaims) {
+  const document = scope.evidence_document;
+  const schemaValid = document?.schema_version === "g07-a-evidence/v6"
+    && document.evidence_status === "ACTIVE_IMPLEMENTATION_EVIDENCE"
+    && document.implementation?.candidate_commit === scope.implementation_registration.commit
+    && document.implementation?.g01_g06_base_commit === scope.base_commit
+    && document.implementation?.g07_gate === "PENDING"
+    && document.implementation?.g07_a_status === "IMPLEMENTED"
+    && document.implementation?.product_task_executed === false;
+  const claimsMatch = stableJson(document?.mechanical_claims ?? null) === stableJson(actualClaims);
+  return {
+    passed: schemaValid && claimsMatch,
+    schema_valid: schemaValid,
+    mechanical_claims_match: claimsMatch,
+    declared_sha256: sha256(stableJson(document?.mechanical_claims ?? null)),
+    actual_sha256: sha256(stableJson(actualClaims)),
+    declared: document?.mechanical_claims ?? null,
+    actual: actualClaims,
+  };
 }
 
 function parseArgs(argv) {
@@ -320,14 +470,19 @@ function main() {
     const binaryProbe = scanBlob(Buffer.concat([Buffer.from([0, 1]), Buffer.from(`sk-proj-${"A".repeat(24)}`), Buffer.from([0])]));
     if (options.mode === "self-test") {
       const registration = fullBaselineScope(options.root, options.candidate);
+      const exactClaimProbe = { dry_run: { selected_task_id: "F0-01-REPO", policy_execution_allowed: false } };
+      const staleClaimProbe = { dry_run: { ...exactClaimProbe.dry_run, stdout_sha256: "0".repeat(64) } };
       const assertions = [
         baseline.assertions.passed === 58,
         binaryProbe.includes("OPENAI_KEY"),
-        registration.active_evidence.hash_matches && registration.active_evidence.payload_matches_registration,
+        registration.active_evidence.hash_matches && registration.active_evidence.payload_matches_registration
+          && registration.active_evidence.schema_version === "g07-a-evidence/v6",
         registration.implementation_registration.exists && registration.implementation_registration.ancestor_of_candidate,
         registration.implementation_registration.artifacts_match,
         registration.lf_reproducibility.passed,
         registration.scope_passed && registration.secret_scan.passed && registration.registered_artifacts_match,
+        stableJson(exactClaimProbe) === stableJson(JSON.parse(JSON.stringify(exactClaimProbe))),
+        stableJson(exactClaimProbe) !== stableJson(staleClaimProbe),
       ];
       const report = {
         schema_version: "g07-control-evidence-self-test/v1",
@@ -363,17 +518,31 @@ function main() {
       if (!report.passed) process.exitCode = 1;
       return;
     }
+    const currentTests = options.mode === "all" ? {
+      g06: currentSelfTest(options.root, "tools/project-context-loader.mjs"),
+      g07: currentSelfTest(options.root, "tools/project-orchestrator.mjs"),
+      evidence_tool: currentSelfTest(options.root, "tools/g07-control-evidence.mjs"),
+    } : null;
+    const syntax = options.mode === "all" ? currentSyntaxCheck(options.root) : null;
+    const dryRun = options.mode === "all" ? currentDryRun(options.root) : null;
+    const actualClaims = options.mode === "all" ? buildMechanicalClaims(options.root, {
+      baseline,
+      currentTests,
+      syntax,
+      dryRun,
+      implementationCommit: scope.implementation_registration.commit,
+    }) : null;
+    const evidenceClaims = options.mode === "all" ? validateEvidenceClaims(scope, actualClaims) : null;
     const report = {
       schema_version: "g07-control-evidence/v1",
       branch: gitText(options.root, ["branch", "--show-current"]),
       candidate_committed_at: gitText(options.root, ["show", "-s", "--format=%cI", scope?.candidate_commit ?? "HEAD"]),
       baseline_compatibility: baseline,
       full_baseline_scope: scope,
-      current_tests: options.mode === "all" ? {
-        g06: currentSelfTest(options.root, "tools/project-context-loader.mjs"),
-        g07: currentSelfTest(options.root, "tools/project-orchestrator.mjs"),
-        evidence_tool: currentSelfTest(options.root, "tools/g07-control-evidence.mjs"),
-      } : null,
+      current_tests: currentTests,
+      syntax,
+      dry_run: dryRun,
+      evidence_claims: evidenceClaims,
     };
     report.passed = (baseline?.assertions.passed ?? 58) === 58
       && (scope?.scope_passed ?? true)
@@ -386,7 +555,10 @@ function main() {
       && (scope?.active_evidence.payload_matches_registration ?? true)
       && (scope?.lf_reproducibility.passed ?? true)
       && (scope?.worktree_clean ?? true)
-      && Object.values(report.current_tests ?? {}).every((item) => item.exit_code === 0);
+      && Object.values(report.current_tests ?? {}).every((item) => item.exit_code === 0)
+      && (syntax?.exit_code ?? 0) === 0
+      && (dryRun?.exit_code ?? 0) === 0
+      && (evidenceClaims?.passed ?? true);
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     if (!report.passed) process.exitCode = 1;
   } catch (error) {
