@@ -336,9 +336,27 @@ function main() {
         baseline,
         binary_secret_probe: binaryProbe,
         registration: {
-          active_evidence: registration.active_evidence,
-          implementation_registration: registration.implementation_registration,
-          lf_reproducibility: registration.lf_reproducibility,
+          active_evidence: {
+            path: registration.active_evidence.path,
+            hash_matches: registration.active_evidence.hash_matches,
+            payload_matches_registration: registration.active_evidence.payload_matches_registration,
+            schema_version: registration.active_evidence.schema_version,
+          },
+          implementation_registration: {
+            commit: registration.implementation_registration.commit,
+            exists: registration.implementation_registration.exists,
+            ancestor_of_candidate: registration.implementation_registration.ancestor_of_candidate,
+            artifacts_match: registration.implementation_registration.artifacts_match,
+          },
+          lf_reproducibility: {
+            passed: registration.lf_reproducibility.passed,
+            files: registration.lf_reproducibility.files.map((item) => ({
+              path: item.path,
+              attribute: item.attribute,
+              eol_lf: item.eol_lf,
+              bytes_match_clean_checkout: item.bytes_match_clean_checkout,
+            })),
+          },
         },
       };
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
