@@ -5,12 +5,32 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { SECRET_SCAN_VERSION, scanSecretBytes } from "./g07-sensitive-patterns.mjs";
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const DEFAULT_ROOT = path.resolve(path.dirname(SCRIPT_PATH), "..");
 const CONTROL_PATH = "docs/IMPLEMENTATION_CONTROL.md";
+const HARNESS_PATH = "DEV_HARNESS.md";
+const POLICY_PATH = ".autonomy/policy.json";
 const BASELINE_COMMIT = "7faa8c132de6a2e66829d3d4b89364b56181e022";
 const BASELINE_LOADER_PATH = "tools/project-context-loader.mjs";
+const ROLE_REPORT_SCHEMA = "g07-role-report/v5";
+
+const HARNESS_CONTROL_KEYS = Object.freeze([
+  "G07_GATE",
+  "G07_A_STATUS",
+  "G07_A_BRANCH",
+  "G07_A_COMMIT",
+  "G07_A_ORCHESTRATOR_SHA256",
+  "G07_A_ORCHESTRATOR_TEST_ASSERTIONS",
+  "G07_A_POLICY_SHA256",
+  "G07_A_EVIDENCE_TOOL_SHA256",
+  "G07_A_EVIDENCE_TOOL_TEST_ASSERTIONS",
+  "G07_A_SENSITIVE_PATTERNS_SHA256",
+  "G07_A_EVIDENCE_STATUS",
+  "G07_A_EVIDENCE_PATH",
+  "G07_A_EVIDENCE_SHA256",
+]);
 
 const ALLOWED_G07_PATHS = new Set([
   ".autonomy/.gitignore",
@@ -25,25 +45,20 @@ const ALLOWED_G07_PATHS = new Set([
   "docs/G07_A_EVIDENCE_V6.json",
   "docs/G07_A_EVIDENCE_V7.json",
   "docs/G07_A_EVIDENCE_V8.json",
+  "docs/G07_A_EVIDENCE_V9.json",
   "docs/IMPLEMENTATION_CONTROL.md",
   "tools/g07-control-evidence.mjs",
+  "tools/g07-sensitive-patterns.mjs",
   "tools/project-context-loader.mjs",
   "tools/project-orchestrator.mjs",
-]);
-
-const SECRET_PATTERNS = new Map([
-  ["AWS_ACCESS_KEY", /AKIA[0-9A-Z]{16}/],
-  ["OPENAI_KEY", /sk-(?:proj-)?[A-Za-z0-9_-]{20,}/],
-  ["GITHUB_TOKEN", /gh[pousr]_[A-Za-z0-9]{30,}/],
-  ["ANTHROPIC_KEY", /sk-ant-[A-Za-z0-9_-]{20,}/],
-  ["GOOGLE_API_KEY", /AIza[0-9A-Za-z_-]{30,}/],
-  ["SLACK_TOKEN", /xox[baprs]-[0-9A-Za-z-]{20,}/],
-  ["PRIVATE_KEY", /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
+  ".autonomy/policy.json",
+  "DEV_HARNESS.md",
 ]);
 
 const LF_REPRODUCIBLE_PATHS = [
   "tools/project-context-loader.mjs",
   "tools/g07-control-evidence.mjs",
+  "tools/g07-sensitive-patterns.mjs",
   "tools/project-orchestrator.mjs",
   "docs/IMPLEMENTATION_CONTROL.md",
   "docs/G07_A_EVIDENCE_V4.json",
@@ -56,6 +71,7 @@ const ACTIVE_ARTIFACT_REGISTRATIONS = [
   ["G07_A_ORCHESTRATOR_PATH", "G07_A_ORCHESTRATOR_SHA256"],
   ["G07_A_POLICY_PATH", "G07_A_POLICY_SHA256"],
   ["G07_A_EVIDENCE_TOOL_PATH", "G07_A_EVIDENCE_TOOL_SHA256"],
+  ["G07_A_SENSITIVE_PATTERNS_PATH", "G07_A_SENSITIVE_PATTERNS_SHA256"],
 ];
 
 const ACTIVE_HASH_REGISTRATIONS = [
@@ -112,9 +128,13 @@ function gitText(root, args) {
   return String(run(root, "git", args).stdout ?? "").trim();
 }
 
-function controlValues(root) {
-  const text = fs.readFileSync(path.join(root, CONTROL_PATH), "utf8");
+function documentValues(root, relativePath) {
+  const text = fs.readFileSync(path.join(root, relativePath), "utf8");
   return new Map([...text.matchAll(/^([A-Z0-9_-]+)=(.*)$/gm)].map((match) => [match[1], match[2].trim()]));
+}
+
+function controlValues(root) {
+  return documentValues(root, CONTROL_PATH);
 }
 
 function commitExists(root, commit) {
@@ -186,11 +206,6 @@ function candidateBlob(root, candidateCommit, relativePath) {
   return { mode, oid, bytes: gitBuffer(root, ["cat-file", "blob", oid]) };
 }
 
-function scanBlob(bytes) {
-  const text = bytes.toString("latin1");
-  return [...SECRET_PATTERNS.entries()].filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
-}
-
 function scanBaselineCandidate(root, baseCommit, candidateCommit) {
   const candidate = gitText(root, ["rev-parse", candidateCommit]);
   const paths = changedPaths(root, baseCommit, candidate);
@@ -202,7 +217,7 @@ function scanBaselineCandidate(root, baseCommit, candidateCommit) {
     if (!ALLOWED_G07_PATHS.has(relativePath)) continue;
     const blob = candidateBlob(root, candidate, relativePath);
     if (!blob) continue;
-    const hits = blob.bytes.length > maxBlobBytes ? ["OVERSIZE_BLOB_UNSCANNED"] : scanBlob(blob.bytes);
+    const hits = blob.bytes.length > maxBlobBytes ? ["OVERSIZE_BLOB_UNSCANNED"] : scanSecretBytes(blob.bytes);
     for (const hit of hits) hitTypes.add(hit);
     blobs.push({
       path: relativePath,
@@ -223,7 +238,7 @@ function scanBaselineCandidate(root, baseCommit, candidateCommit) {
     scope_passed: unexpectedPaths.length === 0,
     candidate_diff_sha256: sha256(diff),
     secret_scan: {
-      version: "G07_CANDIDATE_BLOBS_V1",
+      version: SECRET_SCAN_VERSION,
       passed: hitTypes.size === 0,
       hit_types: [...hitTypes].sort(),
       scanned_blob_count: blobs.length,
@@ -237,6 +252,28 @@ function expectedEvidenceSchema(values) {
   const match = /^ACTIVE_V([0-9]+)_IMPLEMENTATION_EVIDENCE$/.exec(values.get("G07_A_EVIDENCE_STATUS") ?? "");
   invariant(match, "active G07 evidence status does not declare a version", "G07_ACTIVE_EVIDENCE_STATUS_INVALID");
   return `g07-a-evidence/v${match[1]}`;
+}
+
+function harnessControlConsistency(root, values = controlValues(root)) {
+  const harness = documentValues(root, HARNESS_PATH);
+  const policy = JSON.parse(fs.readFileSync(path.join(root, ...POLICY_PATH.split("/")), "utf8"));
+  const comparisons = HARNESS_CONTROL_KEYS.map((key) => ({
+    key,
+    control: values.get(key) ?? null,
+    harness: harness.get(key) ?? null,
+    matches: Boolean(values.has(key) && harness.has(key) && values.get(key) === harness.get(key)),
+  }));
+  const contracts = [
+    { key: "G07_A_POLICY_SCHEMA", harness: harness.get("G07_A_POLICY_SCHEMA") ?? null, expected: policy.schema_version, matches: harness.get("G07_A_POLICY_SCHEMA") === policy.schema_version },
+    { key: "G07_A_REPORT_SCHEMA", harness: harness.get("G07_A_REPORT_SCHEMA") ?? null, expected: ROLE_REPORT_SCHEMA, matches: harness.get("G07_A_REPORT_SCHEMA") === ROLE_REPORT_SCHEMA },
+    { key: "G07_A_SECRET_SCAN_VERSION", harness: harness.get("G07_A_SECRET_SCAN_VERSION") ?? null, expected: SECRET_SCAN_VERSION, matches: harness.get("G07_A_SECRET_SCAN_VERSION") === SECRET_SCAN_VERSION },
+  ];
+  return {
+    path: HARNESS_PATH,
+    passed: [...comparisons, ...contracts].every((item) => item.matches),
+    comparisons,
+    contracts,
+  };
 }
 
 function fullBaselineScope(root, candidateCommit = "HEAD", { values = controlValues(root) } = {}) {
@@ -269,6 +306,7 @@ function fullBaselineScope(root, candidateCommit = "HEAD", { values = controlVal
   const evidenceActualSha256 = sha256(evidenceBytes);
   const evidenceDocument = JSON.parse(evidenceBytes.toString("utf8").replace(/^\uFEFF/, ""));
   const evidenceSchema = expectedEvidenceSchema(values);
+  const executionViewConsistency = harnessControlConsistency(root, values);
   const evidenceArtifactMatches = implementationArtifacts.every((item) => evidenceDocument.artifacts?.[item.path] === item.registered_sha256);
   const evidencePayloadMatches = evidenceDocument.evidence_status === "ACTIVE_IMPLEMENTATION_EVIDENCE"
     && evidenceDocument.implementation?.candidate_commit === implementationCommit
@@ -320,6 +358,7 @@ function fullBaselineScope(root, candidateCommit = "HEAD", { values = controlVal
       passed: lfReproducibility.every((item) => item.eol_lf && item.bytes_match_clean_checkout),
       files: lfReproducibility,
     },
+    execution_view_consistency: executionViewConsistency,
     gate_snapshot: {
       g07_gate: values.get("G07_GATE"),
       g07_a_status: values.get("G07_A_STATUS"),
@@ -374,7 +413,7 @@ function secretScanSummary(scan) {
   };
 }
 
-function buildMechanicalClaims(root, { baseline, currentTests, syntax, dryRun, implementationCommit }) {
+function buildMechanicalClaims(root, { baseline, currentTests, syntax, dryRun, implementationCommit, scope }) {
   const implementationScope = scanBaselineCandidate(root, BASELINE_COMMIT, implementationCommit);
   const currentHead = gitText(root, ["rev-parse", "HEAD"]);
   const dry = dryRun.result;
@@ -409,6 +448,12 @@ function buildMechanicalClaims(root, { baseline, currentTests, syntax, dryRun, i
         command: syntax.command,
         exit_code: syntax.exit_code,
       },
+    },
+    execution_view_consistency: {
+      path: scope.execution_view_consistency.path,
+      passed: scope.execution_view_consistency.passed,
+      compared_keys: scope.execution_view_consistency.comparisons.map((item) => item.key),
+      contracts: scope.execution_view_consistency.contracts.map(({ key, expected, matches }) => ({ key, expected, matches })),
     },
     dry_run: {
       command: dryRun.command,
@@ -474,6 +519,7 @@ function allReportPassed({ baseline, scope, currentTests, syntax, dryRun, eviden
     && (scope?.active_evidence.hash_matches ?? true)
     && (scope?.active_evidence.payload_matches_registration ?? true)
     && (scope?.lf_reproducibility.passed ?? true)
+    && (scope?.execution_view_consistency.passed ?? true)
     && (scope?.worktree_clean ?? true)
     && Object.values(currentTests ?? {}).every((item) => item.exit_code === 0)
     && (syntax?.exit_code ?? 0) === 0
@@ -538,7 +584,8 @@ function main() {
     const options = parseArgs(process.argv.slice(2));
     const baseline = ["all", "g06-baseline", "self-test"].includes(options.mode) ? baselineCompatibility(options.root) : null;
     const scope = ["all", "scope"].includes(options.mode) ? fullBaselineScope(options.root, options.candidate) : null;
-    const binaryProbe = scanBlob(Buffer.concat([Buffer.from([0, 1]), Buffer.from(`sk-proj-${"A".repeat(24)}`), Buffer.from([0])]));
+    const binaryProbe = scanSecretBytes(Buffer.concat([Buffer.from([0, 1]), Buffer.from(`sk-proj-${"A".repeat(24)}`), Buffer.from([0])]));
+    const fineGrainedPatProbe = scanSecretBytes(Buffer.from(`github_pat_${"A".repeat(82)}`));
     if (options.mode === "self-test") {
       const registration = fullBaselineScope(options.root, options.candidate);
       const exactClaimProbe = { dry_run: { selected_task_id: "F0-01-REPO", policy_execution_allowed: false } };
@@ -556,14 +603,21 @@ function main() {
         evidenceClaims: { passed: true },
       };
       const hashDriftProbes = registeredHashDriftProbes(options.root, options.candidate, healthyInputs);
+      const executionViewDriftValues = new Map(controlValues(options.root));
+      executionViewDriftValues.set("G07_A_COMMIT", "0".repeat(40));
+      const executionViewDrift = harnessControlConsistency(options.root, executionViewDriftValues);
       const assertions = [
         baseline.assertions.passed === 58,
         binaryProbe.includes("OPENAI_KEY"),
+        fineGrainedPatProbe.includes("GITHUB_FINE_GRAINED_PAT"),
         registration.active_evidence.hash_matches && registration.active_evidence.payload_matches_registration
           && registration.active_evidence.schema_version === registration.active_evidence.expected_schema_version,
         registration.implementation_registration.exists && registration.implementation_registration.ancestor_of_candidate,
         registration.implementation_registration.artifacts_match,
         registration.lf_reproducibility.passed,
+        registration.execution_view_consistency.passed,
+        executionViewDrift.passed === false
+          && executionViewDrift.comparisons.some((item) => item.key === "G07_A_COMMIT" && item.matches === false),
         registration.scope_passed && registration.secret_scan.passed && registration.registered_artifacts_match,
         stableJson(exactClaimProbe) === stableJson(JSON.parse(JSON.stringify(exactClaimProbe))),
         stableJson(exactClaimProbe) !== stableJson(staleClaimProbe),
@@ -575,9 +629,14 @@ function main() {
         assertions: { passed: assertions.filter(Boolean).length, failed: assertions.filter((item) => !item).length, total: assertions.length },
         baseline,
         binary_secret_probe: binaryProbe,
+        fine_grained_pat_probe: fineGrainedPatProbe,
         negative_tests: {
           empty_slice_acceptance: "COVERED_BY_PROJECT_ORCHESTRATOR_SELF_TEST",
           registered_hash_drift: hashDriftProbes,
+          execution_view_drift: {
+            rejected: executionViewDrift.passed === false,
+            mismatched_keys: executionViewDrift.comparisons.filter((item) => !item.matches).map((item) => item.key),
+          },
         },
         registration: {
           active_evidence: {
@@ -601,6 +660,11 @@ function main() {
               bytes_match_clean_checkout: item.bytes_match_clean_checkout,
             })),
           },
+          execution_view_consistency: {
+            passed: registration.execution_view_consistency.passed,
+            compared_keys: registration.execution_view_consistency.comparisons.map((item) => item.key),
+            contracts: registration.execution_view_consistency.contracts,
+          },
         },
       };
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
@@ -620,6 +684,7 @@ function main() {
       syntax,
       dryRun,
       implementationCommit: scope.implementation_registration.commit,
+      scope,
     }) : null;
     const evidenceClaims = options.mode === "all" ? validateEvidenceClaims(scope, actualClaims) : null;
     const report = {

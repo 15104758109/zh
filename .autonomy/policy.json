@@ -1,5 +1,5 @@
 {
-  "schema_version": "g07-autonomy-policy/v4",
+  "schema_version": "g07-autonomy-policy/v5",
   "control_anchor": "G07::AUTONOMY",
   "phase": "G07_A_CONTROL_PLANE_ONLY",
   "g07_gate_required": "APPROVED",
@@ -101,10 +101,11 @@
     "auditor_owner_requires_independent_auditor_and_reviewer": true,
     "slice_gate_requires_read_only_lease": true,
     "slice_gate_report_must_enter_event_chain": true,
-    "slice_gate_execution_receipt_required": true
+    "slice_gate_execution_receipt_required": true,
+    "model_session_receipt_required": true
   },
   "secret_scan": {
-    "version": "G07_CANDIDATE_BLOBS_V1",
+    "version": "G07_CANDIDATE_BLOBS_V2",
     "max_blob_bytes": 16777216,
     "scan_binary_blobs": true,
     "oversize_result": "BLOCKING"
