@@ -1226,6 +1226,7 @@ class ProjectOrchestrator {
       exit_code: entry.exit_code,
       stdout_sha256: entry.stdout_sha256,
       regression_artifact_sha256: entry.regression_artifact_sha256,
+      regression_artifact_bytes: entry.regression_artifact_bytes,
       read_only: true,
     };
   }
@@ -1237,7 +1238,9 @@ class ProjectOrchestrator {
     invariant(entry.command === this.sliceGateCommand(contextFacts)
       && Number.isInteger(entry.exit_code)
       && isSha256(entry.stdout_sha256)
-      && isSha256(entry.regression_artifact_sha256), "slice gate execution evidence is malformed or does not target the registered user entry", "SLICE_GATE_EVIDENCE_INVALID");
+      && isSha256(entry.regression_artifact_sha256)
+      && Number.isSafeInteger(entry.regression_artifact_bytes)
+      && entry.regression_artifact_bytes > 0, "slice gate execution evidence is malformed, empty, or does not target the registered user entry", "SLICE_GATE_EVIDENCE_INVALID");
     invariant((report.acceptance?.diff_hash ?? null) === null
       && (report.acceptance?.scope_evidence_hash ?? null) === null
       && (report.acceptance?.secret_scan_evidence_hash ?? null) === null, "read-only slice gate cannot claim implementation diff/scope/secret evidence", "SLICE_GATE_EVIDENCE_INVALID");
@@ -1250,6 +1253,7 @@ class ProjectOrchestrator {
         exit_code: entry.exit_code,
         stdout_sha256: entry.stdout_sha256,
         regression_artifact_sha256: entry.regression_artifact_sha256,
+        regression_artifact_bytes: entry.regression_artifact_bytes,
         receipt_id: receipt.receipt_id,
       },
     };
@@ -3296,7 +3300,7 @@ class ProjectOrchestrator {
         acceptance_command: this.sliceGateCommand(context.facts),
         platform_receipts_required: ["LEASE_GRANT", "SLICE_GATE_EXECUTION", "ROLE_IDENTITY", "ROLE_REPORT"],
         source_bodies_embedded: false,
-        instructions: "Acquire the slice_gate_runner lease, start from the registered user entry, run the exact slice acceptance command through the platform, and return its signed exit/stdout/regression evidence with PASS/FAIL for this exact context. Do not modify implementation, Task status, or any Gate.",
+        instructions: "Acquire the slice_gate_runner lease, start from the registered user entry, run the exact slice acceptance command through the platform, and return its signed exit/stdout/non-empty regression artifact evidence with PASS/FAIL for this exact context. Do not modify implementation, Task status, or any Gate.",
       };
     }
     invariant(taskId && REPORT_ROLES.has(role), "prompt requires a Task role and taskId", "PROMPT_INPUT_INVALID");
@@ -3788,7 +3792,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     }));
     return orchestrator.lease({ runId, sliceId, role: "slice_gate_runner", actorId, attemptId, ttlSeconds, candidateCommit: commit, platformReceipt: receipt });
   };
-  const signedSliceGateReport = (harness, { runId, sliceId, actorId, attemptId, verdict = "PASS", principalId = null, sessionId = null, withEvidence = true, commandExitCode = 0 }) => {
+  const signedSliceGateReport = (harness, { runId, sliceId, actorId, attemptId, verdict = "PASS", principalId = null, sessionId = null, withEvidence = true, commandExitCode = 0, regressionArtifactBytes = null }) => {
     const { orchestrator, platform, fakeGit } = harness;
     const lease = orchestrator.project().activeLeases.find((item) => item.role === "slice_gate_runner" && item.slice_id === sliceId && item.attempt_id === attemptId);
     invariant(lease, "self-test slice report requires an active lease");
@@ -3814,11 +3818,13 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     };
     if (withEvidence) {
       const context = orchestrator.sliceGateContext(sliceId, orchestrator.project());
+      const regressionArtifact = stableJson({ sliceId, attemptId, candidateCommit: report.candidate_commit, commandExitCode });
       const entry = {
         command: orchestrator.sliceGateCommand(context.facts),
         exit_code: commandExitCode,
         stdout_sha256: sha256(`self-test-slice-stdout:${sliceId}:${attemptId}:${commandExitCode}`),
-        regression_artifact_sha256: sha256(stableJson({ sliceId, attemptId, candidateCommit: report.candidate_commit, commandExitCode })),
+        regression_artifact_sha256: sha256(regressionArtifact),
+        regression_artifact_bytes: regressionArtifactBytes ?? Buffer.byteLength(regressionArtifact),
         receipt: null,
       };
       entry.receipt = platform.issue("SLICE_GATE_EXECUTION", orchestrator.sliceGateExecutionClaims(report, entry, context.facts));
@@ -4149,6 +4155,14 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       verdict: "PASS",
       withEvidence: false,
     }), "SLICE_GATE_EVIDENCE_INCOMPLETE");
+    expectError("slice-gate:pass-with-empty-regression-artifact-rejected", () => signedSliceGateReport(sliceGateHarness, {
+      runId: "slice-gate",
+      sliceId: "S6",
+      actorId: "slice-runner",
+      attemptId: "slice-gate-1",
+      verdict: "PASS",
+      regressionArtifactBytes: 0,
+    }), "SLICE_GATE_EVIDENCE_INVALID");
     expectError("slice-gate:pass-with-failed-platform-execution-rejected", () => signedSliceGateReport(sliceGateHarness, {
       runId: "slice-gate",
       sliceId: "S6",
