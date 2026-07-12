@@ -1,5 +1,5 @@
 {
-  "schema_version": "g07-autonomy-policy/v3",
+  "schema_version": "g07-autonomy-policy/v4",
   "control_anchor": "G07::AUTONOMY",
   "phase": "G07_A_CONTROL_PLANE_ONLY",
   "g07_gate_required": "APPROVED",
@@ -46,7 +46,8 @@
     "chain_algorithm": "SHA-256",
     "authority": "ED25519_PLATFORM_RECEIPTS",
     "local_symmetric_key_is_authority": false,
-    "semantic_replay_required": true
+    "semantic_replay_required": true,
+    "external_monotonic_head_required": true
   },
   "platform_trust": {
     "provider": "UNAVAILABLE",
@@ -59,6 +60,41 @@
     "receipt_version": "g07-platform-receipt/v1",
     "missing_provider_decision": "ENVIRONMENT_APPROVAL_REQUIRED",
     "caller_declared_values_are_evidence": false
+  },
+  "monotonic_head": {
+    "provider": "UNAVAILABLE",
+    "stream_id": "zhreplan-g07-autonomy",
+    "command_path": null,
+    "command_sha256": null,
+    "timeout_ms": 5000,
+    "missing_provider_decision": "ENVIRONMENT_APPROVAL_REQUIRED"
+  },
+  "receipt_inbox": {
+    "provider": "UNAVAILABLE",
+    "directory": null,
+    "max_file_bytes": 1048576,
+    "allow_subdirectories": false,
+    "missing_provider_decision": "ENVIRONMENT_APPROVAL_REQUIRED"
+  },
+  "workspace_capability": {
+    "required_for_writer": true,
+    "receipt_kind": "WORKSPACE_CAPABILITY",
+    "enforcement": "PLATFORM_SANDBOX",
+    "denied_patterns": [
+      ".git/**",
+      ".autonomy/**",
+      ".env",
+      ".env.*",
+      "**/.env",
+      "**/.env.*"
+    ],
+    "ignored_paths_must_be_unchanged": true
+  },
+  "secret_scan": {
+    "version": "G07_CANDIDATE_BLOBS_V1",
+    "max_blob_bytes": 16777216,
+    "scan_binary_blobs": true,
+    "oversize_result": "BLOCKING"
   },
   "critical_path": {
     "derivation": "DEPENDENCY_ANCESTRY_OF_REGISTERED_PATH_ENDPOINTS_AND_CRITICAL_TASKS",

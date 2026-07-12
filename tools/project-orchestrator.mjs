@@ -185,6 +185,100 @@ function hashFile(filePath) {
   return sha256(fs.readFileSync(filePath));
 }
 
+function pathInside(rootPath, candidatePath) {
+  const relative = path.relative(path.resolve(rootPath), path.resolve(candidatePath));
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function assertRegularFileWithoutLinks(filePath, { boundaryRoot = null, maxBytes = 16 * 1024 * 1024, purpose = "registered file" } = {}) {
+  const absolute = path.resolve(filePath);
+  if (boundaryRoot) invariant(pathInside(boundaryRoot, absolute), `${purpose} escapes its registered directory`, "TRUSTED_FILE_BOUNDARY_VIOLATION");
+  const parsed = path.parse(absolute);
+  let current = parsed.root;
+  for (const segment of absolute.slice(parsed.root.length).split(path.sep).filter(Boolean)) {
+    current = path.join(current, segment);
+    const stats = fs.lstatSync(current);
+    invariant(!stats.isSymbolicLink(), `${purpose} contains a symbolic link or junction`, "TRUSTED_FILE_SYMLINK_FORBIDDEN", { path: normalizePath(current) });
+  }
+  const stats = fs.statSync(absolute);
+  invariant(stats.isFile(), `${purpose} must be a regular file`, "TRUSTED_FILE_TYPE_INVALID");
+  invariant(stats.nlink === 1, `${purpose} cannot be a hard-linked alias`, "TRUSTED_FILE_HARDLINK_FORBIDDEN", { links: stats.nlink });
+  invariant(stats.size <= maxBytes, `${purpose} exceeds the registered size limit`, "TRUSTED_FILE_TOO_LARGE", { bytes: stats.size, max_bytes: maxBytes });
+  return { absolute, stats };
+}
+
+function normalizedHead(value, streamId) {
+  const count = Number(value?.event_count ?? 0);
+  const eventHash = value?.event_hash ?? null;
+  invariant(value?.stream_id === streamId && Number.isInteger(count) && count >= 0
+    && ((count === 0 && eventHash === null) || (count > 0 && isSha256(eventHash))), "external monotonic head is invalid", "EVENT_HEAD_INVALID");
+  return { stream_id: streamId, event_count: count, event_hash: eventHash };
+}
+
+class ExternalCommandMonotonicHead {
+  constructor({ commandPath, commandSha256, streamId, timeoutMs = 5000 }) {
+    const basename = path.basename(commandPath ?? "").toLowerCase();
+    invariant(basename !== ".env" && !basename.startsWith(".env."), "monotonic head command cannot be an environment file", "CREDENTIAL_ACCESS");
+    const checked = assertRegularFileWithoutLinks(commandPath, { maxBytes: 64 * 1024 * 1024, purpose: "monotonic head command" });
+    invariant(hashFile(checked.absolute) === commandSha256, "monotonic head command hash drifted", "EVENT_HEAD_COMMAND_HASH_MISMATCH");
+    this.commandPath = checked.absolute;
+    this.streamId = streamId;
+    this.timeoutMs = Number(timeoutMs);
+  }
+
+  run(args) {
+    const result = spawnSync(this.commandPath, args, {
+      encoding: "utf8",
+      windowsHide: true,
+      timeout: this.timeoutMs,
+      maxBuffer: 1024 * 1024,
+      shell: false,
+    });
+    invariant(result.status === 0, "external monotonic head command failed", "ENVIRONMENT_APPROVAL_REQUIRED", {
+      reason: "MONOTONIC_HEAD_COMMAND_FAILED",
+      exit_code: result.status,
+      stderr_sha256: sha256(result.stderr ?? ""),
+    });
+    let parsed;
+    try {
+      parsed = JSON.parse(result.stdout);
+    } catch {
+      invariant(false, "external monotonic head command returned invalid JSON", "EVENT_HEAD_INVALID");
+    }
+    return parsed;
+  }
+
+  read() {
+    return normalizedHead(this.run(["get", "--stream-id", this.streamId]), this.streamId);
+  }
+
+  compareAndSet(expected, next) {
+    const output = this.run([
+      "compare-and-set",
+      "--stream-id", this.streamId,
+      "--expected-count", String(expected.event_count),
+      "--expected-hash", expected.event_hash ?? "NULL",
+      "--next-count", String(next.event_count),
+      "--next-hash", next.event_hash ?? "NULL",
+    ]);
+    const actual = normalizedHead(output, this.streamId);
+    invariant(actual.event_count === next.event_count && actual.event_hash === next.event_hash, "external monotonic head compare-and-set did not commit the requested head", "EVENT_HEAD_CAS_FAILED", { expected, next, actual });
+    return actual;
+  }
+}
+
+function monotonicHeadFromPolicy(policy) {
+  const config = policy.monotonic_head;
+  if (config?.provider === "UNAVAILABLE") return null;
+  invariant(config?.provider === "EXTERNAL_COMMAND", "unsupported monotonic head provider", "EVENT_HEAD_PROVIDER_INVALID");
+  return new ExternalCommandMonotonicHead({
+    commandPath: config.command_path,
+    commandSha256: config.command_sha256,
+    streamId: config.stream_id,
+    timeoutMs: config.timeout_ms,
+  });
+}
+
 function hashEvent(event) {
   const copy = { ...event };
   delete copy.event_hash;
@@ -283,13 +377,19 @@ function platformTrustFromPolicy(policy, root, clock) {
   const basename = path.posix.basename(relativePath).toLowerCase();
   invariant(basename !== ".env" && !basename.startsWith(".env."), "platform trust cannot load an environment file", "CREDENTIAL_ACCESS");
   const absolutePath = path.join(root, ...relativePath.split("/"));
-  invariant(fs.existsSync(absolutePath) && fs.statSync(absolutePath).isFile(), "registered platform public key is missing", "PLATFORM_TRUST_KEY_MISSING");
-  invariant(hashFile(absolutePath) === config.public_key_sha256, "platform public key hash drifted", "PLATFORM_TRUST_KEY_HASH_MISMATCH");
+  let checked;
+  try {
+    checked = assertRegularFileWithoutLinks(absolutePath, { boundaryRoot: root, maxBytes: 64 * 1024, purpose: "platform public key" });
+  } catch (error) {
+    if (error.code) throw error;
+    invariant(false, "registered platform public key is missing", "PLATFORM_TRUST_KEY_MISSING");
+  }
+  invariant(hashFile(checked.absolute) === config.public_key_sha256, "platform public key hash drifted", "PLATFORM_TRUST_KEY_HASH_MISMATCH");
   invariant(config.private_key_path === null && config.private_key_material_in_workspace === false, "platform private signing material must not be configured in the workspace", "PLATFORM_PRIVATE_KEY_FORBIDDEN");
   return new Ed25519PlatformTrust({
     providerId: config.provider_id,
     keyId: config.key_id,
-    publicKey: fs.readFileSync(absolutePath),
+    publicKey: fs.readFileSync(checked.absolute),
     clock,
   });
 }
@@ -310,6 +410,19 @@ class GitClient {
       throw new Error(`git ${args.join(" ")} failed: ${(result.stderr || result.stdout).trim()}`);
     }
     return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
+  }
+
+  runBuffer(args, { allowFailure = false, maxBuffer = 128 * 1024 * 1024 } = {}) {
+    const result = spawnSync("git", args, {
+      cwd: this.root,
+      encoding: null,
+      windowsHide: true,
+      maxBuffer,
+    });
+    if (!allowFailure && result.status !== 0) {
+      throw new Error(`git ${args.join(" ")} failed with exit ${result.status}`);
+    }
+    return { status: result.status, stdout: result.stdout ?? Buffer.alloc(0), stderr: result.stderr ?? Buffer.alloc(0) };
   }
 
   head() {
@@ -347,29 +460,52 @@ class GitClient {
     return this.run(["diff", "--no-ext-diff", "--no-color", "--binary", baseCommit, candidateCommit]).stdout;
   }
 
+  changedBlobs(baseCommit, candidateCommit) {
+    const blobs = [];
+    for (const relativePath of this.diffNames(baseCommit, candidateCommit)) {
+      const tree = this.runBuffer(["ls-tree", "-z", candidateCommit, "--", relativePath]).stdout;
+      if (!tree.length) continue;
+      const tabIndex = tree.indexOf(0x09);
+      invariant(tabIndex > 0, `Git tree entry is malformed: ${relativePath}`, "CANDIDATE_BLOB_UNSCANNABLE");
+      const header = tree.subarray(0, tabIndex).toString("utf8");
+      const [mode, type, oid] = header.split(" ");
+      invariant(type === "blob" && /^[a-f0-9]{40,64}$/.test(oid), `changed path is not a scannable Git blob: ${relativePath}`, "CANDIDATE_BLOB_UNSCANNABLE", { path: relativePath, mode, type });
+      const bytes = this.runBuffer(["cat-file", "blob", oid], { maxBuffer: 256 * 1024 * 1024 }).stdout;
+      blobs.push({ path: relativePath, mode, oid, bytes });
+    }
+    return blobs;
+  }
+
+  ignoredPaths() {
+    const output = this.run(["-c", "core.quotepath=false", "ls-files", "--others", "--ignored", "--exclude-standard"]).stdout;
+    return sortedUnique(output.split(/\r?\n/).map(normalizePath).filter(Boolean));
+  }
+
   workspaceFiles() {
     const tracked = this.run(["-c", "core.quotepath=false", "ls-files", "--cached"]).stdout;
     const untracked = this.run(["-c", "core.quotepath=false", "ls-files", "--others", "--exclude-standard"]).stdout;
-    return sortedUnique(`${tracked}\n${untracked}`.split(/\r?\n/).map(normalizePath).filter(Boolean));
+    const ignored = this.run(["-c", "core.quotepath=false", "ls-files", "--others", "--ignored", "--exclude-standard"]).stdout;
+    return sortedUnique(`${tracked}\n${untracked}\n${ignored}`.split(/\r?\n/).map(normalizePath).filter(Boolean));
   }
 }
 
 class EventStore {
   #transactionAuthority;
 
-  constructor({ stateDir, policy, clock, idFactory, transactionAuthority, validateEvents }) {
+  constructor({ stateDir, policy, clock, idFactory, transactionAuthority, validateEvents, monotonicHead }) {
     this.stateDir = stateDir;
     this.policy = policy;
     this.clock = clock;
     this.idFactory = idFactory;
     this.validateEvents = validateEvents;
+    this.monotonicHead = monotonicHead;
     this.eventsPath = path.join(stateDir, EVENTS_FILE);
     this.lockPath = path.join(stateDir, LOCK_FILE);
     this.quarantinePath = path.join(stateDir, QUARANTINE_DIR);
     this.#transactionAuthority = transactionAuthority;
   }
 
-  parse(text) {
+  parse(text, { validateSemantics = true } = {}) {
     if (!text.trim()) return [];
     const rawLines = text.split(/\r?\n/);
     while (rawLines.at(-1) === "") rawLines.pop();
@@ -386,19 +522,62 @@ class EventStore {
       for (const field of REQUIRED_EVENT_FIELDS) {
         invariant(Object.hasOwn(event, field), `event ${index + 1} is missing ${field}`, "EVENT_SCHEMA_INVALID", { line: index + 1, field });
       }
-      invariant(event.integrity_algorithm === "SHA256_CHAIN+ED25519_RECEIPTS", `event ${index + 1} uses an unsupported integrity model`, "EVENT_INTEGRITY_ALGORITHM_INVALID");
+      invariant(event.integrity_algorithm === "SHA256_CHAIN+ED25519_RECEIPTS+EXTERNAL_MONOTONIC_HEAD", `event ${index + 1} uses an unsupported integrity model`, "EVENT_INTEGRITY_ALGORITHM_INVALID");
       invariant(event.previous_event_hash === previousHash, `event hash chain breaks at line ${index + 1}`, "EVENT_HASH_CHAIN_INVALID");
       invariant(hashEvent(event) === event.event_hash, `event hash mismatch at line ${index + 1}`, "EVENT_HASH_INVALID");
       events.push(event);
       previousHash = event.event_hash;
     }
+    if (validateSemantics) this.validateEvents(events);
+    return events;
+  }
+
+  localHead(events) {
+    return {
+      stream_id: this.policy.monotonic_head.stream_id,
+      event_count: events.length,
+      event_hash: events.at(-1)?.event_hash ?? null,
+    };
+  }
+
+  verifyMonotonicHead(events) {
+    const local = this.localHead(events);
+    if (!this.monotonicHead) {
+      invariant(events.length === 0, "a non-empty event log requires the registered external monotonic head provider", "ENVIRONMENT_APPROVAL_REQUIRED", { reason: "MONOTONIC_HEAD_PROVIDER_UNAVAILABLE" });
+      return { local, external: null, synchronized: true };
+    }
+    const external = this.monotonicHead.read();
+    invariant(local.event_count >= external.event_count, "local event log was truncated behind the external monotonic head", "EVENT_LOG_ROLLBACK_DETECTED", { local, external });
+    if (local.event_count === external.event_count) {
+      invariant(local.event_hash === external.event_hash, "local event log head differs from the external monotonic head", "EVENT_HEAD_MISMATCH", { local, external });
+      return { local, external, synchronized: true };
+    }
+    invariant(false, "local event log is ahead of the external monotonic head and requires resume reconciliation", "EVENT_HEAD_RECONCILIATION_REQUIRED", { local, external });
+  }
+
+  read({ verifyExternalHead = true } = {}) {
+    const events = fs.existsSync(this.eventsPath) ? this.parse(fs.readFileSync(this.eventsPath, "utf8"), { validateSemantics: false }) : [];
+    if (verifyExternalHead) this.verifyMonotonicHead(events);
     this.validateEvents(events);
     return events;
   }
 
-  read() {
-    if (!fs.existsSync(this.eventsPath)) return [];
-    return this.parse(fs.readFileSync(this.eventsPath, "utf8"));
+  reconcileMonotonicHead(authority) {
+    invariant(authority === this.#transactionAuthority, "only ProjectOrchestrator may reconcile the event head", "EVENT_WRITE_FORBIDDEN");
+    const events = this.read({ verifyExternalHead: false });
+    if (!events.length && !this.monotonicHead) return null;
+    invariant(this.monotonicHead, "external monotonic head provider is unavailable", "ENVIRONMENT_APPROVAL_REQUIRED", { reason: "MONOTONIC_HEAD_PROVIDER_UNAVAILABLE" });
+    const local = this.localHead(events);
+    const external = this.monotonicHead.read();
+    invariant(local.event_count >= external.event_count, "local event log was truncated behind the external monotonic head", "EVENT_LOG_ROLLBACK_DETECTED", { local, external });
+    if (local.event_count === external.event_count) {
+      invariant(local.event_hash === external.event_hash, "local event log head differs from the external monotonic head", "EVENT_HEAD_MISMATCH", { local, external });
+      return null;
+    }
+    const anchoredPrefixHash = external.event_count === 0 ? null : events[external.event_count - 1]?.event_hash;
+    invariant(anchoredPrefixHash === external.event_hash, "external monotonic head is not a prefix of the local log", "EVENT_HEAD_MISMATCH", { local, external, anchored_prefix_hash: anchoredPrefixHash });
+    this.monotonicHead.compareAndSet(external, local);
+    return { from: external, to: local };
   }
 
   fileSnapshot() {
@@ -445,13 +624,29 @@ class EventStore {
           throw statError;
         }
         const observed = this.lockRecord();
-        if (Date.now() - stats.mtimeMs > staleMilliseconds && observed && !this.lockOwnerIsAlive(observed)) {
-          const stalePath = `${this.lockPath}.stale.${observed.nonce}.${crypto.randomBytes(6).toString("hex")}`;
+        if (Date.now() - stats.mtimeMs > staleMilliseconds && (!observed || !this.lockOwnerIsAlive(observed))) {
+          const observedToken = observed?.nonce ?? "corrupt";
+          const stalePath = `${this.lockPath}.stale.${observedToken}.${crypto.randomBytes(6).toString("hex")}`;
           try {
             fs.renameSync(this.lockPath, stalePath);
-            const moved = JSON.parse(fs.readFileSync(stalePath, "utf8"));
-            invariant(moved.nonce === observed.nonce, "stale lock ownership changed during recovery", "LOCK_OWNERSHIP_CHANGED");
-            fs.unlinkSync(stalePath);
+            const movedStats = fs.statSync(stalePath);
+            let moved = null;
+            try {
+              moved = JSON.parse(fs.readFileSync(stalePath, "utf8"));
+            } catch {
+              moved = null;
+            }
+            const replacementIsLive = moved && (Date.now() - movedStats.mtimeMs <= staleMilliseconds || this.lockOwnerIsAlive(moved));
+            if ((observed && moved?.nonce !== observed.nonce) || (!observed && replacementIsLive)) {
+              if (!fs.existsSync(this.lockPath)) fs.renameSync(stalePath, this.lockPath);
+              invariant(false, "stale lock ownership changed during recovery", "LOCK_OWNERSHIP_CHANGED");
+            }
+            if (!moved) {
+              fs.mkdirSync(this.quarantinePath, { recursive: true });
+              fs.renameSync(stalePath, path.join(this.quarantinePath, path.basename(stalePath)));
+            } else {
+              fs.unlinkSync(stalePath);
+            }
             continue;
           } catch (renameError) {
             if (["ENOENT", "EEXIST", "EPERM"].includes(renameError.code)) continue;
@@ -491,7 +686,8 @@ class EventStore {
         completeJson = false;
       }
       if (completeJson) {
-        this.parse(text);
+        const events = this.parse(text);
+        this.verifyMonotonicHead(events);
         const descriptor = fs.openSync(this.eventsPath, "a");
         try {
           fs.writeSync(descriptor, "\n", null, "utf8");
@@ -505,7 +701,7 @@ class EventStore {
           complete_tail_bytes: Buffer.byteLength(tail, "utf8"),
         };
       }
-      if (prefix.trim()) this.parse(prefix);
+      if (prefix.trim()) this.verifyMonotonicHead(this.parse(prefix));
       fs.mkdirSync(this.quarantinePath, { recursive: true });
       const tailHash = sha256(tail);
       const quarantineFile = path.join(this.quarantinePath, `events-tail-${safeTimestampFragment(this.clock().toISOString())}-${tailHash.slice(0, 16)}.jsonl`);
@@ -531,13 +727,14 @@ class EventStore {
       const drafts = buildDrafts(events) ?? [];
       invariant(Array.isArray(drafts), "event transaction must return an array", "EVENT_TRANSACTION_INVALID");
       if (!drafts.length) return [];
+      invariant(this.monotonicHead, "event append requires the registered external monotonic head provider", "ENVIRONMENT_APPROVAL_REQUIRED", { reason: "MONOTONIC_HEAD_PROVIDER_UNAVAILABLE" });
       let previousHash = events.at(-1)?.event_hash ?? null;
       const finalized = drafts.map((draft) => {
         const event = {
           ...draft,
           event_id: draft.event_id ?? this.idFactory(),
           timestamp: draft.timestamp ?? this.clock().toISOString(),
-          integrity_algorithm: "SHA256_CHAIN+ED25519_RECEIPTS",
+          integrity_algorithm: "SHA256_CHAIN+ED25519_RECEIPTS+EXTERNAL_MONOTONIC_HEAD",
           previous_event_hash: previousHash,
         };
         event.event_hash = hashEvent(event);
@@ -554,6 +751,7 @@ class EventStore {
       } finally {
         fs.closeSync(fileDescriptor);
       }
+      this.monotonicHead.compareAndSet(this.localHead(events), this.localHead([...events, ...finalized]));
       return finalized;
     } finally {
       this.releaseLock(owner);
@@ -589,6 +787,8 @@ class ProjectOrchestrator {
 
   #platformTrust;
 
+  #monotonicHead;
+
   #testControlOverrides;
 
   #internalTest;
@@ -602,11 +802,12 @@ class ProjectOrchestrator {
     clock = null,
     idFactory = null,
     platformTrust = null,
+    monotonicHead = null,
     testControlOverrides = null,
     authority = null,
   } = {}) {
     const internalTest = authority === SELF_TEST_AUTHORITY;
-    const injected = policy || router || git || clock || idFactory || platformTrust || testControlOverrides || stateDir;
+    const injected = policy || router || git || clock || idFactory || platformTrust || monotonicHead || testControlOverrides || stateDir;
     invariant(!injected || internalTest, "policy, state, Git, clock, identity, and router injection is reserved for internal self-test authority", "TEST_INJECTION_FORBIDDEN");
     const resolvedRoot = path.resolve(root);
     const resolvedStateDir = path.resolve(stateDir ?? path.join(resolvedRoot, DEFAULT_STATE_DIR));
@@ -624,6 +825,7 @@ class ProjectOrchestrator {
     this.#testControlOverrides = testControlOverrides;
     this.#internalTest = internalTest;
     this.#platformTrust = platformTrust ?? platformTrustFromPolicy(this.policy, this.root, this.clock);
+    this.#monotonicHead = monotonicHead ?? monotonicHeadFromPolicy(this.policy);
     this.#storeAuthority = Symbol("project-orchestrator-event-writer");
     this.validatePolicy();
     const store = new EventStore({
@@ -633,12 +835,13 @@ class ProjectOrchestrator {
       idFactory: this.idFactory,
       transactionAuthority: this.#storeAuthority,
       validateEvents: (events) => this.validateEventLog(events),
+      monotonicHead: this.#monotonicHead,
     });
     Object.defineProperty(this, "store", { value: store, writable: false, configurable: false, enumerable: true });
   }
 
   validatePolicy() {
-    invariant(this.policy.schema_version === "g07-autonomy-policy/v3", "unsupported autonomy policy", "POLICY_INVALID");
+    invariant(this.policy.schema_version === "g07-autonomy-policy/v4", "unsupported autonomy policy", "POLICY_INVALID");
     invariant(this.policy.control_anchor === "G07::AUTONOMY", "policy is not bound to G07::AUTONOMY", "POLICY_INVALID");
     invariant(["G07_A_CONTROL_PLANE_ONLY", "G07_APPROVED_INTEGRATION"].includes(this.policy.phase), "unknown autonomy phase", "POLICY_PHASE_INVALID");
     invariant(this.policy.g07_gate_required === "APPROVED", "policy must require creator-approved G07", "POLICY_GATE_INVALID");
@@ -655,10 +858,35 @@ class ProjectOrchestrator {
     invariant(sameStringSet(this.policy.forbidden_automatic_actions, MANDATORY_FORBIDDEN_AUTOMATIC_ACTIONS), "policy forbidden automatic action set drifted", "POLICY_HARD_STOP_INVALID");
     invariant(this.policy.event_integrity?.chain_algorithm === "SHA-256"
       && this.policy.event_integrity?.authority === "ED25519_PLATFORM_RECEIPTS"
-      && this.policy.event_integrity?.local_symmetric_key_is_authority === false, "event integrity policy is incomplete", "POLICY_INTEGRITY_INVALID");
+      && this.policy.event_integrity?.local_symmetric_key_is_authority === false
+      && this.policy.event_integrity?.external_monotonic_head_required === true, "event integrity policy is incomplete", "POLICY_INTEGRITY_INVALID");
     invariant(["UNAVAILABLE", "ED25519_FILE"].includes(this.policy.platform_trust?.provider)
       && this.policy.platform_trust?.receipt_version === PLATFORM_RECEIPT_VERSION
       && this.policy.platform_trust?.private_key_material_in_workspace === false, "platform trust policy is invalid", "POLICY_PLATFORM_TRUST_INVALID");
+    invariant(["UNAVAILABLE", "EXTERNAL_COMMAND"].includes(this.policy.monotonic_head?.provider)
+      && typeof this.policy.monotonic_head?.stream_id === "string"
+      && this.policy.monotonic_head.stream_id.length >= 8, "external monotonic head policy is invalid", "POLICY_MONOTONIC_HEAD_INVALID");
+    if (this.policy.monotonic_head.provider === "EXTERNAL_COMMAND") {
+      invariant(path.isAbsolute(this.policy.monotonic_head.command_path ?? "")
+        && isSha256(this.policy.monotonic_head.command_sha256), "external monotonic head command registration is incomplete", "POLICY_MONOTONIC_HEAD_INVALID");
+    }
+    invariant(["UNAVAILABLE", "PLATFORM_DIRECTORY"].includes(this.policy.receipt_inbox?.provider)
+      && Number.isInteger(this.policy.receipt_inbox?.max_file_bytes)
+      && this.policy.receipt_inbox.max_file_bytes > 0, "trusted receipt inbox policy is invalid", "POLICY_RECEIPT_INBOX_INVALID");
+    if (this.policy.receipt_inbox.provider === "PLATFORM_DIRECTORY") {
+      invariant(path.isAbsolute(this.policy.receipt_inbox.directory ?? ""), "trusted receipt inbox must be an absolute external directory", "POLICY_RECEIPT_INBOX_INVALID");
+    }
+    invariant(this.policy.workspace_capability?.required_for_writer === true
+      && this.policy.workspace_capability?.receipt_kind === "WORKSPACE_CAPABILITY"
+      && this.policy.workspace_capability?.enforcement === "PLATFORM_SANDBOX"
+      && Array.isArray(this.policy.workspace_capability?.denied_patterns)
+      && this.policy.workspace_capability.denied_patterns.includes(".autonomy/**")
+      && this.policy.workspace_capability.denied_patterns.includes(".env"), "workspace capability policy is incomplete", "POLICY_WORKSPACE_CAPABILITY_INVALID");
+    invariant(this.policy.secret_scan?.version === "G07_CANDIDATE_BLOBS_V1"
+      && this.policy.secret_scan?.scan_binary_blobs === true
+      && this.policy.secret_scan?.oversize_result === "BLOCKING"
+      && Number.isInteger(this.policy.secret_scan?.max_blob_bytes)
+      && this.policy.secret_scan.max_blob_bytes > 0, "candidate blob secret scan policy is invalid", "POLICY_SECRET_SCAN_INVALID");
 
     const gate = this.controlGateSnapshot();
     if (this.policy.phase === "G07_A_CONTROL_PLANE_ONLY") {
@@ -668,6 +896,8 @@ class ProjectOrchestrator {
       invariant(gate.g07_gate === "APPROVED" && isSha256(gate.g07_approval_evidence_sha256), "approved integration phase requires registered creator Gate evidence hash", "POLICY_GATE_INVALID");
       invariant(this.policy.product_task_execution_allowed === true, "approved integration phase must explicitly enable product Task execution", "POLICY_PHASE_INVALID");
       invariant(this.#platformTrust, "approved integration requires an available registered platform trust provider", "ENVIRONMENT_APPROVAL_REQUIRED");
+      invariant(this.#monotonicHead, "approved integration requires an external monotonic event head provider", "ENVIRONMENT_APPROVAL_REQUIRED", { reason: "MONOTONIC_HEAD_PROVIDER_UNAVAILABLE" });
+      invariant(this.policy.receipt_inbox.provider === "PLATFORM_DIRECTORY", "approved integration requires a trusted external receipt inbox", "ENVIRONMENT_APPROVAL_REQUIRED", { reason: "TRUSTED_RECEIPT_INBOX_UNAVAILABLE" });
     }
 
     if (!this.#internalTest) {
@@ -729,7 +959,7 @@ class ProjectOrchestrator {
     const task = taskId ? this.router.taskById.get(taskId) : null;
     if (taskId) invariant(task, `unknown Task: ${taskId}`, "TASK_NOT_FOUND");
     return {
-      event_version: "g07-autonomy-event/v3",
+      event_version: "g07-autonomy-event/v4",
       event_id: this.idFactory(),
       event_type: eventType,
       autonomy_run_id: runId,
@@ -756,7 +986,7 @@ class ProjectOrchestrator {
       environment_approval_reason: environmentApprovalReason,
       payload,
       platform_receipts: platformReceipts,
-      integrity_algorithm: "SHA256_CHAIN+ED25519_RECEIPTS",
+      integrity_algorithm: "SHA256_CHAIN+ED25519_RECEIPTS+EXTERNAL_MONOTONIC_HEAD",
       previous_event_hash: null,
       event_hash: null,
     };
@@ -765,6 +995,29 @@ class ProjectOrchestrator {
   requirePlatformTrust(reason = "PLATFORM_TRUST_PROVIDER_UNAVAILABLE") {
     invariant(this.#platformTrust, "the registered platform trust provider is unavailable", "ENVIRONMENT_APPROVAL_REQUIRED", { reason });
     return this.#platformTrust;
+  }
+
+  readTrustedJson(fileArgument, flag) {
+    invariant(fileArgument, `${flag} is required`, "CLI_ARGUMENT_INVALID");
+    const inbox = this.policy.receipt_inbox;
+    invariant(inbox.provider === "PLATFORM_DIRECTORY", "the trusted platform receipt inbox is unavailable", "ENVIRONMENT_APPROVAL_REQUIRED", { reason: "TRUSTED_RECEIPT_INBOX_UNAVAILABLE" });
+    const inboxRoot = path.resolve(inbox.directory);
+    const candidate = path.isAbsolute(fileArgument) ? path.resolve(fileArgument) : path.resolve(inboxRoot, fileArgument);
+    invariant(pathInside(inboxRoot, candidate), `${flag} must resolve inside the registered receipt inbox`, "TRUSTED_FILE_BOUNDARY_VIOLATION");
+    if (!inbox.allow_subdirectories) invariant(path.dirname(candidate) === inboxRoot, `${flag} cannot use a receipt subdirectory`, "TRUSTED_FILE_BOUNDARY_VIOLATION");
+    const basename = path.basename(candidate).toLowerCase();
+    invariant(basename.endsWith(".json") && basename !== ".env" && !basename.startsWith(".env."), `${flag} must reference a receipt JSON file`, "CREDENTIAL_ACCESS");
+    let checked;
+    try {
+      checked = assertRegularFileWithoutLinks(candidate, { boundaryRoot: inboxRoot, maxBytes: inbox.max_file_bytes, purpose: flag });
+    } catch (error) {
+      if (error.code) throw error;
+      invariant(false, `${flag} receipt file is unavailable`, "TRUSTED_FILE_UNAVAILABLE");
+    }
+    const realInbox = fs.realpathSync.native(inboxRoot);
+    const realFile = fs.realpathSync.native(checked.absolute);
+    invariant(pathInside(realInbox, realFile), `${flag} realpath escapes the registered receipt inbox`, "TRUSTED_FILE_BOUNDARY_VIOLATION");
+    return readJsonFile(realFile);
   }
 
   verifyPlatformReceipt(receipt, kind, claims, { at = this.clock() } = {}) {
@@ -817,7 +1070,7 @@ class ProjectOrchestrator {
     };
   }
 
-  leaseReceiptClaims({ runId, taskId, attemptId, role, actorId, mode, leaseId, acquiredAt, expiresAt, baseCommit, candidateCommit, contextHash, fromStatus, toStatus }) {
+  leaseReceiptClaims({ runId, taskId, attemptId, role, actorId, mode, leaseId, acquiredAt, expiresAt, baseCommit, candidateCommit, contextHash, fromStatus, toStatus, workspaceCapabilityReceiptId = null }) {
     return {
       autonomy_run_id: runId,
       task_id: taskId,
@@ -833,8 +1086,34 @@ class ProjectOrchestrator {
       context_hash: contextHash,
       from_status: fromStatus,
       to_status: toStatus,
+      workspace_capability_receipt_id: workspaceCapabilityReceiptId,
       branch: this.git.branch(),
       worktree: this.git.worktree(),
+    };
+  }
+
+  workspaceCapabilityClaims({ runId, taskId, attemptId, role, actorId, principalId, sessionId, capabilityId, sandboxId, sandboxInstanceSha256, baseCommit, contextHash, writeScopeSha256 }) {
+    return {
+      autonomy_run_id: runId,
+      task_id: taskId,
+      attempt_id: attemptId,
+      role,
+      actor_id: actorId,
+      principal_id: principalId,
+      session_id: sessionId,
+      capability_id: capabilityId,
+      sandbox_id: sandboxId,
+      sandbox_instance_sha256: sandboxInstanceSha256,
+      base_commit: baseCommit,
+      context_hash: contextHash,
+      branch: this.git.branch(),
+      worktree: this.git.worktree(),
+      write_scope_sha256: writeScopeSha256,
+      denied_patterns_sha256: sha256(stableJson(this.policy.workspace_capability.denied_patterns)),
+      enforcement: this.policy.workspace_capability.enforcement,
+      ignored_paths_unchanged: true,
+      state_directory_denied: true,
+      receipt_inbox_denied: true,
     };
   }
 
@@ -871,6 +1150,20 @@ class ProjectOrchestrator {
         g07_gate: this.router.gates.G07_GATE,
       })),
     };
+  }
+
+  verifyHistoricalTaskBoundary(report, at) {
+    const receipt = report.decision?.boundary_receipt;
+    const claims = receipt?.claims;
+    invariant(claims
+      && claims.task_id === report.task_id
+      && claims.candidate_commit === report.candidate_commit
+      && claims.context_hash === report.context_hash
+      && claims.category === report.decision?.category
+      && claims.proposal_sha256 === report.decision?.proposal_sha256
+      && claims.classification === "TECHNICAL_ONLY"
+      && ["business_result_sha256", "depends_on_sha256", "owner_sha256", "write_scope_sha256", "gate_snapshot_sha256"].every((field) => isSha256(claims[field])), "historical Architect boundary receipt is malformed", "EVENT_ARCHITECT_BOUNDARY_INVALID");
+    return this.verifyPlatformReceipt(receipt, "ARCHITECT_BOUNDARY", claims, { at });
   }
 
   commandReceiptClaims(report, entry) {
@@ -927,7 +1220,7 @@ class ProjectOrchestrator {
       for (const field of REQUIRED_EVENT_FIELDS) {
         invariant(Object.hasOwn(event, field), `event ${index + 1} is missing ${field}`, "EVENT_SCHEMA_INVALID", { line: index + 1, field });
       }
-      invariant(event.event_version === "g07-autonomy-event/v3", `event ${index + 1} uses an unsupported version`, "EVENT_SCHEMA_INVALID");
+      invariant(event.event_version === "g07-autonomy-event/v4", `event ${index + 1} uses an unsupported version`, "EVENT_SCHEMA_INVALID");
       invariant(EVENT_TYPES.has(event.event_type), `event ${index + 1} uses unknown type ${event.event_type}`, "EVENT_TYPE_INVALID");
       invariant(!eventIds.has(event.event_id), `duplicate event_id ${event.event_id}`, "EVENT_ID_DUPLICATE");
       eventIds.add(event.event_id);
@@ -1000,6 +1293,29 @@ class ProjectOrchestrator {
           invariant(["coder", "prompt_editor"].includes(event.role), "write lease role is invalid", "EVENT_LEASE_INVALID");
           invariant(event.from_status === "READY" && event.to_status === "LEASED", "write lease must be READY -> LEASED", "EVENT_SEMANTICS_INVALID");
           invariant([...leases.values()].filter((lease) => lease.mode === "WRITE").length < 1, "semantic replay found two active writers", "EVENT_WRITER_CONCURRENCY_INVALID");
+          const capability = event.platform_receipts.find((item) => item.kind === "WORKSPACE_CAPABILITY");
+          const capabilityClaims = event.payload?.workspace_capability;
+          invariant(capabilityClaims && capability?.receipt_id === event.lease.workspace_capability_receipt_id
+            && capabilityClaims.task_id === event.task_id
+            && capabilityClaims.attempt_id === event.attempt_id
+            && capabilityClaims.context_hash === event.context_hash
+            && capabilityClaims.base_commit === event.base_commit
+            && capabilityClaims.branch === event.branch
+            && capabilityClaims.worktree === event.worktree
+            && capabilityClaims.enforcement === "PLATFORM_SANDBOX"
+            && capabilityClaims.ignored_paths_unchanged === true
+            && capabilityClaims.state_directory_denied === true
+            && capabilityClaims.receipt_inbox_denied === true
+            && typeof capabilityClaims.capability_id === "string"
+            && capabilityClaims.capability_id.length >= 12
+            && typeof capabilityClaims.sandbox_id === "string"
+            && capabilityClaims.sandbox_id.length >= 8
+            && isSha256(capabilityClaims.sandbox_instance_sha256)
+            && event.lease.capability_principal_id === capabilityClaims.principal_id
+            && event.lease.capability_session_id === capabilityClaims.session_id
+            && isSha256(capabilityClaims.write_scope_sha256)
+            && isSha256(capabilityClaims.denied_patterns_sha256), "writer lease lacks an exact platform workspace capability", "EVENT_WORKSPACE_CAPABILITY_INVALID");
+          this.verifyPlatformReceipt(capability, "WORKSPACE_CAPABILITY", capabilityClaims, { at: event.timestamp });
         } else {
           invariant(event.lease.mode === "READ_ONLY", "unknown lease mode", "EVENT_LEASE_INVALID");
           invariant(["auditor", "reviewer", "architect"].includes(event.role), "read-only lease role is invalid", "EVENT_LEASE_INVALID");
@@ -1024,6 +1340,7 @@ class ProjectOrchestrator {
           contextHash: event.context_hash,
           fromStatus: event.from_status,
           toStatus: event.to_status,
+          workspaceCapabilityReceiptId: event.lease.workspace_capability_receipt_id ?? null,
         }), { at: event.timestamp });
         leases.set(event.lease.lease_id, { ...event.lease, task_id: event.task_id });
       } else if (event.event_type === "LEASE_EXPIRED") {
@@ -1060,6 +1377,11 @@ class ProjectOrchestrator {
           && lease.role === event.role
           && lease.attempt_id === event.attempt_id);
         invariant(activeForRole, "role report has no matching active lease", "EVENT_REPORT_LEASE_INVALID");
+        if (["coder", "prompt_editor"].includes(event.role)) {
+          invariant(report.workspace_capability_receipt_id === activeForRole.workspace_capability_receipt_id
+            && trustedReport.principal_id === activeForRole.capability_principal_id
+            && trustedReport.session_id === activeForRole.capability_session_id, "writer report is not bound to its platform workspace capability", "EVENT_WORKSPACE_CAPABILITY_INVALID");
+        }
         const allowedPair = (["coder", "prompt_editor"].includes(event.role)
           && event.from_status === "IN_PROGRESS"
           && ["IN_PROGRESS", "BLOCKED", "CREATOR_REQUIRED"].includes(event.to_status))
@@ -1072,7 +1394,7 @@ class ProjectOrchestrator {
         invariant(allowedPair, "role report status pair is invalid", "EVENT_SEMANTICS_INVALID");
         if (event.role === "architect" && ["A", "B"].includes(report.decision?.category)) {
           trackReceipt(report.decision.boundary_receipt);
-          this.verifyPlatformReceipt(report.decision.boundary_receipt, "ARCHITECT_BOUNDARY", this.taskBoundaryClaims(report), { at: event.timestamp });
+          this.verifyHistoricalTaskBoundary(report, event.timestamp);
         }
         if (event.role === "architect") {
           const category = report.decision?.category;
@@ -1302,6 +1624,8 @@ class ProjectOrchestrator {
       integration_branch: this.policy.integration_branch,
       task_id: taskId,
       task_index_row_sha256: sha256(stableJson(task.values)),
+      task_owner: task.values["角色"],
+      acceptance_command: task.values["验收命令"],
       dependencies: this.router.taskGraph(task).upstream.map((item) => item.task_id),
       declared_write_scope: task.values.write_scope,
       expanded_write_scope: scopePatterns,
@@ -1314,6 +1638,9 @@ class ProjectOrchestrator {
         rpc: route.anchors.rpc,
       },
       protected_versions: protectedVersions,
+      router_context_hash: route.context_hash,
+      secret_scan_version: this.policy.secret_scan.version,
+      secret_scan_max_blob_bytes: this.policy.secret_scan.max_blob_bytes,
       control_blockers: this.routeControlBlockers(route).map((item) => ({ kind: item.kind, reason: item.reason, details: item.details ?? null })),
     };
     return {
@@ -1544,10 +1871,12 @@ class ProjectOrchestrator {
   }
 
   drySnapshot(projection, taskId) {
+    const ignoredPaths = this.git.ignoredPaths();
     return {
       event_log: this.store.fileSnapshot(),
       task_projection: this.taskProjectionSnapshot(projection),
       scoped_product_tree: this.scopedTreeSnapshot(taskId),
+      ignored_path_names: { paths: ignoredPaths, sha256: sha256(stableJson(ignoredPaths)) },
     };
   }
 
@@ -1635,7 +1964,7 @@ class ProjectOrchestrator {
     return drafts;
   }
 
-  lease({ runId, taskId = null, role, actorId, attemptId, ttlSeconds = null, contextHash = null, baseCommit = null, candidateCommit = null, platformReceipt = null }) {
+  lease({ runId, taskId = null, role, actorId, attemptId, ttlSeconds = null, contextHash = null, baseCommit = null, candidateCommit = null, platformReceipt = null, workspaceCapabilityReceipt = null }) {
     invariant(runId && role && actorId && attemptId, "lease requires runId, role, actorId and attemptId", "LEASE_INPUT_INVALID");
     invariant(["coder", "prompt_editor", "auditor", "reviewer", "architect"].includes(role), `role cannot lease: ${role}`, "LEASE_ROLE_INVALID");
     const guard = this.evaluateAction(role === "coder" || role === "prompt_editor" ? "PRODUCT_TASK_WRITE" : "READ_ONLY_REVIEW", runId);
@@ -1692,6 +2021,32 @@ class ProjectOrchestrator {
       else invariant(!candidateCommit, "writer lease cannot accept a caller-supplied candidate commit", "LEASE_CANDIDATE_FORBIDDEN");
       const effectiveContextHash = expectedContextHash;
       const effectiveBaseCommit = expectedBaseCommit;
+      let workspaceCapability = null;
+      if (mode === "WRITE") {
+        const signedCapability = workspaceCapabilityReceipt?.claims ?? {};
+        invariant(typeof signedCapability.principal_id === "string" && signedCapability.principal_id.length > 0
+          && typeof signedCapability.session_id === "string" && signedCapability.session_id.length > 0
+          && typeof signedCapability.capability_id === "string" && signedCapability.capability_id.length >= 12
+          && typeof signedCapability.sandbox_id === "string" && signedCapability.sandbox_id.length >= 8
+          && isSha256(signedCapability.sandbox_instance_sha256), "writer capability lacks a trusted principal/session/sandbox instance", "WORKSPACE_CAPABILITY_INVALID");
+        const capabilityClaims = this.workspaceCapabilityClaims({
+          runId,
+          taskId: task.id,
+          attemptId,
+          role,
+          actorId,
+          principalId: signedCapability.principal_id,
+          sessionId: signedCapability.session_id,
+          capabilityId: signedCapability.capability_id,
+          sandboxId: signedCapability.sandbox_id,
+          sandboxInstanceSha256: signedCapability.sandbox_instance_sha256,
+          baseCommit: effectiveBaseCommit,
+          contextHash: effectiveContextHash,
+          writeScopeSha256: sha256(stableJson(route.access.expanded_write_patterns)),
+        });
+        this.verifyPlatformReceipt(workspaceCapabilityReceipt, "WORKSPACE_CAPABILITY", capabilityClaims);
+        workspaceCapability = { receipt: workspaceCapabilityReceipt, claims: capabilityClaims };
+      }
       const signedLeaseClaims = platformReceipt?.claims ?? {};
       const leaseId = signedLeaseClaims.lease_id;
       const acquiredAt = new Date(signedLeaseClaims.acquired_at);
@@ -1715,6 +2070,9 @@ class ProjectOrchestrator {
         base_commit: effectiveBaseCommit,
         candidate_commit: candidateCommit,
         context_hash: effectiveContextHash,
+        workspace_capability_receipt_id: workspaceCapability?.receipt.receipt_id ?? null,
+        capability_principal_id: workspaceCapability?.claims.principal_id ?? null,
+        capability_session_id: workspaceCapability?.claims.session_id ?? null,
       };
       const toStatus = mode === "WRITE" ? "LEASED" : state.status === "IMPLEMENTED" ? "VERIFYING" : state.status;
       this.verifyPlatformReceipt(platformReceipt, "LEASE_GRANT", this.leaseReceiptClaims({
@@ -1732,6 +2090,7 @@ class ProjectOrchestrator {
         contextHash: effectiveContextHash,
         fromStatus: state.status,
         toStatus,
+        workspaceCapabilityReceiptId: workspaceCapability?.receipt.receipt_id ?? null,
       }));
       drafts.push(this.makeDraft({
         eventType: "LEASE_ACQUIRED",
@@ -1746,9 +2105,13 @@ class ProjectOrchestrator {
         fromStatus: state.status,
         toStatus,
         counters: state.counters,
-        platformReceipts: [platformReceipt],
+        platformReceipts: [platformReceipt, ...(workspaceCapability ? [workspaceCapability.receipt] : [])],
         decisionLevel: role === "architect" ? "ARCHITECT_AUTONOMOUS" : "TASK_AUTONOMOUS",
-        payload: { actor_id: actorId, router_context_hash: controlContext.router_context_hash },
+        payload: {
+          actor_id: actorId,
+          router_context_hash: controlContext.router_context_hash,
+          workspace_capability: workspaceCapability?.claims ?? null,
+        },
       }));
       return drafts;
     });
@@ -1766,10 +2129,13 @@ class ProjectOrchestrator {
     for (const field of ["report_version", "task_id", "role", "actor_id", "session_id", "attempt_id", "base_commit", "candidate_commit", "context_hash", "verdict", "identity_attestation", "report_receipt"]) {
       invariant(Object.hasOwn(report, field) && report[field] !== "", `report is missing ${field}`, "REPORT_SCHEMA_INVALID");
     }
-    invariant(report.report_version === "g07-role-report/v3", "unsupported role report", "REPORT_SCHEMA_INVALID");
+    invariant(report.report_version === "g07-role-report/v4", "unsupported role report", "REPORT_SCHEMA_INVALID");
     invariant(REPORT_ROLES.has(report.role), `invalid report role: ${report.role}`, "REPORT_ROLE_INVALID");
     invariant(this.router.taskById.has(report.task_id), `unknown report Task: ${report.task_id}`, "TASK_NOT_FOUND");
     invariant(isSha256(report.context_hash), "report context_hash must be SHA-256", "REPORT_CONTEXT_INVALID");
+    if (["coder", "prompt_editor"].includes(report.role)) {
+      invariant(typeof report.workspace_capability_receipt_id === "string" && report.workspace_capability_receipt_id.length >= 12, "writer report must bind its platform workspace capability", "WORKSPACE_CAPABILITY_INVALID");
+    }
     for (const [field, value] of [["tokens", report.execution?.tokens ?? 0], ["time_ms", report.execution?.time_ms ?? 0]]) {
       invariant(Number.isFinite(Number(value)) && Number(value) >= 0, `report execution.${field} must be non-negative`, "REPORT_USAGE_INVALID");
     }
@@ -1818,6 +2184,9 @@ class ProjectOrchestrator {
       invariant(normalizePath(path.resolve(report.worktree)) === this.git.worktree(), "report worktree does not match the orchestrator worktree", "REPORT_WORKTREE_MISMATCH");
       if (["coder", "prompt_editor"].includes(report.role)) {
         invariant(state.status === "IN_PROGRESS", `${report.role} report requires IN_PROGRESS, got ${state.status}`, "REPORT_STATE_INVALID");
+        invariant(report.workspace_capability_receipt_id === lease.workspace_capability_receipt_id
+          && trustedReport.principal_id === lease.capability_principal_id
+          && trustedReport.session_id === lease.capability_session_id, "writer report identity does not match the platform-enforced workspace capability", "WORKSPACE_CAPABILITY_IDENTITY_MISMATCH");
       }
       if (["auditor", "reviewer"].includes(report.role)) {
         invariant(state.candidate_commit === report.candidate_commit, "review targets a stale candidate commit", "STALE_REVIEW_COMMIT");
@@ -2062,8 +2431,8 @@ class ProjectOrchestrator {
     return { unlocked: finalized.map((event) => event.task_id), events: finalized };
   }
 
-  scanSecrets(patchText) {
-    const patterns = new Map([
+  secretPatterns() {
+    return new Map([
       ["AWS_ACCESS_KEY", /AKIA[0-9A-Z]{16}/],
       ["OPENAI_KEY", /sk-(?:proj-)?[A-Za-z0-9_-]{20,}/],
       ["GITHUB_TOKEN", /gh[pousr]_[A-Za-z0-9]{30,}/],
@@ -2072,8 +2441,59 @@ class ProjectOrchestrator {
       ["SLACK_TOKEN", /xox[baprs]-[0-9A-Za-z-]{20,}/],
       ["PRIVATE_KEY", /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
     ]);
-    const hits = [...patterns.entries()].filter(([, pattern]) => pattern.test(patchText)).map(([name]) => name);
-    return { passed: hits.length === 0, hit_types: hits, evidence_hash: sha256(patchText) };
+  }
+
+  scanSecretBytes(bytes) {
+    const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+    const byteText = buffer.toString("latin1");
+    return [...this.secretPatterns().entries()].filter(([, pattern]) => pattern.test(byteText)).map(([name]) => name);
+  }
+
+  scanCandidateSecrets(baseCommit, candidateCommit, { version = this.policy.secret_scan.version, maxBlobBytes = this.policy.secret_scan.max_blob_bytes } = {}) {
+    invariant(version === "G07_CANDIDATE_BLOBS_V1", `unsupported historical secret scan version: ${version}`, "SECRET_SCAN_VERSION_UNAVAILABLE");
+    const maxBytes = maxBlobBytes;
+    const blobs = this.git.changedBlobs(baseCommit, candidateCommit);
+    const scanned = [];
+    const hitTypes = new Set();
+    const hitPaths = new Set();
+    let oversize = false;
+    for (const blob of blobs) {
+      const size = blob.bytes.length;
+      const tooLarge = size > maxBytes;
+      const hits = tooLarge ? ["OVERSIZE_BLOB_UNSCANNED"] : this.scanSecretBytes(blob.bytes);
+      if (tooLarge) oversize = true;
+      for (const hit of hits) hitTypes.add(hit);
+      if (hits.length) hitPaths.add(blob.path);
+      scanned.push({
+        path: blob.path,
+        mode: blob.mode,
+        oid: blob.oid,
+        bytes: size,
+        binary: blob.bytes.includes(0),
+        blob_sha256: sha256(blob.bytes),
+        hit_types: hits,
+      });
+    }
+    const ignoredPaths = this.git.ignoredPaths();
+    const summary = {
+      version,
+      base_commit: baseCommit,
+      candidate_commit: candidateCommit,
+      max_blob_bytes: maxBytes,
+      scanned_blobs: scanned,
+      ignored_paths_sha256: sha256(stableJson(ignoredPaths)),
+    };
+    return {
+      passed: hitTypes.size === 0 && !oversize,
+      hit_types: sortedUnique([...hitTypes]),
+      hit_paths: sortedUnique([...hitPaths]),
+      scanned_blob_count: scanned.length,
+      binary_blob_count: scanned.filter((item) => item.binary).length,
+      ignored_paths: ignoredPaths,
+      ignored_paths_sha256: summary.ignored_paths_sha256,
+      evidence_hash: sha256(stableJson(summary)),
+      blobs: scanned,
+    };
   }
 
   evidenceFailureState(taskId, state, error) {
@@ -2162,13 +2582,14 @@ class ProjectOrchestrator {
     };
   }
 
-  mechanicallyVerifyEvidence({ taskId, candidateCommit, contextHash, reports, verificationReceipt, at = this.clock(), requireCurrent = false }) {
+  mechanicallyVerifyEvidence({ taskId, candidateCommit, contextHash, reports, verificationReceipt, controlContextFacts = null, at = this.clock(), requireCurrent = false }) {
     const latest = (role) => [...reports].reverse().find((report) => report.role === role && report.candidate_commit === candidateCommit) ?? null;
     const coder = latest("coder");
     const auditor = latest("auditor");
     const reviewer = latest("reviewer");
     invariant(coder && auditor && reviewer, "coder, auditor and reviewer reports are all required for the same candidate commit", "INCOMPLETE_ROLE_EVIDENCE");
     invariant(coder.verdict === "IMPLEMENTED", "coder verdict must be IMPLEMENTED", "CODER_VERDICT_INVALID");
+    invariant(typeof coder.workspace_capability_receipt_id === "string" && coder.workspace_capability_receipt_id.length >= 12, "coder evidence is missing its platform workspace capability", "WORKSPACE_CAPABILITY_INVALID");
     invariant(auditor.verdict === "PASS", "auditor verdict must be PASS", "AUDITOR_VERDICT_INVALID");
     invariant(reviewer.verdict === "APPROVE", "reviewer verdict must be APPROVE", "REVIEWER_VERDICT_INVALID");
     invariant([coder, auditor, reviewer].every((report) => report.base_commit === coder.base_commit
@@ -2182,16 +2603,29 @@ class ProjectOrchestrator {
       invariant(this.git.head() === candidateCommit, "candidate commit is stale relative to HEAD", "STALE_CANDIDATE_COMMIT");
       invariant(this.git.isClean(), "evidence verification requires a clean worktree", "WORKTREE_DIRTY");
     }
-    const currentControlContext = this.controlContext(taskId);
-    invariant(contextHash === currentControlContext.hash, "frozen Task control context differs from the current router control context", "STALE_CONTROL_CONTEXT", {
-      frozen: contextHash,
-      current: currentControlContext.hash,
-    });
-    invariant(this.routeControlBlockers(currentControlContext.route).length === 0, "router control context contains blocking conflicts", "CONTEXT_CONTROL_DRIFT", this.routeControlBlockers(currentControlContext.route));
+    let effectiveControlFacts;
+    if (requireCurrent) {
+      const currentControlContext = this.controlContext(taskId);
+      invariant(contextHash === currentControlContext.hash, "frozen Task control context differs from the current router control context", "STALE_CONTROL_CONTEXT", {
+        frozen: contextHash,
+        current: currentControlContext.hash,
+      });
+      invariant(this.routeControlBlockers(currentControlContext.route).length === 0, "router control context contains blocking conflicts", "CONTEXT_CONTROL_DRIFT", this.routeControlBlockers(currentControlContext.route));
+      effectiveControlFacts = currentControlContext.facts;
+    } else {
+      invariant(controlContextFacts && sha256(stableJson(controlContextFacts)) === contextHash
+        && controlContextFacts.task_id === taskId
+        && controlContextFacts.integration_branch === this.policy.integration_branch
+        && Array.isArray(controlContextFacts.expanded_write_scope)
+        && typeof controlContextFacts.acceptance_command === "string"
+        && isSha256(controlContextFacts.router_context_hash)
+        && controlContextFacts.secret_scan_version === "G07_CANDIDATE_BLOBS_V1"
+        && Number.isInteger(controlContextFacts.secret_scan_max_blob_bytes), "historical VERIFIED event lacks its immutable control-context snapshot", "EVENT_HISTORICAL_CONTEXT_INVALID");
+      effectiveControlFacts = controlContextFacts;
+    }
     const trustedIdentities = this.attestIndependentReports([coder, auditor, reviewer], { at });
 
-    const task = this.router.taskById.get(taskId);
-    const expectedCommand = task.values["验收命令"];
+    const expectedCommand = effectiveControlFacts.acceptance_command;
     const matchingCommands = (coder.acceptance?.commands ?? []).filter((entry) => entry.command === expectedCommand);
     invariant(matchingCommands.length === 1, "exactly one platform command result is required for the registered acceptance command", "ACCEPTANCE_EVIDENCE_INVALID");
     const command = matchingCommands[0];
@@ -2212,18 +2646,23 @@ class ProjectOrchestrator {
     this.verifyPlatformReceipt(reviewer.review_receipt, "REVIEW_EVIDENCE", this.reviewReceiptClaims(reviewer), { at });
 
     const diffNames = this.git.diffNames(coder.base_commit, candidateCommit);
-    const allowedPatterns = this.router.expandWriteScope(task);
+    const allowedPatterns = effectiveControlFacts.expanded_write_scope;
     const outOfScope = diffNames.filter((file) => !allowedPatterns.some((pattern) => globToRegExp(pattern).test(file)));
     invariant(outOfScope.length === 0, `diff exceeds Task write_scope: ${outOfScope.join(", ")}`, "SCOPE_VIOLATION", { out_of_scope: outOfScope });
     const diffPatch = this.git.diffPatch(coder.base_commit, candidateCommit);
     const diffHash = sha256(diffPatch);
     invariant(coder.scope?.diff_hash === diffHash && reviewer.scope?.diff_hash === diffHash, "coder/reviewer diff hash does not match candidate diff", "DIFF_HASH_MISMATCH");
     invariant(stableJson(sortedUnique(coder.scope?.changed_paths ?? [])) === stableJson(diffNames), "coder changed path evidence does not match Git", "DIFF_PATH_MISMATCH");
-    const secretScan = this.scanSecrets(diffPatch);
+    const secretScan = this.scanCandidateSecrets(coder.base_commit, candidateCommit, {
+      version: effectiveControlFacts.secret_scan_version,
+      maxBlobBytes: effectiveControlFacts.secret_scan_max_blob_bytes,
+    });
     invariant(secretScan.passed, `secret scan failed: ${secretScan.hit_types.join(", ")}`, "SECRET_SCAN_FAILED", { hit_types: secretScan.hit_types });
     invariant(coder.secret_scan?.passed === true && reviewer.secret_scan?.passed === true
       && coder.secret_scan.evidence_hash === secretScan.evidence_hash
       && reviewer.secret_scan.evidence_hash === secretScan.evidence_hash, "role secret scan evidence does not match Git diff", "SECRET_EVIDENCE_MISMATCH");
+    invariant(coder.workspace_guard?.capability_enforced === true
+      && coder.workspace_guard?.ignored_paths_sha256 === secretScan.ignored_paths_sha256, "coder did not bind the ignored-path snapshot to its platform workspace capability", "WORKSPACE_CAPABILITY_EVIDENCE_MISMATCH");
     const scopeEvidenceHash = sha256(stableJson({ allowedPatterns, diffNames }));
     const gateClaims = this.verificationGateClaims({
       taskId,
@@ -2253,7 +2692,8 @@ class ProjectOrchestrator {
       secretScan,
       gate,
       commandSummary,
-      routerContextHash: currentControlContext.router_context_hash,
+      routerContextHash: effectiveControlFacts.router_context_hash,
+      controlContextFacts: effectiveControlFacts,
     };
   }
 
@@ -2265,6 +2705,7 @@ class ProjectOrchestrator {
       contextHash: event.context_hash,
       reports,
       verificationReceipt,
+      controlContextFacts: event.payload?.control_context,
       at: event.timestamp,
       requireCurrent: false,
     });
@@ -2318,6 +2759,7 @@ class ProjectOrchestrator {
             changed_paths: evidence.diffNames,
             verification_receipt_id: evidence.gate.receipt_id,
             router_context_hash: evidence.routerContextHash,
+            control_context: evidence.controlContextFacts,
           },
         })];
       });
@@ -2371,6 +2813,7 @@ class ProjectOrchestrator {
     invariant(runId, "resume requires runId", "RUN_ID_REQUIRED");
     this.validatePolicy();
     const tailRecovery = this.store.recoverTruncatedTail(this.#storeAuthority);
+    const headReconciliation = this.store.reconcileMonotonicHead(this.#storeAuthority);
     const recovered = this.store.transact(this.#storeAuthority, (events) => {
       const projection = this.project(events);
       const drafts = [];
@@ -2400,6 +2843,7 @@ class ProjectOrchestrator {
       recovered_expired_leases: recovered.filter((event) => event.event_type === "LEASE_EXPIRED").map((event) => event.event_id),
       recovered_stale_candidates: recovered.filter((event) => event.event_type === "CANDIDATE_INVALIDATED").map((event) => event.event_id),
       recovered_truncated_tail: tailRecovery,
+      external_head_reconciled: headReconciliation,
       stale_candidates: staleCandidates,
       next: this.nextTask(projection),
       event_count: projection.events.length,
@@ -2423,7 +2867,7 @@ class ProjectOrchestrator {
       invariant(tasks.length > 0 && tasks.every((state) => state.status === "VERIFIED"), "slice gate requires every necessary Task VERIFIED", "SLICE_NOT_VERIFIED");
       const row = this.router.sliceRows.find((item) => item.values["切片"] === sliceId);
       return {
-        schema_version: "g07-role-prompt/v3",
+        schema_version: "g07-role-prompt/v4",
         role,
         autonomy_run_id: runId,
         slice_id: sliceId,
@@ -2461,7 +2905,7 @@ class ProjectOrchestrator {
       invariant(state.status === "REPLAN", `architect prompt requires REPLAN, got ${state.status}`, "TASK_NOT_IN_REPLAN");
     }
     const common = {
-      schema_version: "g07-role-prompt/v3",
+      schema_version: "g07-role-prompt/v4",
       autonomy_run_id: runId,
       role,
       task_id: taskId,
@@ -2478,15 +2922,22 @@ class ProjectOrchestrator {
       acceptance_command: task.values["验收命令"],
       acceptance_scenario: task.values["业务验收场景"],
       replan_condition: task.values["Replan 条件"],
-      report_schema: "g07-role-report/v3",
+      report_schema: "g07-role-report/v4",
       platform_receipts_required: ["ROLE_IDENTITY", "ROLE_REPORT"],
       source_bodies_embedded: false,
     };
-    if (role === "coder") return { ...common, exact_write_scope: route.access.expanded_write_patterns, required_command_receipt: "COMMAND_EXECUTION", instructions: "Implement exactly one Task. Do not change business intent. Return a platform-signed role report and command result; do not write Task state or the event log." };
+    if (role === "coder") return {
+      ...common,
+      exact_write_scope: route.access.expanded_write_patterns,
+      required_command_receipt: "COMMAND_EXECUTION",
+      required_workspace_capability_receipt: "WORKSPACE_CAPABILITY",
+      platform_denied_write_patterns: this.policy.workspace_capability.denied_patterns,
+      instructions: "Implement exactly one Task inside the platform-enforced capability. Do not change business intent or write .git/.autonomy/.env/receipt paths. Return a platform-signed role report and command result; do not write Task state or the event log.",
+    };
     if (role === "auditor") return { ...common, read_only: true, required_evidence: ["normal", "exception", "recovery"], required_evidence_receipt: "AUDIT_EVIDENCE", instructions: "Audit the exact candidate commit independently. Return platform-signed evidence and PASS/FAIL; do not modify implementation." };
     if (role === "reviewer") return { ...common, read_only: true, required_checks: ["contract", "diff", "write_channel", "cross_fp"], required_review_receipt: "REVIEW_EVIDENCE", instructions: "Review the exact candidate commit independently. Return a platform-signed APPROVE/REQUEST_CHANGES report; do not repair the diff." };
     if (role === "architect") return { ...common, read_only: true, replan_categories: this.policy.replan_categories, required_boundary_receipt: "ARCHITECT_BOUNDARY_FOR_A_OR_B", instructions: "Handle only Replan A/B/C/D. A/B require a platform-signed unchanged-boundary receipt, C is CREATOR_REQUIRED, and D is technical/environment blocking." };
-    if (role === "prompt_editor") return { ...common, exact_write_scope: route.access.expanded_write_patterns, instructions: "Edit only an instantiated Prompt revision target anchor. Do not publish, activate, change code/Schema/business, or review your own revision." };
+    if (role === "prompt_editor") return { ...common, exact_write_scope: route.access.expanded_write_patterns, required_workspace_capability_receipt: "WORKSPACE_CAPABILITY", platform_denied_write_patterns: this.policy.workspace_capability.denied_patterns, instructions: "Edit only an instantiated Prompt revision target anchor inside the platform-enforced capability. Do not write .git/.autonomy/.env/receipt paths, publish, activate, change code/Schema/business, or review your own revision." };
     return { ...common, read_only: true, instructions: "Return a structured gap report only. Do not modify implementation or infer missing facts." };
   }
 
@@ -2519,6 +2970,7 @@ class FakeGitClient {
     this.diffs = new Map();
     this.clean = true;
     this.workspacePaths = ["package.json"];
+    this.ignoredWorkspacePaths = [];
   }
 
   head() {
@@ -2545,18 +2997,24 @@ class FakeGitClient {
     return this.commits.has(baseCommit) && this.commits.has(candidateCommit);
   }
 
-  addCommit(commit, { baseCommit = this.headCommit, paths = ["package.json"], patch = null } = {}) {
+  addCommit(commit, { baseCommit = this.headCommit, paths = ["package.json"], patch = null, blobs = null } = {}) {
     this.commits.add(baseCommit);
     this.commits.add(commit);
+    const patchText = patch ?? `diff --git a/${paths[0]} b/${paths[0]}\n+fixture-${commit.slice(0, 8)}\n`;
     this.diffs.set(`${baseCommit}..${commit}`, {
       paths: sortedUnique(paths.map(normalizePath)),
-      patch: patch ?? `diff --git a/${paths[0]} b/${paths[0]}\n+fixture-${commit.slice(0, 8)}\n`,
+      patch: patchText,
+      blobs: new Map(paths.map((item) => [normalizePath(item), Buffer.from(blobs?.[item] ?? patchText)])),
     });
     this.headCommit = commit;
   }
 
-  setDiff(baseCommit, candidateCommit, paths, patch) {
-    this.diffs.set(`${baseCommit}..${candidateCommit}`, { paths: sortedUnique(paths.map(normalizePath)), patch });
+  setDiff(baseCommit, candidateCommit, paths, patch, blobs = null) {
+    this.diffs.set(`${baseCommit}..${candidateCommit}`, {
+      paths: sortedUnique(paths.map(normalizePath)),
+      patch,
+      blobs: new Map(paths.map((item) => [normalizePath(item), Buffer.from(blobs?.[item] ?? patch)])),
+    });
   }
 
   diffNames(baseCommit, candidateCommit) {
@@ -2567,8 +3025,22 @@ class FakeGitClient {
     return this.diffs.get(`${baseCommit}..${candidateCommit}`)?.patch ?? "";
   }
 
+  changedBlobs(baseCommit, candidateCommit) {
+    const diff = this.diffs.get(`${baseCommit}..${candidateCommit}`);
+    return [...(diff?.blobs ?? new Map()).entries()].map(([blobPath, bytes]) => ({
+      path: blobPath,
+      mode: "100644",
+      oid: sha256(bytes).slice(0, 40),
+      bytes: Buffer.from(bytes),
+    }));
+  }
+
+  ignoredPaths() {
+    return sortedUnique(this.ignoredWorkspacePaths.map(normalizePath));
+  }
+
   workspaceFiles() {
-    return [...this.workspacePaths];
+    return sortedUnique([...this.workspacePaths, ...this.ignoredWorkspacePaths]);
   }
 }
 
@@ -2600,12 +3072,39 @@ class FakePlatformTrust extends Ed25519PlatformTrust {
   }
 }
 
+class FakeMonotonicHead {
+  constructor(streamId) {
+    this.streamId = streamId;
+    this.head = { stream_id: streamId, event_count: 0, event_hash: null };
+  }
+
+  read() {
+    return clone(this.head);
+  }
+
+  compareAndSet(expected, next) {
+    invariant(stableJson(this.head) === stableJson(expected), "self-test monotonic head compare-and-set conflict", "EVENT_HEAD_CAS_FAILED", { expected, actual: this.head });
+    invariant(next.event_count > expected.event_count, "self-test monotonic head cannot move backwards or stay flat", "EVENT_HEAD_NON_MONOTONIC");
+    this.head = clone(next);
+    return this.read();
+  }
+
+  forceForSemanticTest(events) {
+    this.head = {
+      stream_id: this.streamId,
+      event_count: events.length,
+      event_hash: events.at(-1)?.event_hash ?? null,
+    };
+  }
+}
+
 function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO", role, actorId, sessionId, principalId = actorId, attestedSessionId = sessionId, attemptId, baseCommit, candidateCommit, contextHash, verdict, decision = null, evidence = null, checks = null, commandExitCode = 0 }) {
   const patchText = fakeGit.diffPatch(baseCommit, candidateCommit);
   const diffHash = sha256(patchText);
+  const secretScan = orchestrator.scanCandidateSecrets(baseCommit, candidateCommit);
   const task = orchestrator.router.taskById.get(taskId);
   const report = {
-    report_version: "g07-role-report/v3",
+    report_version: "g07-role-report/v4",
     task_id: taskId,
     role,
     actor_id: actorId,
@@ -2624,7 +3123,7 @@ function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO"
       commands: [],
       diff_hash: diffHash,
       scope_evidence_hash: sha256(stableJson({ changed_paths: fakeGit.diffNames(baseCommit, candidateCommit) })),
-      secret_scan_evidence_hash: sha256(patchText),
+      secret_scan_evidence_hash: secretScan.evidence_hash,
     },
     evidence: evidence ?? (role === "auditor" ? ["normal", "exception", "recovery"].map((kind) => ({
       kind,
@@ -2633,10 +3132,12 @@ function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO"
     })) : []),
     checks: checks ?? (role === "reviewer" ? { contract: true, diff: true, write_channel: true, cross_fp: true } : {}),
     scope: { changed_paths: fakeGit.diffNames(baseCommit, candidateCommit), diff_hash: diffHash },
-    secret_scan: { passed: true, evidence_hash: sha256(patchText) },
+    secret_scan: { passed: secretScan.passed, evidence_hash: secretScan.evidence_hash },
+    workspace_guard: { capability_enforced: role === "coder", ignored_paths_sha256: secretScan.ignored_paths_sha256 },
     decision,
     review_receipt: null,
     execution: { model_tier: "MODEL::CODE_HIGH", actual_model: "self-test-model", tokens: 0, time_ms: 1, known_cost: null },
+    workspace_capability_receipt_id: null,
   };
   if (role === "coder") {
     const command = {
@@ -2717,6 +3218,8 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
   const makeHarness = ({ policyChanges = {}, clock = () => new Date("2026-07-11T12:00:00.000Z"), withPlatform = true, readyTaskId = null } = {}) => {
     const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "g07-orchestrator-v3-"));
     tempRoots.push(stateDir);
+    const receiptInbox = path.join(stateDir, "receipt-inbox");
+    fs.mkdirSync(receiptInbox);
     const platform = new FakePlatformTrust(clock);
     const policy = mergeObjects(clone(basePolicy), {
       phase: "G07_APPROVED_INTEGRATION",
@@ -2731,9 +3234,14 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
         private_key_material_in_workspace: false,
         receipt_version: PLATFORM_RECEIPT_VERSION,
       },
+      receipt_inbox: {
+        provider: "PLATFORM_DIRECTORY",
+        directory: receiptInbox,
+      },
     });
     mergeObjects(policy, policyChanges);
     const fakeGit = new FakeGitClient(root);
+    const monotonicHead = new FakeMonotonicHead(policy.monotonic_head.stream_id);
     let harnessRouter = router;
     if (readyTaskId && readyTaskId !== "F0-01-REPO") {
       harnessRouter = new ProjectContextRouter(root);
@@ -2753,13 +3261,14 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       clock,
       idFactory: () => `self-test-v3-${String(++idCounter).padStart(6, "0")}`,
       platformTrust: withPlatform ? platform : null,
+      monotonicHead,
       testControlOverrides: approvedControl,
       authority: SELF_TEST_AUTHORITY,
     });
-    return { orchestrator, fakeGit, stateDir, policy, platform, clock };
+    return { orchestrator, fakeGit, stateDir, policy, platform, monotonicHead, clock };
   };
   const contextHashFor = (harness, taskId = "F0-01-REPO") => harness.orchestrator.controlContext(taskId).hash;
-  const signedLease = (harness, { runId, taskId = "F0-01-REPO", role, actorId, attemptId, ttlSeconds = null, candidateCommit = null }) => {
+  const signedLease = (harness, { runId, taskId = "F0-01-REPO", role, actorId, attemptId, ttlSeconds = null, candidateCommit = null, principalId = null, sessionId = null }) => {
     const { orchestrator, platform } = harness;
     const projection = orchestrator.project();
     const state = projection.taskStates.get(taskId);
@@ -2772,6 +3281,25 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     const acquiredAt = harness.clock();
     const expiresAt = new Date(acquiredAt.getTime() + ttl * 1000);
     const leaseId = `self-test-lease-${sha256(stableJson({ runId, taskId, role, actorId, attemptId })).slice(0, 24)}`;
+    let workspaceCapabilityReceipt = null;
+    if (mode === "WRITE") {
+      const capabilityClaims = orchestrator.workspaceCapabilityClaims({
+        runId,
+        taskId,
+        attemptId,
+        role,
+        actorId,
+        principalId: principalId ?? `attested-coder-${attemptId}`,
+        sessionId: sessionId ?? `attested-coder-session-${attemptId}`,
+        capabilityId: `self-test-capability-${sha256(`${runId}:${taskId}:${attemptId}`).slice(0, 20)}`,
+        sandboxId: `sandbox-${sha256(`${actorId}:${attemptId}`).slice(0, 16)}`,
+        sandboxInstanceSha256: sha256(stableJson({ runId, taskId, attemptId, actorId, enforcement: "PLATFORM_SANDBOX" })),
+        baseCommit,
+        contextHash,
+        writeScopeSha256: sha256(stableJson(orchestrator.router.route({ role, taskId }).access.expanded_write_patterns)),
+      });
+      workspaceCapabilityReceipt = platform.issue("WORKSPACE_CAPABILITY", capabilityClaims);
+    }
     const receipt = platform.issue("LEASE_GRANT", orchestrator.leaseReceiptClaims({
       runId,
       taskId,
@@ -2787,8 +3315,9 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       contextHash,
       fromStatus: state.status,
       toStatus,
+      workspaceCapabilityReceiptId: workspaceCapabilityReceipt?.receipt_id ?? null,
     }));
-    return orchestrator.lease({ runId, taskId, role, actorId, attemptId, ttlSeconds, candidateCommit, platformReceipt: receipt });
+    return orchestrator.lease({ runId, taskId, role, actorId, attemptId, ttlSeconds, candidateCommit, platformReceipt: receipt, workspaceCapabilityReceipt });
   };
   const signedTransition = (harness, { runId, taskId = "F0-01-REPO", toStatus, attemptId, role = "orchestrator", candidateCommit = null, decisionLevel = "TASK_AUTONOMOUS" }) => {
     const { orchestrator, platform, fakeGit } = harness;
@@ -2822,7 +3351,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     });
     return report;
   };
-  const implement = ({ harness, runId, attempt, candidateCommit, taskId = "F0-01-REPO", paths = ["package.json"], patch = null, principalId = null, attestedSessionId = null, commandExitCode = 0, mutateReport = null }) => {
+  const implement = ({ harness, runId, attempt, candidateCommit, taskId = "F0-01-REPO", paths = ["package.json"], patch = null, blobs = null, principalId = null, attestedSessionId = null, commandExitCode = 0, mutateReport = null }) => {
     const { orchestrator, fakeGit, platform } = harness;
     let state = orchestrator.project().taskStates.get(taskId);
     if (state.status === "REWORK") {
@@ -2832,9 +3361,19 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     invariant(state.status === "READY", `self-test implementation helper requires READY, got ${state.status}`);
     const contextHash = contextHashFor(harness, taskId);
     const baseCommit = fakeGit.head();
-    const lease = signedLease(harness, { runId, taskId, role: "coder", actorId: `declared-coder-${attempt}`, attemptId: attempt });
+    const effectivePrincipalId = principalId ?? `attested-coder-${attempt}`;
+    const effectiveSessionId = attestedSessionId ?? `attested-coder-session-${attempt}`;
+    const lease = signedLease(harness, {
+      runId,
+      taskId,
+      role: "coder",
+      actorId: `declared-coder-${attempt}`,
+      attemptId: attempt,
+      principalId: effectivePrincipalId,
+      sessionId: effectiveSessionId,
+    });
     signedTransition(harness, { runId, taskId, toStatus: "IN_PROGRESS", attemptId: attempt, role: "coder" });
-    fakeGit.addCommit(candidateCommit, { baseCommit, paths, patch });
+    fakeGit.addCommit(candidateCommit, { baseCommit, paths, patch, blobs });
     const report = selfTestReport({
       orchestrator,
       fakeGit,
@@ -2843,8 +3382,8 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       role: "coder",
       actorId: `declared-coder-${attempt}`,
       sessionId: `declared-coder-session-${attempt}`,
-      principalId: principalId ?? `attested-coder-${attempt}`,
-      attestedSessionId: attestedSessionId ?? `attested-coder-session-${attempt}`,
+      principalId: effectivePrincipalId,
+      attestedSessionId: effectiveSessionId,
       attemptId: attempt,
       baseCommit,
       candidateCommit,
@@ -2852,6 +3391,8 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       verdict: "IMPLEMENTED",
       commandExitCode,
     });
+    report.workspace_capability_receipt_id = lease.lease.workspace_capability_receipt_id;
+    resignReport(harness, report);
     if (mutateReport) {
       mutateReport(report);
       resignReport(harness, report);
@@ -2914,7 +3455,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     const diffNames = harness.fakeGit.diffNames(coder.base_commit, state.candidate_commit);
     const diffHash = sha256(harness.fakeGit.diffPatch(coder.base_commit, state.candidate_commit));
     const scopeEvidenceHash = sha256(stableJson({ allowedPatterns: harness.orchestrator.router.expandWriteScope(harness.orchestrator.router.taskById.get(taskId)), diffNames }));
-    const secretEvidenceHash = harness.orchestrator.scanSecrets(harness.fakeGit.diffPatch(coder.base_commit, state.candidate_commit)).evidence_hash;
+    const secretEvidenceHash = harness.orchestrator.scanCandidateSecrets(coder.base_commit, state.candidate_commit).evidence_hash;
     return harness.platform.issue("VERIFICATION_GATE", harness.orchestrator.verificationGateClaims({ taskId, coder, auditor, reviewer, diffHash, scopeEvidenceHash, secretEvidenceHash }));
   };
   const verifySigned = (harness, runId, implementation) => harness.orchestrator.verifyEvidence({
@@ -2952,9 +3493,11 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
   try {
     const production = new ProjectOrchestrator({ root });
     const dryRun = production.dryRun({ runId: "g07-v3-production-dry" });
-    assertCheck("production:policy-v3-hash-bound", production.policy.schema_version === "g07-autonomy-policy/v3"
+    assertCheck("production:policy-v4-hash-bound", production.policy.schema_version === "g07-autonomy-policy/v4"
       && production.policyHash === String(router.gates.G07_A_POLICY_SHA256).toLowerCase(), production.policyHash);
     assertCheck("production:platform-unavailable-is-explicit", production.policy.platform_trust.provider === "UNAVAILABLE", production.policy.platform_trust);
+    assertCheck("production:monotonic-head-unavailable-is-explicit", production.policy.monotonic_head.provider === "UNAVAILABLE", production.policy.monotonic_head);
+    expectError("production:trusted-receipt-inbox-required", () => production.readTrustedJson("receipt.json", "--test-receipt"), "ENVIRONMENT_APPROVAL_REQUIRED");
     assertCheck("dry-run:unique-f0-01", dryRun.selected_task_id === "F0-01-REPO" && dryRun.ready_candidates.length === 1, dryRun);
     assertCheck("dry-run:no-fp-fabrication", dryRun.fp_ids.length === 0, dryRun.fp_ids);
     assertCheck("dry-run:three-snapshots-unchanged", dryRun.event_log_unchanged && !dryRun.product_files_written && !dryRun.task_status_changed, dryRun.snapshots);
@@ -2992,17 +3535,66 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     assertCheck("platform:production-ed25519-provider-path", loadedProvider.verify(providerReceipt, "PROVIDER_TEST", { value: 1 }).trusted === true, providerPolicy.platform_trust);
     assertCheck("platform:private-key-not-in-workspace", fs.readdirSync(providerRoot).every((name) => !name.toLowerCase().includes("private")), fs.readdirSync(providerRoot));
     expectError("platform:public-key-hash-drift", () => platformTrustFromPolicy(mergeObjects(clone(providerPolicy), { platform_trust: { public_key_sha256: "0".repeat(64) } }), providerRoot, providerClock), "PLATFORM_TRUST_KEY_HASH_MISMATCH");
+    fs.writeFileSync(path.join(providerRoot, "public-key-source.pem"), issuer.publicKeyPem, "utf8");
+    fs.linkSync(path.join(providerRoot, "public-key-source.pem"), path.join(providerRoot, "public-key-alias.pem"));
+    const hardlinkProviderPolicy = mergeObjects(clone(providerPolicy), { platform_trust: {
+      public_key_path: "public-key-alias.pem",
+      public_key_sha256: hashFile(path.join(providerRoot, "public-key-alias.pem")),
+    } });
+    expectError("platform:public-key-hardlink-alias-rejected", () => platformTrustFromPolicy(hardlinkProviderPolicy, providerRoot, providerClock), "TRUSTED_FILE_HARDLINK_FORBIDDEN");
+
+    const inboxParent = fs.mkdtempSync(path.join(os.tmpdir(), "g07-receipt-inbox-"));
+    tempRoots.push(inboxParent);
+    const inboxRoot = path.join(inboxParent, "inbox");
+    fs.mkdirSync(inboxRoot);
+    fs.writeFileSync(path.join(inboxRoot, "receipt.json"), JSON.stringify({ receipt: "trusted" }), "utf8");
+    fs.writeFileSync(path.join(inboxParent, "outside.json"), JSON.stringify({ receipt: "outside" }), "utf8");
+    const inboxHarness = makeHarness({ policyChanges: { receipt_inbox: { provider: "PLATFORM_DIRECTORY", directory: inboxRoot } } });
+    assertCheck("receipt-inbox:regular-json-inside-boundary", inboxHarness.orchestrator.readTrustedJson("receipt.json", "--test-receipt").receipt === "trusted", inboxRoot);
+    expectError("receipt-inbox:path-traversal-rejected-before-read", () => inboxHarness.orchestrator.readTrustedJson(path.join("..", "outside.json"), "--test-receipt"), "TRUSTED_FILE_BOUNDARY_VIOLATION");
+    fs.linkSync(path.join(inboxParent, "outside.json"), path.join(inboxRoot, "hardlink.json"));
+    expectError("receipt-inbox:hardlink-alias-rejected", () => inboxHarness.orchestrator.readTrustedJson("hardlink.json", "--test-receipt"), "TRUSTED_FILE_HARDLINK_FORBIDDEN");
 
     const promptHarness = makeHarness();
     const prompt = promptHarness.orchestrator.rolePrompt({ runId: "prompt", taskId: "F0-01-REPO", role: "coder" });
-    assertCheck("prompt:v3-platform-receipts", prompt.report_schema === "g07-role-report/v3"
+    assertCheck("prompt:v4-platform-receipts", prompt.report_schema === "g07-role-report/v4"
       && prompt.required_command_receipt === "COMMAND_EXECUTION"
+      && prompt.required_workspace_capability_receipt === "WORKSPACE_CAPABILITY"
+      && prompt.platform_denied_write_patterns.includes(".autonomy/**")
       && prompt.platform_receipts_required.includes("ROLE_REPORT"), prompt);
     expectError("prompt:planned-coder-rejected", () => promptHarness.orchestrator.rolePrompt({ runId: "prompt", taskId: "F0-02-CONTRACTS", role: "coder" }), "TASK_NOT_READY");
     expectError("prompt:slice-before-verified", () => promptHarness.orchestrator.rolePrompt({ runId: "prompt", role: "slice_gate_runner", sliceId: "F0" }), "SLICE_NOT_VERIFIED");
 
     const leaseHarness = makeHarness();
     expectError("lease:missing-platform-receipt", () => leaseHarness.orchestrator.lease({ runId: "lease", taskId: "F0-01-REPO", role: "coder", actorId: "writer", attemptId: "lease-1" }), "PLATFORM_RECEIPT_REQUIRED");
+    const noCapabilityHarness = makeHarness();
+    const noCapabilityContext = contextHashFor(noCapabilityHarness);
+    const noCapabilityAt = noCapabilityHarness.clock();
+    const noCapabilityGrant = noCapabilityHarness.platform.issue("LEASE_GRANT", noCapabilityHarness.orchestrator.leaseReceiptClaims({
+      runId: "no-capability",
+      taskId: "F0-01-REPO",
+      attemptId: "no-capability-1",
+      role: "coder",
+      actorId: "writer-no-capability",
+      mode: "WRITE",
+      leaseId: "no-capability-lease-0001",
+      acquiredAt: noCapabilityAt.toISOString(),
+      expiresAt: new Date(noCapabilityAt.getTime() + 900_000).toISOString(),
+      baseCommit: noCapabilityHarness.fakeGit.head(),
+      candidateCommit: null,
+      contextHash: noCapabilityContext,
+      fromStatus: "READY",
+      toStatus: "LEASED",
+      workspaceCapabilityReceiptId: null,
+    }));
+    expectError("lease:writer-without-workspace-capability-rejected", () => noCapabilityHarness.orchestrator.lease({
+      runId: "no-capability",
+      taskId: "F0-01-REPO",
+      role: "coder",
+      actorId: "writer-no-capability",
+      attemptId: "no-capability-1",
+      platformReceipt: noCapabilityGrant,
+    }), "WORKSPACE_CAPABILITY_INVALID");
     const lease = signedLease(leaseHarness, { runId: "lease", role: "coder", actorId: "writer", attemptId: "lease-1" });
     assertCheck("lease:signed-ready-to-leased", lease.to_status === "LEASED" && lease.platform_receipts[0].kind === "LEASE_GRANT", lease);
     expectError("lease:double-writer-rejected", () => signedLease(leaseHarness, { runId: "lease", role: "coder", actorId: "writer-2", attemptId: "lease-2" }), "TASK_NOT_READY");
@@ -3018,6 +3610,8 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     forgedLease.event_hash = hashEvent(forgedLease);
     leaseTamperLines[leaseTamperLines.length - 1] = JSON.stringify(forgedLease);
     fs.writeFileSync(leaseTamperHarness.orchestrator.store.eventsPath, `${leaseTamperLines.join("\n")}\n`, "utf8");
+    expectError("lease:external-head-detects-event-tamper", () => leaseTamperHarness.orchestrator.store.read(), "EVENT_HEAD_MISMATCH");
+    leaseTamperHarness.monotonicHead.forceForSemanticTest(leaseTamperLines.map((line) => JSON.parse(line)));
     expectError("lease:signed-lifetime-cannot-be-tampered", () => leaseTamperHarness.orchestrator.store.read(), "PLATFORM_RECEIPT_CLAIMS_MISMATCH");
 
     const contextHarness = makeHarness();
@@ -3049,6 +3643,26 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       platformReceipt: contextReceipt,
     }), "LEASE_CONTEXT_MISMATCH");
 
+    const capabilityIdentityHarness = makeHarness();
+    expectError("capability:writer-identity-must-match-sandbox", () => implement({
+      harness: capabilityIdentityHarness,
+      runId: "capability-identity",
+      attempt: "capability-identity-1",
+      candidateCommit: sha256("capability-identity-candidate").slice(0, 40),
+      mutateReport: (report) => {
+        report.identity_attestation = capabilityIdentityHarness.platform.issue("ROLE_IDENTITY", {
+          principal_id: "different-platform-principal",
+          session_id: "different-platform-session",
+          role: report.role,
+          task_id: report.task_id,
+          attempt_id: report.attempt_id,
+          base_commit: report.base_commit,
+          candidate_commit: report.candidate_commit,
+          context_hash: report.context_hash,
+        });
+      },
+    }), "WORKSPACE_CAPABILITY_IDENTITY_MISMATCH");
+
     const goodHarness = makeHarness();
     const goodImplementation = implement({ harness: goodHarness, runId: "good", attempt: "good-1", candidateCommit: "1".repeat(40) });
     passReviews({ harness: goodHarness, runId: "good", implementation: goodImplementation, suffix: "good" });
@@ -3072,6 +3686,26 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     const unlocked = goodHarness.orchestrator.unlock({ runId: "good", receiptsByTask: { "F0-02-CONTRACTS": unlockReceipt } });
     assertCheck("unlock:signed-dependency-closure", unlocked.unlocked.includes("F0-02-CONTRACTS"), unlocked.unlocked);
     assertCheck("events:replay-revalidates-platform-evidence", goodHarness.orchestrator.store.read().at(-2).event_type === "EVIDENCE_VERIFIED", goodHarness.orchestrator.store.read().length);
+
+    const historicalContextHarness = makeHarness();
+    const historicalImplementation = implement({ harness: historicalContextHarness, runId: "historical-context", attempt: "historical-context-1", candidateCommit: sha256("historical-context-candidate").slice(0, 40) });
+    passReviews({ harness: historicalContextHarness, runId: "historical-context", implementation: historicalImplementation, suffix: "historical-context" });
+    verifySigned(historicalContextHarness, "historical-context", historicalImplementation);
+    const originalControlContext = historicalContextHarness.orchestrator.controlContext.bind(historicalContextHarness.orchestrator);
+    historicalContextHarness.orchestrator.controlContext = (taskId) => {
+      const current = originalControlContext(taskId);
+      return { ...current, hash: sha256(`upgraded-control-context:${current.hash}`) };
+    };
+    const historicalProjection = historicalContextHarness.orchestrator.project();
+    assertCheck("history:verified-survives-later-control-upgrade", historicalProjection.taskStates.get("F0-01-REPO").status === "VERIFIED", historicalProjection.taskStates.get("F0-01-REPO"));
+
+    const verifiedRollbackHarness = makeHarness();
+    const verifiedRollbackImplementation = implement({ harness: verifiedRollbackHarness, runId: "verified-rollback", attempt: "verified-rollback-1", candidateCommit: sha256("verified-rollback-candidate").slice(0, 40) });
+    passReviews({ harness: verifiedRollbackHarness, runId: "verified-rollback", implementation: verifiedRollbackImplementation, suffix: "verified-rollback" });
+    verifySigned(verifiedRollbackHarness, "verified-rollback", verifiedRollbackImplementation);
+    const verifiedRollbackLines = fs.readFileSync(verifiedRollbackHarness.orchestrator.store.eventsPath, "utf8").trimEnd().split(/\r?\n/);
+    fs.writeFileSync(verifiedRollbackHarness.orchestrator.store.eventsPath, `${verifiedRollbackLines.slice(0, -1).join("\n")}\n`, "utf8");
+    expectError("events:verified-tail-cannot-be-deleted", () => verifiedRollbackHarness.orchestrator.project(), "EVENT_LOG_ROLLBACK_DETECTED");
 
     const arbitraryHarness = makeHarness();
     const arbitraryImplementation = implement({
@@ -3125,6 +3759,42 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       taskId: "F0-01-REPO",
       candidateCommit: secretImplementation.candidateCommit,
       verificationReceipt: verificationReceipt(secretHarness),
+    }), "SECRET_SCAN_FAILED");
+
+    const binarySecretHarness = makeHarness();
+    const binarySecret = Buffer.concat([Buffer.from([0x00, 0xff, 0x01]), Buffer.from(fakeSecret, "ascii"), Buffer.from([0x00, 0x02])]);
+    const binarySecretImplementation = implement({
+      harness: binarySecretHarness,
+      runId: "binary-secret",
+      attempt: "binary-secret-1",
+      candidateCommit: sha256("binary-secret-candidate").slice(0, 40),
+      patch: "diff --git a/package.json b/package.json\nBinary files differ\n",
+      blobs: { "package.json": binarySecret },
+    });
+    passReviews({ harness: binarySecretHarness, runId: "binary-secret", implementation: binarySecretImplementation, suffix: "binary-secret" });
+    const binaryScan = binarySecretHarness.orchestrator.scanCandidateSecrets(binarySecretImplementation.baseCommit, binarySecretImplementation.candidateCommit);
+    assertCheck("secret:binary-blob-is-scanned", binaryScan.binary_blob_count === 1 && binaryScan.hit_types.includes("OPENAI_KEY"), binaryScan);
+    expectError("evidence:binary-secret-leak-rejected", () => binarySecretHarness.orchestrator.verifyEvidence({
+      runId: "binary-secret",
+      taskId: "F0-01-REPO",
+      candidateCommit: binarySecretImplementation.candidateCommit,
+      verificationReceipt: verificationReceipt(binarySecretHarness),
+    }), "SECRET_SCAN_FAILED");
+
+    const oversizeHarness = makeHarness({ policyChanges: { secret_scan: { max_blob_bytes: 8 } } });
+    const oversizeImplementation = implement({
+      harness: oversizeHarness,
+      runId: "oversize-blob",
+      attempt: "oversize-blob-1",
+      candidateCommit: sha256("oversize-blob-candidate").slice(0, 40),
+      blobs: { "package.json": Buffer.alloc(9, 0x41) },
+    });
+    passReviews({ harness: oversizeHarness, runId: "oversize-blob", implementation: oversizeImplementation, suffix: "oversize-blob" });
+    expectError("evidence:oversize-unscanned-blob-blocked", () => oversizeHarness.orchestrator.verifyEvidence({
+      runId: "oversize-blob",
+      taskId: "F0-01-REPO",
+      candidateCommit: oversizeImplementation.candidateCommit,
+      verificationReceipt: verificationReceipt(oversizeHarness),
     }), "SECRET_SCAN_FAILED");
 
     const intermittentHarness = makeHarness();
@@ -3317,6 +3987,8 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     forgedArchitectC.event_hash = hashEvent(forgedArchitectC);
     architectCLines[architectCLines.length - 1] = JSON.stringify(forgedArchitectC);
     fs.writeFileSync(architectCHarness.orchestrator.store.eventsPath, `${architectCLines.join("\n")}\n`, "utf8");
+    expectError("events:external-head-detects-architect-remap", () => architectCHarness.orchestrator.store.read(), "EVENT_HEAD_MISMATCH");
+    architectCHarness.monotonicHead.forceForSemanticTest(architectCLines.map((line) => JSON.parse(line)));
     expectError("events:architect-c-cannot-be-remapped-to-ready", () => architectCHarness.orchestrator.store.read(), "EVENT_ARCHITECT_DECISION_INVALID");
 
     const selfReviewHarness = makeHarness();
@@ -3356,6 +4028,8 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     forgedFinal.event_hash = hashEvent(forgedFinal);
     forgedLines[forgedLines.length - 1] = JSON.stringify(forgedFinal);
     fs.writeFileSync(forgeHarness.orchestrator.store.eventsPath, `${forgedLines.join("\n")}\n`, "utf8");
+    expectError("events:external-head-detects-recomputed-chain", () => forgeHarness.orchestrator.store.read(), "EVENT_HEAD_MISMATCH");
+    forgeHarness.monotonicHead.forceForSemanticTest(forgedLines.map((line) => JSON.parse(line)));
     expectError("events:recomputed-chain-cannot-forge-verified", () => forgeHarness.orchestrator.store.read(), "PLATFORM_RECEIPT_REQUIRED");
     assertCheck("events:no-signing-private-key-in-state-dir", fs.readdirSync(forgeHarness.stateDir).every((name) => !name.includes("key") && !name.includes("private")), fs.readdirSync(forgeHarness.stateDir));
 
@@ -3415,6 +4089,25 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     const tamperedMeter = clone(signedMeter(budgetHarness, "budget-tampered", { tokens: 1, timeMs: 1, knownCost: 0 }));
     tamperedMeter.claims.tokens = 2;
     expectError("budget:tampered-meter-signature-rejected", () => budgetHarness.orchestrator.recordUsage({ runId: "budget-tampered", meterReceipt: tamperedMeter }), "PLATFORM_RECEIPT_SIGNATURE_INVALID");
+
+    const rollbackHarness = makeHarness({ policyChanges: { budget: { limits: { tokens: 100, elapsed_ms: null, known_cost: null } } } });
+    rollbackHarness.orchestrator.recordUsage({ runId: "rollback", meterReceipt: signedMeter(rollbackHarness, "rollback", { tokens: 80, timeMs: 0, knownCost: 0 }) });
+    rollbackHarness.orchestrator.recordUsage({ runId: "rollback", meterReceipt: signedMeter(rollbackHarness, "rollback", { tokens: 20, timeMs: 0, knownCost: 0 }) });
+    const rollbackLines = fs.readFileSync(rollbackHarness.orchestrator.store.eventsPath, "utf8").trimEnd().split(/\r?\n/);
+    fs.writeFileSync(rollbackHarness.orchestrator.store.eventsPath, `${rollbackLines.slice(0, -1).join("\n")}\n`, "utf8");
+    expectError("events:complete-tail-deletion-cannot-rollback-budget", () => rollbackHarness.orchestrator.project(), "EVENT_LOG_ROLLBACK_DETECTED");
+
+    const fullDeletionHarness = makeHarness();
+    fullDeletionHarness.orchestrator.recordUsage({ runId: "full-delete", meterReceipt: signedMeter(fullDeletionHarness, "full-delete", { tokens: 1, timeMs: 0, knownCost: 0 }) });
+    fs.unlinkSync(fullDeletionHarness.orchestrator.store.eventsPath);
+    expectError("events:whole-log-deletion-detected", () => fullDeletionHarness.orchestrator.project(), "EVENT_LOG_ROLLBACK_DETECTED");
+
+    const reconcileHarness = makeHarness();
+    reconcileHarness.orchestrator.recordUsage({ runId: "reconcile", meterReceipt: signedMeter(reconcileHarness, "reconcile", { tokens: 1, timeMs: 0, knownCost: 0 }) });
+    reconcileHarness.monotonicHead.forceForSemanticTest([]);
+    const reconciled = reconcileHarness.orchestrator.resume({ runId: "reconcile" });
+    assertCheck("events:resume-reconciles-valid-local-ahead-head", reconciled.external_head_reconciled?.to?.event_count === 1
+      && reconcileHarness.monotonicHead.read().event_count === 1, reconciled.external_head_reconciled);
     const reportBudgetHarness = makeHarness({ policyChanges: { budget: { limits: { tokens: 100, elapsed_ms: null, known_cost: null } } } });
     implement({ harness: reportBudgetHarness, runId: "report-budget", attempt: "report-budget-1", candidateCommit: "c".repeat(40), mutateReport: (report) => { report.execution.tokens = 999999; } });
     assertCheck("budget:role-report-usage-not-authoritative", reportBudgetHarness.orchestrator.budgetState("report-budget").dimensions.find((item) => item.name === "tokens").used === 0, reportBudgetHarness.orchestrator.budgetState("report-budget"));
@@ -3427,6 +4120,14 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     lockHarness.orchestrator.store.releaseLock(oldOwner);
     assertCheck("lock:old-owner-cannot-delete-replacement", fs.existsSync(lockHarness.orchestrator.store.lockPath), lockHarness.orchestrator.store.lockRecord());
     if (fs.existsSync(lockHarness.orchestrator.store.lockPath)) fs.unlinkSync(lockHarness.orchestrator.store.lockPath);
+
+    const corruptLockHarness = makeHarness({ policyChanges: { concurrency: { lock_stale_ms: 1 } } });
+    fs.writeFileSync(corruptLockHarness.orchestrator.store.lockPath, "{", "utf8");
+    const oldLockTime = new Date(Date.now() - 60_000);
+    fs.utimesSync(corruptLockHarness.orchestrator.store.lockPath, oldLockTime, oldLockTime);
+    const recoveredCorruptOwner = corruptLockHarness.orchestrator.store.acquireLock();
+    corruptLockHarness.orchestrator.store.releaseLock(recoveredCorruptOwner);
+    assertCheck("lock:stale-corrupt-lock-quarantined-and-recovered", fs.readdirSync(corruptLockHarness.orchestrator.store.quarantinePath).some((name) => name.includes("stale.corrupt")), fs.readdirSync(corruptLockHarness.orchestrator.store.quarantinePath));
 
     const diffRoot = fs.mkdtempSync(path.join(os.tmpdir(), "g07-delete-diff-v3-"));
     tempRoots.push(diffRoot);
@@ -3447,6 +4148,14 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     runFixtureGit(["commit", "--quiet", "-m", "delete"]);
     const deletionCandidate = runFixtureGit(["rev-parse", "HEAD"]);
     assertCheck("scope:deleted-path-included", new GitClient(diffRoot).diffNames(deletionBase, deletionCandidate).includes("deleted-scope.txt"), new GitClient(diffRoot).diffNames(deletionBase, deletionCandidate));
+    fs.writeFileSync(path.join(diffRoot, "binary-secret.bin"), Buffer.concat([Buffer.from([0, 1, 2]), Buffer.from(fakeSecret, "ascii"), Buffer.from([0, 3]) ]));
+    runFixtureGit(["add", "binary-secret.bin"]);
+    runFixtureGit(["commit", "--quiet", "-m", "binary secret"]);
+    const binaryCandidate = runFixtureGit(["rev-parse", "HEAD"]);
+    const realBinaryBlobs = new GitClient(diffRoot).changedBlobs(deletionCandidate, binaryCandidate);
+    assertCheck("secret:real-git-binary-blob-bytes-scanned", realBinaryBlobs.length === 1
+      && realBinaryBlobs[0].bytes.includes(0)
+      && promptHarness.orchestrator.scanSecretBytes(realBinaryBlobs[0].bytes).includes("OPENAI_KEY"), realBinaryBlobs.map((item) => ({ path: item.path, bytes: item.bytes.length })));
 
     for (const action of MANDATORY_HARD_STOP_ACTIONS) {
       const result = promptHarness.orchestrator.evaluateAction(action, "actions");
@@ -3462,15 +4171,17 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
 
   const passed = checks.filter((check) => check.passed).length;
   return {
-    schema_version: "project-orchestrator-self-test/v3",
+    schema_version: "project-orchestrator-self-test/v4",
     passed: passed === checks.length,
     assertions: { passed, failed: checks.length - passed, total: checks.length },
     failed_checks: checks.filter((check) => !check.passed),
     coverage: {
       guard: ["normalized known actions", "default deny unknown/destructive/external/paid"],
-      platform_trust: ["production Ed25519 provider path", "no private key in workspace", "receipt claims/signature/reuse"],
-      evidence: ["command stdout/regression", "identity", "audit", "review", "Git/scope/secret", "VERIFICATION_GATE replay"],
-      recovery: ["intermittent failure", "two Architect replans", "noncritical exhaustion", "cross-run lease", "stale candidate", "complete/truncated tail"],
+      platform_trust: ["production Ed25519 provider path", "no private key in workspace", "trusted receipt inbox realpath/type/hardlink boundary", "receipt claims/signature/reuse"],
+      event_integrity: ["external monotonic head", "complete tail and whole-log rollback detection", "valid local-ahead reconciliation", "semantic replay"],
+      workspace_capability: ["platform-enforced exact write scope", "denied .git/.autonomy/.env", "writer identity binding", "ignored path snapshot"],
+      evidence: ["command stdout/regression", "identity", "audit", "review", "Git scope including deletion", "text/binary/oversize candidate blob secret scan", "historical control-context VERIFIED replay", "VERIFICATION_GATE replay"],
+      recovery: ["intermittent failure", "two Architect replans", "noncritical exhaustion", "cross-run lease", "stale candidate", "complete/truncated tail", "corrupt stale lock quarantine"],
       budget: ["registered immutable limits", "platform metering only", "80/100 thresholds"],
     },
   };
@@ -3498,20 +4209,12 @@ function parseCli(argv) {
   return { command, options };
 }
 
-function readCliJson(options, key, flag) {
-  invariant(options[key], `${flag} is required`, "CLI_ARGUMENT_INVALID");
-  const resolved = path.resolve(options[key]);
-  const basename = path.basename(resolved).toLowerCase();
-  invariant(basename !== ".env" && !basename.startsWith(".env."), `${flag} cannot read an environment file`, "CREDENTIAL_ACCESS");
-  return readJsonFile(resolved);
-}
-
 function usage() {
   return [
     "Usage:",
     "  node tools/project-orchestrator.mjs status [--run-id ID]",
     "  node tools/project-orchestrator.mjs dry-run [--run-id ID]",
-    "  node tools/project-orchestrator.mjs lease --run-id ID [--task-id ID] --role ROLE --actor-id ID --attempt-id ID --platform-receipt-file PATH [--ttl-seconds N]",
+    "  node tools/project-orchestrator.mjs lease --run-id ID [--task-id ID] --role ROLE --actor-id ID --attempt-id ID --platform-receipt-file NAME --workspace-capability-receipt-file NAME [--ttl-seconds N]",
     "  node tools/project-orchestrator.mjs record --run-id ID --report-file PATH",
     "  node tools/project-orchestrator.mjs verify-evidence --run-id ID --task-id ID --candidate-commit SHA --verification-receipt-file PATH [--context-hash SHA256]",
     "  node tools/project-orchestrator.mjs transition --run-id ID --task-id ID --to-status STATUS [--platform-receipt-file PATH | --resolution-receipt-file PATH] [--candidate-commit SHA]",
@@ -3528,14 +4231,15 @@ function usage() {
 function main() {
   try {
     const { command, options } = parseCli(process.argv.slice(2));
+    invariant(!options.root || path.resolve(options.root) === DEFAULT_ROOT, "--root cannot redirect the production control plane", "CLI_ARGUMENT_INVALID");
     if (options.self_test) {
-      const report = runOrchestratorSelfTest(options.root ? path.resolve(options.root) : DEFAULT_ROOT);
+      const report = runOrchestratorSelfTest(DEFAULT_ROOT);
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
       if (!report.passed) process.exitCode = 1;
       return;
     }
     invariant(command, usage(), "CLI_USAGE");
-    const root = options.root ? path.resolve(options.root) : DEFAULT_ROOT;
+    const root = DEFAULT_ROOT;
     invariant(!options.state_dir, "--state-dir is reserved for internal self-test authority", "CLI_ARGUMENT_INVALID");
     const orchestrator = new ProjectOrchestrator({ root });
     const common = { runId: options.run_id ?? "default" };
@@ -3552,16 +4256,19 @@ function main() {
       contextHash: options.context_hash,
       baseCommit: options.base_commit,
       candidateCommit: options.candidate_commit,
-      platformReceipt: readCliJson(options, "platform_receipt_file", "--platform-receipt-file"),
+      platformReceipt: orchestrator.readTrustedJson(options.platform_receipt_file, "--platform-receipt-file"),
+      workspaceCapabilityReceipt: ["coder", "prompt_editor"].includes(options.role)
+        ? orchestrator.readTrustedJson(options.workspace_capability_receipt_file, "--workspace-capability-receipt-file")
+        : null,
     });
-    else if (command === "record") output = orchestrator.record({ ...common, report: readCliJson(options, "report_file", "--report-file") });
+    else if (command === "record") output = orchestrator.record({ ...common, report: orchestrator.readTrustedJson(options.report_file, "--report-file") });
     else if (command === "verify-evidence") output = orchestrator.verifyEvidence({
       ...common,
       taskId: options.task_id,
       candidateCommit: options.candidate_commit,
       contextHash: options.context_hash,
       attemptId: options.attempt_id,
-      verificationReceipt: readCliJson(options, "verification_receipt_file", "--verification-receipt-file"),
+      verificationReceipt: orchestrator.readTrustedJson(options.verification_receipt_file, "--verification-receipt-file"),
     });
     else if (command === "transition") {
       invariant(Boolean(options.platform_receipt_file) !== Boolean(options.resolution_receipt_file), "transition requires exactly one platform or resolution receipt file", "CLI_ARGUMENT_INVALID");
@@ -3574,12 +4281,12 @@ function main() {
         candidateCommit: options.candidate_commit,
         contextHash: options.context_hash,
         decisionLevel: options.decision_level ?? "TASK_AUTONOMOUS",
-        platformReceipt: options.platform_receipt_file ? readCliJson(options, "platform_receipt_file", "--platform-receipt-file") : null,
-        resolutionReceipt: options.resolution_receipt_file ? readCliJson(options, "resolution_receipt_file", "--resolution-receipt-file") : null,
+        platformReceipt: options.platform_receipt_file ? orchestrator.readTrustedJson(options.platform_receipt_file, "--platform-receipt-file") : null,
+        resolutionReceipt: options.resolution_receipt_file ? orchestrator.readTrustedJson(options.resolution_receipt_file, "--resolution-receipt-file") : null,
       });
     }
-    else if (command === "unlock") output = orchestrator.unlock({ ...common, receiptsByTask: readCliJson(options, "receipts_file", "--receipts-file") });
-    else if (command === "record-usage") output = orchestrator.recordUsage({ ...common, meterReceipt: readCliJson(options, "meter_receipt_file", "--meter-receipt-file") });
+    else if (command === "unlock") output = orchestrator.unlock({ ...common, receiptsByTask: orchestrator.readTrustedJson(options.receipts_file, "--receipts-file") });
+    else if (command === "record-usage") output = orchestrator.recordUsage({ ...common, meterReceipt: orchestrator.readTrustedJson(options.meter_receipt_file, "--meter-receipt-file") });
     else if (command === "resume") output = orchestrator.resume(common);
     else if (command === "report") output = orchestrator.projectReport({ ...common, sliceId: options.slice_id ?? null });
     else if (command === "prompt") output = orchestrator.rolePrompt({
