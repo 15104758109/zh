@@ -24,6 +24,7 @@ const ALLOWED_G07_PATHS = new Set([
   "docs/G07_A_EVIDENCE_V5.json",
   "docs/G07_A_EVIDENCE_V6.json",
   "docs/G07_A_EVIDENCE_V7.json",
+  "docs/G07_A_EVIDENCE_V8.json",
   "docs/IMPLEMENTATION_CONTROL.md",
   "tools/g07-control-evidence.mjs",
   "tools/project-context-loader.mjs",
