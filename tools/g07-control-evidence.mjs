@@ -254,8 +254,8 @@ function main() {
     }
     const report = {
       schema_version: "g07-control-evidence/v1",
-      generated_at: new Date().toISOString(),
       branch: gitText(options.root, ["branch", "--show-current"]),
+      candidate_committed_at: gitText(options.root, ["show", "-s", "--format=%cI", scope?.candidate_commit ?? "HEAD"]),
       baseline_compatibility: baseline,
       full_baseline_scope: scope,
       current_tests: options.mode === "all" ? {
