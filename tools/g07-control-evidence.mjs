@@ -14,7 +14,7 @@ const HARNESS_PATH = "DEV_HARNESS.md";
 const POLICY_PATH = ".autonomy/policy.json";
 const BASELINE_COMMIT = "7faa8c132de6a2e66829d3d4b89364b56181e022";
 const BASELINE_LOADER_PATH = "tools/project-context-loader.mjs";
-const ROLE_REPORT_SCHEMA = "g07-role-report/v5";
+const ROLE_REPORT_SCHEMA = "g07-role-report/v6";
 
 const HARNESS_CONTROL_KEYS = Object.freeze([
   "G07_GATE",
@@ -46,6 +46,7 @@ const ALLOWED_G07_PATHS = new Set([
   "docs/G07_A_EVIDENCE_V7.json",
   "docs/G07_A_EVIDENCE_V8.json",
   "docs/G07_A_EVIDENCE_V9.json",
+  "docs/G07_A_EVIDENCE_V10.json",
   "docs/IMPLEMENTATION_CONTROL.md",
   "tools/g07-control-evidence.mjs",
   "tools/g07-sensitive-patterns.mjs",

@@ -858,7 +858,7 @@ class ProjectOrchestrator {
   }
 
   validatePolicy() {
-    invariant(this.policy.schema_version === "g07-autonomy-policy/v5", "unsupported autonomy policy", "POLICY_INVALID");
+    invariant(this.policy.schema_version === "g07-autonomy-policy/v6", "unsupported autonomy policy", "POLICY_INVALID");
     invariant(this.policy.control_anchor === "G07::AUTONOMY", "policy is not bound to G07::AUTONOMY", "POLICY_INVALID");
     invariant(["G07_A_CONTROL_PLANE_ONLY", "G07_APPROVED_INTEGRATION"].includes(this.policy.phase), "unknown autonomy phase", "POLICY_PHASE_INVALID");
     invariant(this.policy.g07_gate_required === "APPROVED", "policy must require creator-approved G07", "POLICY_GATE_INVALID");
@@ -907,7 +907,8 @@ class ProjectOrchestrator {
       && this.policy.role_lifecycle.slice_gate_requires_read_only_lease === true
       && this.policy.role_lifecycle.slice_gate_report_must_enter_event_chain === true
       && this.policy.role_lifecycle.slice_gate_execution_receipt_required === true
-      && this.policy.role_lifecycle.model_session_receipt_required === true, "role lifecycle policy is incomplete", "POLICY_ROLE_LIFECYCLE_INVALID");
+      && this.policy.role_lifecycle.model_session_receipt_required === true
+      && this.policy.role_lifecycle.report_receipt_binds_lease_identity === true, "role lifecycle policy is incomplete", "POLICY_ROLE_LIFECYCLE_INVALID");
     invariant(this.policy.secret_scan?.version === SECRET_SCAN_VERSION
       && this.policy.secret_scan?.scan_binary_blobs === true
       && this.policy.secret_scan?.oversize_result === "BLOCKING"
@@ -1096,22 +1097,29 @@ class ProjectOrchestrator {
     };
   }
 
+  roleReportClaims(report, leaseIdentity = null) {
+    const identity = leaseIdentity ?? report;
+    return {
+      lease_id: identity.lease_id,
+      actor_id: identity.actor_id,
+      role: identity.role,
+      task_id: identity.task_id ?? null,
+      slice_id: identity.slice_id ?? null,
+      attempt_id: identity.attempt_id,
+      base_commit: report.base_commit,
+      candidate_commit: report.candidate_commit,
+      context_hash: report.context_hash,
+      report_sha256: sha256(stableJson(this.reportCore(report))),
+    };
+  }
+
   verifyReportTrust(report, { at = this.clock() } = {}) {
     const identityClaims = this.roleIdentityClaims(report);
     invariant(typeof identityClaims.principal_id === "string" && identityClaims.principal_id.length > 0
       && typeof identityClaims.session_id === "string" && identityClaims.session_id.length > 0, "role identity receipt lacks a trusted principal/session", "IDENTITY_ATTESTATION_INVALID");
     const identity = this.verifyPlatformReceipt(report.identity_attestation, "ROLE_IDENTITY", identityClaims, { at });
     const modelSession = this.verifyPlatformReceipt(report.model_attestation, "MODEL_SESSION", this.modelSessionClaims(report), { at });
-    const reportClaims = {
-      role: report.role,
-      task_id: report.task_id,
-      slice_id: report.slice_id ?? null,
-      attempt_id: report.attempt_id,
-      base_commit: report.base_commit,
-      candidate_commit: report.candidate_commit,
-      context_hash: report.context_hash,
-      report_sha256: sha256(stableJson(this.reportCore(report))),
-    };
+    const reportClaims = this.roleReportClaims(report);
     const signedReport = this.verifyPlatformReceipt(report.report_receipt, "ROLE_REPORT", reportClaims, { at });
     return {
       role: report.role,
@@ -1124,6 +1132,81 @@ class ProjectOrchestrator {
       report_receipt_id: signedReport.receipt_id,
       evidence_hash: sha256(stableJson([identity.evidence_hash, modelSession.evidence_hash, signedReport.evidence_hash])),
     };
+  }
+
+  trustedReportRejectionBinding(report, projection, { at = this.clock() } = {}) {
+    try {
+      if (!report || typeof report !== "object") return null;
+      const receipt = report.report_receipt;
+      const claims = receipt?.claims;
+      if (!claims || receipt.kind !== "ROLE_REPORT"
+        || typeof claims.lease_id !== "string" || claims.lease_id.length < 12
+        || typeof claims.actor_id !== "string" || claims.actor_id.length === 0
+        || !REPORT_ROLES.has(claims.role)
+        || typeof claims.attempt_id !== "string" || claims.attempt_id.length === 0
+        || !isSha256(claims.report_sha256)
+        || claims.report_sha256 !== sha256(stableJson(this.reportCore(report)))) {
+        return null;
+      }
+      const lease = projection.activeLeases.find((item) => item.lease_id === claims.lease_id
+        && (item.task_id ?? null) === (claims.task_id ?? null)
+        && (item.slice_id ?? null) === (claims.slice_id ?? null)
+        && item.role === claims.role
+        && item.actor_id === claims.actor_id
+        && item.attempt_id === claims.attempt_id);
+      if (!lease) return null;
+      this.verifyPlatformReceipt(receipt, "ROLE_REPORT", claims, { at });
+
+      const selectorFields = ["lease_id", "role", "actor_id", "attempt_id", lease.task_id ? "task_id" : "slice_id"];
+      const submittedIdentity = {};
+      const missingIdentityFields = [];
+      for (const field of selectorFields) {
+        const expected = field === "lease_id" ? lease.lease_id
+          : field === "task_id" ? lease.task_id
+            : field === "slice_id" ? lease.slice_id
+              : lease[field];
+        const provided = Object.hasOwn(report, field) ? report[field] : undefined;
+        const missing = provided === undefined || provided === "" || (provided === null && expected !== null);
+        submittedIdentity[field] = missing ? null : provided;
+        if (missing) {
+          missingIdentityFields.push(field);
+          continue;
+        }
+        if (stableJson(provided) !== stableJson(expected)) return null;
+      }
+      return { lease, receipt, claims, submittedIdentity, missingIdentityFields };
+    } catch {
+      return null;
+    }
+  }
+
+  verifyRejectedReportEventBinding(event, lease, { at = this.clock() } = {}) {
+    const receipt = event.platform_receipts.find((item) => item.kind === "ROLE_REPORT");
+    const claims = receipt?.claims ?? {};
+    invariant(receipt
+      && claims.lease_id === lease.lease_id
+      && claims.actor_id === lease.actor_id
+      && claims.role === lease.role
+      && (claims.task_id ?? null) === (lease.task_id ?? null)
+      && (claims.slice_id ?? null) === (lease.slice_id ?? null)
+      && claims.attempt_id === lease.attempt_id
+      && isSha256(claims.report_sha256)
+      && event.payload?.report_receipt_id === receipt.receipt_id
+      && event.payload?.signed_report_sha256 === claims.report_sha256, "report rejection lacks a lease-bound platform report receipt", "EVENT_REPORT_REJECTION_BINDING_INVALID");
+    this.verifyPlatformReceipt(receipt, "ROLE_REPORT", claims, { at });
+    const selectorFields = ["lease_id", "role", "actor_id", "attempt_id", lease.task_id ? "task_id" : "slice_id"];
+    const missingFields = event.payload?.missing_identity_fields ?? [];
+    const submitted = event.payload?.submitted_identity ?? {};
+    invariant(Array.isArray(missingFields)
+      && sameStringSet(missingFields, selectorFields.filter((field) => submitted[field] === null))
+      && selectorFields.every((field) => {
+        const expected = field === "lease_id" ? lease.lease_id
+          : field === "task_id" ? lease.task_id
+            : field === "slice_id" ? lease.slice_id
+              : lease[field];
+        return submitted[field] === null || stableJson(submitted[field]) === stableJson(expected);
+      }), "report rejection submitted identity was tampered or crossed leases", "EVENT_REPORT_REJECTION_BINDING_INVALID");
+    return receipt;
   }
 
   leaseReceiptClaims({ runId, taskId, sliceId = null, attemptId, role, actorId, mode, leaseId, acquiredAt, expiresAt, baseCommit, candidateCommit, contextHash, fromStatus, toStatus, workspaceCapabilityReceiptId = null }) {
@@ -1396,6 +1479,7 @@ class ProjectOrchestrator {
         } else if (event.event_type === "SLICE_GATE_REPORT_RECORDED") {
           const report = event.payload?.report;
           const active = [...leases.values()].find((lease) => lease.slice_id === event.slice_id
+            && lease.lease_id === report?.lease_id
             && lease.role === "slice_gate_runner"
             && lease.actor_id === report?.actor_id
             && lease.attempt_id === report?.attempt_id);
@@ -1443,6 +1527,7 @@ class ProjectOrchestrator {
             && event.lease.action === "RELEASE"
             && isSha256(event.failure_fingerprint)
             && event.payload?.rejected_lease_id === active.lease_id, "slice gate rejection does not close its active lease", "EVENT_REPORT_REJECTION_INVALID");
+          this.verifyRejectedReportEventBinding(event, active, { at: event.timestamp });
           leases.delete(active.lease_id);
         } else {
           invariant(false, `taskless slice gate event type ${event.event_type} is forbidden`, "EVENT_TYPE_INVALID");
@@ -1587,6 +1672,7 @@ class ProjectOrchestrator {
         if (!reports.has(event.task_id)) reports.set(event.task_id, []);
         reports.get(event.task_id).push(report);
         const activeForRole = [...leases.values()].find((lease) => lease.task_id === event.task_id
+          && lease.lease_id === report.lease_id
           && lease.role === event.role
           && lease.attempt_id === event.attempt_id);
         invariant(activeForRole, "role report has no matching active lease", "EVENT_REPORT_LEASE_INVALID");
@@ -1702,14 +1788,22 @@ class ProjectOrchestrator {
         const rejectedLease = [...leases.values()].find((lease) => lease.task_id === event.task_id
           && lease.lease_id === event.payload?.rejected_lease_id
           && lease.role === event.payload?.rejected_role);
-        const validStatusPair = (["IN_PROGRESS", "VERIFYING"].includes(event.from_status)
+        const remainingTaskLeases = [...leases.values()]
+          .filter((lease) => lease.task_id === event.task_id && lease.lease_id !== event.payload?.rejected_lease_id)
+          .map((lease) => lease.lease_id)
+          .sort();
+        const failureStatusPair = (["IN_PROGRESS", "VERIFYING"].includes(event.from_status)
           && ["REWORK", "REPLAN", "BLOCKED", "CREATOR_REQUIRED"].includes(event.to_status))
           || (event.from_status === "REPLAN" && ["BLOCKED", "CREATOR_REQUIRED"].includes(event.to_status));
+        const siblingPreserved = remainingTaskLeases.length > 0 && event.to_status === event.from_status;
         invariant(rejectedLease
-          && event.lease?.action === "RELEASE_ALL_TASK"
-          && validStatusPair
+          && event.lease?.action === "RELEASE"
+          && event.lease.lease_id === rejectedLease.lease_id
+          && (failureStatusPair || siblingPreserved)
+          && stableJson(event.payload?.remaining_task_lease_ids ?? []) === stableJson(remainingTaskLeases)
           && isSha256(event.failure_fingerprint)
           && isSha256(event.payload?.submitted_report_sha256), "report rejection does not atomically close its active lease and Task state", "EVENT_REPORT_REJECTION_INVALID");
+        this.verifyRejectedReportEventBinding(event, rejectedLease, { at: event.timestamp });
       } else if (event.event_type === "CANDIDATE_INVALIDATED") {
         invariant(["IN_PROGRESS", "IMPLEMENTED", "VERIFYING"].includes(event.from_status)
           && ["REWORK", "REPLAN", "BLOCKED", "CREATOR_REQUIRED"].includes(event.to_status)
@@ -2370,6 +2464,7 @@ class ProjectOrchestrator {
     const finalized = this.store.transact(this.#storeAuthority, (events) => {
       const projection = this.project(events);
       const lease = projection.activeLeases.find((item) => item.role === "slice_gate_runner"
+        && item.lease_id === report.lease_id
         && item.slice_id === report.slice_id
         && item.actor_id === report.actor_id
         && item.attempt_id === report.attempt_id);
@@ -2578,11 +2673,11 @@ class ProjectOrchestrator {
 
   validateReport(report) {
     invariant(report && typeof report === "object", "report must be a JSON object", "REPORT_INVALID");
-    for (const field of ["report_version", "role", "actor_id", "session_id", "attempt_id", "base_commit", "candidate_commit", "context_hash", "verdict", "identity_attestation", "model_attestation", "report_receipt"]) {
+    for (const field of ["report_version", "lease_id", "role", "actor_id", "session_id", "attempt_id", "base_commit", "candidate_commit", "context_hash", "verdict", "identity_attestation", "model_attestation", "report_receipt"]) {
       invariant(Object.hasOwn(report, field) && report[field] !== "", `report is missing ${field}`, "REPORT_SCHEMA_INVALID");
     }
     invariant(Object.hasOwn(report, "task_id"), "report is missing task_id", "REPORT_SCHEMA_INVALID");
-    invariant(report.report_version === "g07-role-report/v5", "unsupported role report", "REPORT_SCHEMA_INVALID");
+    invariant(report.report_version === "g07-role-report/v6", "unsupported role report", "REPORT_SCHEMA_INVALID");
     invariant(REPORT_ROLES.has(report.role), `invalid report role: ${report.role}`, "REPORT_ROLE_INVALID");
     if (report.role === "slice_gate_runner") {
       invariant(report.task_id === null && typeof report.slice_id === "string"
@@ -2645,72 +2740,75 @@ class ProjectOrchestrator {
     return { toStatus: "BLOCKED", decisionLevel: "BLOCKED_TECHNICAL", counters, creatorReason: null, environmentReason: null };
   }
 
-  recordReportRejection({ runId, report, error }) {
-    if (!report?.task_id || !report?.role || !report?.actor_id || !report?.attempt_id) return null;
+  recordRejectedReport({ runId, report, error }) {
     const finalized = this.store.transact(this.#storeAuthority, (events) => {
       const projection = this.project(events);
-      const state = projection.taskStates.get(report.task_id);
-      const lease = projection.activeLeases.find((item) => item.task_id === report.task_id
-        && item.role === report.role
-        && item.attempt_id === report.attempt_id);
-      if (!state || !lease || !["IN_PROGRESS", "VERIFYING", "REPLAN"].includes(state.status)) return [];
-      const disposition = this.reportFailureState(report.task_id, state, error);
+      const binding = this.trustedReportRejectionBinding(report, projection);
+      if (!binding) return [];
+      const { lease } = binding;
+      const bindingPayload = {
+        rejected_lease_id: lease.lease_id,
+        rejected_role: lease.role,
+        rejected_actor_id: lease.actor_id,
+        report_receipt_id: binding.receipt.receipt_id,
+        signed_report_sha256: binding.claims.report_sha256,
+        submitted_report_sha256: sha256(stableJson(report)),
+        submitted_identity: binding.submittedIdentity,
+        missing_identity_fields: binding.missingIdentityFields,
+        rejection: { code: error.code ?? "ORCHESTRATOR_ERROR", message: error.message, details: error.details ?? null },
+      };
+      if (lease.slice_id) {
+        return [this.makeDraft({
+          eventType: "SLICE_GATE_REPORT_REJECTED",
+          runId,
+          attemptId: lease.attempt_id,
+          role: "slice_gate_runner",
+          baseCommit: lease.base_commit,
+          candidateCommit: lease.candidate_commit,
+          contextHash: lease.context_hash,
+          lease: { ...lease, action: "RELEASE" },
+          decisionLevel: error.code === "ENVIRONMENT_APPROVAL_REQUIRED" ? "ENVIRONMENT_APPROVAL_REQUIRED" : "BLOCKED_TECHNICAL",
+          fingerprint: failureFingerprint(stableJson(bindingPayload.rejection)),
+          platformReceipts: [binding.receipt],
+          payload: { slice_id: lease.slice_id, ...bindingPayload },
+        })];
+      }
+
+      const state = projection.taskStates.get(lease.task_id);
+      if (!state || !["IN_PROGRESS", "VERIFYING", "REPLAN"].includes(state.status)) return [];
+      const remainingTaskLeases = projection.activeLeases
+        .filter((item) => item.task_id === lease.task_id && item.lease_id !== lease.lease_id)
+        .map((item) => item.lease_id)
+        .sort();
+      const failureDisposition = this.reportFailureState(lease.task_id, state, error);
+      const disposition = remainingTaskLeases.length > 0 ? {
+        toStatus: state.status,
+        decisionLevel: "BLOCKED_TECHNICAL",
+        counters: failureDisposition.counters,
+        creatorReason: null,
+        environmentReason: null,
+      } : failureDisposition;
       return [this.makeDraft({
         eventType: "REPORT_REJECTED",
         runId,
-        taskId: report.task_id,
+        taskId: lease.task_id,
         attemptId: lease.attempt_id,
         role: "orchestrator",
         baseCommit: lease.base_commit,
-        candidateCommit: state.candidate_commit,
+        candidateCommit: state.candidate_commit ?? lease.candidate_commit,
         contextHash: state.context_hash ?? lease.context_hash,
-        lease: { action: "RELEASE_ALL_TASK", task_id: report.task_id, lease_id: lease.lease_id },
+        lease: { ...lease, action: "RELEASE" },
         fromStatus: state.status,
         toStatus: disposition.toStatus,
         decisionLevel: disposition.decisionLevel,
-        fingerprint: failureFingerprint(stableJson({ code: error.code ?? "ORCHESTRATOR_ERROR", message: error.message, details: error.details ?? null })),
+        fingerprint: failureFingerprint(stableJson(bindingPayload.rejection)),
         counters: disposition.counters,
         creatorRequiredReason: disposition.creatorReason,
         environmentApprovalReason: disposition.environmentReason,
+        platformReceipts: [binding.receipt],
         payload: {
-          rejected_role: lease.role,
-          rejected_actor_id: lease.actor_id,
-          submitted_actor_id: report.actor_id,
-          rejected_lease_id: lease.lease_id,
-          submitted_report_sha256: sha256(stableJson(report)),
-          rejection: { code: error.code ?? "ORCHESTRATOR_ERROR", message: error.message, details: error.details ?? null },
-        },
-      })];
-    });
-    return finalized[0] ?? null;
-  }
-
-  recordSliceGateRejection({ runId, report, error }) {
-    if (report?.role !== "slice_gate_runner" || !report?.slice_id || !report?.actor_id || !report?.attempt_id) return null;
-    const finalized = this.store.transact(this.#storeAuthority, (events) => {
-      const projection = this.project(events);
-      const lease = projection.activeLeases.find((item) => item.slice_id === report.slice_id
-        && item.role === "slice_gate_runner"
-        && item.attempt_id === report.attempt_id);
-      if (!lease) return [];
-      return [this.makeDraft({
-        eventType: "SLICE_GATE_REPORT_REJECTED",
-        runId,
-        attemptId: lease.attempt_id,
-        role: "slice_gate_runner",
-        baseCommit: lease.base_commit,
-        candidateCommit: lease.candidate_commit,
-        contextHash: lease.context_hash,
-        lease: { ...lease, action: "RELEASE" },
-        decisionLevel: error.code === "ENVIRONMENT_APPROVAL_REQUIRED" ? "ENVIRONMENT_APPROVAL_REQUIRED" : "BLOCKED_TECHNICAL",
-        fingerprint: failureFingerprint(stableJson({ code: error.code ?? "ORCHESTRATOR_ERROR", message: error.message, details: error.details ?? null })),
-        payload: {
-          slice_id: report.slice_id,
-          rejected_lease_id: lease.lease_id,
-          rejected_actor_id: lease.actor_id,
-          submitted_actor_id: report.actor_id,
-          submitted_report_sha256: sha256(stableJson(report)),
-          rejection: { code: error.code ?? "ORCHESTRATOR_ERROR", message: error.message, details: error.details ?? null },
+          ...bindingPayload,
+          remaining_task_lease_ids: remainingTaskLeases,
         },
       })];
     });
@@ -2725,9 +2823,7 @@ class ProjectOrchestrator {
       return this.recordTaskReport({ runId, report });
     } catch (error) {
       if (!String(error.code ?? "").startsWith("EVENT_")) {
-        const rejection = report?.role === "slice_gate_runner"
-          ? this.recordSliceGateRejection({ runId, report, error })
-          : this.recordReportRejection({ runId, report, error });
+        const rejection = this.recordRejectedReport({ runId, report, error });
         if (rejection) error.details = {
           ...(error.details && typeof error.details === "object" ? error.details : {}),
           rejection_event_id: rejection.event_id,
@@ -2744,6 +2840,7 @@ class ProjectOrchestrator {
       const projection = this.project(events);
       const state = projection.taskStates.get(report.task_id);
       const lease = projection.activeLeases.find((item) => item.task_id === report.task_id
+        && item.lease_id === report.lease_id
         && item.role === report.role
         && item.actor_id === report.actor_id
         && item.attempt_id === report.attempt_id);
@@ -3440,7 +3537,7 @@ class ProjectOrchestrator {
       invariant(slice, `unknown slice: ${sliceId}`, "SLICE_NOT_FOUND");
       const context = this.sliceGateContext(sliceId, projection);
       return {
-        schema_version: "g07-role-prompt/v5",
+        schema_version: "g07-role-prompt/v6",
         role,
         autonomy_run_id: runId,
         slice_id: sliceId,
@@ -3451,11 +3548,12 @@ class ProjectOrchestrator {
         task_evidence: context.taskEvidence,
         user_entry_acceptance: context.row?.values["创作者可演示验收"] ?? null,
         completion_boundary: context.row?.values["完成边界"] ?? null,
-        report_schema: "g07-role-report/v5",
+        report_schema: "g07-role-report/v6",
         model_tier: "MODEL::CODE_HIGH",
         model_policy: this.policy.models["MODEL::CODE_HIGH"],
         acceptance_command: this.sliceGateCommand(context.facts),
         platform_receipts_required: ["LEASE_GRANT", "SLICE_GATE_EXECUTION", "ROLE_IDENTITY", "MODEL_SESSION", "ROLE_REPORT"],
+        report_receipt_binding: ["lease_id", "actor_id", "role", "slice_id", "attempt_id"],
         source_bodies_embedded: false,
         instructions: "Acquire the slice_gate_runner lease, start from the registered user entry, run the exact slice acceptance command through the platform, and return its signed exit/stdout/non-empty regression artifact evidence with PASS/FAIL for this exact context. Do not modify implementation, Task status, or any Gate.",
       };
@@ -3490,7 +3588,7 @@ class ProjectOrchestrator {
       invariant(state.status === "REPLAN", `architect prompt requires REPLAN, got ${state.status}`, "TASK_NOT_IN_REPLAN");
     }
     const common = {
-      schema_version: "g07-role-prompt/v5",
+      schema_version: "g07-role-prompt/v6",
       autonomy_run_id: runId,
       role,
       task_id: taskId,
@@ -3507,10 +3605,11 @@ class ProjectOrchestrator {
       acceptance_command: task.values["验收命令"],
       acceptance_scenario: task.values["业务验收场景"],
       replan_condition: task.values["Replan 条件"],
-      report_schema: "g07-role-report/v5",
+      report_schema: "g07-role-report/v6",
       model_tier: task.values["推荐模型"],
       model_policy: this.policy.models[task.values["推荐模型"]],
       platform_receipts_required: ["ROLE_IDENTITY", "MODEL_SESSION", "ROLE_REPORT"],
+      report_receipt_binding: ["lease_id", "actor_id", "role", "task_id", "attempt_id"],
       source_bodies_embedded: false,
     };
     if (role === "coder" && isWriter) return {
@@ -3693,13 +3792,17 @@ class FakeMonotonicHead {
   }
 }
 
-function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO", role, actorId, sessionId, principalId = actorId, attestedSessionId = sessionId, attemptId, baseCommit, candidateCommit, contextHash, verdict, decision = null, evidence = null, checks = null, commandExitCode = 0 }) {
+function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO", role, actorId, sessionId, principalId = actorId, attestedSessionId = sessionId, attemptId, leaseId = null, baseCommit, candidateCommit, contextHash, verdict, decision = null, evidence = null, checks = null, commandExitCode = 0 }) {
   const patchText = fakeGit.diffPatch(baseCommit, candidateCommit);
   const diffHash = sha256(patchText);
   const secretScan = orchestrator.scanCandidateSecrets(baseCommit, candidateCommit);
   const task = orchestrator.router.taskById.get(taskId);
+  const activeLease = orchestrator.project().activeLeases.find((item) => item.task_id === taskId
+    && item.role === role
+    && item.attempt_id === attemptId);
   const report = {
-    report_version: "g07-role-report/v5",
+    report_version: "g07-role-report/v6",
+    lease_id: leaseId ?? activeLease?.lease_id ?? null,
     task_id: taskId,
     role,
     actor_id: actorId,
@@ -3771,16 +3874,7 @@ function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO"
     context_hash: contextHash,
   });
   report.model_attestation = platform.issue("MODEL_SESSION", orchestrator.modelSessionClaims(report));
-  report.report_receipt = platform.issue("ROLE_REPORT", {
-    role,
-    task_id: report.task_id,
-    slice_id: null,
-    attempt_id: attemptId,
-    base_commit: baseCommit,
-    candidate_commit: candidateCommit,
-    context_hash: contextHash,
-    report_sha256: sha256(stableJson(orchestrator.reportCore(report))),
-  });
+  report.report_receipt = platform.issue("ROLE_REPORT", orchestrator.roleReportClaims(report));
   return report;
 }
 
@@ -3958,7 +4052,8 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     const lease = orchestrator.project().activeLeases.find((item) => item.role === "slice_gate_runner" && item.slice_id === sliceId && item.attempt_id === attemptId);
     invariant(lease, "self-test slice report requires an active lease");
     const report = {
-      report_version: "g07-role-report/v5",
+      report_version: "g07-role-report/v6",
+      lease_id: lease.lease_id,
       task_id: null,
       slice_id: sliceId,
       role: "slice_gate_runner",
@@ -4004,16 +4099,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       context_hash: report.context_hash,
     });
     report.model_attestation = platform.issue("MODEL_SESSION", orchestrator.modelSessionClaims(report));
-    report.report_receipt = platform.issue("ROLE_REPORT", {
-      role: report.role,
-      task_id: null,
-      slice_id: sliceId,
-      attempt_id: attemptId,
-      base_commit: report.base_commit,
-      candidate_commit: report.candidate_commit,
-      context_hash: report.context_hash,
-      report_sha256: sha256(stableJson(orchestrator.reportCore(report))),
-    });
+    report.report_receipt = platform.issue("ROLE_REPORT", orchestrator.roleReportClaims(report));
     return orchestrator.record({ runId, report });
   };
   const signedTransition = (harness, { runId, taskId = "F0-01-REPO", toStatus, attemptId, role = "orchestrator", candidateCommit = null, decisionLevel = "TASK_AUTONOMOUS" }) => {
@@ -4037,16 +4123,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     return orchestrator.transition({ runId, taskId, toStatus, attemptId, role, candidateCommit, decisionLevel, platformReceipt: receipt });
   };
   const resignReport = (harness, report) => {
-    report.report_receipt = harness.platform.issue("ROLE_REPORT", {
-      role: report.role,
-      task_id: report.task_id,
-      slice_id: report.slice_id ?? null,
-      attempt_id: report.attempt_id,
-      base_commit: report.base_commit,
-      candidate_commit: report.candidate_commit,
-      context_hash: report.context_hash,
-      report_sha256: sha256(stableJson(harness.orchestrator.reportCore(report))),
-    });
+    report.report_receipt = harness.platform.issue("ROLE_REPORT", harness.orchestrator.roleReportClaims(report));
     return report;
   };
   const implement = ({ harness, runId, attempt, candidateCommit, taskId = "F0-01-REPO", paths = ["package.json"], patch = null, blobs = null, principalId = null, attestedSessionId = null, commandExitCode = 0, mutateReport = null }) => {
@@ -4194,7 +4271,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
   try {
     const production = new ProjectOrchestrator({ root });
     const dryRun = production.dryRun({ runId: "g07-v3-production-dry" });
-    assertCheck("production:policy-v5-hash-bound", production.policy.schema_version === "g07-autonomy-policy/v5"
+    assertCheck("production:policy-v6-hash-bound", production.policy.schema_version === "g07-autonomy-policy/v6"
       && production.policyHash === String(router.gates.G07_A_POLICY_SHA256).toLowerCase(), production.policyHash);
     assertCheck("production:platform-unavailable-is-explicit", production.policy.platform_trust.provider === "UNAVAILABLE", production.policy.platform_trust);
     assertCheck("production:monotonic-head-unavailable-is-explicit", production.policy.monotonic_head.provider === "UNAVAILABLE", production.policy.monotonic_head);
@@ -4275,12 +4352,14 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
 
     const promptHarness = makeHarness();
     const prompt = promptHarness.orchestrator.rolePrompt({ runId: "prompt", taskId: "F0-01-REPO", role: "coder" });
-    assertCheck("prompt:v5-platform-receipts", prompt.report_schema === "g07-role-report/v5"
+    assertCheck("prompt:v6-platform-receipts", prompt.report_schema === "g07-role-report/v6"
       && prompt.required_command_receipt === "COMMAND_EXECUTION"
       && prompt.required_workspace_capability_receipt === "WORKSPACE_CAPABILITY"
       && prompt.platform_denied_write_patterns.includes(".autonomy/**")
       && prompt.platform_receipts_required.includes("MODEL_SESSION")
-      && prompt.platform_receipts_required.includes("ROLE_REPORT"), prompt);
+      && prompt.platform_receipts_required.includes("ROLE_REPORT")
+      && prompt.report_receipt_binding.includes("lease_id")
+      && prompt.report_receipt_binding.includes("actor_id"), prompt);
     expectError("prompt:planned-coder-rejected", () => promptHarness.orchestrator.rolePrompt({ runId: "prompt", taskId: "F0-02-CONTRACTS", role: "coder" }), "TASK_NOT_READY");
     expectError("prompt:slice-before-verified", () => promptHarness.orchestrator.rolePrompt({ runId: "prompt", role: "slice_gate_runner", sliceId: "F0" }), "SLICE_NOT_VERIFIED");
 
@@ -4702,6 +4781,74 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       && staleReportEvent.payload.rejection.code === "STALE_CANDIDATE_COMMIT"
       && staleReportHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "REWORK"
       && staleReportHarness.orchestrator.project().activeLeases.length === 0, staleReportEvent);
+
+    const selectorTamperHarness = makeHarness();
+    const selectorTamperImplementation = implement({ harness: selectorTamperHarness, runId: "report-selector-tamper", attempt: "report-selector-1", candidateCommit: sha256("report-selector-candidate").slice(0, 40) });
+    const selectorTamperReview = review({ harness: selectorTamperHarness, runId: "report-selector-tamper", implementation: selectorTamperImplementation, role: "auditor", verdict: "PASS", attempt: "report-selector-audit", record: false });
+    const selectorEventCount = selectorTamperHarness.orchestrator.store.read().length;
+    for (const [field, value] of [
+      ["actor_id", "forged-auditor-actor"],
+      ["role", "reviewer"],
+      ["attempt_id", "forged-auditor-attempt"],
+      ["lease_id", "forged-auditor-lease-id"],
+      ["task_id", "F0-06-OBSERVABILITY"],
+    ]) {
+      const tampered = clone(selectorTamperReview.report);
+      tampered[field] = value;
+      expectError(`report-rejection:${field}-tamper-has-no-state-authority`, () => selectorTamperHarness.orchestrator.record({ runId: "report-selector-tamper", report: tampered }), "REPORT_LEASE_MISMATCH");
+      const projection = selectorTamperHarness.orchestrator.project();
+      assertCheck(`report-rejection:${field}-tamper-preserves-real-lease`, selectorTamperHarness.orchestrator.store.read().length === selectorEventCount
+        && projection.taskStates.get("F0-01-REPO").status === "VERIFYING"
+        && projection.activeLeases.length === 1
+        && projection.activeLeases[0].lease_id === selectorTamperReview.lease.lease.lease_id, projection.activeLeases);
+    }
+
+    for (const field of ["role", "actor_id", "attempt_id", "lease_id", "task_id"]) {
+      const malformedHarness = makeHarness();
+      const malformedImplementation = implement({ harness: malformedHarness, runId: `malformed-${field}`, attempt: `malformed-${field}-1`, candidateCommit: sha256(`malformed-${field}-candidate`).slice(0, 40) });
+      const malformedReview = review({ harness: malformedHarness, runId: `malformed-${field}`, implementation: malformedImplementation, role: "auditor", verdict: "PASS", attempt: `malformed-${field}-audit`, record: false });
+      const malformedReport = clone(malformedReview.report);
+      delete malformedReport[field];
+      const malformedLease = malformedHarness.orchestrator.project().activeLeases.find((item) => item.lease_id === malformedReview.lease.lease.lease_id);
+      malformedReport.report_receipt = malformedHarness.platform.issue("ROLE_REPORT", malformedHarness.orchestrator.roleReportClaims(malformedReport, malformedLease));
+      const malformedError = expectError(`report-rejection:missing-${field}-is-returned`, () => malformedHarness.orchestrator.record({ runId: `malformed-${field}`, report: malformedReport }), "REPORT_SCHEMA_INVALID");
+      const malformedEvent = malformedHarness.orchestrator.store.read().at(-1);
+      const malformedProjection = malformedHarness.orchestrator.project();
+      assertCheck(`report-rejection:missing-${field}-recovers-bound-lease`, malformedEvent.event_type === "REPORT_REJECTED"
+        && malformedEvent.payload.missing_identity_fields.includes(field)
+        && malformedEvent.payload.submitted_identity[field] === null
+        && malformedEvent.payload.report_receipt_id === malformedReport.report_receipt.receipt_id
+        && malformedProjection.activeLeases.length === 0
+        && malformedProjection.taskStates.get("F0-01-REPO").status === "REWORK"
+        && malformedError?.details?.rejection_event_hash === malformedEvent.event_hash, malformedEvent);
+    }
+
+    const crossLeaseHarness = makeHarness();
+    const crossLeaseImplementation = implement({ harness: crossLeaseHarness, runId: "report-cross-lease", attempt: "report-cross-lease-1", candidateCommit: sha256("report-cross-lease-candidate").slice(0, 40) });
+    const crossLeaseAudit = review({ harness: crossLeaseHarness, runId: "report-cross-lease", implementation: crossLeaseImplementation, role: "auditor", verdict: "PASS", attempt: "report-cross-lease-audit", record: false });
+    const crossLeaseReview = review({ harness: crossLeaseHarness, runId: "report-cross-lease", implementation: crossLeaseImplementation, role: "reviewer", verdict: "APPROVE", attempt: "report-cross-lease-review", record: false });
+    const missingActorWithSibling = clone(crossLeaseAudit.report);
+    delete missingActorWithSibling.actor_id;
+    const crossLeaseAuditBinding = crossLeaseHarness.orchestrator.project().activeLeases.find((item) => item.lease_id === crossLeaseAudit.lease.lease.lease_id);
+    missingActorWithSibling.report_receipt = crossLeaseHarness.platform.issue("ROLE_REPORT", crossLeaseHarness.orchestrator.roleReportClaims(missingActorWithSibling, crossLeaseAuditBinding));
+    expectError("report-rejection:malformed-one-of-two-leases-is-returned", () => crossLeaseHarness.orchestrator.record({ runId: "report-cross-lease", report: missingActorWithSibling }), "REPORT_SCHEMA_INVALID");
+    const crossLeaseEvent = crossLeaseHarness.orchestrator.store.read().at(-1);
+    const crossLeaseProjection = crossLeaseHarness.orchestrator.project();
+    assertCheck("report-rejection:malformed-report-cannot-cancel-sibling-lease", crossLeaseEvent.event_type === "REPORT_REJECTED"
+      && crossLeaseEvent.from_status === "VERIFYING"
+      && crossLeaseEvent.to_status === "VERIFYING"
+      && stableJson(crossLeaseEvent.payload.remaining_task_lease_ids) === stableJson([crossLeaseReview.lease.lease.lease_id])
+      && crossLeaseProjection.activeLeases.length === 1
+      && crossLeaseProjection.activeLeases[0].lease_id === crossLeaseReview.lease.lease.lease_id
+      && crossLeaseProjection.activeLeases[0].actor_id === crossLeaseReview.report.actor_id, crossLeaseEvent);
+    const forgedRejectionLines = fs.readFileSync(crossLeaseHarness.orchestrator.store.eventsPath, "utf8").trimEnd().split(/\r?\n/);
+    const forgedRejection = JSON.parse(forgedRejectionLines.at(-1));
+    forgedRejection.payload.submitted_identity.actor_id = "forged-replay-actor";
+    forgedRejection.event_hash = hashEvent(forgedRejection);
+    forgedRejectionLines[forgedRejectionLines.length - 1] = JSON.stringify(forgedRejection);
+    fs.writeFileSync(crossLeaseHarness.orchestrator.store.eventsPath, `${forgedRejectionLines.join("\n")}\n`, "utf8");
+    crossLeaseHarness.monotonicHead.forceForSemanticTest(forgedRejectionLines.map((line) => JSON.parse(line)));
+    expectError("report-rejection:semantic-replay-rejects-forged-submitted-actor", () => crossLeaseHarness.orchestrator.project(), "EVENT_REPORT_REJECTION_BINDING_INVALID");
 
     const blockHarness = makeHarness();
     const blockImplementation = implement({ harness: blockHarness, runId: "block", attempt: "block-1", candidateCommit: "4".repeat(40) });
@@ -5160,11 +5307,11 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     failed_checks: checks.filter((check) => !check.passed),
     coverage: {
       guard: ["normalized known actions", "default deny unknown/destructive/external/paid"],
-      platform_trust: ["production Ed25519 provider path", "no private key in workspace", "trusted receipt inbox realpath/type/hardlink boundary", "receipt claims/signature/reuse"],
+      platform_trust: ["production Ed25519 provider path", "no private key in workspace", "trusted receipt inbox realpath/type/hardlink boundary", "receipt claims/signature/reuse", "lease-bound report rejection identity"],
       event_integrity: ["external monotonic head", "complete tail and whole-log rollback detection", "valid local-ahead reconciliation", "semantic replay"],
       workspace_capability: ["platform-enforced exact write scope", "denied .git/.autonomy/.env", "writer identity binding", "ignored path snapshot"],
       evidence: ["command stdout/regression", "identity", "audit", "review", "Git scope including deletion", "text/binary/oversize candidate blob secret scan", "historical control-context VERIFIED replay", "VERIFICATION_GATE replay"],
-      recovery: ["intermittent failure", "two Architect replans", "noncritical exhaustion", "cross-run lease", "stale candidate", "complete/truncated tail", "corrupt stale lock quarantine"],
+      recovery: ["intermittent failure", "malformed report lease isolation", "two Architect replans", "noncritical exhaustion", "cross-run lease", "stale candidate", "complete/truncated tail", "corrupt stale lock quarantine"],
       budget: ["registered immutable limits", "platform metering only", "80/100 thresholds"],
     },
   };

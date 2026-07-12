@@ -1,5 +1,5 @@
 {
-  "schema_version": "g07-autonomy-policy/v5",
+  "schema_version": "g07-autonomy-policy/v6",
   "control_anchor": "G07::AUTONOMY",
   "phase": "G07_A_CONTROL_PLANE_ONLY",
   "g07_gate_required": "APPROVED",
@@ -102,7 +102,8 @@
     "slice_gate_requires_read_only_lease": true,
     "slice_gate_report_must_enter_event_chain": true,
     "slice_gate_execution_receipt_required": true,
-    "model_session_receipt_required": true
+    "model_session_receipt_required": true,
+    "report_receipt_binds_lease_identity": true
   },
   "secret_scan": {
     "version": "G07_CANDIDATE_BLOBS_V2",

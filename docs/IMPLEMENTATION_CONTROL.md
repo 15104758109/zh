@@ -52,12 +52,12 @@ G07_A_ROUTER_PATH=tools/project-context-loader.mjs
 G07_A_ROUTER_SHA256=10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47
 G07_A_ROUTER_TEST_ASSERTIONS=78
 G07_A_ORCHESTRATOR_PATH=tools/project-orchestrator.mjs
-G07_A_ORCHESTRATOR_SHA256=b9fef6b683fd9ba7a0722158c0cc9b15ad59eb28c0df603c2a0439477e1fcaad
-G07_A_ORCHESTRATOR_TEST_ASSERTIONS=138
+G07_A_ORCHESTRATOR_SHA256=b7740b350f6be74ee7359075354056002d27aee4e1d5cbec12bf1917237d86bd
+G07_A_ORCHESTRATOR_TEST_ASSERTIONS=161
 G07_A_POLICY_PATH=.autonomy/policy.json
-G07_A_POLICY_SHA256=8a666932120f31f1c83711a8759e3591a5859233470e25a60a56e0e3ce8af01e
+G07_A_POLICY_SHA256=e171d92c9e7092006bc7279c9b7a1553baa8f36fef2e58824e0de742a20eb370
 G07_A_EVIDENCE_TOOL_PATH=tools/g07-control-evidence.mjs
-G07_A_EVIDENCE_TOOL_SHA256=75acc3f28c5bd62528d3cff8eb1fa24803fda0d8aa2b9b2932ff644fffcd7623
+G07_A_EVIDENCE_TOOL_SHA256=ba89c4402d3969b4aa08107cb7657f2168d6444ed3564104a4e259fc35b1cfd1
 G07_A_EVIDENCE_TOOL_TEST_ASSERTIONS=20
 G07_A_SENSITIVE_PATTERNS_PATH=tools/g07-sensitive-patterns.mjs
 G07_A_SENSITIVE_PATTERNS_SHA256=6a565f3538a524d5c95b88f61ba5e59d9246d438ee67216cefba2c0f477dfba7
@@ -133,7 +133,7 @@ G07_A_SUPERSEDED_V5_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495
 1. Task 机器状态固定为 `PLANNED -> READY -> LEASED -> IN_PROGRESS -> IMPLEMENTED -> VERIFYING -> VERIFIED`；失败可进入 `REWORK`、`REPLAN`、`BLOCKED` 或 `CREATOR_REQUIRED`。非法跃迁必须拒绝，`PLANNED -> READY` 只由 Orchestrator 在全部 `depends_on=VERIFIED` 后执行。
 2. Slice 状态由其必要 Task 的事件投影生成，不手工维护：全部必要 Task `VERIFIED` 才为 `VERIFIED`；存在租约/执行/验证时为 `IN_PROGRESS`；存在阻断或创作者裁决时分别为 `BLOCKED/CREATOR_REQUIRED`；否则按可解锁 Task 计算 `READY/PLANNED`。
 3. 只有 `tools/project-orchestrator.mjs` 持有进程内事件写 authority，可追加 ignored 的运行时 `.autonomy/events.jsonl` 并产生 Task/Slice 状态投影。SHA-256 链只记录本地顺序；每次追加后还必须对登记的工作区外单调 head 执行 compare-and-set，并在每次读取前核对事件数和末哈希。head provider 可执行文件必须位于角色可写工作区外，且每次 spawn 前重新检查普通文件、无链接、真实路径边界和登记哈希。本地日志少于外部 head（包括删尾或整文件删除）一律 `EVENT_LOG_ROLLBACK_DETECTED`；崩溃造成的本地领先只能由 `resume` 在确认外部 head 是合法前缀后对账，完整 JSON 尾事件缺换行不得阻断该对账。没有外部 head provider 时，非空日志和任何追加均 `ENVIRONMENT_APPROVAL_REQUIRED`。
-4. 所有可提升状态的租约、迁移、解锁、角色身份/报告、命令执行、审计、评审、Architect 边界、阻断解除、计量和最终 Gate 必须由登记平台 Ed25519 收据授权，并在投影前重新验签、验 claims、验 receipt 唯一性和状态机语义。私钥不得位于工作区或角色可读权限域；历史 `VERIFIED` 事件保存其不可变 control-context facts，回放使用历史验收命令、scope 和秘密扫描版本，不因后续合法 policy/tool/control 升级而失效。
+4. 所有可提升状态的租约、迁移、解锁、角色身份/报告、命令执行、审计、评审、Architect 边界、阻断解除、计量和最终 Gate 必须由登记平台 Ed25519 收据授权，并在投影前重新验签、验 claims、验 receipt 唯一性和状态机语义。每张 `ROLE_REPORT` 收据还必须绑定真实 `lease_id + actor_id + role + Task/Slice + attempt` 和所提交报告的规范化哈希；拒绝恢复不得从未验证的报告字段猜租约。私钥不得位于工作区或角色可读权限域；历史 `VERIFIED` 事件保存其不可变 control-context facts，回放使用历史验收命令、scope 和秘密扫描版本，不因后续合法 policy/tool/control 升级而失效。
 5. 写租约还必须取得 `WORKSPACE_CAPABILITY`：平台 sandbox 只开放该 Task 精确 write scope，并拒绝 `.git/**`、`.autonomy/**`、`.env*`、可信收据 inbox 和 scope 外路径；签名主体/会话必须与主责执行报告一致。Coder、Prompt Editor，以及 Task Index 明确登记为 `VIEW::AUDITOR` 的主责证据 Task 共用这一单写入者能力边界；后者不能借审计身份绕过 scope，也不能修改产品实现制造 PASS。普通 `git status` 或提示词不是能力隔离。CLI 只可读取登记在工作区外可信 inbox 内的普通单链接 JSON 文件，必须通过 lexical boundary、realpath、类型、大小、符号链接/目录联接和硬链接检查；平台公钥和外部 head 命令使用同等文件边界。
 6. 自动 Task Gate 的机械条件为：活动 G04 Gate/版本有效；直接依赖全部 `VERIFIED`；候选 commit 存在且未过期；工作树 tracked/untracked clean；平台 capability 有效；由稳定 control context 绑定 base/candidate commit、含删除路径的 diff/scope、验收命令和原始 candidate Git blobs。秘密扫描必须由登记且哈希锁定的单一规则源逐 blob 读取文本/二进制对象，覆盖 GitHub classic/fine-grained PAT（含 `github_pat_`）、已登记 provider key 和私钥头；超限或不可扫描对象直接阻断。登记平台还须签发精确命令、退出码、stdout 哈希与回归制品收据；主责执行者、独立 Auditor、Reviewer 必须针对同一 commit 且具有互异的平台主体和会话。调用方自报 actor/session、模型、exit code 或任意 64 位字符串不是证据。
 7. 新 candidate commit 自动使旧 Auditor/Reviewer 证据失效。Architect lease/report 必须绑定投影中的真实 REPLAN candidate、当前 base/context 和同一租约，detached 或不存在的 candidate 一律拒绝。Slice Gate Runner 只有在切片全部必要 Task `VERIFIED` 且每个 Task 有机械证据哈希后，才可取得专用只读 slice lease；PASS 还必须取得唯一 `SLICE_GATE_EXECUTION` 平台收据，绑定登记用户入口、完成边界、全部 Task evidence、同一 commit/context、退出码、stdout、回归制品哈希和大于零的制品字节数。空 acceptance、零字节制品、失败退出或任意自报哈希不得产生 PASS；报告与执行收据必须进入同一可信事件链，且不得修改产品实现、Task 状态或项目 Gate。
@@ -142,7 +142,7 @@ G07_A_SUPERSEDED_V5_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495
 ### 并发、返修与 Replan
 
 1. 所有 run 合计最多一个有写权限的活跃租约；Auditor/Reviewer/Architect/Slice Gate Runner 等只读租约合计最多两个。平台 Task 租约收据必须绑定 run、Task、attempt、角色、actor、capability receipt、Orchestrator 推导的 base commit/control-context hash、branch/worktree、lease ID、取得时间和过期时间；Slice Gate 租约改为绑定 slice、全部 Task evidence、当前 commit 和 slice-context hash。过期租约可由任意恢复 run 原子登记；锁释放只有 nonce 仍属于当前持有者时才能删除。创建中断形成的 stale 损坏锁必须原子移入 quarantine 后恢复，不能永久阻断，也不能让旧持有者删除替代锁。
-2. Auditor `FAIL`、Reviewer `REQUEST_CHANGES`，以及活跃 lease 上的验收、commit、clean worktree、context、scope、秘密、角色身份或模型会话见证失败，都必须原子登记失败指纹和拒绝事件、释放该 Task 的租约并进入对应 `REWORK/REPLAN/BLOCKED/CREATOR_REQUIRED`，不能只抛错后把 Task 留在 `IN_PROGRESS/VERIFYING/REPLAN`。同一 Task 最多三次返修；第三次失败进入 `REPLAN`，不得开启第四次无裁决返修。
+2. Auditor `FAIL`、Reviewer `REQUEST_CHANGES`，以及活跃 lease 上的验收、commit、clean worktree、context、scope、秘密、角色身份或模型会话见证失败，都必须确定性处理。完整报告只有在 Task/role/actor/attempt/lease 全部匹配时才可登记；任一已提供 selector 被改写时必须零事件、零状态和零租约副作用。字段缺失的畸形报告只有在平台 `ROLE_REPORT` 收据同时绑定真实租约身份与该畸形报告哈希时，才可登记失败指纹并仅释放收据所属租约；存在同 Task sibling lease 时保持当前状态且不得跨租约取消，不存在 sibling 时进入对应 `REWORK/REPLAN/BLOCKED/CREATOR_REQUIRED`。同一 Task 最多三次返修；第三次失败进入 `REPLAN`，不得开启第四次无裁决返修。
 3. Replan 分为：A=同一 scope 内更换技术实现；B=在现有业务结果、依赖和 owner 不变时调整技术步骤/证据方案；C=需要改变业务、全局裁决、G04/Task 语义或 Gate；D=工具、平台或环境阻断。Architect 必须有可信平台身份/会话见证，并与当前 REPLAN state、lease、base/candidate commit、context 和既有角色身份机械绑定；A/B 还必须取得绑定 proposal、业务结果、依赖、owner、write scope 和 Gate 快照均未改变的边界收据，C 必须 `CREATOR_REQUIRED`，D 只能 `BLOCKED_TECHNICAL` 或 `ENVIRONMENT_APPROVAL_REQUIRED`。事件回放必须重新推导分类结果，不能用自报 detached candidate 隔离既有身份，也不能把已签 C/D 报告映射为 `READY`。
 4. 同一 Task 最多两次 Replan。关键 Task 由登记关键路径端点和 `CRITICAL` Task 的完整 `depends_on` 祖先闭包计算，不得只在叙述中按 Task ID 字面搜索。第二次仍失败时，若命中该闭包，暂停该关键路径及依赖其未完成结果的派发并转 `CREATOR_REQUIRED`；非关键路径任务转 `BLOCKED`，只有满足严格非阻断条件时才可另记 `P2_TECH_DEBT`。`CREATOR_REQUIRED` 不能由 Orchestrator 接受任意证据字符串后自行解除，必须等待另行登记的创作者控制面更新。
 

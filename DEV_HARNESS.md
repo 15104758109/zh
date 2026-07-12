@@ -19,17 +19,17 @@ G07_GATE=PENDING
 G07_A_STATUS=IMPLEMENTED
 G07_A_BRANCH=autonomy/integration
 G07_A_COMMIT=2d1cbfc1d005c466dd1b1d61832f5d62b9d395d3
-G07_A_ORCHESTRATOR_SHA256=b9fef6b683fd9ba7a0722158c0cc9b15ad59eb28c0df603c2a0439477e1fcaad
-G07_A_ORCHESTRATOR_TEST_ASSERTIONS=138
-G07_A_POLICY_SHA256=8a666932120f31f1c83711a8759e3591a5859233470e25a60a56e0e3ce8af01e
-G07_A_EVIDENCE_TOOL_SHA256=75acc3f28c5bd62528d3cff8eb1fa24803fda0d8aa2b9b2932ff644fffcd7623
+G07_A_ORCHESTRATOR_SHA256=b7740b350f6be74ee7359075354056002d27aee4e1d5cbec12bf1917237d86bd
+G07_A_ORCHESTRATOR_TEST_ASSERTIONS=161
+G07_A_POLICY_SHA256=e171d92c9e7092006bc7279c9b7a1553baa8f36fef2e58824e0de742a20eb370
+G07_A_EVIDENCE_TOOL_SHA256=ba89c4402d3969b4aa08107cb7657f2168d6444ed3564104a4e259fc35b1cfd1
 G07_A_EVIDENCE_TOOL_TEST_ASSERTIONS=20
 G07_A_SENSITIVE_PATTERNS_SHA256=6a565f3538a524d5c95b88f61ba5e59d9246d438ee67216cefba2c0f477dfba7
 G07_A_EVIDENCE_STATUS=ACTIVE_V9_IMPLEMENTATION_EVIDENCE
 G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V9.json
 G07_A_EVIDENCE_SHA256=92527fa17fa65d6f745f87e73ac118425eb6314c499bace94f6bf0dcd4f9b42f
-G07_A_POLICY_SCHEMA=g07-autonomy-policy/v5
-G07_A_REPORT_SCHEMA=g07-role-report/v5
+G07_A_POLICY_SCHEMA=g07-autonomy-policy/v6
+G07_A_REPORT_SCHEMA=g07-role-report/v6
 G07_A_SECRET_SCAN_VERSION=G07_CANDIDATE_BLOBS_V2
 ```
 
@@ -229,7 +229,7 @@ required_updates: <responsible fact sources>
 
 ## 10. G07-A 自治控制面
 
-稳定政策锚点为 `G07::AUTONOMY`，机器政策位于 `.autonomy/policy.json`。`tools/project-orchestrator.mjs` 管理 v4 事件链上的当前控制面实现：工作区外单调 head、Ed25519 收据、平台写 capability、严格历史语义回放、Task/Slice 投影、租约、blob 证据、预算、恢复、简报和角色提示词；它不直接调用模型。Coder、Prompt Editor、Auditor、Reviewer、Architect 与 Slice Gate Runner 只返回 `g07-role-report/v5`，每份报告还必须携带绑定 Task Index 推荐档位与实际模型的 `MODEL_SESSION` 平台收据，不得直接写事件或 Task 状态。Task Index 中主责为 Auditor 的证据 Task 以单写入者 capability 执行，之后仍需独立 Auditor/Reviewer；Slice Gate Runner 使用专用只读 slice lease，且 PASS 必须携带绑定登记用户入口、Task evidence、commit/context、执行结果及大于零制品字节数的 `SLICE_GATE_EXECUTION` 平台收据。平台私钥、单调 head、head provider 命令和可信收据 inbox 都必须位于角色不可写域，head 命令每次执行前复核哈希；任一 provider 不可用时必须硬停为 `ENVIRONMENT_APPROVAL_REQUIRED`。
+稳定政策锚点为 `G07::AUTONOMY`，机器政策位于 `.autonomy/policy.json`。`tools/project-orchestrator.mjs` 管理 v4 事件链上的当前控制面实现：工作区外单调 head、Ed25519 收据、平台写 capability、严格历史语义回放、Task/Slice 投影、租约、blob 证据、预算、恢复、简报和角色提示词；它不直接调用模型。Coder、Prompt Editor、Auditor、Reviewer、Architect 与 Slice Gate Runner 只返回 `g07-role-report/v6`；每份报告必须携带绑定 Task Index 推荐档位与实际模型的 `MODEL_SESSION`，且 `ROLE_REPORT` 必须绑定真实 lease/actor/role/对象/attempt 与报告哈希，不得直接写事件或 Task 状态。Task Index 中主责为 Auditor 的证据 Task 以单写入者 capability 执行，之后仍需独立 Auditor/Reviewer；Slice Gate Runner 使用专用只读 slice lease，且 PASS 必须携带绑定登记用户入口、Task evidence、commit/context、执行结果及大于零制品字节数的 `SLICE_GATE_EXECUTION` 平台收据。平台私钥、单调 head、head provider 命令和可信收据 inbox 都必须位于角色不可写域，head 命令每次执行前复核哈希；任一 provider 不可用时必须硬停为 `ENVIRONMENT_APPROVAL_REQUIRED`。
 
 ```text
 node tools/project-context-loader.mjs --self-test
@@ -255,7 +255,7 @@ node tools/project-orchestrator.mjs report --run-id <run-id> [--slice-id <slice>
 - `VERIFIED` 绑定同一 commit、历史/当前 control context、含删除 scope、原始文本/二进制 candidate blobs、超限阻断、平台命令制品和独立身份。合法升级后旧 `VERIFIED` 使用事件内历史 facts 回放，不要求当前 context hash 相等。
 - `tools/g07-control-evidence.mjs --all` 现场执行自测、语法与 Dry Run，并把归一化结果与活动 evidence 的完整 `mechanical_claims` 做结构相等比较；stdout、Dry Run base/context 等随登记 HEAD 漂移的值不得伪装为固定可复现证据。
 - 所有 run 合计最多一个写租约和两个只读审查租约；本地事件数/末哈希每次都与外部单调 head 核对，删尾或整日志删除立即阻断。任意恢复 run 可 CAS 对账合法本地领先、清理过期租约并 quarantine stale 损坏锁。
-- 验收、scope、秘密、stale commit/context 等 Gate 失败必须写 `EVIDENCE_REJECTED`；活跃 lease 上的 context、commit、角色身份或模型见证报告失败必须写 `REPORT_REJECTED`。两者都要登记失败指纹、释放租约并进入返修/阻断；三次返修进入 Replan。Architect 只处理 A/B/C/D，C 必须转 `CREATOR_REQUIRED`；两次 Replan 耗尽时按依赖祖先闭包暂停关键路径。Orchestrator 不接受字符串解除 `CREATOR_REQUIRED`。
+- 验收、scope、秘密、stale commit/context 等 Gate 失败必须写 `EVIDENCE_REJECTED`。报告 selector 被改写时不得写拒绝事件或影响真实租约；缺字段只有在 `ROLE_REPORT` 收据绑定真实租约和该提交哈希时，才可写 `REPORT_REJECTED` 并只释放自身租约，保留 sibling lease。三次返修进入 Replan；Architect 只处理 A/B/C/D，C 必须转 `CREATOR_REQUIRED`；两次 Replan 耗尽时按依赖祖先闭包暂停关键路径。Orchestrator 不接受字符串解除 `CREATOR_REQUIRED`。
 - 候选秘密扫描由 `tools/g07-sensitive-patterns.mjs` 单一规则源驱动，两套扫描器必须使用同一登记哈希和 `G07_CANDIDATE_BLOBS_V2`，包括二进制 blob 与 `github_pat_` fine-grained PAT。
 - 预算上限只取已登记 policy，角色/run 不可覆盖；用量只取不可复用的平台计量收据。任一已配置维度达到 80% 通知；100% 时只允许纯控制面本地读取，Task/Slice 租约、只读审查、角色/模型、外部与付费动作全部硬停，未知费用不得假报为 0。
 - G07 阶段禁止真实项目模型调用、付费测试、push、部署、生产写入、凭据访问和自动合并主分支。平台授权不可绕过；当前没有可信角色会话见证提供方时也必须返回 `ENVIRONMENT_APPROVAL_REQUIRED`，不得把不同 actor/session 字符串当机械独立性。
