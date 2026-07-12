@@ -1,5 +1,5 @@
 {
-  "schema_version": "g07-autonomy-policy/v2",
+  "schema_version": "g07-autonomy-policy/v3",
   "control_anchor": "G07::AUTONOMY",
   "phase": "G07_A_CONTROL_PLANE_ONLY",
   "g07_gate_required": "APPROVED",
@@ -25,7 +25,10 @@
       "elapsed_ms": null,
       "known_cost": null
     },
-    "unknown_cost_is_zero": false
+    "unknown_cost_is_zero": false,
+    "limits_source": "REGISTERED_POLICY",
+    "usage_source": "PLATFORM_METERING_RECEIPT",
+    "run_override_allowed": false
   },
   "models": {
     "MODEL::CODE_HIGH": {
@@ -40,16 +43,22 @@
     }
   },
   "event_integrity": {
-    "algorithm": "HMAC-SHA256",
-    "key_file": "integrity.key",
-    "key_must_be_ignored": true,
+    "chain_algorithm": "SHA-256",
+    "authority": "ED25519_PLATFORM_RECEIPTS",
+    "local_symmetric_key_is_authority": false,
     "semantic_replay_required": true
   },
-  "identity_attestation": {
-    "required": true,
+  "platform_trust": {
     "provider": "UNAVAILABLE",
+    "provider_id": null,
+    "key_id": null,
+    "public_key_path": null,
+    "public_key_sha256": null,
+    "private_key_path": null,
+    "private_key_material_in_workspace": false,
+    "receipt_version": "g07-platform-receipt/v1",
     "missing_provider_decision": "ENVIRONMENT_APPROVAL_REQUIRED",
-    "caller_declared_actor_or_session_is_evidence": false
+    "caller_declared_values_are_evidence": false
   },
   "critical_path": {
     "derivation": "DEPENDENCY_ANCESTRY_OF_REGISTERED_PATH_ENDPOINTS_AND_CRITICAL_TASKS",

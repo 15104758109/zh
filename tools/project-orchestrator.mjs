@@ -21,12 +21,12 @@ const DEFAULT_STATE_DIR = ".autonomy";
 const POLICY_FILE = "policy.json";
 const EVENTS_FILE = "events.jsonl";
 const LOCK_FILE = "orchestrator.lock";
-const INTEGRITY_KEY_FILE = "integrity.key";
 const QUARANTINE_DIR = "quarantine";
 const CONTROL_FILE = "docs/IMPLEMENTATION_CONTROL.md";
 const ROUTER_FILE = "tools/project-context-loader.mjs";
 const ORCHESTRATOR_FILE = "tools/project-orchestrator.mjs";
 const SELF_TEST_AUTHORITY = Symbol("G07_INTERNAL_SELF_TEST_AUTHORITY");
+const PLATFORM_RECEIPT_VERSION = "g07-platform-receipt/v1";
 
 const MANDATORY_HARD_STOP_ACTIONS = Object.freeze([
   "REAL_PROJECT_MODEL_CALL",
@@ -46,6 +46,14 @@ const MANDATORY_FORBIDDEN_AUTOMATIC_ACTIONS = Object.freeze([
   "CREDENTIAL_ACCESS",
 ]);
 
+const KNOWN_ACTIONS = new Set([
+  "CONTROL_PLANE_READ",
+  "READ_ONLY_REVIEW",
+  "PRODUCT_TASK_WRITE",
+  ...MANDATORY_HARD_STOP_ACTIONS,
+  ...MANDATORY_FORBIDDEN_AUTOMATIC_ACTIONS,
+]);
+
 const EVENT_TYPES = new Set([
   "TASK_UNLOCKED",
   "LEASE_ACQUIRED",
@@ -54,6 +62,7 @@ const EVENT_TYPES = new Set([
   "TASK_TRANSITION",
   "EVIDENCE_VERIFIED",
   "EVIDENCE_REJECTED",
+  "CANDIDATE_INVALIDATED",
   "USAGE_RECORDED",
   "HARD_STOP",
   "EVENT_LOG_TAIL_RECOVERED",
@@ -144,6 +153,7 @@ const REQUIRED_EVENT_FIELDS = [
   "creator_required_reason",
   "environment_approval_reason",
   "payload",
+  "platform_receipts",
   "integrity_algorithm",
   "previous_event_hash",
   "event_hash",
@@ -175,10 +185,10 @@ function hashFile(filePath) {
   return sha256(fs.readFileSync(filePath));
 }
 
-function hashEvent(event, integrityKey) {
+function hashEvent(event) {
   const copy = { ...event };
   delete copy.event_hash;
-  return crypto.createHmac("sha256", integrityKey).update(stableJson(copy)).digest("hex");
+  return sha256(stableJson(copy));
 }
 
 function failureFingerprint(value) {
@@ -215,6 +225,73 @@ function integerCounters(value) {
 
 function safeTimestampFragment(value) {
   return value.replaceAll(":", "-").replaceAll(".", "-");
+}
+
+function receiptBody(receipt) {
+  const copy = { ...receipt };
+  delete copy.signature;
+  return copy;
+}
+
+class Ed25519PlatformTrust {
+  constructor({ providerId, keyId, publicKey, clock }) {
+    this.providerId = providerId;
+    this.keyId = keyId;
+    this.publicKey = publicKey?.type === "public" ? publicKey : crypto.createPublicKey(publicKey);
+    this.clock = clock;
+    invariant(this.publicKey.asymmetricKeyType === "ed25519", "platform trust key must be Ed25519", "PLATFORM_TRUST_KEY_INVALID");
+  }
+
+  verify(receipt, kind, expectedClaims, { at = this.clock() } = {}) {
+    invariant(receipt && typeof receipt === "object", `${kind} requires a platform receipt`, "PLATFORM_RECEIPT_REQUIRED");
+    invariant(receipt.receipt_version === PLATFORM_RECEIPT_VERSION
+      && receipt.provider_id === this.providerId
+      && receipt.key_id === this.keyId
+      && receipt.kind === kind, `platform receipt identity/kind mismatch for ${kind}`, "PLATFORM_RECEIPT_INVALID");
+    invariant(typeof receipt.receipt_id === "string" && receipt.receipt_id.length >= 12, "platform receipt_id is invalid", "PLATFORM_RECEIPT_INVALID");
+    invariant(!Number.isNaN(Date.parse(receipt.issued_at)) && !Number.isNaN(Date.parse(receipt.expires_at)), "platform receipt time window is invalid", "PLATFORM_RECEIPT_INVALID");
+    const reference = at instanceof Date ? at.getTime() : new Date(at).getTime();
+    invariant(reference >= Date.parse(receipt.issued_at) && reference <= Date.parse(receipt.expires_at), "platform receipt is not valid at the event time", "PLATFORM_RECEIPT_EXPIRED");
+    invariant(stableJson(receipt.claims) === stableJson(expectedClaims), `platform receipt claims mismatch for ${kind}`, "PLATFORM_RECEIPT_CLAIMS_MISMATCH", {
+      expected_sha256: sha256(stableJson(expectedClaims)),
+      actual_sha256: sha256(stableJson(receipt.claims)),
+    });
+    let signature;
+    try {
+      signature = Buffer.from(receipt.signature, "base64");
+    } catch {
+      invariant(false, "platform receipt signature encoding is invalid", "PLATFORM_RECEIPT_INVALID");
+    }
+    invariant(signature.length > 0 && crypto.verify(null, Buffer.from(stableJson(receiptBody(receipt))), this.publicKey, signature), "platform receipt signature is invalid", "PLATFORM_RECEIPT_SIGNATURE_INVALID");
+    return {
+      trusted: true,
+      provider: receipt.provider_id,
+      key_id: receipt.key_id,
+      receipt_id: receipt.receipt_id,
+      evidence_hash: sha256(stableJson(receipt)),
+      claims: receipt.claims,
+    };
+  }
+}
+
+function platformTrustFromPolicy(policy, root, clock) {
+  const config = policy.platform_trust;
+  if (config?.provider === "UNAVAILABLE") return null;
+  invariant(config?.provider === "ED25519_FILE", "unsupported platform trust provider", "PLATFORM_TRUST_PROVIDER_INVALID");
+  const relativePath = normalizePath(config.public_key_path ?? "");
+  invariant(relativePath && !path.isAbsolute(relativePath) && !relativePath.startsWith("../") && !relativePath.includes("/../"), "platform public key path must be a workspace-relative registered path", "PLATFORM_TRUST_KEY_INVALID");
+  const basename = path.posix.basename(relativePath).toLowerCase();
+  invariant(basename !== ".env" && !basename.startsWith(".env."), "platform trust cannot load an environment file", "CREDENTIAL_ACCESS");
+  const absolutePath = path.join(root, ...relativePath.split("/"));
+  invariant(fs.existsSync(absolutePath) && fs.statSync(absolutePath).isFile(), "registered platform public key is missing", "PLATFORM_TRUST_KEY_MISSING");
+  invariant(hashFile(absolutePath) === config.public_key_sha256, "platform public key hash drifted", "PLATFORM_TRUST_KEY_HASH_MISMATCH");
+  invariant(config.private_key_path === null && config.private_key_material_in_workspace === false, "platform private signing material must not be configured in the workspace", "PLATFORM_PRIVATE_KEY_FORBIDDEN");
+  return new Ed25519PlatformTrust({
+    providerId: config.provider_id,
+    keyId: config.key_id,
+    publicKey: fs.readFileSync(absolutePath),
+    clock,
+  });
 }
 
 class GitClient {
@@ -288,33 +365,8 @@ class EventStore {
     this.validateEvents = validateEvents;
     this.eventsPath = path.join(stateDir, EVENTS_FILE);
     this.lockPath = path.join(stateDir, LOCK_FILE);
-    this.integrityKeyPath = path.join(stateDir, INTEGRITY_KEY_FILE);
     this.quarantinePath = path.join(stateDir, QUARANTINE_DIR);
     this.#transactionAuthority = transactionAuthority;
-  }
-
-  #integrityKey({ create = false } = {}) {
-    if (fs.existsSync(this.integrityKeyPath)) {
-      const key = fs.readFileSync(this.integrityKeyPath);
-      invariant(key.length >= 32, "event integrity key is invalid", "EVENT_INTEGRITY_KEY_INVALID");
-      return key;
-    }
-    invariant(create, "event log exists without its ignored local integrity key", "EVENT_INTEGRITY_KEY_MISSING");
-    fs.mkdirSync(this.stateDir, { recursive: true });
-    const key = crypto.randomBytes(32);
-    try {
-      const descriptor = fs.openSync(this.integrityKeyPath, "wx", 0o600);
-      try {
-        fs.writeFileSync(descriptor, key);
-        fs.fsyncSync(descriptor);
-      } finally {
-        fs.closeSync(descriptor);
-      }
-      return key;
-    } catch (error) {
-      if (error.code !== "EEXIST") throw error;
-      return this.#integrityKey();
-    }
   }
 
   parse(text) {
@@ -322,7 +374,6 @@ class EventStore {
     const rawLines = text.split(/\r?\n/);
     while (rawLines.at(-1) === "") rawLines.pop();
     invariant(rawLines.every((line) => line.trim().length > 0), "event log contains a blank interior line", "EVENT_LOG_BLANK_LINE");
-    const key = this.#integrityKey();
     const events = [];
     let previousHash = null;
     for (let index = 0; index < rawLines.length; index += 1) {
@@ -335,9 +386,9 @@ class EventStore {
       for (const field of REQUIRED_EVENT_FIELDS) {
         invariant(Object.hasOwn(event, field), `event ${index + 1} is missing ${field}`, "EVENT_SCHEMA_INVALID", { line: index + 1, field });
       }
-      invariant(event.integrity_algorithm === "HMAC-SHA256", `event ${index + 1} does not use HMAC-SHA256`, "EVENT_INTEGRITY_ALGORITHM_INVALID");
+      invariant(event.integrity_algorithm === "SHA256_CHAIN+ED25519_RECEIPTS", `event ${index + 1} uses an unsupported integrity model`, "EVENT_INTEGRITY_ALGORITHM_INVALID");
       invariant(event.previous_event_hash === previousHash, `event hash chain breaks at line ${index + 1}`, "EVENT_HASH_CHAIN_INVALID");
-      invariant(hashEvent(event, key) === event.event_hash, `event authentication failed at line ${index + 1}`, "EVENT_AUTHENTICATION_INVALID");
+      invariant(hashEvent(event) === event.event_hash, `event hash mismatch at line ${index + 1}`, "EVENT_HASH_INVALID");
       events.push(event);
       previousHash = event.event_hash;
     }
@@ -433,22 +484,38 @@ class EventStore {
       const lastNewline = text.lastIndexOf("\n");
       const prefix = lastNewline >= 0 ? text.slice(0, lastNewline + 1) : "";
       const tail = lastNewline >= 0 ? text.slice(lastNewline + 1) : text;
+      let completeJson = true;
       try {
         JSON.parse(tail);
-        return null;
       } catch {
-        if (prefix.trim()) this.parse(prefix);
-        fs.mkdirSync(this.quarantinePath, { recursive: true });
-        const tailHash = sha256(tail);
-        const quarantineFile = path.join(this.quarantinePath, `events-tail-${safeTimestampFragment(this.clock().toISOString())}-${tailHash.slice(0, 16)}.jsonl`);
-        fs.writeFileSync(quarantineFile, tail, { encoding: "utf8", flag: "wx", mode: 0o600 });
-        fs.truncateSync(this.eventsPath, Buffer.byteLength(prefix, "utf8"));
+        completeJson = false;
+      }
+      if (completeJson) {
+        this.parse(text);
+        const descriptor = fs.openSync(this.eventsPath, "a");
+        try {
+          fs.writeSync(descriptor, "\n", null, "utf8");
+          fs.fsyncSync(descriptor);
+        } finally {
+          fs.closeSync(descriptor);
+        }
         return {
-          rejected_tail_sha256: tailHash,
-          rejected_tail_bytes: Buffer.byteLength(tail, "utf8"),
-          quarantine_path: normalizePath(path.relative(this.stateDir, quarantineFile)),
+          complete_tail_newline_added: true,
+          complete_tail_sha256: sha256(tail),
+          complete_tail_bytes: Buffer.byteLength(tail, "utf8"),
         };
       }
+      if (prefix.trim()) this.parse(prefix);
+      fs.mkdirSync(this.quarantinePath, { recursive: true });
+      const tailHash = sha256(tail);
+      const quarantineFile = path.join(this.quarantinePath, `events-tail-${safeTimestampFragment(this.clock().toISOString())}-${tailHash.slice(0, 16)}.jsonl`);
+      fs.writeFileSync(quarantineFile, tail, { encoding: "utf8", flag: "wx", mode: 0o600 });
+      fs.truncateSync(this.eventsPath, Buffer.byteLength(prefix, "utf8"));
+      return {
+        rejected_tail_sha256: tailHash,
+        rejected_tail_bytes: Buffer.byteLength(tail, "utf8"),
+        quarantine_path: normalizePath(path.relative(this.stateDir, quarantineFile)),
+      };
     } finally {
       this.releaseLock(owner);
     }
@@ -458,8 +525,8 @@ class EventStore {
     invariant(authority === this.#transactionAuthority, "only ProjectOrchestrator may append events", "EVENT_WRITE_FORBIDDEN");
     const owner = this.acquireLock();
     try {
-      const existingNonEmpty = fs.existsSync(this.eventsPath) && fs.statSync(this.eventsPath).size > 0;
-      const key = this.#integrityKey({ create: !existingNonEmpty });
+      const existingBytes = fs.existsSync(this.eventsPath) ? fs.readFileSync(this.eventsPath) : Buffer.alloc(0);
+      const needsSeparator = existingBytes.length > 0 && existingBytes.at(-1) !== 0x0a;
       const events = this.read();
       const drafts = buildDrafts(events) ?? [];
       invariant(Array.isArray(drafts), "event transaction must return an array", "EVENT_TRANSACTION_INVALID");
@@ -470,10 +537,10 @@ class EventStore {
           ...draft,
           event_id: draft.event_id ?? this.idFactory(),
           timestamp: draft.timestamp ?? this.clock().toISOString(),
-          integrity_algorithm: "HMAC-SHA256",
+          integrity_algorithm: "SHA256_CHAIN+ED25519_RECEIPTS",
           previous_event_hash: previousHash,
         };
-        event.event_hash = hashEvent(event, key);
+        event.event_hash = hashEvent(event);
         previousHash = event.event_hash;
         return event;
       });
@@ -481,6 +548,7 @@ class EventStore {
       fs.mkdirSync(this.stateDir, { recursive: true });
       const fileDescriptor = fs.openSync(this.eventsPath, "a", 0o600);
       try {
+        if (needsSeparator) fs.writeSync(fileDescriptor, "\n", null, "utf8");
         for (const event of finalized) fs.writeSync(fileDescriptor, `${JSON.stringify(event)}\n`, null, "utf8");
         fs.fsyncSync(fileDescriptor);
       } finally {
@@ -519,7 +587,7 @@ function emptyExecution() {
 class ProjectOrchestrator {
   #storeAuthority;
 
-  #identityAttestor;
+  #platformTrust;
 
   #testControlOverrides;
 
@@ -533,12 +601,12 @@ class ProjectOrchestrator {
     git = null,
     clock = null,
     idFactory = null,
-    identityAttestor = null,
+    platformTrust = null,
     testControlOverrides = null,
     authority = null,
   } = {}) {
     const internalTest = authority === SELF_TEST_AUTHORITY;
-    const injected = policy || router || git || clock || idFactory || identityAttestor || testControlOverrides || stateDir;
+    const injected = policy || router || git || clock || idFactory || platformTrust || testControlOverrides || stateDir;
     invariant(!injected || internalTest, "policy, state, Git, clock, identity, and router injection is reserved for internal self-test authority", "TEST_INJECTION_FORBIDDEN");
     const resolvedRoot = path.resolve(root);
     const resolvedStateDir = path.resolve(stateDir ?? path.join(resolvedRoot, DEFAULT_STATE_DIR));
@@ -553,9 +621,9 @@ class ProjectOrchestrator {
     this.clock = clock ?? (() => new Date());
     this.idFactory = idFactory ?? (() => crypto.randomUUID());
     Object.defineProperty(this, "policyHash", { value: policy ? sha256(stableJson(loadedPolicy)) : hashFile(policyPath), writable: false, configurable: false, enumerable: true });
-    this.#identityAttestor = identityAttestor;
     this.#testControlOverrides = testControlOverrides;
     this.#internalTest = internalTest;
+    this.#platformTrust = platformTrust ?? platformTrustFromPolicy(this.policy, this.root, this.clock);
     this.#storeAuthority = Symbol("project-orchestrator-event-writer");
     this.validatePolicy();
     const store = new EventStore({
@@ -570,7 +638,7 @@ class ProjectOrchestrator {
   }
 
   validatePolicy() {
-    invariant(this.policy.schema_version === "g07-autonomy-policy/v2", "unsupported autonomy policy", "POLICY_INVALID");
+    invariant(this.policy.schema_version === "g07-autonomy-policy/v3", "unsupported autonomy policy", "POLICY_INVALID");
     invariant(this.policy.control_anchor === "G07::AUTONOMY", "policy is not bound to G07::AUTONOMY", "POLICY_INVALID");
     invariant(["G07_A_CONTROL_PLANE_ONLY", "G07_APPROVED_INTEGRATION"].includes(this.policy.phase), "unknown autonomy phase", "POLICY_PHASE_INVALID");
     invariant(this.policy.g07_gate_required === "APPROVED", "policy must require creator-approved G07", "POLICY_GATE_INVALID");
@@ -580,12 +648,17 @@ class ProjectOrchestrator {
     invariant(this.policy.retry_policy.max_replan === 2, "policy must use two Replan attempts", "POLICY_INVALID");
     invariant(this.policy.retry_policy.critical_path_on_exhaustion === "CREATOR_REQUIRED", "critical path exhaustion must require the creator", "POLICY_INVALID");
     invariant(this.policy.budget.notify_ratio === 0.8 && this.policy.budget.hard_stop_ratio === 1, "budget thresholds must be 80% and 100%", "POLICY_INVALID");
+    invariant(this.policy.budget.limits_source === "REGISTERED_POLICY"
+      && this.policy.budget.usage_source === "PLATFORM_METERING_RECEIPT"
+      && this.policy.budget.run_override_allowed === false, "budget authority must come only from registered policy and platform metering", "POLICY_BUDGET_AUTHORITY_INVALID");
     invariant(sameStringSet(this.policy.hard_stop_actions, MANDATORY_HARD_STOP_ACTIONS), "policy hard-stop action set drifted", "POLICY_HARD_STOP_INVALID");
     invariant(sameStringSet(this.policy.forbidden_automatic_actions, MANDATORY_FORBIDDEN_AUTOMATIC_ACTIONS), "policy forbidden automatic action set drifted", "POLICY_HARD_STOP_INVALID");
-    invariant(this.policy.event_integrity?.algorithm === "HMAC-SHA256"
-      && this.policy.event_integrity?.key_file === INTEGRITY_KEY_FILE
-      && this.policy.event_integrity?.key_must_be_ignored === true, "event integrity policy is incomplete", "POLICY_INTEGRITY_INVALID");
-    invariant(this.policy.identity_attestation?.required === true, "trusted role identity attestation must be required", "POLICY_IDENTITY_INVALID");
+    invariant(this.policy.event_integrity?.chain_algorithm === "SHA-256"
+      && this.policy.event_integrity?.authority === "ED25519_PLATFORM_RECEIPTS"
+      && this.policy.event_integrity?.local_symmetric_key_is_authority === false, "event integrity policy is incomplete", "POLICY_INTEGRITY_INVALID");
+    invariant(["UNAVAILABLE", "ED25519_FILE"].includes(this.policy.platform_trust?.provider)
+      && this.policy.platform_trust?.receipt_version === PLATFORM_RECEIPT_VERSION
+      && this.policy.platform_trust?.private_key_material_in_workspace === false, "platform trust policy is invalid", "POLICY_PLATFORM_TRUST_INVALID");
 
     const gate = this.controlGateSnapshot();
     if (this.policy.phase === "G07_A_CONTROL_PLANE_ONLY") {
@@ -594,6 +667,7 @@ class ProjectOrchestrator {
     } else {
       invariant(gate.g07_gate === "APPROVED" && isSha256(gate.g07_approval_evidence_sha256), "approved integration phase requires registered creator Gate evidence hash", "POLICY_GATE_INVALID");
       invariant(this.policy.product_task_execution_allowed === true, "approved integration phase must explicitly enable product Task execution", "POLICY_PHASE_INVALID");
+      invariant(this.#platformTrust, "approved integration requires an available registered platform trust provider", "ENVIRONMENT_APPROVAL_REQUIRED");
     }
 
     if (!this.#internalTest) {
@@ -644,6 +718,7 @@ class ProjectOrchestrator {
     execution = null,
     creatorRequiredReason = null,
     environmentApprovalReason = null,
+    platformReceipts = [],
     payload = {},
   }) {
     invariant(runId, "autonomy_run_id is required", "RUN_ID_REQUIRED");
@@ -654,7 +729,7 @@ class ProjectOrchestrator {
     const task = taskId ? this.router.taskById.get(taskId) : null;
     if (taskId) invariant(task, `unknown Task: ${taskId}`, "TASK_NOT_FOUND");
     return {
-      event_version: "g07-autonomy-event/v2",
+      event_version: "g07-autonomy-event/v3",
       event_id: this.idFactory(),
       event_type: eventType,
       autonomy_run_id: runId,
@@ -680,9 +755,155 @@ class ProjectOrchestrator {
       creator_required_reason: creatorRequiredReason,
       environment_approval_reason: environmentApprovalReason,
       payload,
-      integrity_algorithm: "HMAC-SHA256",
+      platform_receipts: platformReceipts,
+      integrity_algorithm: "SHA256_CHAIN+ED25519_RECEIPTS",
       previous_event_hash: null,
       event_hash: null,
+    };
+  }
+
+  requirePlatformTrust(reason = "PLATFORM_TRUST_PROVIDER_UNAVAILABLE") {
+    invariant(this.#platformTrust, "the registered platform trust provider is unavailable", "ENVIRONMENT_APPROVAL_REQUIRED", { reason });
+    return this.#platformTrust;
+  }
+
+  verifyPlatformReceipt(receipt, kind, claims, { at = this.clock() } = {}) {
+    return this.requirePlatformTrust().verify(receipt, kind, claims, { at });
+  }
+
+  reportCore(report) {
+    const core = clone(report);
+    delete core.identity_attestation;
+    delete core.report_receipt;
+    return core;
+  }
+
+  roleIdentityClaims(report) {
+    const signed = report.identity_attestation?.claims ?? {};
+    return {
+      principal_id: signed.principal_id,
+      session_id: signed.session_id,
+      role: report.role,
+      task_id: report.task_id,
+      attempt_id: report.attempt_id,
+      base_commit: report.base_commit,
+      candidate_commit: report.candidate_commit,
+      context_hash: report.context_hash,
+    };
+  }
+
+  verifyReportTrust(report, { at = this.clock() } = {}) {
+    const identityClaims = this.roleIdentityClaims(report);
+    invariant(typeof identityClaims.principal_id === "string" && identityClaims.principal_id.length > 0
+      && typeof identityClaims.session_id === "string" && identityClaims.session_id.length > 0, "role identity receipt lacks a trusted principal/session", "IDENTITY_ATTESTATION_INVALID");
+    const identity = this.verifyPlatformReceipt(report.identity_attestation, "ROLE_IDENTITY", identityClaims, { at });
+    const reportClaims = {
+      role: report.role,
+      task_id: report.task_id,
+      attempt_id: report.attempt_id,
+      base_commit: report.base_commit,
+      candidate_commit: report.candidate_commit,
+      context_hash: report.context_hash,
+      report_sha256: sha256(stableJson(this.reportCore(report))),
+    };
+    const signedReport = this.verifyPlatformReceipt(report.report_receipt, "ROLE_REPORT", reportClaims, { at });
+    return {
+      role: report.role,
+      principal_id: identityClaims.principal_id,
+      session_id: identityClaims.session_id,
+      identity_receipt_id: identity.receipt_id,
+      report_receipt_id: signedReport.receipt_id,
+      evidence_hash: sha256(stableJson([identity.evidence_hash, signedReport.evidence_hash])),
+    };
+  }
+
+  leaseReceiptClaims({ runId, taskId, attemptId, role, actorId, mode, leaseId, acquiredAt, expiresAt, baseCommit, candidateCommit, contextHash, fromStatus, toStatus }) {
+    return {
+      autonomy_run_id: runId,
+      task_id: taskId,
+      attempt_id: attemptId,
+      role,
+      actor_id: actorId,
+      mode,
+      lease_id: leaseId,
+      acquired_at: acquiredAt,
+      expires_at: expiresAt,
+      base_commit: baseCommit,
+      candidate_commit: candidateCommit,
+      context_hash: contextHash,
+      from_status: fromStatus,
+      to_status: toStatus,
+      branch: this.git.branch(),
+      worktree: this.git.worktree(),
+    };
+  }
+
+  transitionReceiptClaims({ runId, taskId, attemptId, role, baseCommit, candidateCommit, contextHash, fromStatus, toStatus }) {
+    return {
+      autonomy_run_id: runId,
+      task_id: taskId,
+      attempt_id: attemptId,
+      role,
+      base_commit: baseCommit,
+      candidate_commit: candidateCommit,
+      context_hash: contextHash,
+      from_status: fromStatus,
+      to_status: toStatus,
+    };
+  }
+
+  taskBoundaryClaims(report) {
+    const task = this.router.taskById.get(report.task_id);
+    return {
+      task_id: report.task_id,
+      candidate_commit: report.candidate_commit,
+      context_hash: report.context_hash,
+      category: report.decision?.category,
+      proposal_sha256: report.decision?.proposal_sha256,
+      classification: "TECHNICAL_ONLY",
+      business_result_sha256: sha256(task.values["业务结果"]),
+      depends_on_sha256: sha256(task.values.depends_on),
+      owner_sha256: sha256(task.values["角色"]),
+      write_scope_sha256: sha256(task.values.write_scope),
+      gate_snapshot_sha256: sha256(stableJson({
+        g04_gate: this.router.gates.G04_GATE,
+        g04_revision: this.router.gates.G04_REVISION,
+        g07_gate: this.router.gates.G07_GATE,
+      })),
+    };
+  }
+
+  commandReceiptClaims(report, entry) {
+    return {
+      task_id: report.task_id,
+      attempt_id: report.attempt_id,
+      candidate_commit: report.candidate_commit,
+      command: entry.command,
+      exit_code: entry.exit_code,
+      stdout_sha256: entry.stdout_sha256,
+      regression_artifact_sha256: entry.regression_artifact_sha256,
+    };
+  }
+
+  auditReceiptClaims(report, entry) {
+    return {
+      task_id: report.task_id,
+      attempt_id: report.attempt_id,
+      candidate_commit: report.candidate_commit,
+      kind: entry.kind,
+      passed: entry.passed,
+      evidence_hash: entry.evidence_hash,
+    };
+  }
+
+  reviewReceiptClaims(report) {
+    return {
+      task_id: report.task_id,
+      attempt_id: report.attempt_id,
+      candidate_commit: report.candidate_commit,
+      checks_sha256: sha256(stableJson(report.checks ?? {})),
+      diff_hash: report.scope?.diff_hash ?? null,
+      secret_scan_evidence_hash: report.secret_scan?.evidence_hash ?? null,
     };
   }
 
@@ -690,9 +911,15 @@ class ProjectOrchestrator {
     const states = new Map(this.router.tasks.map((task) => [task.id, {
       status: task.values["状态"],
       counters: emptyCounters(),
+      failure_fingerprint: null,
+      candidate_commit: null,
+      context_hash: null,
+      last_event_id: null,
     }]));
     const leases = new Map();
+    const reports = new Map();
     const eventIds = new Set();
+    const receiptIds = new Set();
     let previousTimestamp = null;
 
     for (let index = 0; index < events.length; index += 1) {
@@ -700,7 +927,7 @@ class ProjectOrchestrator {
       for (const field of REQUIRED_EVENT_FIELDS) {
         invariant(Object.hasOwn(event, field), `event ${index + 1} is missing ${field}`, "EVENT_SCHEMA_INVALID", { line: index + 1, field });
       }
-      invariant(event.event_version === "g07-autonomy-event/v2", `event ${index + 1} uses an unsupported version`, "EVENT_SCHEMA_INVALID");
+      invariant(event.event_version === "g07-autonomy-event/v3", `event ${index + 1} uses an unsupported version`, "EVENT_SCHEMA_INVALID");
       invariant(EVENT_TYPES.has(event.event_type), `event ${index + 1} uses unknown type ${event.event_type}`, "EVENT_TYPE_INVALID");
       invariant(!eventIds.has(event.event_id), `duplicate event_id ${event.event_id}`, "EVENT_ID_DUPLICATE");
       eventIds.add(event.event_id);
@@ -714,10 +941,25 @@ class ProjectOrchestrator {
       previousTimestamp = Date.parse(event.timestamp);
       invariant(event.branch === this.policy.integration_branch, `event ${event.event_id} is on an unregistered branch`, "EVENT_BRANCH_INVALID");
       invariant(normalizePath(path.resolve(event.worktree)) === this.git.worktree(), `event ${event.event_id} worktree drifted`, "EVENT_WORKTREE_INVALID");
+      invariant(Array.isArray(event.platform_receipts), `event ${event.event_id} platform_receipts must be an array`, "EVENT_SCHEMA_INVALID");
+      const trackReceipt = (receipt) => {
+        invariant(receipt?.receipt_id && !receiptIds.has(receipt.receipt_id), `platform receipt ${receipt?.receipt_id ?? "MISSING"} was reused`, "PLATFORM_RECEIPT_REUSED");
+        receiptIds.add(receipt.receipt_id);
+      };
+      for (const receipt of event.platform_receipts) trackReceipt(receipt);
 
       if (!event.task_id) {
         invariant(["USAGE_RECORDED", "HARD_STOP", "EVENT_LOG_TAIL_RECOVERED"].includes(event.event_type), `taskless event type ${event.event_type} is forbidden`, "EVENT_TASK_REQUIRED");
         invariant(event.from_status === null && event.to_status === null && event.lease === null, `taskless event ${event.event_id} carries Task state`, "EVENT_STATE_INVALID");
+        if (event.event_type === "USAGE_RECORDED") {
+          const meter = event.platform_receipts.find((receipt) => receipt.kind === "USAGE_METER");
+          this.verifyPlatformReceipt(meter, "USAGE_METER", {
+            autonomy_run_id: event.autonomy_run_id,
+            tokens: event.execution.tokens,
+            time_ms: event.execution.time_ms,
+            known_cost: event.execution.known_cost,
+          }, { at: event.timestamp });
+        }
         continue;
       }
 
@@ -736,6 +978,19 @@ class ProjectOrchestrator {
       if (event.event_type === "TASK_UNLOCKED") {
         invariant(event.from_status === "PLANNED" && event.to_status === "READY", "TASK_UNLOCKED must be PLANNED -> READY", "EVENT_SEMANTICS_INVALID");
         invariant(leaseAction === null, "TASK_UNLOCKED cannot carry a lease", "EVENT_SEMANTICS_INVALID");
+        const expectedDependencies = this.router.taskGraph(this.router.taskById.get(event.task_id)).upstream
+          .map((item) => ({ task_id: item.task_id, status: states.get(item.task_id)?.status }));
+        invariant(expectedDependencies.every((item) => item.status === "VERIFIED")
+          && stableJson(event.payload?.dependency_evidence ?? []) === stableJson(expectedDependencies), "TASK_UNLOCKED dependency evidence is not the live VERIFIED closure", "EVENT_DEPENDENCIES_INVALID");
+        const receipt = event.platform_receipts.find((item) => item.kind === "TASK_UNLOCK");
+        this.verifyPlatformReceipt(receipt, "TASK_UNLOCK", {
+          autonomy_run_id: event.autonomy_run_id,
+          task_id: event.task_id,
+          from_status: event.from_status,
+          to_status: event.to_status,
+          context_hash: event.context_hash,
+          dependency_evidence_sha256: sha256(stableJson(event.payload?.dependency_evidence ?? [])),
+        }, { at: event.timestamp });
       } else if (event.event_type === "LEASE_ACQUIRED") {
         invariant(leaseAction === "ACQUIRE" && event.lease?.lease_id, "LEASE_ACQUIRED requires an ACQUIRE record", "EVENT_LEASE_INVALID");
         invariant(!leases.has(event.lease.lease_id), `duplicate lease ${event.lease.lease_id}`, "EVENT_LEASE_INVALID");
@@ -753,17 +1008,54 @@ class ProjectOrchestrator {
             || (event.role === "architect" && event.from_status === "REPLAN" && event.to_status === "REPLAN"), "read-only lease status pair is invalid", "EVENT_SEMANTICS_INVALID");
           invariant([...leases.values()].filter((lease) => lease.mode === "READ_ONLY").length < 2, "semantic replay exceeded read-only review concurrency", "EVENT_REVIEW_CONCURRENCY_INVALID");
         }
+        const receipt = event.platform_receipts.find((item) => item.kind === "LEASE_GRANT");
+        this.verifyPlatformReceipt(receipt, "LEASE_GRANT", this.leaseReceiptClaims({
+          runId: event.autonomy_run_id,
+          taskId: event.task_id,
+          attemptId: event.attempt_id,
+          role: event.role,
+          actorId: event.lease.actor_id,
+          mode: event.lease.mode,
+          leaseId: event.lease.lease_id,
+          acquiredAt: event.lease.acquired_at,
+          expiresAt: event.lease.expires_at,
+          baseCommit: event.base_commit,
+          candidateCommit: event.candidate_commit,
+          contextHash: event.context_hash,
+          fromStatus: event.from_status,
+          toStatus: event.to_status,
+        }), { at: event.timestamp });
         leases.set(event.lease.lease_id, { ...event.lease, task_id: event.task_id });
       } else if (event.event_type === "LEASE_EXPIRED") {
         invariant(leaseAction === "EXPIRE" && leases.has(event.lease?.lease_id), "LEASE_EXPIRED does not target an active lease", "EVENT_LEASE_INVALID");
         const expired = leases.get(event.lease.lease_id);
         invariant(expired.task_id === event.task_id, "expired lease Task mismatch", "EVENT_LEASE_INVALID");
+        invariant(Date.parse(event.timestamp) >= Date.parse(expired.expires_at), "lease was expired before its signed lifetime ended", "EVENT_LEASE_NOT_EXPIRED");
         invariant((expired.mode === "WRITE" && ["LEASED", "IN_PROGRESS"].includes(event.from_status) && event.to_status === "READY")
           || (expired.mode === "READ_ONLY" && event.to_status === event.from_status), "expired lease transition is invalid", "EVENT_SEMANTICS_INVALID");
         leases.delete(event.lease.lease_id);
       } else if (event.event_type === "ROLE_REPORT_RECORDED") {
         const report = event.payload?.report;
         invariant(report && report.task_id === event.task_id && report.role === event.role, "role report payload does not match event", "EVENT_REPORT_INVALID");
+        trackReceipt(report.identity_attestation);
+        trackReceipt(report.report_receipt);
+        for (const command of report.acceptance?.commands ?? []) if (command.receipt) trackReceipt(command.receipt);
+        for (const evidence of report.evidence ?? []) if (evidence.receipt) trackReceipt(evidence.receipt);
+        if (report.review_receipt) trackReceipt(report.review_receipt);
+        const trustedReport = this.verifyReportTrust(report, { at: event.timestamp });
+        invariant(stableJson(event.payload?.trusted_report) === stableJson(trustedReport), "role event trusted-report projection was tampered", "EVENT_REPORT_TRUST_INVALID");
+        if (event.role === "architect") {
+          const priorIdentities = ["coder", "auditor", "reviewer"]
+            .map((role) => [...events.slice(0, index)].reverse().find((priorEvent) => priorEvent.event_type === "ROLE_REPORT_RECORDED"
+              && priorEvent.task_id === event.task_id
+              && priorEvent.role === role
+              && priorEvent.candidate_commit === report.candidate_commit)?.payload?.trusted_report)
+            .filter(Boolean);
+          this.assertIndependentIdentities([...priorIdentities, trustedReport]);
+          invariant(stableJson(event.payload?.architect_independent_from ?? []) === stableJson(priorIdentities), "Architect independence projection was tampered", "EVENT_REPORT_TRUST_INVALID");
+        }
+        if (!reports.has(event.task_id)) reports.set(event.task_id, []);
+        reports.get(event.task_id).push(report);
         const activeForRole = [...leases.values()].find((lease) => lease.task_id === event.task_id
           && lease.role === event.role
           && lease.attempt_id === event.attempt_id);
@@ -778,12 +1070,71 @@ class ProjectOrchestrator {
             && event.from_status === "REPLAN"
             && ["READY", "BLOCKED", "CREATOR_REQUIRED"].includes(event.to_status));
         invariant(allowedPair, "role report status pair is invalid", "EVENT_SEMANTICS_INVALID");
+        if (event.role === "architect" && ["A", "B"].includes(report.decision?.category)) {
+          trackReceipt(report.decision.boundary_receipt);
+          this.verifyPlatformReceipt(report.decision.boundary_receipt, "ARCHITECT_BOUNDARY", this.taskBoundaryClaims(report), { at: event.timestamp });
+        }
+        if (event.role === "architect") {
+          const category = report.decision?.category;
+          invariant(["A", "B", "C", "D"].includes(category), "Architect event must carry Replan A/B/C/D", "EVENT_ARCHITECT_DECISION_INVALID");
+          if (["A", "B"].includes(category)) {
+            invariant(event.to_status === "READY" && event.decision_level === "ARCHITECT_AUTONOMOUS"
+              && event.counters.rework === 0 && event.counters.replan === state.counters.replan, "Architect A/B event did not preserve the signed technical boundary", "EVENT_ARCHITECT_DECISION_INVALID");
+          } else if (category === "C") {
+            invariant(event.to_status === "CREATOR_REQUIRED" && event.decision_level === "CREATOR_REQUIRED"
+              && Boolean(event.creator_required_reason), "Architect C must hard-stop at CREATOR_REQUIRED", "EVENT_ARCHITECT_DECISION_INVALID");
+          } else {
+            const expectedLevel = report.decision.environment_approval_required ? "ENVIRONMENT_APPROVAL_REQUIRED" : "BLOCKED_TECHNICAL";
+            invariant(event.to_status === "BLOCKED" && event.decision_level === expectedLevel
+              && isSha256(event.failure_fingerprint), "Architect D must remain technically/environment blocked with a failure fingerprint", "EVENT_ARCHITECT_DECISION_INVALID");
+          }
+        }
+        if (["coder", "prompt_editor"].includes(event.role)) {
+          if (report.verdict === "CREATOR_REQUIRED") {
+            invariant(event.to_status === "CREATOR_REQUIRED" && event.decision_level === "CREATOR_REQUIRED"
+              && Boolean(event.creator_required_reason), "writer CREATOR_REQUIRED report was remapped", "EVENT_WRITER_DECISION_INVALID");
+          } else if (report.verdict === "BLOCKED") {
+            invariant(event.to_status === "BLOCKED" && event.decision_level === "BLOCKED_TECHNICAL"
+              && isSha256(event.failure_fingerprint), "writer BLOCKED report was remapped or lacks a fingerprint", "EVENT_WRITER_DECISION_INVALID");
+          } else {
+            invariant(event.to_status === event.from_status, "writer informational/implemented report cannot directly change Task state", "EVENT_WRITER_DECISION_INVALID");
+          }
+        }
       } else if (event.event_type === "TASK_TRANSITION") {
         invariant(TRANSITIONS.get(event.from_status)?.has(event.to_status), `illegal event transition ${event.from_status} -> ${event.to_status}`, "EVENT_SEMANTICS_INVALID");
         invariant(event.from_status !== "CREATOR_REQUIRED", "CREATOR_REQUIRED cannot be cleared by the Orchestrator", "EVENT_SEMANTICS_INVALID");
         invariant(!(event.from_status === "PLANNED" && event.to_status === "READY"), "unlock event is required", "EVENT_SEMANTICS_INVALID");
         invariant(!(event.from_status === "READY" && event.to_status === "LEASED"), "lease event is required", "EVENT_SEMANTICS_INVALID");
         invariant(!["VERIFIED", "REWORK", "REPLAN"].includes(event.to_status), "reserved transition event target", "EVENT_SEMANTICS_INVALID");
+        if (event.from_status === "BLOCKED" && event.to_status === "READY") {
+          invariant(event.payload?.failed_event_id === state.last_event_id
+            && event.payload?.failure_fingerprint === state.failure_fingerprint
+            && event.candidate_commit === state.candidate_commit
+            && event.context_hash === state.context_hash, "BLOCK resolution does not close the current failed event/fingerprint/version", "EVENT_BLOCK_RESOLUTION_INVALID");
+          const receipt = event.platform_receipts.find((item) => item.kind === "BLOCK_RESOLUTION");
+          this.verifyPlatformReceipt(receipt, "BLOCK_RESOLUTION", {
+            autonomy_run_id: event.autonomy_run_id,
+            task_id: event.task_id,
+            failed_event_id: event.payload?.failed_event_id,
+            failure_fingerprint: event.payload?.failure_fingerprint,
+            resolution_artifact_sha256: event.payload?.resolution_artifact_sha256,
+            candidate_commit: event.candidate_commit,
+            context_hash: event.context_hash,
+          }, { at: event.timestamp });
+        } else {
+          const receipt = event.platform_receipts.find((item) => item.kind === "STATE_TRANSITION");
+          this.verifyPlatformReceipt(receipt, "STATE_TRANSITION", this.transitionReceiptClaims({
+            runId: event.autonomy_run_id,
+            taskId: event.task_id,
+            attemptId: event.attempt_id,
+            role: event.role,
+            baseCommit: event.base_commit,
+            candidateCommit: event.candidate_commit,
+            contextHash: event.context_hash,
+            fromStatus: event.from_status,
+            toStatus: event.to_status,
+          }), { at: event.timestamp });
+        }
       } else if (event.event_type === "EVIDENCE_VERIFIED") {
         invariant(event.from_status === "VERIFYING" && event.to_status === "VERIFIED", "EVIDENCE_VERIFIED must be VERIFYING -> VERIFIED", "EVENT_SEMANTICS_INVALID");
         invariant(event.verdicts?.auditor === "PASS" && event.verdicts?.reviewer === "APPROVE", "verified event lacks both independent verdicts", "EVENT_SEMANTICS_INVALID");
@@ -791,10 +1142,16 @@ class ProjectOrchestrator {
           && isSha256(event.acceptance.diff_hash)
           && isSha256(event.acceptance.scope_evidence_hash)
           && isSha256(event.acceptance.secret_scan_evidence_hash), "verified event lacks mechanical evidence hashes", "EVENT_SEMANTICS_INVALID");
+        const history = reports.get(event.task_id) ?? [];
+        this.verifyRecordedEvidenceEvent(event, history);
       } else if (event.event_type === "EVIDENCE_REJECTED") {
         invariant(event.from_status === "VERIFYING"
           && ["REWORK", "REPLAN", "BLOCKED", "CREATOR_REQUIRED"].includes(event.to_status)
           && isSha256(event.failure_fingerprint), "evidence rejection transition or fingerprint is invalid", "EVENT_SEMANTICS_INVALID");
+      } else if (event.event_type === "CANDIDATE_INVALIDATED") {
+        invariant(["IN_PROGRESS", "IMPLEMENTED", "VERIFYING"].includes(event.from_status)
+          && ["REWORK", "REPLAN", "BLOCKED", "CREATOR_REQUIRED"].includes(event.to_status)
+          && isSha256(event.failure_fingerprint), "candidate invalidation transition or fingerprint is invalid", "EVENT_SEMANTICS_INVALID");
       } else {
         invariant(false, `Task event type ${event.event_type} is not semantically registered`, "EVENT_SEMANTICS_INVALID");
       }
@@ -810,6 +1167,10 @@ class ProjectOrchestrator {
 
       state.status = event.to_status;
       state.counters = { ...event.counters };
+      if (event.failure_fingerprint) state.failure_fingerprint = event.failure_fingerprint;
+      if (event.candidate_commit) state.candidate_commit = event.candidate_commit;
+      if (event.context_hash) state.context_hash = event.context_hash;
+      state.last_event_id = event.event_id;
     }
     return true;
   }
@@ -825,11 +1186,11 @@ class ProjectOrchestrator {
       context_hash: null,
       last_event_id: null,
       last_evidence: null,
+      failure_fingerprint: null,
     }]));
     const leases = new Map();
     const reports = new Map();
     const usageByRun = new Map();
-    const runBudgetLimits = new Map();
     const stopsByRun = new Map();
 
     for (const event of events) {
@@ -842,6 +1203,7 @@ class ProjectOrchestrator {
         if (event.candidate_commit) state.candidate_commit = event.candidate_commit;
         if (event.context_hash) state.context_hash = event.context_hash;
         state.last_event_id = event.event_id;
+        if (event.failure_fingerprint) state.failure_fingerprint = event.failure_fingerprint;
         if (event.event_type === "EVIDENCE_VERIFIED") state.last_evidence = event.event_hash;
       }
 
@@ -856,15 +1218,16 @@ class ProjectOrchestrator {
         if (!reports.has(event.task_id)) reports.set(event.task_id, []);
         reports.get(event.task_id).push(event.payload.report);
       }
-      if (event.payload?.run_budget_limits) runBudgetLimits.set(event.autonomy_run_id, event.payload.run_budget_limits);
       if (event.event_type === "HARD_STOP") stopsByRun.set(event.autonomy_run_id, event);
 
-      const usage = usageByRun.get(event.autonomy_run_id) ?? { tokens: 0, elapsed_ms: 0, known_cost: null, has_unknown_cost: false };
-      usage.tokens += Number(event.execution.tokens ?? 0);
-      usage.elapsed_ms += Number(event.execution.time_ms ?? 0);
-      if (event.execution.known_cost === null || event.execution.known_cost === undefined) usage.has_unknown_cost = true;
-      else usage.known_cost = Number(usage.known_cost ?? 0) + Number(event.execution.known_cost);
-      usageByRun.set(event.autonomy_run_id, usage);
+      if (event.event_type === "USAGE_RECORDED") {
+        const usage = usageByRun.get(event.autonomy_run_id) ?? { tokens: 0, elapsed_ms: 0, known_cost: null, has_unknown_cost: false };
+        usage.tokens += Number(event.execution.tokens ?? 0);
+        usage.elapsed_ms += Number(event.execution.time_ms ?? 0);
+        if (event.execution.known_cost === null || event.execution.known_cost === undefined) usage.has_unknown_cost = true;
+        else usage.known_cost = Number(usage.known_cost ?? 0) + Number(event.execution.known_cost);
+        usageByRun.set(event.autonomy_run_id, usage);
+      }
     }
 
     const activeLeases = [];
@@ -895,7 +1258,6 @@ class ProjectOrchestrator {
       expiredLeases,
       reports,
       usageByRun,
-      runBudgetLimits,
       stopsByRun,
     };
   }
@@ -1001,10 +1363,7 @@ class ProjectOrchestrator {
 
   budgetState(runId, projection = this.project()) {
     const usage = projection.usageByRun.get(runId) ?? { tokens: 0, elapsed_ms: 0, known_cost: null, has_unknown_cost: false };
-    const limits = {
-      ...this.policy.budget.limits,
-      ...(projection.runBudgetLimits.get(runId) ?? {}),
-    };
+    const limits = { ...this.policy.budget.limits };
     const dimensions = [
       ["tokens", usage.tokens, limits.tokens],
       ["elapsed_ms", usage.elapsed_ms, limits.elapsed_ms],
@@ -1030,9 +1389,12 @@ class ProjectOrchestrator {
 
   evaluateAction(action, runId, projection = this.project()) {
     this.validatePolicy();
-    const normalized = String(action).toUpperCase();
+    const normalized = String(action ?? "").trim().toUpperCase();
     const budget = this.budgetState(runId, projection);
-    if (budget.hard_stop) {
+    if (!KNOWN_ACTIONS.has(normalized)) {
+      return { allowed: false, hard_stop: true, decision_level: "BLOCKED_TECHNICAL", reason: "UNKNOWN_ACTION_DENY_BY_DEFAULT", normalized_action: normalized, budget };
+    }
+    if (budget.hard_stop && !["CONTROL_PLANE_READ", "READ_ONLY_REVIEW"].includes(normalized)) {
       return { allowed: false, hard_stop: true, decision_level: "BLOCKED_TECHNICAL", reason: "BUDGET_100_PERCENT_OR_UNKNOWN_COST", budget };
     }
     if (MANDATORY_HARD_STOP_ACTIONS.includes(normalized) || MANDATORY_FORBIDDEN_AUTOMATIC_ACTIONS.includes(normalized)) {
@@ -1091,20 +1453,33 @@ class ProjectOrchestrator {
     };
   }
 
-  recordUsage({ runId, execution, limits = null }) {
+  recordUsage({ runId, meterReceipt }) {
     this.validatePolicy();
     invariant(runId, "usage record requires runId", "RUN_ID_REQUIRED");
-    const normalized = { ...emptyExecution(), ...(execution ?? {}) };
+    invariant(meterReceipt && typeof meterReceipt === "object", "usage record requires a platform metering receipt", "PLATFORM_RECEIPT_REQUIRED");
+    const claims = meterReceipt?.claims ?? {};
+    const normalized = {
+      ...emptyExecution(),
+      tokens: claims.tokens,
+      time_ms: claims.time_ms,
+      known_cost: claims.known_cost,
+    };
     for (const [field, value] of [["tokens", normalized.tokens], ["time_ms", normalized.time_ms]]) {
       invariant(Number.isFinite(Number(value)) && Number(value) >= 0, `usage ${field} must be non-negative`, "USAGE_INVALID");
     }
     if (normalized.known_cost !== null) invariant(Number.isFinite(Number(normalized.known_cost)) && Number(normalized.known_cost) >= 0, "known cost must be null or non-negative", "USAGE_INVALID");
+    this.verifyPlatformReceipt(meterReceipt, "USAGE_METER", {
+      autonomy_run_id: runId,
+      tokens: normalized.tokens,
+      time_ms: normalized.time_ms,
+      known_cost: normalized.known_cost,
+    });
     const finalized = this.store.transact(this.#storeAuthority, () => [this.makeDraft({
       eventType: "USAGE_RECORDED",
       runId,
       role: "orchestrator",
       execution: normalized,
-      payload: limits ? { run_budget_limits: limits } : {},
+      platformReceipts: [meterReceipt],
     })]);
     return finalized[0];
   }
@@ -1232,7 +1607,7 @@ class ProjectOrchestrator {
 
   expiredLeaseDrafts(projection, runId) {
     const drafts = [];
-    for (const lease of projection.expiredLeases.filter((item) => item.run_id === runId)) {
+    for (const lease of projection.expiredLeases) {
       const state = projection.taskStates.get(lease.task_id);
       const writer = lease.mode === "WRITE";
       const toStatus = writer && ["LEASED", "IN_PROGRESS"].includes(state.status) ? "READY" : state.status;
@@ -1252,7 +1627,7 @@ class ProjectOrchestrator {
         decisionLevel: "BLOCKED_TECHNICAL",
         fingerprint: failureFingerprint("LEASE_EXPIRED"),
         counters,
-        payload: { reason: "LEASE_EXPIRED_RECOVERED" },
+        payload: { reason: "LEASE_EXPIRED_RECOVERED", original_run_id: lease.run_id, recovery_run_id: runId },
       }));
       state.status = toStatus;
       state.counters = counters;
@@ -1260,11 +1635,13 @@ class ProjectOrchestrator {
     return drafts;
   }
 
-  lease({ runId, taskId = null, role, actorId, attemptId, ttlSeconds = null, contextHash = null, baseCommit = null, candidateCommit = null }) {
+  lease({ runId, taskId = null, role, actorId, attemptId, ttlSeconds = null, contextHash = null, baseCommit = null, candidateCommit = null, platformReceipt = null }) {
     invariant(runId && role && actorId && attemptId, "lease requires runId, role, actorId and attemptId", "LEASE_INPUT_INVALID");
     invariant(["coder", "prompt_editor", "auditor", "reviewer", "architect"].includes(role), `role cannot lease: ${role}`, "LEASE_ROLE_INVALID");
     const guard = this.evaluateAction(role === "coder" || role === "prompt_editor" ? "PRODUCT_TASK_WRITE" : "READ_ONLY_REVIEW", runId);
     invariant(guard.allowed, guard.reason, guard.decision_level, guard);
+    this.requirePlatformTrust();
+    invariant(platformReceipt && typeof platformReceipt === "object", "lease requires a platform grant receipt", "PLATFORM_RECEIPT_REQUIRED");
     const ttl = Number(ttlSeconds ?? this.policy.concurrency.default_lease_seconds);
     invariant(Number.isFinite(ttl) && ttl > 0, "lease ttl must be positive", "LEASE_TTL_INVALID");
 
@@ -1315,8 +1692,17 @@ class ProjectOrchestrator {
       else invariant(!candidateCommit, "writer lease cannot accept a caller-supplied candidate commit", "LEASE_CANDIDATE_FORBIDDEN");
       const effectiveContextHash = expectedContextHash;
       const effectiveBaseCommit = expectedBaseCommit;
-      const leaseId = this.idFactory();
-      const acquiredAt = this.clock();
+      const signedLeaseClaims = platformReceipt?.claims ?? {};
+      const leaseId = signedLeaseClaims.lease_id;
+      const acquiredAt = new Date(signedLeaseClaims.acquired_at);
+      const expiresAt = new Date(signedLeaseClaims.expires_at);
+      const now = this.clock();
+      invariant(typeof leaseId === "string" && leaseId.length >= 12, "platform lease_id is invalid", "LEASE_RECEIPT_INVALID");
+      invariant(signedLeaseClaims.actor_id === actorId, "platform lease actor does not match the requested actor", "LEASE_RECEIPT_INVALID");
+      invariant(!Number.isNaN(acquiredAt.getTime()) && !Number.isNaN(expiresAt.getTime())
+        && acquiredAt.getTime() <= now.getTime()
+        && expiresAt.getTime() > now.getTime()
+        && expiresAt.getTime() - acquiredAt.getTime() <= ttl * 1000, "platform lease lifetime is invalid or exceeds the requested TTL", "LEASE_RECEIPT_INVALID");
       const leaseRecord = {
         action: "ACQUIRE",
         lease_id: leaseId,
@@ -1325,12 +1711,28 @@ class ProjectOrchestrator {
         actor_id: actorId,
         attempt_id: attemptId,
         acquired_at: acquiredAt.toISOString(),
-        expires_at: new Date(acquiredAt.getTime() + ttl * 1000).toISOString(),
+        expires_at: expiresAt.toISOString(),
         base_commit: effectiveBaseCommit,
         candidate_commit: candidateCommit,
         context_hash: effectiveContextHash,
       };
       const toStatus = mode === "WRITE" ? "LEASED" : state.status === "IMPLEMENTED" ? "VERIFYING" : state.status;
+      this.verifyPlatformReceipt(platformReceipt, "LEASE_GRANT", this.leaseReceiptClaims({
+        runId,
+        taskId: task.id,
+        attemptId,
+        role,
+        actorId,
+        mode,
+        leaseId,
+        acquiredAt: acquiredAt.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        baseCommit: effectiveBaseCommit,
+        candidateCommit,
+        contextHash: effectiveContextHash,
+        fromStatus: state.status,
+        toStatus,
+      }));
       drafts.push(this.makeDraft({
         eventType: "LEASE_ACQUIRED",
         runId,
@@ -1344,6 +1746,7 @@ class ProjectOrchestrator {
         fromStatus: state.status,
         toStatus,
         counters: state.counters,
+        platformReceipts: [platformReceipt],
         decisionLevel: role === "architect" ? "ARCHITECT_AUTONOMOUS" : "TASK_AUTONOMOUS",
         payload: { actor_id: actorId, router_context_hash: controlContext.router_context_hash },
       }));
@@ -1360,10 +1763,10 @@ class ProjectOrchestrator {
 
   validateReport(report) {
     invariant(report && typeof report === "object", "report must be a JSON object", "REPORT_INVALID");
-    for (const field of ["report_version", "task_id", "role", "actor_id", "session_id", "attempt_id", "base_commit", "candidate_commit", "context_hash", "verdict", "identity_attestation"]) {
+    for (const field of ["report_version", "task_id", "role", "actor_id", "session_id", "attempt_id", "base_commit", "candidate_commit", "context_hash", "verdict", "identity_attestation", "report_receipt"]) {
       invariant(Object.hasOwn(report, field) && report[field] !== "", `report is missing ${field}`, "REPORT_SCHEMA_INVALID");
     }
-    invariant(report.report_version === "g07-role-report/v2", "unsupported role report", "REPORT_SCHEMA_INVALID");
+    invariant(report.report_version === "g07-role-report/v3", "unsupported role report", "REPORT_SCHEMA_INVALID");
     invariant(REPORT_ROLES.has(report.role), `invalid report role: ${report.role}`, "REPORT_ROLE_INVALID");
     invariant(this.router.taskById.has(report.task_id), `unknown report Task: ${report.task_id}`, "TASK_NOT_FOUND");
     invariant(isSha256(report.context_hash), "report context_hash must be SHA-256", "REPORT_CONTEXT_INVALID");
@@ -1376,28 +1779,12 @@ class ProjectOrchestrator {
     return report;
   }
 
-  attestIndependentReports(reports) {
-    invariant(this.#identityAttestor && typeof this.#identityAttestor.verify === "function", "the current platform exposes no trusted role/session attestation provider", "ENVIRONMENT_APPROVAL_REQUIRED", {
-      required_provider: this.policy.identity_attestation.provider,
-      reason: "TRUSTED_SESSION_ATTESTATION_UNAVAILABLE",
-    });
-    const identities = reports.map((report) => {
-      const expected = {
-        role: report.role,
-        task_id: report.task_id,
-        attempt_id: report.attempt_id,
-        base_commit: report.base_commit,
-        candidate_commit: report.candidate_commit,
-        context_hash: report.context_hash,
-      };
-      const result = this.#identityAttestor.verify(report.identity_attestation, expected);
-      invariant(result?.trusted === true
-        && result.provider
-        && result.principal_id
-        && result.session_id
-        && isSha256(result.evidence_hash), `trusted identity attestation failed for ${report.role}`, "IDENTITY_ATTESTATION_INVALID");
-      return { role: report.role, ...result };
-    });
+  attestIndependentReports(reports, { at = this.clock() } = {}) {
+    const identities = reports.map((report) => this.verifyReportTrust(report, { at }));
+    return this.assertIndependentIdentities(identities);
+  }
+
+  assertIndependentIdentities(identities) {
     invariant(new Set(identities.map((item) => item.principal_id)).size === identities.length
       && new Set(identities.map((item) => item.session_id)).size === identities.length, "trusted platform attestations do not prove independent principals and sessions", "SELF_REVIEW_BLOCKED");
     return identities;
@@ -1421,6 +1808,7 @@ class ProjectOrchestrator {
         current: currentControlContext.hash,
       });
       invariant(report.base_commit === lease.base_commit, "report base_commit does not match lease", "REPORT_BASE_COMMIT_MISMATCH");
+      const trustedReport = this.verifyReportTrust(report);
       if (report.role !== "architect") {
         invariant(report.candidate_commit && this.git.commitExists(report.candidate_commit), "candidate commit does not exist", "CANDIDATE_COMMIT_MISSING");
         invariant(this.git.head() === report.candidate_commit, "candidate commit is stale relative to HEAD", "STALE_CANDIDATE_COMMIT");
@@ -1433,6 +1821,20 @@ class ProjectOrchestrator {
       }
       if (["auditor", "reviewer"].includes(report.role)) {
         invariant(state.candidate_commit === report.candidate_commit, "review targets a stale candidate commit", "STALE_REVIEW_COMMIT");
+      }
+      if (report.role === "architect" && ["A", "B"].includes(report.decision?.category)) {
+        invariant(isSha256(report.decision?.proposal_sha256), "Architect A/B requires a proposal hash", "ARCHITECT_BOUNDARY_INVALID");
+        this.verifyPlatformReceipt(report.decision.boundary_receipt, "ARCHITECT_BOUNDARY", this.taskBoundaryClaims(report));
+      }
+      let architectIndependentFrom = [];
+      if (report.role === "architect") {
+        architectIndependentFrom = ["coder", "auditor", "reviewer"]
+          .map((role) => [...projection.events].reverse().find((event) => event.event_type === "ROLE_REPORT_RECORDED"
+            && event.task_id === report.task_id
+            && event.role === role
+            && event.candidate_commit === report.candidate_commit)?.payload?.trusted_report)
+          .filter(Boolean);
+        this.assertIndependentIdentities([...architectIndependentFrom, trustedReport]);
       }
 
       let toStatus = state.status;
@@ -1452,7 +1854,6 @@ class ProjectOrchestrator {
         counters.rework += 1;
         fingerprint = failureFingerprint(report.failure_fingerprint ?? `${report.role}:${report.verdict}:${report.summary ?? ""}`);
         if (counters.rework >= this.policy.retry_policy.max_rework) {
-          counters.replan += 1;
           if (counters.replan >= this.policy.retry_policy.max_replan) {
             if (this.isCriticalTask(report.task_id)) {
               toStatus = "CREATOR_REQUIRED";
@@ -1463,6 +1864,7 @@ class ProjectOrchestrator {
               decisionLevel = "BLOCKED_TECHNICAL";
             }
           } else {
+            counters.replan += 1;
             toStatus = "REPLAN";
             decisionLevel = "ARCHITECT_AUTONOMOUS";
           }
@@ -1486,11 +1888,13 @@ class ProjectOrchestrator {
           toStatus = "BLOCKED";
           decisionLevel = report.decision.environment_approval_required ? "ENVIRONMENT_APPROVAL_REQUIRED" : "BLOCKED_TECHNICAL";
           environmentReason = report.decision.environment_approval_required ? report.decision.reason ?? "REPLAN_D_ENVIRONMENT" : null;
+          fingerprint = failureFingerprint(report.failure_fingerprint ?? `architect:D:${report.decision.reason ?? "blocked"}`);
         }
-      } else if (report.role === "coder" && ["BLOCKED", "CREATOR_REQUIRED"].includes(report.verdict)) {
+      } else if (["coder", "prompt_editor"].includes(report.role) && ["BLOCKED", "CREATOR_REQUIRED"].includes(report.verdict)) {
         toStatus = report.verdict;
         decisionLevel = report.verdict === "CREATOR_REQUIRED" ? "CREATOR_REQUIRED" : "BLOCKED_TECHNICAL";
         creatorReason = report.verdict === "CREATOR_REQUIRED" ? report.summary ?? "CODER_ESCALATION" : null;
+        fingerprint = failureFingerprint(report.failure_fingerprint ?? `${report.role}:${report.verdict}:${report.summary ?? ""}`);
       }
 
       return [this.makeDraft({
@@ -1513,13 +1917,13 @@ class ProjectOrchestrator {
         execution: report.execution,
         creatorRequiredReason: creatorReason,
         environmentApprovalReason: environmentReason,
-        payload: { report },
+        payload: { report, trusted_report: trustedReport, architect_independent_from: architectIndependentFrom },
       })];
     });
     return finalized[0];
   }
 
-  transition({ runId, taskId, toStatus, attemptId, role = "orchestrator", candidateCommit = null, contextHash = null, decisionLevel = "TASK_AUTONOMOUS", resolutionEvidence = null }) {
+  transition({ runId, taskId, toStatus, attemptId, role = "orchestrator", candidateCommit = null, contextHash = null, decisionLevel = "TASK_AUTONOMOUS", platformReceipt = null, resolutionReceipt = null }) {
     invariant(runId && taskId && toStatus, "transition requires runId, taskId and toStatus", "TRANSITION_INPUT_INVALID");
     invariant(TASK_STATUSES.has(toStatus), `unknown target status: ${toStatus}`, "STATUS_INVALID");
     invariant(toStatus !== "VERIFIED", "VERIFYING -> VERIFIED is reserved for verify-evidence", "EVIDENCE_REQUIRED");
@@ -1537,7 +1941,6 @@ class ProjectOrchestrator {
       invariant(TRANSITIONS.get(state.status)?.has(toStatus), `illegal transition ${state.status} -> ${toStatus}`, "ILLEGAL_TRANSITION");
       invariant(!(state.status === "PLANNED" && toStatus === "READY"), "PLANNED -> READY is reserved for unlock", "UNLOCK_REQUIRED");
       invariant(!(state.status === "READY" && toStatus === "LEASED"), "READY -> LEASED is reserved for lease", "LEASE_REQUIRED");
-      if (state.status === "BLOCKED" && toStatus === "READY") invariant(isSha256(resolutionEvidence), "technical resolution evidence hash is required", "RESOLUTION_EVIDENCE_REQUIRED");
       const currentControlContext = this.controlContext(taskId);
       invariant(!state.context_hash || state.context_hash === currentControlContext.hash, "Task control context drifted", "STALE_CONTROL_CONTEXT", {
         frozen: state.context_hash,
@@ -1556,27 +1959,67 @@ class ProjectOrchestrator {
       const leaseAction = ["IMPLEMENTED", "REWORK", "REPLAN", "BLOCKED", "CREATOR_REQUIRED"].includes(toStatus)
         ? { action: "RELEASE_ALL_TASK", task_id: taskId, lease_id: null }
         : null;
+      const effectiveBaseCommit = this.latestReport(projection, taskId, "coder", candidateCommit)?.base_commit ?? this.git.head();
+      const effectiveCandidateCommit = candidateCommit ?? state.candidate_commit;
+      let receipts;
+      let resolutionPayload = {};
+      if (state.status === "BLOCKED" && toStatus === "READY") {
+        invariant(state.failure_fingerprint && state.last_event_id, "BLOCKED state has no original failure evidence", "RESOLUTION_EVIDENCE_REQUIRED");
+        const resolutionArtifact = resolutionReceipt?.claims?.resolution_artifact_sha256;
+        invariant(isSha256(resolutionArtifact), "BLOCK resolution artifact hash is missing", "RESOLUTION_EVIDENCE_REQUIRED");
+        const claims = {
+          autonomy_run_id: runId,
+          task_id: taskId,
+          failed_event_id: state.last_event_id,
+          failure_fingerprint: state.failure_fingerprint,
+          resolution_artifact_sha256: resolutionArtifact,
+          candidate_commit: effectiveCandidateCommit,
+          context_hash: currentControlContext.hash,
+        };
+        this.verifyPlatformReceipt(resolutionReceipt, "BLOCK_RESOLUTION", claims);
+        receipts = [resolutionReceipt];
+        resolutionPayload = {
+          failed_event_id: state.last_event_id,
+          failure_fingerprint: state.failure_fingerprint,
+          resolution_artifact_sha256: resolutionArtifact,
+        };
+      } else {
+        const claims = this.transitionReceiptClaims({
+          runId,
+          taskId,
+          attemptId,
+          role,
+          baseCommit: effectiveBaseCommit,
+          candidateCommit: effectiveCandidateCommit,
+          contextHash: currentControlContext.hash,
+          fromStatus: state.status,
+          toStatus,
+        });
+        this.verifyPlatformReceipt(platformReceipt, "STATE_TRANSITION", claims);
+        receipts = [platformReceipt];
+      }
       return [this.makeDraft({
         eventType: "TASK_TRANSITION",
         runId,
         taskId,
         attemptId,
         role,
-        baseCommit: this.latestReport(projection, taskId, "coder", candidateCommit)?.base_commit ?? this.git.head(),
-        candidateCommit: candidateCommit ?? state.candidate_commit,
+        baseCommit: effectiveBaseCommit,
+        candidateCommit: effectiveCandidateCommit,
         contextHash: currentControlContext.hash,
         lease: leaseAction,
         fromStatus: state.status,
         toStatus,
         decisionLevel,
         counters: state.counters,
-        payload: { resolution_evidence_hash: resolutionEvidence, router_context_hash: currentControlContext.router_context_hash },
+        platformReceipts: receipts,
+        payload: { ...resolutionPayload, router_context_hash: currentControlContext.router_context_hash },
       })];
     });
     return finalized[0];
   }
 
-  unlock({ runId }) {
+  unlock({ runId, receiptsByTask = {} }) {
     invariant(runId, "unlock requires runId", "RUN_ID_REQUIRED");
     const guard = this.evaluateAction("PRODUCT_TASK_WRITE", runId);
     invariant(guard.allowed, guard.reason, guard.decision_level, guard);
@@ -1588,16 +2031,29 @@ class ProjectOrchestrator {
       for (const task of this.router.tasks) {
         const state = projection.taskStates.get(task.id);
         if (state.status !== "PLANNED" || !this.dependenciesVerified(task.id, projection)) continue;
+        const context = this.controlContext(task.id);
+        const dependencyEvidence = this.router.taskGraph(task).upstream.map((item) => ({ task_id: item.task_id, status: projection.taskStates.get(item.task_id).status }));
+        const receipt = receiptsByTask[task.id];
+        this.verifyPlatformReceipt(receipt, "TASK_UNLOCK", {
+          autonomy_run_id: runId,
+          task_id: task.id,
+          from_status: "PLANNED",
+          to_status: "READY",
+          context_hash: context.hash,
+          dependency_evidence_sha256: sha256(stableJson(dependencyEvidence)),
+        });
         drafts.push(this.makeDraft({
           eventType: "TASK_UNLOCKED",
           runId,
           taskId: task.id,
           role: "orchestrator",
           baseCommit: this.git.head(),
+          contextHash: context.hash,
           fromStatus: "PLANNED",
           toStatus: "READY",
           counters: state.counters,
-          payload: { dependency_evidence: this.router.taskGraph(task).upstream.map((item) => ({ task_id: item.task_id, status: projection.taskStates.get(item.task_id).status })) },
+          platformReceipts: [receipt],
+          payload: { dependency_evidence: dependencyEvidence },
         }));
         state.status = "READY";
       }
@@ -1628,15 +2084,15 @@ class ProjectOrchestrator {
         decisionLevel: "ENVIRONMENT_APPROVAL_REQUIRED",
         counters,
         creatorReason: null,
-        environmentReason: error.details?.reason ?? "TRUSTED_SESSION_ATTESTATION_UNAVAILABLE",
+        environmentReason: error.details?.reason ?? "PLATFORM_TRUST_PROVIDER_UNAVAILABLE",
       };
     }
     counters.rework += 1;
     if (counters.rework < this.policy.retry_policy.max_rework) {
       return { toStatus: "REWORK", decisionLevel: "TASK_AUTONOMOUS", counters, creatorReason: null, environmentReason: null };
     }
-    counters.replan += 1;
     if (counters.replan < this.policy.retry_policy.max_replan) {
+      counters.replan += 1;
       return { toStatus: "REPLAN", decisionLevel: "ARCHITECT_AUTONOMOUS", counters, creatorReason: null, environmentReason: null };
     }
     if (this.isCriticalTask(taskId)) {
@@ -1687,7 +2143,139 @@ class ProjectOrchestrator {
     return finalized[0] ?? null;
   }
 
-  verifyEvidence({ runId, taskId, candidateCommit, contextHash = null, attemptId = null }) {
+  verificationGateClaims({ taskId, coder, auditor, reviewer, diffHash, scopeEvidenceHash, secretEvidenceHash }) {
+    return {
+      task_id: taskId,
+      attempt_id: coder.attempt_id,
+      base_commit: coder.base_commit,
+      candidate_commit: coder.candidate_commit,
+      context_hash: coder.context_hash,
+      coder_report_receipt_id: coder.report_receipt.receipt_id,
+      auditor_report_receipt_id: auditor.report_receipt.receipt_id,
+      reviewer_report_receipt_id: reviewer.report_receipt.receipt_id,
+      command_receipts_sha256: sha256(stableJson((coder.acceptance?.commands ?? []).map((entry) => entry.receipt?.receipt_id ?? null))),
+      auditor_receipts_sha256: sha256(stableJson((auditor.evidence ?? []).map((entry) => entry.receipt?.receipt_id ?? null))),
+      reviewer_receipt_id: reviewer.review_receipt?.receipt_id ?? null,
+      diff_hash: diffHash,
+      scope_evidence_hash: scopeEvidenceHash,
+      secret_scan_evidence_hash: secretEvidenceHash,
+    };
+  }
+
+  mechanicallyVerifyEvidence({ taskId, candidateCommit, contextHash, reports, verificationReceipt, at = this.clock(), requireCurrent = false }) {
+    const latest = (role) => [...reports].reverse().find((report) => report.role === role && report.candidate_commit === candidateCommit) ?? null;
+    const coder = latest("coder");
+    const auditor = latest("auditor");
+    const reviewer = latest("reviewer");
+    invariant(coder && auditor && reviewer, "coder, auditor and reviewer reports are all required for the same candidate commit", "INCOMPLETE_ROLE_EVIDENCE");
+    invariant(coder.verdict === "IMPLEMENTED", "coder verdict must be IMPLEMENTED", "CODER_VERDICT_INVALID");
+    invariant(auditor.verdict === "PASS", "auditor verdict must be PASS", "AUDITOR_VERDICT_INVALID");
+    invariant(reviewer.verdict === "APPROVE", "reviewer verdict must be APPROVE", "REVIEWER_VERDICT_INVALID");
+    invariant([coder, auditor, reviewer].every((report) => report.base_commit === coder.base_commit
+      && report.candidate_commit === candidateCommit
+      && report.context_hash === contextHash), "all reports must bind the same base/candidate/control context", "EVIDENCE_VERSION_MISMATCH");
+    invariant([coder, auditor, reviewer].every((report) => report.branch === this.policy.integration_branch
+      && normalizePath(path.resolve(report.worktree)) === this.git.worktree()), "all reports must bind the integration branch and current worktree", "EVIDENCE_WORKTREE_MISMATCH");
+    invariant(this.git.commitExists(candidateCommit) && this.git.commitExists(coder.base_commit)
+      && this.git.isAncestor(coder.base_commit, candidateCommit), "base/candidate commit evidence is invalid", "BASE_COMMIT_INVALID");
+    if (requireCurrent) {
+      invariant(this.git.head() === candidateCommit, "candidate commit is stale relative to HEAD", "STALE_CANDIDATE_COMMIT");
+      invariant(this.git.isClean(), "evidence verification requires a clean worktree", "WORKTREE_DIRTY");
+    }
+    const currentControlContext = this.controlContext(taskId);
+    invariant(contextHash === currentControlContext.hash, "frozen Task control context differs from the current router control context", "STALE_CONTROL_CONTEXT", {
+      frozen: contextHash,
+      current: currentControlContext.hash,
+    });
+    invariant(this.routeControlBlockers(currentControlContext.route).length === 0, "router control context contains blocking conflicts", "CONTEXT_CONTROL_DRIFT", this.routeControlBlockers(currentControlContext.route));
+    const trustedIdentities = this.attestIndependentReports([coder, auditor, reviewer], { at });
+
+    const task = this.router.taskById.get(taskId);
+    const expectedCommand = task.values["验收命令"];
+    const matchingCommands = (coder.acceptance?.commands ?? []).filter((entry) => entry.command === expectedCommand);
+    invariant(matchingCommands.length === 1, "exactly one platform command result is required for the registered acceptance command", "ACCEPTANCE_EVIDENCE_INVALID");
+    const command = matchingCommands[0];
+    invariant(Number.isInteger(command.exit_code)
+      && isSha256(command.stdout_sha256)
+      && isSha256(command.regression_artifact_sha256), "acceptance command lacks exit/stdout/regression evidence", "ACCEPTANCE_EVIDENCE_INVALID");
+    this.verifyPlatformReceipt(command.receipt, "COMMAND_EXECUTION", this.commandReceiptClaims(coder, command), { at });
+    invariant(command.exit_code === 0, "registered acceptance command failed", "ACCEPTANCE_COMMAND_FAILED", { exit_code: command.exit_code });
+
+    const auditorEvidence = auditor.evidence ?? [];
+    for (const entry of auditorEvidence) {
+      invariant(isSha256(entry.evidence_hash), "auditor evidence hash is invalid", "AUDITOR_EVIDENCE_INCOMPLETE");
+      this.verifyPlatformReceipt(entry.receipt, "AUDIT_EVIDENCE", this.auditReceiptClaims(auditor, entry), { at });
+    }
+    const auditorKinds = new Set(auditorEvidence.filter((entry) => entry.passed).map((entry) => entry.kind));
+    invariant(["normal", "exception", "recovery"].every((kind) => auditorKinds.has(kind)), "auditor must provide signed normal, exception and recovery evidence", "AUDITOR_EVIDENCE_INCOMPLETE");
+    invariant(["contract", "diff", "write_channel", "cross_fp"].every((key) => reviewer.checks?.[key] === true), "reviewer contract/diff/write-channel/cross-FP checks must pass", "REVIEWER_EVIDENCE_INCOMPLETE");
+    this.verifyPlatformReceipt(reviewer.review_receipt, "REVIEW_EVIDENCE", this.reviewReceiptClaims(reviewer), { at });
+
+    const diffNames = this.git.diffNames(coder.base_commit, candidateCommit);
+    const allowedPatterns = this.router.expandWriteScope(task);
+    const outOfScope = diffNames.filter((file) => !allowedPatterns.some((pattern) => globToRegExp(pattern).test(file)));
+    invariant(outOfScope.length === 0, `diff exceeds Task write_scope: ${outOfScope.join(", ")}`, "SCOPE_VIOLATION", { out_of_scope: outOfScope });
+    const diffPatch = this.git.diffPatch(coder.base_commit, candidateCommit);
+    const diffHash = sha256(diffPatch);
+    invariant(coder.scope?.diff_hash === diffHash && reviewer.scope?.diff_hash === diffHash, "coder/reviewer diff hash does not match candidate diff", "DIFF_HASH_MISMATCH");
+    invariant(stableJson(sortedUnique(coder.scope?.changed_paths ?? [])) === stableJson(diffNames), "coder changed path evidence does not match Git", "DIFF_PATH_MISMATCH");
+    const secretScan = this.scanSecrets(diffPatch);
+    invariant(secretScan.passed, `secret scan failed: ${secretScan.hit_types.join(", ")}`, "SECRET_SCAN_FAILED", { hit_types: secretScan.hit_types });
+    invariant(coder.secret_scan?.passed === true && reviewer.secret_scan?.passed === true
+      && coder.secret_scan.evidence_hash === secretScan.evidence_hash
+      && reviewer.secret_scan.evidence_hash === secretScan.evidence_hash, "role secret scan evidence does not match Git diff", "SECRET_EVIDENCE_MISMATCH");
+    const scopeEvidenceHash = sha256(stableJson({ allowedPatterns, diffNames }));
+    const gateClaims = this.verificationGateClaims({
+      taskId,
+      coder,
+      auditor,
+      reviewer,
+      diffHash,
+      scopeEvidenceHash,
+      secretEvidenceHash: secretScan.evidence_hash,
+    });
+    const gate = this.verifyPlatformReceipt(verificationReceipt, "VERIFICATION_GATE", gateClaims, { at });
+    const commandSummary = (coder.acceptance?.commands ?? []).map((entry) => ({
+      command: entry.command,
+      exit_code: entry.exit_code,
+      stdout_sha256: entry.stdout_sha256,
+      regression_artifact_sha256: entry.regression_artifact_sha256,
+      receipt_id: entry.receipt.receipt_id,
+    }));
+    return {
+      coder,
+      auditor,
+      reviewer,
+      trustedIdentities,
+      diffNames,
+      diffHash,
+      scopeEvidenceHash,
+      secretScan,
+      gate,
+      commandSummary,
+      routerContextHash: currentControlContext.router_context_hash,
+    };
+  }
+
+  verifyRecordedEvidenceEvent(event, reports) {
+    const verificationReceipt = event.platform_receipts.find((receipt) => receipt.kind === "VERIFICATION_GATE");
+    const result = this.mechanicallyVerifyEvidence({
+      taskId: event.task_id,
+      candidateCommit: event.candidate_commit,
+      contextHash: event.context_hash,
+      reports,
+      verificationReceipt,
+      at: event.timestamp,
+      requireCurrent: false,
+    });
+    invariant(stableJson(event.acceptance.commands) === stableJson(result.commandSummary)
+      && event.acceptance.diff_hash === result.diffHash
+      && event.acceptance.scope_evidence_hash === result.scopeEvidenceHash
+      && event.acceptance.secret_scan_evidence_hash === result.secretScan.evidence_hash, "recorded VERIFIED evidence no longer matches Git/platform sources", "EVENT_VERIFIED_EVIDENCE_INVALID");
+    return result;
+  }
+
+  verifyEvidence({ runId, taskId, candidateCommit, contextHash = null, attemptId = null, verificationReceipt = null }) {
     invariant(runId && taskId && candidateCommit, "verify-evidence requires runId, taskId and candidateCommit", "VERIFY_INPUT_INVALID");
     try {
       const finalized = this.store.transact(this.#storeAuthority, (events) => {
@@ -1695,78 +2283,41 @@ class ProjectOrchestrator {
         const state = projection.taskStates.get(taskId);
         invariant(state?.status === "VERIFYING", `verify-evidence requires VERIFYING, got ${state?.status ?? "MISSING"}`, "TASK_NOT_VERIFYING");
         invariant(state.candidate_commit === candidateCommit, "candidate does not match the projected Task candidate", "CANDIDATE_COMMIT_MISMATCH");
-        invariant(this.git.commitExists(candidateCommit), "candidate commit does not exist", "CANDIDATE_COMMIT_MISSING");
-        invariant(this.git.head() === candidateCommit, "candidate commit is stale relative to HEAD", "STALE_CANDIDATE_COMMIT");
-        invariant(this.git.isClean(), "evidence verification requires a clean worktree", "WORKTREE_DIRTY");
-
-        const currentControlContext = this.controlContext(taskId);
-        invariant(state.context_hash === currentControlContext.hash, "frozen Task control context differs from the current router control context", "STALE_CONTROL_CONTEXT", {
-          frozen: state.context_hash,
-          current: currentControlContext.hash,
+        invariant(!contextHash || contextHash === state.context_hash, "caller context hash does not match the frozen Task control context", "VERIFY_CONTEXT_MISMATCH");
+        const evidence = this.mechanicallyVerifyEvidence({
+          taskId,
+          candidateCommit,
+          contextHash: state.context_hash,
+          reports: projection.reports.get(taskId) ?? [],
+          verificationReceipt,
+          requireCurrent: true,
         });
-        invariant(!contextHash || contextHash === currentControlContext.hash, "caller context hash does not match the current router control context", "VERIFY_CONTEXT_MISMATCH");
-        invariant(this.routeControlBlockers(currentControlContext.route).length === 0, "router control context contains blocking conflicts", "CONTEXT_CONTROL_DRIFT", this.routeControlBlockers(currentControlContext.route));
-
-        const coder = this.latestReport(projection, taskId, "coder", candidateCommit);
-        const auditor = this.latestReport(projection, taskId, "auditor", candidateCommit);
-        const reviewer = this.latestReport(projection, taskId, "reviewer", candidateCommit);
-        invariant(coder && auditor && reviewer, "coder, auditor and reviewer reports are all required for the same candidate commit", "INCOMPLETE_ROLE_EVIDENCE");
-        invariant(coder.verdict === "IMPLEMENTED", "coder verdict must be IMPLEMENTED", "CODER_VERDICT_INVALID");
-        invariant(auditor.verdict === "PASS", "auditor verdict must be PASS", "AUDITOR_VERDICT_INVALID");
-        invariant(reviewer.verdict === "APPROVE", "reviewer verdict must be APPROVE", "REVIEWER_VERDICT_INVALID");
-        invariant([coder, auditor, reviewer].every((report) => report.base_commit === coder.base_commit
-          && report.candidate_commit === candidateCommit
-          && report.context_hash === currentControlContext.hash), "all reports must bind the same base/candidate/control context", "EVIDENCE_VERSION_MISMATCH");
-        invariant([coder, auditor, reviewer].every((report) => report.branch === this.policy.integration_branch
-          && normalizePath(path.resolve(report.worktree)) === this.git.worktree()), "all reports must bind the integration branch and current worktree", "EVIDENCE_WORKTREE_MISMATCH");
-        invariant(this.git.isAncestor(coder.base_commit, candidateCommit), "base commit is not an ancestor of candidate", "BASE_COMMIT_INVALID");
-        const trustedIdentities = this.attestIndependentReports([coder, auditor, reviewer]);
-
-        const task = this.router.taskById.get(taskId);
-        const expectedCommand = task.values["验收命令"];
-        invariant(coder.acceptance?.commands?.some((entry) => entry.command === expectedCommand && entry.exit_code === 0 && isSha256(entry.evidence_hash)), "acceptance command evidence is missing or failed", "ACCEPTANCE_EVIDENCE_INVALID");
-        const auditorKinds = new Set((auditor.evidence ?? []).filter((item) => item.passed && isSha256(item.evidence_hash)).map((item) => item.kind));
-        invariant(["normal", "exception", "recovery"].every((kind) => auditorKinds.has(kind)), "auditor must provide normal, exception and recovery evidence", "AUDITOR_EVIDENCE_INCOMPLETE");
-        invariant(["contract", "diff", "write_channel", "cross_fp"].every((key) => reviewer.checks?.[key] === true), "reviewer contract/diff/write-channel/cross-FP checks must pass", "REVIEWER_EVIDENCE_INCOMPLETE");
-
-        const diffNames = this.git.diffNames(coder.base_commit, candidateCommit);
-        const allowedPatterns = this.router.expandWriteScope(task);
-        const outOfScope = diffNames.filter((file) => !allowedPatterns.some((pattern) => globToRegExp(pattern).test(file)));
-        invariant(outOfScope.length === 0, `diff exceeds Task write_scope: ${outOfScope.join(", ")}`, "SCOPE_VIOLATION", { out_of_scope: outOfScope });
-        const diffPatch = this.git.diffPatch(coder.base_commit, candidateCommit);
-        const diffHash = sha256(diffPatch);
-        invariant(coder.scope?.diff_hash === diffHash && reviewer.scope?.diff_hash === diffHash, "coder/reviewer diff hash does not match candidate diff", "DIFF_HASH_MISMATCH");
-        invariant(JSON.stringify(sortedUnique(coder.scope?.changed_paths ?? [])) === JSON.stringify(diffNames), "coder changed path evidence does not match Git", "DIFF_PATH_MISMATCH");
-        const secretScan = this.scanSecrets(diffPatch);
-        invariant(secretScan.passed, `secret scan failed: ${secretScan.hit_types.join(", ")}`, "SECRET_SCAN_FAILED", { hit_types: secretScan.hit_types });
-        invariant(coder.secret_scan?.passed === true && reviewer.secret_scan?.passed === true
-          && coder.secret_scan.evidence_hash === secretScan.evidence_hash
-          && reviewer.secret_scan.evidence_hash === secretScan.evidence_hash, "role secret scan evidence does not match Git diff", "SECRET_EVIDENCE_MISMATCH");
-
         return [this.makeDraft({
           eventType: "EVIDENCE_VERIFIED",
           runId,
           taskId,
-          attemptId: attemptId ?? coder.attempt_id,
+          attemptId: attemptId ?? evidence.coder.attempt_id,
           role: "orchestrator",
-          baseCommit: coder.base_commit,
+          baseCommit: evidence.coder.base_commit,
           candidateCommit,
-          contextHash: currentControlContext.hash,
+          contextHash: state.context_hash,
           lease: { action: "RELEASE_ALL_TASK", task_id: taskId, lease_id: null },
           fromStatus: "VERIFYING",
           toStatus: "VERIFIED",
           acceptance: {
-            commands: coder.acceptance.commands,
-            diff_hash: diffHash,
-            scope_evidence_hash: sha256(stableJson({ allowedPatterns, diffNames })),
-            secret_scan_evidence_hash: secretScan.evidence_hash,
+            commands: evidence.commandSummary,
+            diff_hash: evidence.diffHash,
+            scope_evidence_hash: evidence.scopeEvidenceHash,
+            secret_scan_evidence_hash: evidence.secretScan.evidence_hash,
           },
           verdicts: { auditor: "PASS", reviewer: "APPROVE" },
           counters: state.counters,
+          platformReceipts: [verificationReceipt],
           payload: {
-            trusted_identities: trustedIdentities,
-            changed_paths: diffNames,
-            router_context_hash: currentControlContext.router_context_hash,
+            trusted_identities: evidence.trustedIdentities,
+            changed_paths: evidence.diffNames,
+            verification_receipt_id: evidence.gate.receipt_id,
+            router_context_hash: evidence.routerContextHash,
           },
         })];
       });
@@ -1778,6 +2329,42 @@ class ProjectOrchestrator {
       }
       throw error;
     }
+  }
+
+  staleCandidateDrafts(projection, runId) {
+    const drafts = [];
+    for (const state of projection.taskStates.values()) {
+      if (!state.candidate_commit || !["IN_PROGRESS", "IMPLEMENTED", "VERIFYING"].includes(state.status)) continue;
+      if (this.git.commitExists(state.candidate_commit) && this.git.head() === state.candidate_commit) continue;
+      const error = Object.assign(new Error("candidate commit became stale during resume"), {
+        code: "STALE_CANDIDATE_COMMIT",
+        details: { candidate_commit: state.candidate_commit, git_head: this.git.head() },
+      });
+      const disposition = this.evidenceFailureState(state.task_id, state, error);
+      const coder = this.latestReport(projection, state.task_id, "coder", state.candidate_commit);
+      drafts.push(this.makeDraft({
+        eventType: "CANDIDATE_INVALIDATED",
+        runId,
+        taskId: state.task_id,
+        attemptId: coder?.attempt_id ?? null,
+        role: "orchestrator",
+        baseCommit: coder?.base_commit ?? null,
+        candidateCommit: state.candidate_commit,
+        contextHash: state.context_hash,
+        lease: { action: "RELEASE_ALL_TASK", task_id: state.task_id, lease_id: null },
+        fromStatus: state.status,
+        toStatus: disposition.toStatus,
+        decisionLevel: disposition.decisionLevel,
+        fingerprint: failureFingerprint(stableJson({ code: error.code, details: error.details })),
+        counters: disposition.counters,
+        creatorRequiredReason: disposition.creatorReason,
+        environmentApprovalReason: disposition.environmentReason,
+        payload: { reason: "STALE_CANDIDATE_RECOVERED", ...error.details },
+      }));
+      state.status = disposition.toStatus;
+      state.counters = disposition.counters;
+    }
+    return drafts;
   }
 
   resume({ runId }) {
@@ -1798,17 +2385,20 @@ class ProjectOrchestrator {
         }));
       }
       drafts.push(...this.expiredLeaseDrafts(projection, runId));
+      const recoveredProjection = this.project([...events, ...drafts]);
+      drafts.push(...this.staleCandidateDrafts(recoveredProjection, runId));
       return drafts;
     });
     const projection = this.project();
     const staleCandidates = [...projection.taskStates.values()]
-      .filter((state) => state.candidate_commit && state.status !== "VERIFIED")
+      .filter((state) => state.candidate_commit && ["IN_PROGRESS", "IMPLEMENTED", "VERIFYING"].includes(state.status))
       .filter((state) => !this.git.commitExists(state.candidate_commit) || this.git.head() !== state.candidate_commit)
       .map((state) => ({ task_id: state.task_id, candidate_commit: state.candidate_commit, git_head: this.git.head() }));
     return {
       schema_version: "project-orchestrator-resume/v1",
       autonomy_run_id: runId,
       recovered_expired_leases: recovered.filter((event) => event.event_type === "LEASE_EXPIRED").map((event) => event.event_id),
+      recovered_stale_candidates: recovered.filter((event) => event.event_type === "CANDIDATE_INVALIDATED").map((event) => event.event_id),
       recovered_truncated_tail: tailRecovery,
       stale_candidates: staleCandidates,
       next: this.nextTask(projection),
@@ -1833,7 +2423,7 @@ class ProjectOrchestrator {
       invariant(tasks.length > 0 && tasks.every((state) => state.status === "VERIFIED"), "slice gate requires every necessary Task VERIFIED", "SLICE_NOT_VERIFIED");
       const row = this.router.sliceRows.find((item) => item.values["切片"] === sliceId);
       return {
-        schema_version: "g07-role-prompt/v2",
+        schema_version: "g07-role-prompt/v3",
         role,
         autonomy_run_id: runId,
         slice_id: sliceId,
@@ -1871,7 +2461,7 @@ class ProjectOrchestrator {
       invariant(state.status === "REPLAN", `architect prompt requires REPLAN, got ${state.status}`, "TASK_NOT_IN_REPLAN");
     }
     const common = {
-      schema_version: "g07-role-prompt/v2",
+      schema_version: "g07-role-prompt/v3",
       autonomy_run_id: runId,
       role,
       task_id: taskId,
@@ -1888,14 +2478,14 @@ class ProjectOrchestrator {
       acceptance_command: task.values["验收命令"],
       acceptance_scenario: task.values["业务验收场景"],
       replan_condition: task.values["Replan 条件"],
-      report_schema: "g07-role-report/v2",
-      trusted_identity_attestation_required: true,
+      report_schema: "g07-role-report/v3",
+      platform_receipts_required: ["ROLE_IDENTITY", "ROLE_REPORT"],
       source_bodies_embedded: false,
     };
-    if (role === "coder") return { ...common, exact_write_scope: route.access.expanded_write_patterns, instructions: "Implement exactly one Task. Do not change business intent. Return a structured report with trusted platform identity attestation; do not write Task state or the event log." };
-    if (role === "auditor") return { ...common, read_only: true, required_evidence: ["normal", "exception", "recovery"], instructions: "Audit the exact candidate commit independently. Return evidence hashes and PASS/FAIL; do not modify implementation." };
-    if (role === "reviewer") return { ...common, read_only: true, required_checks: ["contract", "diff", "write_channel", "cross_fp"], instructions: "Review the exact candidate commit independently. Return APPROVE/REQUEST_CHANGES; do not repair the diff." };
-    if (role === "architect") return { ...common, read_only: true, replan_categories: this.policy.replan_categories, instructions: "Handle only Replan A/B/C/D. A/B stay inside approved technical boundaries, C is CREATOR_REQUIRED, and D is technical/environment blocking." };
+    if (role === "coder") return { ...common, exact_write_scope: route.access.expanded_write_patterns, required_command_receipt: "COMMAND_EXECUTION", instructions: "Implement exactly one Task. Do not change business intent. Return a platform-signed role report and command result; do not write Task state or the event log." };
+    if (role === "auditor") return { ...common, read_only: true, required_evidence: ["normal", "exception", "recovery"], required_evidence_receipt: "AUDIT_EVIDENCE", instructions: "Audit the exact candidate commit independently. Return platform-signed evidence and PASS/FAIL; do not modify implementation." };
+    if (role === "reviewer") return { ...common, read_only: true, required_checks: ["contract", "diff", "write_channel", "cross_fp"], required_review_receipt: "REVIEW_EVIDENCE", instructions: "Review the exact candidate commit independently. Return a platform-signed APPROVE/REQUEST_CHANGES report; do not repair the diff." };
+    if (role === "architect") return { ...common, read_only: true, replan_categories: this.policy.replan_categories, required_boundary_receipt: "ARCHITECT_BOUNDARY_FOR_A_OR_B", instructions: "Handle only Replan A/B/C/D. A/B require a platform-signed unchanged-boundary receipt, C is CREATOR_REQUIRED, and D is technical/environment blocking." };
     if (role === "prompt_editor") return { ...common, exact_write_scope: route.access.expanded_write_patterns, instructions: "Edit only an instantiated Prompt revision target anchor. Do not publish, activate, change code/Schema/business, or review your own revision." };
     return { ...common, read_only: true, instructions: "Return a structured gap report only. Do not modify implementation or infer missing facts." };
   }
@@ -1982,52 +2572,41 @@ class FakeGitClient {
   }
 }
 
-class FakeIdentityAttestor {
-  constructor(key = Buffer.from("g07-self-test-identity-attestor-key-32-bytes")) {
-    this.key = key;
-    this.provider = "SELF_TEST_HMAC";
+class FakePlatformTrust extends Ed25519PlatformTrust {
+  constructor(clock) {
+    const pair = crypto.generateKeyPairSync("ed25519");
+    super({ providerId: "SELF_TEST_PLATFORM", keyId: "self-test-ed25519-1", publicKey: pair.publicKey, clock });
+    this.privateKey = pair.privateKey;
+    this.publicKeyPem = pair.publicKey.export({ type: "spki", format: "pem" });
+    this.receiptCounter = 0;
   }
 
-  issue(payload) {
-    const body = { provider: this.provider, ...payload };
-    return {
-      body,
-      signature: crypto.createHmac("sha256", this.key).update(stableJson(body)).digest("hex"),
+  issue(kind, claims, { at = this.clock() } = {}) {
+    const issued = at instanceof Date ? at : new Date(at);
+    const body = {
+      receipt_version: PLATFORM_RECEIPT_VERSION,
+      receipt_id: `self-test-receipt-${String(++this.receiptCounter).padStart(6, "0")}`,
+      provider_id: this.providerId,
+      key_id: this.keyId,
+      kind,
+      issued_at: new Date(issued.getTime() - 60_000).toISOString(),
+      expires_at: new Date(issued.getTime() + 60 * 60_000).toISOString(),
+      claims: clone(claims),
     };
-  }
-
-  verify(attestation, expected) {
-    if (!attestation?.body || !attestation.signature) return { trusted: false };
-    const expectedSignature = crypto.createHmac("sha256", this.key).update(stableJson(attestation.body)).digest("hex");
-    if (attestation.signature !== expectedSignature) return { trusted: false };
-    if (Object.entries(expected).some(([key, value]) => attestation.body[key] !== value)) return { trusted: false };
     return {
-      trusted: true,
-      provider: this.provider,
-      principal_id: attestation.body.principal_id,
-      session_id: attestation.body.session_id,
-      evidence_hash: sha256(stableJson(attestation)),
+      ...body,
+      signature: crypto.sign(null, Buffer.from(stableJson(body)), this.privateKey).toString("base64"),
     };
   }
 }
 
-function selfTestReport({ orchestrator, fakeGit, attestor, role, actorId, sessionId, principalId = actorId, attestedSessionId = sessionId, attemptId, baseCommit, candidateCommit, contextHash, verdict, decision = null, evidence = null, checks = null }) {
+function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO", role, actorId, sessionId, principalId = actorId, attestedSessionId = sessionId, attemptId, baseCommit, candidateCommit, contextHash, verdict, decision = null, evidence = null, checks = null, commandExitCode = 0 }) {
   const patchText = fakeGit.diffPatch(baseCommit, candidateCommit);
   const diffHash = sha256(patchText);
-  const task = orchestrator.router.taskById.get("F0-01-REPO");
-  const identityPayload = {
-    principal_id: principalId,
-    session_id: attestedSessionId,
-    role,
-    task_id: "F0-01-REPO",
-    attempt_id: attemptId,
-    base_commit: baseCommit,
-    candidate_commit: candidateCommit,
-    context_hash: contextHash,
-  };
-  return {
-    report_version: "g07-role-report/v2",
-    task_id: "F0-01-REPO",
+  const task = orchestrator.router.taskById.get(taskId);
+  const report = {
+    report_version: "g07-role-report/v3",
+    task_id: taskId,
     role,
     actor_id: actorId,
     session_id: sessionId,
@@ -2038,25 +2617,71 @@ function selfTestReport({ orchestrator, fakeGit, attestor, role, actorId, sessio
     branch: fakeGit.branch(),
     worktree: fakeGit.worktree(),
     verdict,
-    identity_attestation: attestor.issue(identityPayload),
+    identity_attestation: null,
+    report_receipt: null,
     summary: `${role}:${verdict}`,
     acceptance: {
-      commands: role === "coder" ? [{ command: task.values["验收命令"], exit_code: 0, evidence_hash: "1".repeat(64) }] : [],
+      commands: [],
       diff_hash: diffHash,
-      scope_evidence_hash: "2".repeat(64),
+      scope_evidence_hash: sha256(stableJson({ changed_paths: fakeGit.diffNames(baseCommit, candidateCommit) })),
       secret_scan_evidence_hash: sha256(patchText),
     },
-    evidence: evidence ?? (role === "auditor" ? [
-      { kind: "normal", passed: true, evidence_hash: "3".repeat(64) },
-      { kind: "exception", passed: true, evidence_hash: "4".repeat(64) },
-      { kind: "recovery", passed: true, evidence_hash: "5".repeat(64) },
-    ] : []),
+    evidence: evidence ?? (role === "auditor" ? ["normal", "exception", "recovery"].map((kind) => ({
+      kind,
+      passed: true,
+      evidence_hash: sha256(`self-test-audit:${kind}:${candidateCommit}:${attemptId}`),
+    })) : []),
     checks: checks ?? (role === "reviewer" ? { contract: true, diff: true, write_channel: true, cross_fp: true } : {}),
     scope: { changed_paths: fakeGit.diffNames(baseCommit, candidateCommit), diff_hash: diffHash },
     secret_scan: { passed: true, evidence_hash: sha256(patchText) },
     decision,
+    review_receipt: null,
     execution: { model_tier: "MODEL::CODE_HIGH", actual_model: "self-test-model", tokens: 0, time_ms: 1, known_cost: null },
   };
+  if (role === "coder") {
+    const command = {
+      command: task.values["验收命令"],
+      exit_code: commandExitCode,
+      stdout_sha256: sha256(`self-test-command-stdout:${candidateCommit}:${attemptId}:${commandExitCode}`),
+      regression_artifact_sha256: sha256(stableJson({ candidateCommit, attemptId, commandExitCode, suite: "g07-self-test" })),
+      receipt: null,
+    };
+    command.receipt = platform.issue("COMMAND_EXECUTION", orchestrator.commandReceiptClaims(report, command));
+    report.acceptance.commands = [command];
+  }
+  if (role === "auditor") {
+    report.evidence = report.evidence.map((entry) => ({
+      ...entry,
+      receipt: entry.receipt ?? platform.issue("AUDIT_EVIDENCE", orchestrator.auditReceiptClaims(report, entry)),
+    }));
+  }
+  if (role === "reviewer") {
+    report.review_receipt = platform.issue("REVIEW_EVIDENCE", orchestrator.reviewReceiptClaims(report));
+  }
+  if (role === "architect" && ["A", "B"].includes(report.decision?.category)) {
+    report.decision.proposal_sha256 ??= sha256(stableJson({ category: report.decision.category, reason: report.decision.reason ?? null }));
+    report.decision.boundary_receipt ??= platform.issue("ARCHITECT_BOUNDARY", orchestrator.taskBoundaryClaims(report));
+  }
+  report.identity_attestation = platform.issue("ROLE_IDENTITY", {
+    principal_id: principalId,
+    session_id: attestedSessionId,
+    role,
+    task_id: report.task_id,
+    attempt_id: attemptId,
+    base_commit: baseCommit,
+    candidate_commit: candidateCommit,
+    context_hash: contextHash,
+  });
+  report.report_receipt = platform.issue("ROLE_REPORT", {
+    role,
+    task_id: report.task_id,
+    attempt_id: attemptId,
+    base_commit: baseCommit,
+    candidate_commit: candidateCommit,
+    context_hash: contextHash,
+    report_sha256: sha256(stableJson(orchestrator.reportCore(report))),
+  });
+  return report;
 }
 
 function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
@@ -2089,49 +2714,132 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     g07_a_status: "REWORK",
     g07_approval_evidence_sha256: "a".repeat(64),
   };
-  const makeHarness = ({ policyChanges = {}, clock = () => new Date("2026-07-11T12:00:00.000Z"), withIdentity = true } = {}) => {
-    const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "g07-orchestrator-v2-"));
+  const makeHarness = ({ policyChanges = {}, clock = () => new Date("2026-07-11T12:00:00.000Z"), withPlatform = true, readyTaskId = null } = {}) => {
+    const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "g07-orchestrator-v3-"));
     tempRoots.push(stateDir);
+    const platform = new FakePlatformTrust(clock);
     const policy = mergeObjects(clone(basePolicy), {
       phase: "G07_APPROVED_INTEGRATION",
       product_task_execution_allowed: true,
-      identity_attestation: { provider: withIdentity ? "SELF_TEST_HMAC" : "UNAVAILABLE" },
+      platform_trust: {
+        provider: "ED25519_FILE",
+        provider_id: platform.providerId,
+        key_id: platform.keyId,
+        public_key_path: "self-test-platform-public.pem",
+        public_key_sha256: sha256(platform.publicKeyPem),
+        private_key_path: null,
+        private_key_material_in_workspace: false,
+        receipt_version: PLATFORM_RECEIPT_VERSION,
+      },
     });
     mergeObjects(policy, policyChanges);
     const fakeGit = new FakeGitClient(root);
-    const attestor = new FakeIdentityAttestor();
+    let harnessRouter = router;
+    if (readyTaskId && readyTaskId !== "F0-01-REPO") {
+      harnessRouter = new ProjectContextRouter(root);
+      const target = harnessRouter.taskById.get(readyTaskId);
+      invariant(target, `unknown self-test ready Task: ${readyTaskId}`);
+      const dependencies = new Set(harnessRouter.taskGraph(target).upstream.map((item) => item.task_id));
+      for (const task of harnessRouter.tasks) {
+        task.values["状态"] = task.id === readyTaskId ? "READY" : dependencies.has(task.id) ? "VERIFIED" : "PLANNED";
+      }
+    }
     const orchestrator = new ProjectOrchestrator({
       root,
       stateDir,
       policy,
-      router,
+      router: harnessRouter,
       git: fakeGit,
       clock,
-      idFactory: () => `self-test-v2-${String(++idCounter).padStart(6, "0")}`,
-      identityAttestor: withIdentity ? attestor : null,
+      idFactory: () => `self-test-v3-${String(++idCounter).padStart(6, "0")}`,
+      platformTrust: withPlatform ? platform : null,
       testControlOverrides: approvedControl,
       authority: SELF_TEST_AUTHORITY,
     });
-    return { orchestrator, fakeGit, stateDir, policy, attestor, clock };
+    return { orchestrator, fakeGit, stateDir, policy, platform, clock };
   };
-  const contextHashFor = (harness) => harness.orchestrator.controlContext("F0-01-REPO").hash;
-  const implement = ({ harness, runId, attempt, candidateCommit, paths = ["package.json"], patch = null, principalId = null, attestedSessionId = null }) => {
-    const { orchestrator, fakeGit, attestor } = harness;
-    let state = orchestrator.project().taskStates.get("F0-01-REPO");
+  const contextHashFor = (harness, taskId = "F0-01-REPO") => harness.orchestrator.controlContext(taskId).hash;
+  const signedLease = (harness, { runId, taskId = "F0-01-REPO", role, actorId, attemptId, ttlSeconds = null, candidateCommit = null }) => {
+    const { orchestrator, platform } = harness;
+    const projection = orchestrator.project();
+    const state = projection.taskStates.get(taskId);
+    const mode = ["coder", "prompt_editor"].includes(role) ? "WRITE" : "READ_ONLY";
+    const latestCoder = orchestrator.latestReport(projection, taskId, "coder", state.candidate_commit);
+    const baseCommit = mode === "READ_ONLY" ? latestCoder?.base_commit : harness.fakeGit.head();
+    const contextHash = mode === "READ_ONLY" ? state.context_hash : contextHashFor(harness, taskId);
+    const toStatus = mode === "WRITE" ? "LEASED" : state.status === "IMPLEMENTED" ? "VERIFYING" : state.status;
+    const ttl = Number(ttlSeconds ?? harness.policy.concurrency.default_lease_seconds);
+    const acquiredAt = harness.clock();
+    const expiresAt = new Date(acquiredAt.getTime() + ttl * 1000);
+    const leaseId = `self-test-lease-${sha256(stableJson({ runId, taskId, role, actorId, attemptId })).slice(0, 24)}`;
+    const receipt = platform.issue("LEASE_GRANT", orchestrator.leaseReceiptClaims({
+      runId,
+      taskId,
+      attemptId,
+      role,
+      actorId,
+      mode,
+      leaseId,
+      acquiredAt: acquiredAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      baseCommit,
+      candidateCommit,
+      contextHash,
+      fromStatus: state.status,
+      toStatus,
+    }));
+    return orchestrator.lease({ runId, taskId, role, actorId, attemptId, ttlSeconds, candidateCommit, platformReceipt: receipt });
+  };
+  const signedTransition = (harness, { runId, taskId = "F0-01-REPO", toStatus, attemptId, role = "orchestrator", candidateCommit = null, decisionLevel = "TASK_AUTONOMOUS" }) => {
+    const { orchestrator, platform, fakeGit } = harness;
+    const projection = orchestrator.project();
+    const state = projection.taskStates.get(taskId);
+    const contextHash = contextHashFor(harness, taskId);
+    const baseCommit = orchestrator.latestReport(projection, taskId, "coder", candidateCommit)?.base_commit ?? fakeGit.head();
+    const effectiveCandidate = candidateCommit ?? state.candidate_commit;
+    const receipt = platform.issue("STATE_TRANSITION", orchestrator.transitionReceiptClaims({
+      runId,
+      taskId,
+      attemptId,
+      role,
+      baseCommit,
+      candidateCommit: effectiveCandidate,
+      contextHash,
+      fromStatus: state.status,
+      toStatus,
+    }));
+    return orchestrator.transition({ runId, taskId, toStatus, attemptId, role, candidateCommit, decisionLevel, platformReceipt: receipt });
+  };
+  const resignReport = (harness, report) => {
+    report.report_receipt = harness.platform.issue("ROLE_REPORT", {
+      role: report.role,
+      task_id: report.task_id,
+      attempt_id: report.attempt_id,
+      base_commit: report.base_commit,
+      candidate_commit: report.candidate_commit,
+      context_hash: report.context_hash,
+      report_sha256: sha256(stableJson(harness.orchestrator.reportCore(report))),
+    });
+    return report;
+  };
+  const implement = ({ harness, runId, attempt, candidateCommit, taskId = "F0-01-REPO", paths = ["package.json"], patch = null, principalId = null, attestedSessionId = null, commandExitCode = 0, mutateReport = null }) => {
+    const { orchestrator, fakeGit, platform } = harness;
+    let state = orchestrator.project().taskStates.get(taskId);
     if (state.status === "REWORK") {
-      orchestrator.transition({ runId, taskId: "F0-01-REPO", toStatus: "READY", attemptId: attempt, role: "orchestrator" });
-      state = orchestrator.project().taskStates.get("F0-01-REPO");
+      signedTransition(harness, { runId, taskId, toStatus: "READY", attemptId: attempt });
+      state = orchestrator.project().taskStates.get(taskId);
     }
     invariant(state.status === "READY", `self-test implementation helper requires READY, got ${state.status}`);
-    const contextHash = contextHashFor(harness);
+    const contextHash = contextHashFor(harness, taskId);
     const baseCommit = fakeGit.head();
-    const lease = orchestrator.lease({ runId, taskId: "F0-01-REPO", role: "coder", actorId: `declared-coder-${attempt}`, attemptId: attempt });
-    orchestrator.transition({ runId, taskId: "F0-01-REPO", toStatus: "IN_PROGRESS", attemptId: attempt, role: "coder" });
+    const lease = signedLease(harness, { runId, taskId, role: "coder", actorId: `declared-coder-${attempt}`, attemptId: attempt });
+    signedTransition(harness, { runId, taskId, toStatus: "IN_PROGRESS", attemptId: attempt, role: "coder" });
     fakeGit.addCommit(candidateCommit, { baseCommit, paths, patch });
     const report = selfTestReport({
       orchestrator,
       fakeGit,
-      attestor,
+      platform,
+      taskId,
       role: "coder",
       actorId: `declared-coder-${attempt}`,
       sessionId: `declared-coder-session-${attempt}`,
@@ -2142,31 +2850,27 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       candidateCommit,
       contextHash,
       verdict: "IMPLEMENTED",
+      commandExitCode,
     });
+    if (mutateReport) {
+      mutateReport(report);
+      resignReport(harness, report);
+    }
     orchestrator.record({ runId, report });
-    invariant(orchestrator.project().taskStates.get("F0-01-REPO").status === "IN_PROGRESS", "coder report changed Task state directly");
-    orchestrator.transition({ runId, taskId: "F0-01-REPO", toStatus: "IMPLEMENTED", attemptId: attempt, candidateCommit });
-    return { baseCommit, candidateCommit, contextHash, lease, coderReport: report };
+    signedTransition(harness, { runId, taskId, toStatus: "IMPLEMENTED", attemptId: attempt, candidateCommit });
+    return { taskId, baseCommit, candidateCommit, contextHash, lease, coderReport: report };
   };
-  const review = ({ harness, runId, implementation, role, verdict, attempt, actorId = null, sessionId = null, principalId = null, attestedSessionId = null, record = true }) => {
-    const { orchestrator, fakeGit, attestor } = harness;
-    const declaredActor = actorId ?? `declared-${role}-${attempt}`;
-    const declaredSession = sessionId ?? `declared-${role}-session-${attempt}`;
-    const lease = orchestrator.lease({
-      runId,
-      taskId: "F0-01-REPO",
-      role,
-      actorId: declaredActor,
-      attemptId: attempt,
-      candidateCommit: implementation.candidateCommit,
-    });
+  const review = ({ harness, runId, implementation, role, verdict, attempt, principalId = null, attestedSessionId = null, record = true }) => {
+    const actorId = `declared-${role}-${attempt}`;
+    const lease = signedLease(harness, { runId, taskId: implementation.taskId, role, actorId, attemptId: attempt, candidateCommit: implementation.candidateCommit });
     const report = selfTestReport({
-      orchestrator,
-      fakeGit,
-      attestor,
+      orchestrator: harness.orchestrator,
+      fakeGit: harness.fakeGit,
+      platform: harness.platform,
+      taskId: implementation.taskId,
       role,
-      actorId: declaredActor,
-      sessionId: declaredSession,
+      actorId,
+      sessionId: `declared-${role}-session-${attempt}`,
       principalId: principalId ?? `attested-${role}-${attempt}`,
       attestedSessionId: attestedSessionId ?? `attested-${role}-session-${attempt}`,
       attemptId: attempt,
@@ -2175,378 +2879,556 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       contextHash: implementation.contextHash,
       verdict,
     });
-    return { lease, report, event: record ? orchestrator.record({ runId, report }) : null };
+    return { lease, report, event: record ? harness.orchestrator.record({ runId, report }) : null };
   };
-  const passReviews = ({ harness, runId, implementation, suffix = "pass", identity = {} }) => {
-    const audit = review({
+  const passReviews = ({ harness, runId, implementation, suffix, identities = {} }) => ({
+    auditor: review({
       harness,
       runId,
       implementation,
       role: "auditor",
       verdict: "PASS",
       attempt: `audit-${suffix}`,
-      principalId: identity.auditorPrincipal,
-      attestedSessionId: identity.auditorSession,
-    });
-    const reviewer = review({
+      principalId: identities.auditorPrincipal,
+      attestedSessionId: identities.auditorSession,
+    }),
+    reviewer: review({
       harness,
       runId,
       implementation,
       role: "reviewer",
       verdict: "APPROVE",
       attempt: `review-${suffix}`,
-      principalId: identity.reviewerPrincipal,
-      attestedSessionId: identity.reviewerSession,
-    });
-    return { audit, reviewer };
+      principalId: identities.reviewerPrincipal,
+      attestedSessionId: identities.reviewerSession,
+    }),
+  });
+  const verificationReceipt = (harness, taskId = "F0-01-REPO") => {
+    const projection = harness.orchestrator.project();
+    const state = projection.taskStates.get(taskId);
+    const reports = projection.reports.get(taskId) ?? [];
+    const latest = (role) => [...reports].reverse().find((report) => report.role === role && report.candidate_commit === state.candidate_commit);
+    const coder = latest("coder");
+    const auditor = latest("auditor");
+    const reviewer = latest("reviewer");
+    const diffNames = harness.fakeGit.diffNames(coder.base_commit, state.candidate_commit);
+    const diffHash = sha256(harness.fakeGit.diffPatch(coder.base_commit, state.candidate_commit));
+    const scopeEvidenceHash = sha256(stableJson({ allowedPatterns: harness.orchestrator.router.expandWriteScope(harness.orchestrator.router.taskById.get(taskId)), diffNames }));
+    const secretEvidenceHash = harness.orchestrator.scanSecrets(harness.fakeGit.diffPatch(coder.base_commit, state.candidate_commit)).evidence_hash;
+    return harness.platform.issue("VERIFICATION_GATE", harness.orchestrator.verificationGateClaims({ taskId, coder, auditor, reviewer, diffHash, scopeEvidenceHash, secretEvidenceHash }));
   };
+  const verifySigned = (harness, runId, implementation) => harness.orchestrator.verifyEvidence({
+    runId,
+    taskId: implementation.taskId,
+    candidateCommit: implementation.candidateCommit,
+    verificationReceipt: verificationReceipt(harness, implementation.taskId),
+  });
+  const architectDecision = ({ harness, runId, implementation, category, attempt }) => {
+    const lease = signedLease(harness, { runId, taskId: implementation.taskId, role: "architect", actorId: `architect-${attempt}`, attemptId: attempt, candidateCommit: implementation.candidateCommit });
+    const report = selfTestReport({
+      orchestrator: harness.orchestrator,
+      fakeGit: harness.fakeGit,
+      platform: harness.platform,
+      taskId: implementation.taskId,
+      role: "architect",
+      actorId: `architect-${attempt}`,
+      sessionId: `architect-declared-session-${attempt}`,
+      attemptId: attempt,
+      baseCommit: lease.base_commit,
+      candidateCommit: implementation.candidateCommit,
+      contextHash: implementation.contextHash,
+      verdict: "REPLAN",
+      decision: { category, reason: `self-test-${category}` },
+    });
+    return { lease, report, event: harness.orchestrator.record({ runId, report }) };
+  };
+  const signedMeter = (harness, runId, { tokens, timeMs, knownCost }) => harness.platform.issue("USAGE_METER", {
+    autonomy_run_id: runId,
+    tokens,
+    time_ms: timeMs,
+    known_cost: knownCost,
+  });
 
   try {
     const production = new ProjectOrchestrator({ root });
-    const productionEventsBefore = production.store.read();
-    const productionFileBefore = production.store.fileSnapshot();
-    const dryRun = production.dryRun({ runId: "g07-a-rework-dry" });
-    const productionEventsAfter = production.store.read();
-    const productionFileAfter = production.store.fileSnapshot();
-    assertCheck("production:policy-hash-bound", production.policyHash === String(router.gates.G07_A_POLICY_SHA256).toLowerCase(), production.policyHash);
-    assertCheck("production:phase-gate-bound", production.policy.phase === "G07_A_CONTROL_PLANE_ONLY"
-      && production.controlGateSnapshot().g07_gate === "PENDING", production.controlGateSnapshot());
-    assertCheck("dry-run:unique-f0-01", dryRun.selected_task_id === "F0-01-REPO"
-      && dryRun.selection_reason === "UNIQUE_READY_TASK"
-      && dryRun.ready_candidates.length === 1, dryRun);
-    assertCheck("dry-run:global-empty-fp", dryRun.fp_ids.length === 0, dryRun.fp_ids);
-    assertCheck("dry-run:event-snapshot-unchanged", dryRun.event_log_unchanged
-      && stableJson(productionFileBefore) === stableJson(productionFileAfter)
-      && productionEventsBefore.length === productionEventsAfter.length, dryRun.snapshots);
-    assertCheck("dry-run:projection-snapshot-unchanged", dryRun.task_status_changed === false
-      && dryRun.snapshots.before.task_projection.sha256 === dryRun.snapshots.after.task_projection.sha256, dryRun.snapshots);
-    assertCheck("dry-run:product-tree-snapshot-unchanged", dryRun.product_files_written === false
-      && dryRun.snapshots.before.scoped_product_tree.sha256 === dryRun.snapshots.after.scoped_product_tree.sha256, dryRun.snapshots);
-    assertCheck("dry-run:g07-product-hard-stop", dryRun.policy_execution_allowed === false
-      && dryRun.policy_stop_reason === "G07_PHASE_PRODUCT_TASK_EXECUTION_DISABLED", dryRun.policy_stop_reason);
-    assertCheck("dry-run:g07-gate-pending", dryRun.g07_gate === "PENDING", dryRun.g07_gate);
-    assertCheck("dry-run:no-integrity-key-created", !fs.existsSync(path.join(root, DEFAULT_STATE_DIR, INTEGRITY_KEY_FILE)), path.join(root, DEFAULT_STATE_DIR, INTEGRITY_KEY_FILE));
-    expectError("production:coder-lease-hard-stop", () => production.lease({
-      runId: "g07-no-product",
-      taskId: "F0-01-REPO",
-      role: "coder",
-      actorId: "declared-writer",
-      attemptId: "attempt-1",
-    }), "BLOCKED_TECHNICAL");
-    expectError("production:coder-prompt-hard-stop", () => production.rolePrompt({ runId: "g07-no-product", taskId: "F0-01-REPO", role: "coder" }), "BLOCKED_TECHNICAL");
-    assertCheck("production:hard-stop-does-not-append", production.store.read().length === productionEventsBefore.length, production.store.read().length);
-    expectError("policy:external-injection-rejected", () => new ProjectOrchestrator({ root, policy: clone(basePolicy) }), "TEST_INJECTION_FORBIDDEN");
-    let mutationBlocked = false;
-    try {
-      production.policy.hard_stop_actions.splice(0);
-    } catch {
-      mutationBlocked = true;
+    const dryRun = production.dryRun({ runId: "g07-v3-production-dry" });
+    assertCheck("production:policy-v3-hash-bound", production.policy.schema_version === "g07-autonomy-policy/v3"
+      && production.policyHash === String(router.gates.G07_A_POLICY_SHA256).toLowerCase(), production.policyHash);
+    assertCheck("production:platform-unavailable-is-explicit", production.policy.platform_trust.provider === "UNAVAILABLE", production.policy.platform_trust);
+    assertCheck("dry-run:unique-f0-01", dryRun.selected_task_id === "F0-01-REPO" && dryRun.ready_candidates.length === 1, dryRun);
+    assertCheck("dry-run:no-fp-fabrication", dryRun.fp_ids.length === 0, dryRun.fp_ids);
+    assertCheck("dry-run:three-snapshots-unchanged", dryRun.event_log_unchanged && !dryRun.product_files_written && !dryRun.task_status_changed, dryRun.snapshots);
+    assertCheck("dry-run:g07-phase-hard-stop", !dryRun.policy_execution_allowed && dryRun.policy_stop_reason === "G07_PHASE_PRODUCT_TASK_EXECUTION_DISABLED", dryRun.policy_stop_reason);
+    for (const action of ["DESTRUCTIVE_DATA", "UNAUTHORIZED_PAID_OPERATION", "EXTERNAL_OPERATION", "", "UNKNOWN_FUTURE_ACTION"]) {
+      const result = production.evaluateAction(action, "guard-default-deny");
+      assertCheck(`guard:unknown:${action || "empty"}`, !result.allowed && result.reason === "UNKNOWN_ACTION_DENY_BY_DEFAULT", result);
     }
-    assertCheck("policy:in-memory-policy-is-deep-frozen", mutationBlocked && production.policy.hard_stop_actions.length === MANDATORY_HARD_STOP_ACTIONS.length, production.policy.hard_stop_actions);
-    assertCheck("policy:compiled-hard-stop-survives-memory-attack", production.evaluateAction("PUSH", "run-policy").allowed === false, production.evaluateAction("PUSH", "run-policy"));
-    expectError("policy:missing-hard-stop-array-rejected", () => makeHarness({ policyChanges: { hard_stop_actions: [] } }), "POLICY_HARD_STOP_INVALID");
-    const ignoredRuntime = production.git.run(["check-ignore", "--quiet", ".autonomy/events.jsonl"], { allowFailure: true }).status === 0;
-    const trackedRuntime = production.git.run(["ls-files", "--error-unmatch", ".autonomy/events.jsonl"], { allowFailure: true }).status === 0;
-    assertCheck("runtime:event-log-ignored-untracked", ignoredRuntime && !trackedRuntime, { ignoredRuntime, trackedRuntime });
+    const trailingPush = production.evaluateAction("PUSH  ", "guard-trim");
+    assertCheck("guard:trailing-space-push-blocked", !trailingPush.allowed && trailingPush.reason === "ACTION_PUSH_FORBIDDEN_IN_G07", trailingPush);
+    assertCheck("guard:control-read-known", production.evaluateAction(" control_plane_read ", "guard-read").allowed === true, production.evaluateAction(" control_plane_read ", "guard-read"));
+    expectError("platform:production-provider-required", () => production.verifyPlatformReceipt({}, "ROLE_IDENTITY", {}), "ENVIRONMENT_APPROVAL_REQUIRED");
+    expectError("production:writer-prompt-hard-stop", () => production.rolePrompt({ runId: "g07-no-product", taskId: "F0-01-REPO", role: "coder" }), "BLOCKED_TECHNICAL");
+    expectError("policy:external-injection-rejected", () => new ProjectOrchestrator({ root, policy: clone(basePolicy) }), "TEST_INJECTION_FORBIDDEN");
+    assertCheck("runtime:no-local-signing-key", !fs.existsSync(path.join(root, DEFAULT_STATE_DIR, "integrity.key")), path.join(root, DEFAULT_STATE_DIR));
+
+    const providerRoot = fs.mkdtempSync(path.join(os.tmpdir(), "g07-platform-provider-"));
+    tempRoots.push(providerRoot);
+    const providerClock = () => new Date("2026-07-11T12:00:00.000Z");
+    const issuer = new FakePlatformTrust(providerClock);
+    fs.writeFileSync(path.join(providerRoot, "platform-public.pem"), issuer.publicKeyPem, "utf8");
+    const providerPolicy = {
+      platform_trust: {
+        provider: "ED25519_FILE",
+        provider_id: issuer.providerId,
+        key_id: issuer.keyId,
+        public_key_path: "platform-public.pem",
+        public_key_sha256: hashFile(path.join(providerRoot, "platform-public.pem")),
+        private_key_path: null,
+        private_key_material_in_workspace: false,
+      },
+    };
+    const loadedProvider = platformTrustFromPolicy(providerPolicy, providerRoot, providerClock);
+    const providerReceipt = issuer.issue("PROVIDER_TEST", { value: 1 });
+    assertCheck("platform:production-ed25519-provider-path", loadedProvider.verify(providerReceipt, "PROVIDER_TEST", { value: 1 }).trusted === true, providerPolicy.platform_trust);
+    assertCheck("platform:private-key-not-in-workspace", fs.readdirSync(providerRoot).every((name) => !name.toLowerCase().includes("private")), fs.readdirSync(providerRoot));
+    expectError("platform:public-key-hash-drift", () => platformTrustFromPolicy(mergeObjects(clone(providerPolicy), { platform_trust: { public_key_sha256: "0".repeat(64) } }), providerRoot, providerClock), "PLATFORM_TRUST_KEY_HASH_MISMATCH");
 
     const promptHarness = makeHarness();
-    const coderPrompt = promptHarness.orchestrator.rolePrompt({ runId: "run-prompt", taskId: "F0-01-REPO", role: "coder" });
-    assertCheck("prompt:ready-coder-exact-scope", coderPrompt.task_status === "READY"
-      && coderPrompt.exact_write_scope.length > 0
-      && coderPrompt.context_hash === contextHashFor(promptHarness), coderPrompt);
-    assertCheck("prompt:trusted-attestation-required", coderPrompt.trusted_identity_attestation_required === true
-      && coderPrompt.report_schema === "g07-role-report/v2", coderPrompt.report_schema);
-    expectError("prompt:planned-coder-rejected", () => promptHarness.orchestrator.rolePrompt({ runId: "run-prompt", taskId: "F0-02-CONTRACTS", role: "coder" }), "TASK_NOT_READY");
-    expectError("prompt:slice-before-verified-rejected", () => promptHarness.orchestrator.rolePrompt({ runId: "run-prompt", role: "slice_gate_runner", sliceId: "F0" }), "SLICE_NOT_VERIFIED");
-    assertCheck("prompt:no-source-body", !stableJson(coderPrompt).includes("source_body"), coderPrompt.source_bodies_embedded);
+    const prompt = promptHarness.orchestrator.rolePrompt({ runId: "prompt", taskId: "F0-01-REPO", role: "coder" });
+    assertCheck("prompt:v3-platform-receipts", prompt.report_schema === "g07-role-report/v3"
+      && prompt.required_command_receipt === "COMMAND_EXECUTION"
+      && prompt.platform_receipts_required.includes("ROLE_REPORT"), prompt);
+    expectError("prompt:planned-coder-rejected", () => promptHarness.orchestrator.rolePrompt({ runId: "prompt", taskId: "F0-02-CONTRACTS", role: "coder" }), "TASK_NOT_READY");
+    expectError("prompt:slice-before-verified", () => promptHarness.orchestrator.rolePrompt({ runId: "prompt", role: "slice_gate_runner", sliceId: "F0" }), "SLICE_NOT_VERIFIED");
 
     const leaseHarness = makeHarness();
-    const leaseContext = contextHashFor(leaseHarness);
-    const unlockBefore = leaseHarness.orchestrator.unlock({ runId: "run-lease" });
-    assertCheck("unlock:dependency-not-verified", unlockBefore.unlocked.length === 0, unlockBefore);
-    expectError("lease:non-ready-rejected", () => leaseHarness.orchestrator.lease({
-      runId: "run-lease",
-      taskId: "F0-02-CONTRACTS",
-      role: "coder",
-      actorId: "early",
-      attemptId: "early",
-    }), "TASK_NOT_READY");
-    expectError("lease:caller-context-forgery-rejected", () => leaseHarness.orchestrator.lease({
-      runId: "run-lease",
-      taskId: "F0-01-REPO",
-      role: "coder",
-      actorId: "forged",
-      attemptId: "forged",
-      contextHash: "f".repeat(64),
-    }), "LEASE_CONTEXT_MISMATCH");
-    const writerLease = leaseHarness.orchestrator.lease({ runId: "run-lease", taskId: "F0-01-REPO", role: "coder", actorId: "writer", attemptId: "writer" });
-    assertCheck("lease:context-derived-by-orchestrator", writerLease.context_hash === leaseContext && writerLease.to_status === "LEASED", writerLease);
-    expectError("lease:double-writer-rejected", () => leaseHarness.orchestrator.lease({ runId: "run-lease", taskId: "F0-01-REPO", role: "coder", actorId: "writer-2", attemptId: "writer-2" }), "TASK_NOT_READY");
-    leaseHarness.orchestrator.transition({ runId: "run-lease", taskId: "F0-01-REPO", toStatus: "IN_PROGRESS", attemptId: "writer", role: "coder" });
-    expectError("transition:verified-jump-rejected", () => leaseHarness.orchestrator.transition({ runId: "run-lease", taskId: "F0-01-REPO", toStatus: "VERIFIED", attemptId: "writer" }), "EVIDENCE_REQUIRED");
+    expectError("lease:missing-platform-receipt", () => leaseHarness.orchestrator.lease({ runId: "lease", taskId: "F0-01-REPO", role: "coder", actorId: "writer", attemptId: "lease-1" }), "PLATFORM_RECEIPT_REQUIRED");
+    const lease = signedLease(leaseHarness, { runId: "lease", role: "coder", actorId: "writer", attemptId: "lease-1" });
+    assertCheck("lease:signed-ready-to-leased", lease.to_status === "LEASED" && lease.platform_receipts[0].kind === "LEASE_GRANT", lease);
+    expectError("lease:double-writer-rejected", () => signedLease(leaseHarness, { runId: "lease", role: "coder", actorId: "writer-2", attemptId: "lease-2" }), "TASK_NOT_READY");
+    expectError("transition:missing-platform-receipt", () => leaseHarness.orchestrator.transition({ runId: "lease", taskId: "F0-01-REPO", toStatus: "IN_PROGRESS", attemptId: "lease-1", role: "coder" }), "PLATFORM_RECEIPT_REQUIRED");
+    const inProgress = signedTransition(leaseHarness, { runId: "lease", toStatus: "IN_PROGRESS", attemptId: "lease-1", role: "coder" });
+    assertCheck("transition:signed-leased-to-in-progress", inProgress.to_status === "IN_PROGRESS", inProgress);
 
-    const retryHarness = makeHarness();
-    let firstImplementation = implement({ harness: retryHarness, runId: "run-retry", attempt: "attempt-1", candidateCommit: "b".repeat(40) });
-    const auditFail = review({ harness: retryHarness, runId: "run-retry", implementation: firstImplementation, role: "auditor", verdict: "FAIL", attempt: "audit-fail-1" }).event;
-    assertCheck("rework:auditor-fail", auditFail.to_status === "REWORK" && auditFail.counters.rework === 1, auditFail);
-    let secondImplementation = implement({ harness: retryHarness, runId: "run-retry", attempt: "attempt-2", candidateCommit: "c".repeat(40) });
-    const reviewerFail = review({ harness: retryHarness, runId: "run-retry", implementation: secondImplementation, role: "reviewer", verdict: "REQUEST_CHANGES", attempt: "review-fail-2" }).event;
-    assertCheck("rework:reviewer-request-changes", reviewerFail.to_status === "REWORK" && reviewerFail.counters.rework === 2, reviewerFail);
-    let thirdImplementation = implement({ harness: retryHarness, runId: "run-retry", attempt: "attempt-3", candidateCommit: "d".repeat(40) });
-    const thirdFailure = review({ harness: retryHarness, runId: "run-retry", implementation: thirdImplementation, role: "auditor", verdict: "FAIL", attempt: "audit-fail-3" }).event;
-    assertCheck("replan:three-reworks", thirdFailure.to_status === "REPLAN"
-      && thirdFailure.counters.rework === 3
-      && thirdFailure.counters.replan === 1, thirdFailure);
-    const architectPrompt = retryHarness.orchestrator.rolePrompt({ runId: "run-retry", taskId: "F0-01-REPO", role: "architect", candidateCommit: thirdImplementation.candidateCommit });
-    assertCheck("prompt:architect-only-in-replan", architectPrompt.task_status === "REPLAN" && architectPrompt.replan_categories.C.includes("business"), architectPrompt);
-    const architectLease = retryHarness.orchestrator.lease({ runId: "run-retry", taskId: "F0-01-REPO", role: "architect", actorId: "architect", attemptId: "architect-1", candidateCommit: thirdImplementation.candidateCommit });
-    const architectReport = selfTestReport({
-      orchestrator: retryHarness.orchestrator,
-      fakeGit: retryHarness.fakeGit,
-      attestor: retryHarness.attestor,
-      role: "architect",
-      actorId: "architect",
-      sessionId: "architect-declared-session",
-      attemptId: "architect-1",
-      baseCommit: architectLease.base_commit,
-      candidateCommit: thirdImplementation.candidateCommit,
-      contextHash: thirdImplementation.contextHash,
-      verdict: "REPLAN",
-      decision: { category: "A", reason: "same-scope alternative" },
-    });
-    const architectDecision = retryHarness.orchestrator.record({ runId: "run-retry", report: architectReport });
-    assertCheck("replan:architect-a-resumes", architectDecision.to_status === "READY" && architectDecision.counters.rework === 0, architectDecision);
-    let exhausted = null;
-    for (let number = 4; number <= 6; number += 1) {
-      const implementation = implement({ harness: retryHarness, runId: "run-retry", attempt: `attempt-${number}`, candidateCommit: String.fromCharCode(97 + number).repeat(40) });
-      exhausted = review({ harness: retryHarness, runId: "run-retry", implementation, role: "auditor", verdict: "FAIL", attempt: `audit-fail-${number}` }).event;
-    }
-    assertCheck("critical:path-derived-through-dependency-ancestry", retryHarness.orchestrator.isCriticalTask("S1-FP001-03") === true, [...retryHarness.orchestrator.criticalTaskIds()].includes("S1-FP001-03"));
-    assertCheck("replan:two-replans-require-creator", exhausted.to_status === "CREATOR_REQUIRED"
-      && exhausted.creator_required_reason === "CRITICAL_PATH_REPLAN_LIMIT_EXHAUSTED", exhausted);
-    expectError("creator-required:forged-string-cannot-clear", () => retryHarness.orchestrator.transition({
-      runId: "run-retry",
-      taskId: "F0-01-REPO",
-      toStatus: "READY",
-      attemptId: "forged-creator",
-      creatorApprovalEvidence: "CREATOR_EXPLICIT_FAKE",
-    }), "CREATOR_CONTROL_UPDATE_REQUIRED");
-
-    const goodHarness = makeHarness();
-    const goodImplementation = implement({ harness: goodHarness, runId: "run-good", attempt: "good-1", candidateCommit: "1".repeat(40) });
-    const goodReviews = passReviews({ harness: goodHarness, runId: "run-good", implementation: goodImplementation, suffix: "good" });
-    assertCheck("record:pass-reports-do-not-directly-verify", goodHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "VERIFYING", goodHarness.orchestrator.project().taskStates.get("F0-01-REPO"));
-    const auditorPrompt = goodHarness.orchestrator.rolePrompt({ runId: "run-good", taskId: "F0-01-REPO", role: "auditor", candidateCommit: goodImplementation.candidateCommit });
-    const reviewerPrompt = goodHarness.orchestrator.rolePrompt({ runId: "run-good", taskId: "F0-01-REPO", role: "reviewer", candidateCommit: goodImplementation.candidateCommit });
-    assertCheck("prompt:auditor-evidence-shape", stableJson(auditorPrompt.required_evidence) === stableJson(["normal", "exception", "recovery"]), auditorPrompt.required_evidence);
-    assertCheck("prompt:reviewer-check-shape", stableJson(reviewerPrompt.required_checks) === stableJson(["contract", "diff", "write_channel", "cross_fp"]), reviewerPrompt.required_checks);
-    const verified = goodHarness.orchestrator.verifyEvidence({ runId: "run-good", taskId: "F0-01-REPO", candidateCommit: goodImplementation.candidateCommit });
-    assertCheck("evidence:mechanical-verification", verified.to_status === "VERIFIED"
-      && verified.verdicts.auditor === "PASS"
-      && verified.verdicts.reviewer === "APPROVE"
-      && verified.payload.trusted_identities.length === 3, verified);
-    const unlocked = goodHarness.orchestrator.unlock({ runId: "run-good" });
-    assertCheck("unlock:only-after-dependency-verified", unlocked.unlocked.includes("F0-02-CONTRACTS"), unlocked.unlocked);
-    assertCheck("events:hmac-authenticated", goodHarness.orchestrator.store.read().every((event) => event.integrity_algorithm === "HMAC-SHA256" && isSha256(event.event_hash)), goodHarness.orchestrator.store.read().length);
-    assertCheck("events:required-fields", goodHarness.orchestrator.store.read().every((event) => REQUIRED_EVENT_FIELDS.every((field) => Object.hasOwn(event, field))), REQUIRED_EVENT_FIELDS);
-    assertCheck("events:runtime-key-created-only-on-write", fs.existsSync(path.join(goodHarness.stateDir, INTEGRITY_KEY_FILE)), goodHarness.stateDir);
-    assertCheck("evidence:reports-bound-same-context", [goodImplementation.coderReport, goodReviews.audit.report, goodReviews.reviewer.report].every((report) => report.context_hash === goodImplementation.contextHash), goodImplementation.contextHash);
-
-    const concurrencyHarness = makeHarness();
-    const concurrencyImplementation = implement({ harness: concurrencyHarness, runId: "run-concurrency", attempt: "concurrency-1", candidateCommit: "2".repeat(40) });
-    const heldAudit = review({ harness: concurrencyHarness, runId: "run-concurrency", implementation: concurrencyImplementation, role: "auditor", verdict: "PASS", attempt: "held-audit", record: false });
-    const heldReview = review({ harness: concurrencyHarness, runId: "run-concurrency", implementation: concurrencyImplementation, role: "reviewer", verdict: "APPROVE", attempt: "held-review", record: false });
-    expectError("lease:third-read-only-reviewer-rejected", () => concurrencyHarness.orchestrator.lease({
-      runId: "run-concurrency",
-      taskId: "F0-01-REPO",
-      role: "reviewer",
-      actorId: "third",
-      attemptId: "third",
-      candidateCommit: concurrencyImplementation.candidateCommit,
-    }), "REVIEW_CONCURRENCY_BLOCKED");
-    concurrencyHarness.orchestrator.record({ runId: "run-concurrency", report: heldAudit.report });
-    concurrencyHarness.orchestrator.record({ runId: "run-concurrency", report: heldReview.report });
-
-    const missingIdentityHarness = makeHarness({ withIdentity: false });
-    const missingIdentityImplementation = implement({ harness: missingIdentityHarness, runId: "run-no-identity", attempt: "no-identity-1", candidateCommit: "3".repeat(40) });
-    passReviews({ harness: missingIdentityHarness, runId: "run-no-identity", implementation: missingIdentityImplementation, suffix: "no-identity" });
-    const missingIdentityError = expectError("identity:unavailable-platform-hard-stops", () => missingIdentityHarness.orchestrator.verifyEvidence({
-      runId: "run-no-identity",
-      taskId: "F0-01-REPO",
-      candidateCommit: missingIdentityImplementation.candidateCommit,
-    }), "ENVIRONMENT_APPROVAL_REQUIRED");
-    const missingIdentityState = missingIdentityHarness.orchestrator.project().taskStates.get("F0-01-REPO");
-    assertCheck("identity:unavailable-recorded-as-blocked", missingIdentityState.status === "BLOCKED"
-      && missingIdentityError?.details?.rejection_to_status === "BLOCKED", missingIdentityError?.details);
-
-    const selfReviewHarness = makeHarness();
-    const selfReviewImplementation = implement({
-      harness: selfReviewHarness,
-      runId: "run-self-review",
-      attempt: "self-review-1",
-      candidateCommit: "4".repeat(40),
-      principalId: "attested-shared-principal",
-      attestedSessionId: "attested-shared-session",
-    });
-    passReviews({
-      harness: selfReviewHarness,
-      runId: "run-self-review",
-      implementation: selfReviewImplementation,
-      suffix: "self-review",
-      identity: {
-        auditorPrincipal: "attested-shared-principal",
-        auditorSession: "attested-shared-session",
-        reviewerPrincipal: "attested-reviewer-distinct",
-        reviewerSession: "attested-reviewer-session-distinct",
-      },
-    });
-    expectError("identity:caller-strings-cannot-fake-independence", () => selfReviewHarness.orchestrator.verifyEvidence({
-      runId: "run-self-review",
-      taskId: "F0-01-REPO",
-      candidateCommit: selfReviewImplementation.candidateCommit,
-    }), "SELF_REVIEW_BLOCKED");
-    assertCheck("identity:self-review-failure-enters-rework", selfReviewHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "REWORK", selfReviewHarness.orchestrator.project().taskStates.get("F0-01-REPO"));
-
-    const dirtyHarness = makeHarness();
-    const dirtyImplementation = implement({ harness: dirtyHarness, runId: "run-dirty", attempt: "dirty-1", candidateCommit: "5".repeat(40) });
-    passReviews({ harness: dirtyHarness, runId: "run-dirty", implementation: dirtyImplementation, suffix: "dirty" });
-    dirtyHarness.fakeGit.clean = false;
-    const dirtyError = expectError("evidence:dirty-worktree-rejected", () => dirtyHarness.orchestrator.verifyEvidence({
-      runId: "run-dirty",
-      taskId: "F0-01-REPO",
-      candidateCommit: dirtyImplementation.candidateCommit,
-    }), "WORKTREE_DIRTY");
-    assertCheck("evidence:dirty-failure-recorded", dirtyHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "REWORK"
-      && isSha256(dirtyHarness.orchestrator.store.read().at(-1).failure_fingerprint), dirtyError?.details);
+    const leaseTamperHarness = makeHarness();
+    signedLease(leaseTamperHarness, { runId: "lease-tamper", role: "coder", actorId: "lease-tamper-writer", attemptId: "lease-tamper-1" });
+    const leaseTamperLines = fs.readFileSync(leaseTamperHarness.orchestrator.store.eventsPath, "utf8").trimEnd().split(/\r?\n/);
+    const forgedLease = JSON.parse(leaseTamperLines.at(-1));
+    forgedLease.lease.expires_at = new Date(Date.parse(forgedLease.lease.expires_at) + 60_000).toISOString();
+    forgedLease.event_hash = hashEvent(forgedLease);
+    leaseTamperLines[leaseTamperLines.length - 1] = JSON.stringify(forgedLease);
+    fs.writeFileSync(leaseTamperHarness.orchestrator.store.eventsPath, `${leaseTamperLines.join("\n")}\n`, "utf8");
+    expectError("lease:signed-lifetime-cannot-be-tampered", () => leaseTamperHarness.orchestrator.store.read(), "PLATFORM_RECEIPT_CLAIMS_MISMATCH");
 
     const contextHarness = makeHarness();
-    const contextImplementation = implement({ harness: contextHarness, runId: "run-context", attempt: "context-1", candidateCommit: "6".repeat(40) });
-    passReviews({ harness: contextHarness, runId: "run-context", implementation: contextImplementation, suffix: "context" });
-    expectError("evidence:caller-context-forgery-rejected", () => contextHarness.orchestrator.verifyEvidence({
-      runId: "run-context",
+    const actualContextHash = contextHashFor(contextHarness);
+    const contextState = contextHarness.orchestrator.project().taskStates.get("F0-01-REPO");
+    const contextReceipt = contextHarness.platform.issue("LEASE_GRANT", contextHarness.orchestrator.leaseReceiptClaims({
+      runId: "context-forgery",
       taskId: "F0-01-REPO",
-      candidateCommit: contextImplementation.candidateCommit,
-      contextHash: "e".repeat(64),
-    }), "VERIFY_CONTEXT_MISMATCH");
-    assertCheck("evidence:context-failure-enters-rework", contextHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "REWORK", contextHarness.orchestrator.project().taskStates.get("F0-01-REPO"));
+      attemptId: "context-forgery-1",
+      role: "coder",
+      actorId: "context-forger",
+      mode: "WRITE",
+      leaseId: "context-forgery-lease-0001",
+      acquiredAt: contextHarness.clock().toISOString(),
+      expiresAt: new Date(contextHarness.clock().getTime() + contextHarness.policy.concurrency.default_lease_seconds * 1000).toISOString(),
+      baseCommit: contextHarness.fakeGit.head(),
+      candidateCommit: null,
+      contextHash: actualContextHash,
+      fromStatus: contextState.status,
+      toStatus: "LEASED",
+    }));
+    expectError("context:caller-forged-hash-rejected", () => contextHarness.orchestrator.lease({
+      runId: "context-forgery",
+      taskId: "F0-01-REPO",
+      role: "coder",
+      actorId: "context-forger",
+      attemptId: "context-forgery-1",
+      contextHash: "0".repeat(64),
+      platformReceipt: contextReceipt,
+    }), "LEASE_CONTEXT_MISMATCH");
 
-    const staleHarness = makeHarness();
-    const staleImplementation = implement({ harness: staleHarness, runId: "run-stale", attempt: "stale-1", candidateCommit: "7".repeat(40) });
-    passReviews({ harness: staleHarness, runId: "run-stale", implementation: staleImplementation, suffix: "stale" });
-    staleHarness.fakeGit.commits.add("8".repeat(40));
-    staleHarness.fakeGit.headCommit = "8".repeat(40);
-    expectError("evidence:new-commit-invalidates-old-audit", () => staleHarness.orchestrator.verifyEvidence({
-      runId: "run-stale",
+    const goodHarness = makeHarness();
+    const goodImplementation = implement({ harness: goodHarness, runId: "good", attempt: "good-1", candidateCommit: "1".repeat(40) });
+    passReviews({ harness: goodHarness, runId: "good", implementation: goodImplementation, suffix: "good" });
+    const verified = verifySigned(goodHarness, "good", goodImplementation);
+    assertCheck("evidence:platform-signed-verified", verified.to_status === "VERIFIED"
+      && verified.platform_receipts[0].kind === "VERIFICATION_GATE"
+      && verified.payload.trusted_identities.length === 3, verified);
+    const unlockProjection = goodHarness.orchestrator.project();
+    const unlockState = unlockProjection.taskStates.get("F0-02-CONTRACTS");
+    const unlockContext = contextHashFor(goodHarness, "F0-02-CONTRACTS");
+    const dependencyEvidence = goodHarness.orchestrator.router.taskGraph(goodHarness.orchestrator.router.taskById.get("F0-02-CONTRACTS")).upstream
+      .map((item) => ({ task_id: item.task_id, status: unlockProjection.taskStates.get(item.task_id).status }));
+    const unlockReceipt = goodHarness.platform.issue("TASK_UNLOCK", {
+      autonomy_run_id: "good",
+      task_id: "F0-02-CONTRACTS",
+      from_status: unlockState.status,
+      to_status: "READY",
+      context_hash: unlockContext,
+      dependency_evidence_sha256: sha256(stableJson(dependencyEvidence)),
+    });
+    const unlocked = goodHarness.orchestrator.unlock({ runId: "good", receiptsByTask: { "F0-02-CONTRACTS": unlockReceipt } });
+    assertCheck("unlock:signed-dependency-closure", unlocked.unlocked.includes("F0-02-CONTRACTS"), unlocked.unlocked);
+    assertCheck("events:replay-revalidates-platform-evidence", goodHarness.orchestrator.store.read().at(-2).event_type === "EVIDENCE_VERIFIED", goodHarness.orchestrator.store.read().length);
+
+    const arbitraryHarness = makeHarness();
+    const arbitraryImplementation = implement({
+      harness: arbitraryHarness,
+      runId: "arbitrary",
+      attempt: "arbitrary-1",
+      candidateCommit: "2".repeat(40),
+      mutateReport: (report) => {
+        report.acceptance.commands[0].stdout_sha256 = "1".repeat(64);
+        report.acceptance.commands[0].regression_artifact_sha256 = "2".repeat(64);
+        report.acceptance.commands[0].receipt = null;
+      },
+    });
+    passReviews({ harness: arbitraryHarness, runId: "arbitrary", implementation: arbitraryImplementation, suffix: "arbitrary" });
+    expectError("evidence:arbitrary-hashes-without-command-receipt", () => arbitraryHarness.orchestrator.verifyEvidence({
+      runId: "arbitrary",
       taskId: "F0-01-REPO",
-      candidateCommit: staleImplementation.candidateCommit,
-    }), "STALE_CANDIDATE_COMMIT");
-    assertCheck("evidence:stale-failure-recorded", staleHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "REWORK", staleHarness.orchestrator.store.read().at(-1));
+      candidateCommit: arbitraryImplementation.candidateCommit,
+      verificationReceipt: verificationReceipt(arbitraryHarness),
+    }), "PLATFORM_RECEIPT_REQUIRED");
+    assertCheck("evidence:forgery-recorded-as-rework", arbitraryHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "REWORK", arbitraryHarness.orchestrator.store.read().at(-1));
 
     const scopeHarness = makeHarness();
-    const scopeImplementation = implement({ harness: scopeHarness, runId: "run-scope", attempt: "scope-1", candidateCommit: "9".repeat(40) });
-    passReviews({ harness: scopeHarness, runId: "run-scope", implementation: scopeImplementation, suffix: "scope" });
-    const originalPatch = scopeHarness.fakeGit.diffPatch(scopeImplementation.baseCommit, scopeImplementation.candidateCommit);
-    scopeHarness.fakeGit.setDiff(scopeImplementation.baseCommit, scopeImplementation.candidateCommit, ["outside-product-scope.txt"], originalPatch);
+    const scopeImplementation = implement({
+      harness: scopeHarness,
+      runId: "scope-overflow",
+      attempt: "scope-overflow-1",
+      candidateCommit: sha256("scope-overflow-candidate").slice(0, 40),
+      paths: ["outside-approved-write-scope.txt"],
+    });
+    passReviews({ harness: scopeHarness, runId: "scope-overflow", implementation: scopeImplementation, suffix: "scope-overflow" });
     expectError("evidence:scope-overflow-rejected", () => scopeHarness.orchestrator.verifyEvidence({
-      runId: "run-scope",
+      runId: "scope-overflow",
       taskId: "F0-01-REPO",
       candidateCommit: scopeImplementation.candidateCommit,
+      verificationReceipt: verificationReceipt(scopeHarness),
     }), "SCOPE_VIOLATION");
-    assertCheck("evidence:scope-failure-recorded", scopeHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "REWORK"
-      && scopeHarness.orchestrator.store.read().at(-1).payload.rejection.code === "SCOPE_VIOLATION", scopeHarness.orchestrator.store.read().at(-1));
 
     const secretHarness = makeHarness();
-    const secretPatch = `diff --git a/package.json b/package.json\n+token=${["sk", "proj", "x".repeat(40)].join("-")}\n`;
-    const secretImplementation = implement({ harness: secretHarness, runId: "run-secret", attempt: "secret-1", candidateCommit: "a".repeat(40), patch: secretPatch });
-    passReviews({ harness: secretHarness, runId: "run-secret", implementation: secretImplementation, suffix: "secret" });
-    expectError("evidence:secret-rejected", () => secretHarness.orchestrator.verifyEvidence({
-      runId: "run-secret",
+    const fakeSecret = `sk-proj-${"A".repeat(24)}`;
+    const secretImplementation = implement({
+      harness: secretHarness,
+      runId: "secret-leak",
+      attempt: "secret-leak-1",
+      candidateCommit: sha256("secret-leak-candidate").slice(0, 40),
+      patch: `diff --git a/package.json b/package.json\n+fixture_secret=${fakeSecret}\n`,
+    });
+    passReviews({ harness: secretHarness, runId: "secret-leak", implementation: secretImplementation, suffix: "secret-leak" });
+    expectError("evidence:secret-leak-rejected", () => secretHarness.orchestrator.verifyEvidence({
+      runId: "secret-leak",
       taskId: "F0-01-REPO",
       candidateCommit: secretImplementation.candidateCommit,
+      verificationReceipt: verificationReceipt(secretHarness),
     }), "SECRET_SCAN_FAILED");
-    assertCheck("evidence:secret-failure-recorded", secretHarness.orchestrator.store.read().at(-1).payload.rejection.code === "SECRET_SCAN_FAILED"
-      && secretHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "REWORK", secretHarness.orchestrator.store.read().at(-1));
 
-    const semanticHarness = makeHarness();
-    expectError("events:private-writer-authority", () => semanticHarness.orchestrator.store.transact(Symbol("fake"), () => []), "EVENT_WRITE_FORBIDDEN");
-    const seedEvent = semanticHarness.orchestrator.recordUsage({ runId: "run-forged-event", execution: { tokens: 0, time_ms: 0, known_cost: null } });
-    const forgedKey = fs.readFileSync(path.join(semanticHarness.stateDir, INTEGRITY_KEY_FILE));
-    const forgedDraft = semanticHarness.orchestrator.makeDraft({
-      eventType: "EVIDENCE_VERIFIED",
-      runId: "run-forged-event",
+    const intermittentHarness = makeHarness();
+    const intermittentImplementation = implement({ harness: intermittentHarness, runId: "intermittent", attempt: "intermittent-1", candidateCommit: "3".repeat(40), commandExitCode: 1 });
+    passReviews({ harness: intermittentHarness, runId: "intermittent", implementation: intermittentImplementation, suffix: "intermittent" });
+    expectError("evidence:intermittent-command-failure", () => intermittentHarness.orchestrator.verifyEvidence({
+      runId: "intermittent",
       taskId: "F0-01-REPO",
-      role: "orchestrator",
-      baseCommit: semanticHarness.fakeGit.head(),
-      candidateCommit: semanticHarness.fakeGit.head(),
-      contextHash: contextHashFor(semanticHarness),
-      lease: { action: "RELEASE_ALL_TASK", task_id: "F0-01-REPO", lease_id: null },
-      fromStatus: "READY",
-      toStatus: "VERIFIED",
-      acceptance: {
-        commands: [{ command: "forged", exit_code: 0, evidence_hash: "1".repeat(64) }],
-        diff_hash: "2".repeat(64),
-        scope_evidence_hash: "3".repeat(64),
-        secret_scan_evidence_hash: "4".repeat(64),
-      },
-      verdicts: { auditor: "PASS", reviewer: "APPROVE" },
+      candidateCommit: intermittentImplementation.candidateCommit,
+      verificationReceipt: verificationReceipt(intermittentHarness),
+    }), "ACCEPTANCE_COMMAND_FAILED");
+    assertCheck("evidence:intermittent-failure-event", intermittentHarness.orchestrator.store.read().at(-1).payload.rejection.code === "ACCEPTANCE_COMMAND_FAILED", intermittentHarness.orchestrator.store.read().at(-1));
+
+    const reviewerFailHarness = makeHarness();
+    const reviewerFailImplementation = implement({ harness: reviewerFailHarness, runId: "reviewer-fail", attempt: "reviewer-fail-1", candidateCommit: sha256("reviewer-fail-candidate").slice(0, 40) });
+    review({ harness: reviewerFailHarness, runId: "reviewer-fail", implementation: reviewerFailImplementation, role: "auditor", verdict: "PASS", attempt: "reviewer-fail-audit" });
+    const reviewerFailure = review({ harness: reviewerFailHarness, runId: "reviewer-fail", implementation: reviewerFailImplementation, role: "reviewer", verdict: "REQUEST_CHANGES", attempt: "reviewer-fail-review" }).event;
+    assertCheck("reviewer:request-changes-enters-rework", reviewerFailure.to_status === "REWORK"
+      && reviewerFailHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "REWORK", reviewerFailure);
+
+    const blockHarness = makeHarness();
+    const blockImplementation = implement({ harness: blockHarness, runId: "block", attempt: "block-1", candidateCommit: "4".repeat(40) });
+    passReviews({ harness: blockHarness, runId: "block", implementation: blockImplementation, suffix: "block" });
+    const environmentError = Object.assign(new Error("environment trust temporarily unavailable"), { code: "ENVIRONMENT_APPROVAL_REQUIRED", details: { reason: "TEST_ENVIRONMENT_BLOCK" } });
+    blockHarness.orchestrator.recordEvidenceRejection({ runId: "block", taskId: "F0-01-REPO", candidateCommit: blockImplementation.candidateCommit, attemptId: "block-verify", error: environmentError });
+    const blockedState = blockHarness.orchestrator.project().taskStates.get("F0-01-REPO");
+    expectError("blocked:shape-only-resolution-rejected", () => blockHarness.orchestrator.transition({
+      runId: "block",
+      taskId: "F0-01-REPO",
+      toStatus: "READY",
+      attemptId: "block-resolve",
+      resolutionEvidence: "f".repeat(64),
+    }), "RESOLUTION_EVIDENCE_REQUIRED");
+    const resolutionArtifact = sha256("self-test-resolution-artifact");
+    const resolutionReceipt = blockHarness.platform.issue("BLOCK_RESOLUTION", {
+      autonomy_run_id: "block",
+      task_id: "F0-01-REPO",
+      failed_event_id: blockedState.last_event_id,
+      failure_fingerprint: blockedState.failure_fingerprint,
+      resolution_artifact_sha256: resolutionArtifact,
+      candidate_commit: blockedState.candidate_commit,
+      context_hash: contextHashFor(blockHarness),
     });
-    forgedDraft.previous_event_hash = seedEvent.event_hash;
-    forgedDraft.event_hash = hashEvent(forgedDraft, forgedKey);
-    fs.appendFileSync(semanticHarness.orchestrator.store.eventsPath, `${JSON.stringify(forgedDraft)}\n`, "utf8");
-    expectError("events:signed-ready-to-verified-forgery-rejected", () => semanticHarness.orchestrator.store.read(), "EVENT_SEMANTICS_INVALID");
+    const resolved = blockHarness.orchestrator.transition({ runId: "block", taskId: "F0-01-REPO", toStatus: "READY", attemptId: "block-resolve", resolutionReceipt });
+    assertCheck("blocked:signed-original-fingerprint-resolution", resolved.to_status === "READY"
+      && resolved.payload.failure_fingerprint === blockedState.failure_fingerprint, resolved);
 
-    const tamperHarness = makeHarness();
-    tamperHarness.orchestrator.recordUsage({ runId: "run-tamper", execution: { tokens: 1, time_ms: 1, known_cost: null } });
-    const tamperedEvent = JSON.parse(fs.readFileSync(tamperHarness.orchestrator.store.eventsPath, "utf8").trim());
-    tamperedEvent.payload = { forged: true };
-    fs.writeFileSync(tamperHarness.orchestrator.store.eventsPath, `${JSON.stringify(tamperedEvent)}\n`, "utf8");
-    expectError("events:hmac-tamper-rejected", () => tamperHarness.orchestrator.store.read(), "EVENT_AUTHENTICATION_INVALID");
+    const retryHarness = makeHarness();
+    let lastImplementation = null;
+    const failThree = (start) => {
+      let event = null;
+      for (let offset = 0; offset < 3; offset += 1) {
+        const number = start + offset;
+        lastImplementation = implement({ harness: retryHarness, runId: "retry", attempt: `retry-${number}`, candidateCommit: sha256(`candidate-${number}`).slice(0, 40) });
+        event = review({ harness: retryHarness, runId: "retry", implementation: lastImplementation, role: "auditor", verdict: "FAIL", attempt: `audit-fail-${number}` }).event;
+      }
+      return event;
+    };
+    const firstReplan = failThree(1);
+    assertCheck("replan:first-three-reworks", firstReplan.to_status === "REPLAN" && firstReplan.counters.replan === 1, firstReplan);
+    const architectLease = signedLease(retryHarness, { runId: "retry", role: "architect", actorId: "architect-invalid", attemptId: "architect-1", candidateCommit: lastImplementation.candidateCommit });
+    const invalidArchitect = selfTestReport({
+      orchestrator: retryHarness.orchestrator,
+      fakeGit: retryHarness.fakeGit,
+      platform: retryHarness.platform,
+      role: "architect",
+      actorId: "architect-invalid",
+      sessionId: "architect-session-invalid",
+      attemptId: "architect-1",
+      baseCommit: architectLease.base_commit,
+      candidateCommit: lastImplementation.candidateCommit,
+      contextHash: lastImplementation.contextHash,
+      verdict: "REPLAN",
+      decision: { category: "A", reason: "claims will be changed" },
+    });
+    const invalidArchitectIdentity = clone(invalidArchitect);
+    invalidArchitectIdentity.identity_attestation.signature = Buffer.from("invalid-architect-signature").toString("base64");
+    resignReport(retryHarness, invalidArchitectIdentity);
+    expectError("architect:identity-witness-required", () => retryHarness.orchestrator.record({ runId: "retry", report: invalidArchitectIdentity }), "PLATFORM_RECEIPT_SIGNATURE_INVALID");
+    const selfArchitect = selfTestReport({
+      orchestrator: retryHarness.orchestrator,
+      fakeGit: retryHarness.fakeGit,
+      platform: retryHarness.platform,
+      role: "architect",
+      actorId: "architect-invalid",
+      sessionId: "architect-self-declared-session",
+      principalId: lastImplementation.coderReport.identity_attestation.claims.principal_id,
+      attestedSessionId: lastImplementation.coderReport.identity_attestation.claims.session_id,
+      attemptId: "architect-1",
+      baseCommit: architectLease.base_commit,
+      candidateCommit: lastImplementation.candidateCommit,
+      contextHash: lastImplementation.contextHash,
+      verdict: "REPLAN",
+      decision: { category: "A", reason: "same trusted session as coder" },
+    });
+    expectError("architect:must-be-independent-from-writer-and-reviewers", () => retryHarness.orchestrator.record({ runId: "retry", report: selfArchitect }), "SELF_REVIEW_BLOCKED");
+    invalidArchitect.decision.category = "B";
+    resignReport(retryHarness, invalidArchitect);
+    expectError("architect:self-reported-a-b-without-matching-boundary", () => retryHarness.orchestrator.record({ runId: "retry", report: invalidArchitect }), "PLATFORM_RECEIPT_CLAIMS_MISMATCH");
+    const validArchitect = selfTestReport({
+      orchestrator: retryHarness.orchestrator,
+      fakeGit: retryHarness.fakeGit,
+      platform: retryHarness.platform,
+      role: "architect",
+      actorId: "architect-invalid",
+      sessionId: "architect-session-valid",
+      attemptId: "architect-1",
+      baseCommit: architectLease.base_commit,
+      candidateCommit: lastImplementation.candidateCommit,
+      contextHash: lastImplementation.contextHash,
+      verdict: "REPLAN",
+      decision: { category: "A", reason: "signed technical boundary" },
+    });
+    const firstArchitectEvent = retryHarness.orchestrator.record({ runId: "retry", report: validArchitect });
+    assertCheck("architect:first-signed-replan", firstArchitectEvent.to_status === "READY" && firstArchitectEvent.counters.replan === 1, firstArchitectEvent);
+    const secondReplan = failThree(4);
+    assertCheck("replan:second-architect-opportunity", secondReplan.to_status === "REPLAN" && secondReplan.counters.replan === 2, secondReplan);
+    const secondArchitect = architectDecision({ harness: retryHarness, runId: "retry", implementation: lastImplementation, category: "B", attempt: "architect-2" });
+    assertCheck("architect:second-signed-replan", secondArchitect.event.to_status === "READY" && secondArchitect.event.counters.replan === 2, secondArchitect.event);
+    const exhausted = failThree(7);
+    assertCheck("replan:critical-exhaustion-after-two-architects", exhausted.to_status === "CREATOR_REQUIRED" && exhausted.creator_required_reason === "CRITICAL_PATH_REPLAN_LIMIT_EXHAUSTED", exhausted);
+    expectError("creator-required:cannot-clear-with-string", () => retryHarness.orchestrator.transition({ runId: "retry", taskId: "F0-01-REPO", toStatus: "READY", attemptId: "fake", creatorApprovalEvidence: "CREATOR_EXPLICIT_FAKE" }), "CREATOR_CONTROL_UPDATE_REQUIRED");
+    const noncriticalTask = retryHarness.orchestrator.router.tasks.find((task) => !retryHarness.orchestrator.isCriticalTask(task.id));
+    assertCheck("replan:noncritical-task-found", Boolean(noncriticalTask), noncriticalTask?.id);
+    const noncriticalDisposition = retryHarness.orchestrator.evidenceFailureState(noncriticalTask.id, { counters: { retry: 8, rework: 2, replan: 2 } }, Object.assign(new Error("failure"), { code: "TEST_FAILURE" }));
+    assertCheck("replan:noncritical-two-replans-block", noncriticalDisposition.toStatus === "BLOCKED" && noncriticalDisposition.decisionLevel === "BLOCKED_TECHNICAL", noncriticalDisposition);
+    assertCheck("critical:dependency-ancestry-includes-s1-fp001-03", retryHarness.orchestrator.isCriticalTask("S1-FP001-03"), "S1-FP001-03");
 
-    const tailHarness = makeHarness();
-    tailHarness.orchestrator.recordUsage({ runId: "run-tail", execution: { tokens: 1, time_ms: 1, known_cost: null } });
-    fs.appendFileSync(tailHarness.orchestrator.store.eventsPath, "{\"partial\":", "utf8");
-    const tailResume = tailHarness.orchestrator.resume({ runId: "run-tail" });
-    assertCheck("resume:truncated-tail-recovered", tailResume.recovered_truncated_tail?.rejected_tail_bytes > 0
-      && fs.existsSync(path.join(tailHarness.stateDir, tailResume.recovered_truncated_tail.quarantine_path)), tailResume.recovered_truncated_tail);
-    assertCheck("resume:recovered-log-valid", tailHarness.orchestrator.store.read().at(-1).event_type === "EVENT_LOG_TAIL_RECOVERED", tailHarness.orchestrator.store.read().at(-1));
+    const noncriticalCoderTask = retryHarness.orchestrator.router.tasks.find((task) => task.values["角色"] === "VIEW::CODER" && !retryHarness.orchestrator.isCriticalTask(task.id));
+    invariant(noncriticalCoderTask, "self-test requires a real noncritical coder Task");
+    const noncriticalHarness = makeHarness({ readyTaskId: noncriticalCoderTask.id });
+    let noncriticalImplementation = null;
+    const failNoncriticalThree = (start) => {
+      let event = null;
+      for (let offset = 0; offset < 3; offset += 1) {
+        const number = start + offset;
+        noncriticalImplementation = implement({
+          harness: noncriticalHarness,
+          runId: "noncritical-retry",
+          taskId: noncriticalCoderTask.id,
+          attempt: `noncritical-${number}`,
+          candidateCommit: sha256(`noncritical-candidate-${number}`).slice(0, 40),
+        });
+        event = review({
+          harness: noncriticalHarness,
+          runId: "noncritical-retry",
+          implementation: noncriticalImplementation,
+          role: "auditor",
+          verdict: "FAIL",
+          attempt: `noncritical-audit-fail-${number}`,
+        }).event;
+      }
+      return event;
+    };
+    const noncriticalFirstReplan = failNoncriticalThree(1);
+    const noncriticalFirstArchitect = architectDecision({ harness: noncriticalHarness, runId: "noncritical-retry", implementation: noncriticalImplementation, category: "A", attempt: "noncritical-architect-1" });
+    const noncriticalSecondReplan = failNoncriticalThree(4);
+    const noncriticalSecondArchitect = architectDecision({ harness: noncriticalHarness, runId: "noncritical-retry", implementation: noncriticalImplementation, category: "B", attempt: "noncritical-architect-2" });
+    const noncriticalExhausted = failNoncriticalThree(7);
+    assertCheck("replan:real-noncritical-two-architect-rounds", noncriticalFirstReplan.to_status === "REPLAN"
+      && noncriticalFirstArchitect.event.to_status === "READY"
+      && noncriticalSecondReplan.to_status === "REPLAN"
+      && noncriticalSecondArchitect.event.to_status === "READY", {
+      task_id: noncriticalCoderTask.id,
+      first_replan: noncriticalFirstReplan.to_status,
+      second_replan: noncriticalSecondReplan.to_status,
+    });
+    assertCheck("replan:real-noncritical-exhaustion-blocked", noncriticalExhausted.to_status === "BLOCKED"
+      && noncriticalExhausted.decision_level === "BLOCKED_TECHNICAL", noncriticalExhausted);
+
+    const architectCHarness = makeHarness();
+    let architectCImplementation = null;
+    for (let number = 1; number <= 3; number += 1) {
+      architectCImplementation = implement({
+        harness: architectCHarness,
+        runId: "architect-c",
+        attempt: `architect-c-${number}`,
+        candidateCommit: sha256(`architect-c-candidate-${number}`).slice(0, 40),
+      });
+      review({ harness: architectCHarness, runId: "architect-c", implementation: architectCImplementation, role: "auditor", verdict: "FAIL", attempt: `architect-c-audit-${number}` });
+    }
+    const architectC = architectDecision({ harness: architectCHarness, runId: "architect-c", implementation: architectCImplementation, category: "C", attempt: "architect-c-decision" });
+    assertCheck("architect:c-hard-stops-creator-required", architectC.event.to_status === "CREATOR_REQUIRED"
+      && architectC.event.decision_level === "CREATOR_REQUIRED", architectC.event);
+    const architectCLines = fs.readFileSync(architectCHarness.orchestrator.store.eventsPath, "utf8").trimEnd().split(/\r?\n/);
+    const forgedArchitectC = JSON.parse(architectCLines.at(-1));
+    forgedArchitectC.to_status = "READY";
+    forgedArchitectC.decision_level = "ARCHITECT_AUTONOMOUS";
+    forgedArchitectC.creator_required_reason = null;
+    forgedArchitectC.event_hash = hashEvent(forgedArchitectC);
+    architectCLines[architectCLines.length - 1] = JSON.stringify(forgedArchitectC);
+    fs.writeFileSync(architectCHarness.orchestrator.store.eventsPath, `${architectCLines.join("\n")}\n`, "utf8");
+    expectError("events:architect-c-cannot-be-remapped-to-ready", () => architectCHarness.orchestrator.store.read(), "EVENT_ARCHITECT_DECISION_INVALID");
+
+    const selfReviewHarness = makeHarness();
+    const selfReviewImplementation = implement({ harness: selfReviewHarness, runId: "self-review", attempt: "self-1", candidateCommit: "5".repeat(40), principalId: "shared-principal", attestedSessionId: "shared-session" });
+    passReviews({ harness: selfReviewHarness, runId: "self-review", implementation: selfReviewImplementation, suffix: "self", identities: { auditorPrincipal: "shared-principal", auditorSession: "shared-session" } });
+    expectError("identity:trusted-self-review-blocked", () => selfReviewHarness.orchestrator.verifyEvidence({ runId: "self-review", taskId: "F0-01-REPO", candidateCommit: selfReviewImplementation.candidateCommit, verificationReceipt: verificationReceipt(selfReviewHarness) }), "SELF_REVIEW_BLOCKED");
+
+    const dirtyHarness = makeHarness();
+    const dirtyImplementation = implement({ harness: dirtyHarness, runId: "dirty", attempt: "dirty-1", candidateCommit: "6".repeat(40) });
+    passReviews({ harness: dirtyHarness, runId: "dirty", implementation: dirtyImplementation, suffix: "dirty" });
+    dirtyHarness.fakeGit.clean = false;
+    expectError("evidence:dirty-worktree", () => dirtyHarness.orchestrator.verifyEvidence({ runId: "dirty", taskId: "F0-01-REPO", candidateCommit: dirtyImplementation.candidateCommit, verificationReceipt: verificationReceipt(dirtyHarness) }), "WORKTREE_DIRTY");
+    assertCheck("evidence:dirty-enters-rework", dirtyHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "REWORK", dirtyHarness.orchestrator.store.read().at(-1));
+
+    const staleHarness = makeHarness();
+    const staleImplementation = implement({ harness: staleHarness, runId: "stale", attempt: "stale-1", candidateCommit: "7".repeat(40) });
+    passReviews({ harness: staleHarness, runId: "stale", implementation: staleImplementation, suffix: "stale" });
+    staleHarness.fakeGit.commits.add("8".repeat(40));
+    staleHarness.fakeGit.headCommit = "8".repeat(40);
+    expectError("evidence:new-commit-invalidates-audit", () => staleHarness.orchestrator.verifyEvidence({ runId: "stale", taskId: "F0-01-REPO", candidateCommit: staleImplementation.candidateCommit, verificationReceipt: verificationReceipt(staleHarness) }), "STALE_CANDIDATE_COMMIT");
+
+    const resumeStaleHarness = makeHarness();
+    const resumeStaleImplementation = implement({ harness: resumeStaleHarness, runId: "resume-stale", attempt: "resume-stale-1", candidateCommit: "9".repeat(40) });
+    resumeStaleHarness.fakeGit.commits.add("a".repeat(40));
+    resumeStaleHarness.fakeGit.headCommit = "a".repeat(40);
+    const staleResume = resumeStaleHarness.orchestrator.resume({ runId: "resume-stale-new-run" });
+    assertCheck("resume:stale-candidate-enters-rework", staleResume.recovered_stale_candidates.length === 1
+      && resumeStaleHarness.orchestrator.project().taskStates.get("F0-01-REPO").status === "REWORK", staleResume);
+
+    const forgeHarness = makeHarness();
+    const forgeImplementation = implement({ harness: forgeHarness, runId: "forge", attempt: "forge-1", candidateCommit: "b".repeat(40) });
+    passReviews({ harness: forgeHarness, runId: "forge", implementation: forgeImplementation, suffix: "forge" });
+    verifySigned(forgeHarness, "forge", forgeImplementation);
+    const forgedLines = fs.readFileSync(forgeHarness.orchestrator.store.eventsPath, "utf8").trimEnd().split(/\r?\n/);
+    const forgedFinal = JSON.parse(forgedLines.at(-1));
+    forgedFinal.platform_receipts = [];
+    forgedFinal.event_hash = hashEvent(forgedFinal);
+    forgedLines[forgedLines.length - 1] = JSON.stringify(forgedFinal);
+    fs.writeFileSync(forgeHarness.orchestrator.store.eventsPath, `${forgedLines.join("\n")}\n`, "utf8");
+    expectError("events:recomputed-chain-cannot-forge-verified", () => forgeHarness.orchestrator.store.read(), "PLATFORM_RECEIPT_REQUIRED");
+    assertCheck("events:no-signing-private-key-in-state-dir", fs.readdirSync(forgeHarness.stateDir).every((name) => !name.includes("key") && !name.includes("private")), fs.readdirSync(forgeHarness.stateDir));
+
+    const newlineHarness = makeHarness();
+    const meterOne = signedMeter(newlineHarness, "newline", { tokens: 1, timeMs: 1, knownCost: null });
+    newlineHarness.orchestrator.recordUsage({ runId: "newline", meterReceipt: meterOne });
+    const noNewline = fs.readFileSync(newlineHarness.orchestrator.store.eventsPath, "utf8").trimEnd();
+    fs.writeFileSync(newlineHarness.orchestrator.store.eventsPath, noNewline, "utf8");
+    const meterTwo = signedMeter(newlineHarness, "newline", { tokens: 1, timeMs: 1, knownCost: null });
+    newlineHarness.orchestrator.recordUsage({ runId: "newline", meterReceipt: meterTwo });
+    assertCheck("events:complete-json-no-newline-append-safe", newlineHarness.orchestrator.store.read().length === 2, fs.readFileSync(newlineHarness.orchestrator.store.eventsPath, "utf8").split(/\r?\n/).length);
+
+    const completeTailHarness = makeHarness();
+    completeTailHarness.orchestrator.recordUsage({ runId: "complete-tail", meterReceipt: signedMeter(completeTailHarness, "complete-tail", { tokens: 1, timeMs: 1, knownCost: null }) });
+    fs.writeFileSync(completeTailHarness.orchestrator.store.eventsPath, fs.readFileSync(completeTailHarness.orchestrator.store.eventsPath, "utf8").trimEnd(), "utf8");
+    const completeTailResume = completeTailHarness.orchestrator.resume({ runId: "complete-tail" });
+    assertCheck("resume:complete-json-tail-normalized", completeTailResume.recovered_truncated_tail?.complete_tail_newline_added === true
+      && completeTailHarness.orchestrator.store.read().at(-1).event_type === "EVENT_LOG_TAIL_RECOVERED", completeTailResume.recovered_truncated_tail);
+
+    const deterministicHarness = makeHarness();
+    deterministicHarness.orchestrator.recordUsage({ runId: "deterministic", meterReceipt: signedMeter(deterministicHarness, "deterministic", { tokens: 1, timeMs: 2, knownCost: 0 }) });
+    const firstDeterministicResume = deterministicHarness.orchestrator.resume({ runId: "deterministic" });
+    const secondDeterministicResume = deterministicHarness.orchestrator.resume({ runId: "deterministic" });
+    assertCheck("resume:deterministic-replay", firstDeterministicResume.replay_hash === secondDeterministicResume.replay_hash
+      && firstDeterministicResume.event_count === secondDeterministicResume.event_count
+      && stableJson(firstDeterministicResume.next) === stableJson(secondDeterministicResume.next), {
+      first: firstDeterministicResume,
+      second: secondDeterministicResume,
+    });
+
+    const truncatedHarness = makeHarness();
+    truncatedHarness.orchestrator.recordUsage({ runId: "truncated", meterReceipt: signedMeter(truncatedHarness, "truncated", { tokens: 1, timeMs: 1, knownCost: null }) });
+    fs.appendFileSync(truncatedHarness.orchestrator.store.eventsPath, "{\"partial\":", "utf8");
+    const truncatedResume = truncatedHarness.orchestrator.resume({ runId: "truncated" });
+    assertCheck("resume:invalid-tail-quarantined", truncatedResume.recovered_truncated_tail?.rejected_tail_bytes > 0
+      && fs.existsSync(path.join(truncatedHarness.stateDir, truncatedResume.recovered_truncated_tail.quarantine_path)), truncatedResume.recovered_truncated_tail);
+
+    let leaseClock = new Date("2026-07-11T12:00:00.000Z");
+    const crossRunHarness = makeHarness({ clock: () => new Date(leaseClock) });
+    signedLease(crossRunHarness, { runId: "old-run", role: "coder", actorId: "old-writer", attemptId: "old-lease", ttlSeconds: 1 });
+    leaseClock = new Date("2026-07-11T12:00:02.000Z");
+    const crossRunResume = crossRunHarness.orchestrator.resume({ runId: "new-run" });
+    const newRunLease = signedLease(crossRunHarness, { runId: "new-run", role: "coder", actorId: "new-writer", attemptId: "new-lease" });
+    assertCheck("lease:cross-run-expiry-recovered", crossRunResume.recovered_expired_leases.length === 1
+      && newRunLease.to_status === "LEASED", { crossRunResume, newRunLease });
+
+    const budgetHarness = makeHarness({ policyChanges: { budget: { limits: { tokens: 100, elapsed_ms: null, known_cost: null } } } });
+    expectError("budget:caller-usage-without-meter-rejected", () => budgetHarness.orchestrator.recordUsage({ runId: "budget", execution: { tokens: 80, time_ms: 0, known_cost: null } }), "PLATFORM_RECEIPT_REQUIRED");
+    const eighty = signedMeter(budgetHarness, "budget", { tokens: 80, timeMs: 0, knownCost: null });
+    budgetHarness.orchestrator.recordUsage({ runId: "budget", meterReceipt: eighty, limits: { tokens: 1000000 } });
+    assertCheck("budget:registered-limit-cannot-be-overridden", budgetHarness.orchestrator.budgetState("budget").dimensions.find((item) => item.name === "tokens").limit === 100
+      && budgetHarness.orchestrator.budgetState("budget").state === "NOTIFY_80_PERCENT", budgetHarness.orchestrator.budgetState("budget"));
+    const twenty = signedMeter(budgetHarness, "budget", { tokens: 20, timeMs: 0, knownCost: null });
+    budgetHarness.orchestrator.recordUsage({ runId: "budget", meterReceipt: twenty });
+    assertCheck("budget:platform-metered-100-hard-stop", budgetHarness.orchestrator.evaluateAction("PRODUCT_TASK_WRITE", "budget").reason === "BUDGET_100_PERCENT_OR_UNKNOWN_COST", budgetHarness.orchestrator.budgetState("budget"));
+    expectError("budget:meter-receipt-reuse-rejected", () => budgetHarness.orchestrator.recordUsage({ runId: "budget", meterReceipt: twenty }), "PLATFORM_RECEIPT_REUSED");
+    const tamperedMeter = clone(signedMeter(budgetHarness, "budget-tampered", { tokens: 1, timeMs: 1, knownCost: 0 }));
+    tamperedMeter.claims.tokens = 2;
+    expectError("budget:tampered-meter-signature-rejected", () => budgetHarness.orchestrator.recordUsage({ runId: "budget-tampered", meterReceipt: tamperedMeter }), "PLATFORM_RECEIPT_SIGNATURE_INVALID");
+    const reportBudgetHarness = makeHarness({ policyChanges: { budget: { limits: { tokens: 100, elapsed_ms: null, known_cost: null } } } });
+    implement({ harness: reportBudgetHarness, runId: "report-budget", attempt: "report-budget-1", candidateCommit: "c".repeat(40), mutateReport: (report) => { report.execution.tokens = 999999; } });
+    assertCheck("budget:role-report-usage-not-authoritative", reportBudgetHarness.orchestrator.budgetState("report-budget").dimensions.find((item) => item.name === "tokens").used === 0, reportBudgetHarness.orchestrator.budgetState("report-budget"));
 
     const lockHarness = makeHarness();
     const oldOwner = lockHarness.orchestrator.store.acquireLock();
     fs.closeSync(oldOwner.descriptor);
     oldOwner.descriptor = fs.openSync(os.devNull, "r");
-    const replacement = { nonce: "replacement-owner", pid: process.pid, hostname: os.hostname(), acquired_at: new Date().toISOString() };
-    fs.writeFileSync(lockHarness.orchestrator.store.lockPath, JSON.stringify(replacement), "utf8");
+    fs.writeFileSync(lockHarness.orchestrator.store.lockPath, JSON.stringify({ nonce: "replacement-owner", pid: process.pid, hostname: os.hostname(), acquired_at: new Date().toISOString() }), "utf8");
     lockHarness.orchestrator.store.releaseLock(oldOwner);
-    const replacementSurvived = fs.existsSync(lockHarness.orchestrator.store.lockPath)
-      && JSON.parse(fs.readFileSync(lockHarness.orchestrator.store.lockPath, "utf8")).nonce === replacement.nonce;
-    assertCheck("lock:old-owner-cannot-delete-replacement", replacementSurvived, replacement);
+    assertCheck("lock:old-owner-cannot-delete-replacement", fs.existsSync(lockHarness.orchestrator.store.lockPath), lockHarness.orchestrator.store.lockRecord());
     if (fs.existsSync(lockHarness.orchestrator.store.lockPath)) fs.unlinkSync(lockHarness.orchestrator.store.lockPath);
 
-    let resumeClock = new Date("2026-07-11T12:00:00.000Z");
-    const resumeHarness = makeHarness({ clock: () => new Date(resumeClock) });
-    resumeHarness.orchestrator.lease({ runId: "run-resume", taskId: "F0-01-REPO", role: "coder", actorId: "resume-writer", attemptId: "resume-1", ttlSeconds: 1 });
-    resumeClock = new Date("2026-07-11T12:00:02.000Z");
-    const firstResume = resumeHarness.orchestrator.resume({ runId: "run-resume" });
-    const reopened = new ProjectOrchestrator({
-      root,
-      stateDir: resumeHarness.stateDir,
-      policy: resumeHarness.policy,
-      router,
-      git: resumeHarness.fakeGit,
-      clock: () => new Date(resumeClock),
-      idFactory: () => `self-test-v2-${String(++idCounter).padStart(6, "0")}`,
-      identityAttestor: resumeHarness.attestor,
-      testControlOverrides: approvedControl,
-      authority: SELF_TEST_AUTHORITY,
-    });
-    const secondResume = reopened.resume({ runId: "run-resume" });
-    assertCheck("resume:expired-lease-recovered", firstResume.recovered_expired_leases.length === 1
-      && firstResume.next.task_id === "F0-01-REPO", firstResume);
-    assertCheck("resume:deterministic-replay", secondResume.recovered_expired_leases.length === 0
-      && secondResume.replay_hash === firstResume.replay_hash
-      && secondResume.next.task_id === firstResume.next.task_id, { first: firstResume.replay_hash, second: secondResume.replay_hash });
-
-    const diffRoot = fs.mkdtempSync(path.join(os.tmpdir(), "g07-delete-diff-"));
+    const diffRoot = fs.mkdtempSync(path.join(os.tmpdir(), "g07-delete-diff-v3-"));
     tempRoots.push(diffRoot);
     const runFixtureGit = (args) => {
       const result = spawnSync("git", args, { cwd: diffRoot, encoding: "utf8", windowsHide: true });
@@ -2566,35 +3448,11 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     const deletionCandidate = runFixtureGit(["rev-parse", "HEAD"]);
     assertCheck("scope:deleted-path-included", new GitClient(diffRoot).diffNames(deletionBase, deletionCandidate).includes("deleted-scope.txt"), new GitClient(diffRoot).diffNames(deletionBase, deletionCandidate));
 
-    const actionHarness = makeHarness();
     for (const action of MANDATORY_HARD_STOP_ACTIONS) {
-      const result = actionHarness.orchestrator.evaluateAction(action, "run-actions");
-      assertCheck(`hard-stop:${action.toLowerCase()}`, result.allowed === false
-        && result.hard_stop === true
-        && result.decision_level === "ENVIRONMENT_APPROVAL_REQUIRED", result);
+      const result = promptHarness.orchestrator.evaluateAction(action, "actions");
+      assertCheck(`hard-stop:${action}`, !result.allowed && result.hard_stop, result);
     }
-    for (const action of ["MERGE_TO_MAIN", "WRITE_G07_GATE_APPROVED"]) {
-      const result = actionHarness.orchestrator.evaluateAction(action, "run-actions");
-      assertCheck(`hard-stop:${action.toLowerCase()}`, result.allowed === false
-        && result.hard_stop === true
-        && result.decision_level === "CREATOR_REQUIRED", result);
-    }
-
-    const budgetHarness = makeHarness({ policyChanges: { budget: { limits: { tokens: 100, elapsed_ms: null, known_cost: null } } } });
-    budgetHarness.orchestrator.recordUsage({ runId: "run-budget", execution: { tokens: 80, time_ms: 0, known_cost: null } });
-    assertCheck("budget:80-percent-notify", budgetHarness.orchestrator.budgetState("run-budget").state === "NOTIFY_80_PERCENT", budgetHarness.orchestrator.budgetState("run-budget"));
-    budgetHarness.orchestrator.recordUsage({ runId: "run-budget", execution: { tokens: 20, time_ms: 0, known_cost: null } });
-    const budgetStop = budgetHarness.orchestrator.evaluateAction("PRODUCT_TASK_WRITE", "run-budget");
-    assertCheck("budget:100-percent-hard-stop", budgetStop.allowed === false
-      && budgetStop.hard_stop === true
-      && budgetStop.reason === "BUDGET_100_PERCENT_OR_UNKNOWN_COST", budgetStop);
-
-    const reportBefore = promptHarness.orchestrator.store.read().length;
-    const businessReport = promptHarness.orchestrator.projectReport({ runId: "run-prompt", sliceId: "F0" });
-    const reportAfter = promptHarness.orchestrator.store.read().length;
-    assertCheck("report:no-gate-or-state-change", businessReport.g07_gate_unchanged === "PENDING"
-      && reportBefore === reportAfter, businessReport.g07_gate_unchanged);
-    assertCheck("projection:not-manually-maintained", !fs.existsSync(path.join(goodHarness.stateDir, "projection.json")), goodHarness.stateDir);
+    assertCheck("events:projection-not-manual", !fs.existsSync(path.join(goodHarness.stateDir, "projection.json")), goodHarness.stateDir);
   } finally {
     for (const tempRoot of tempRoots) {
       const resolved = path.resolve(tempRoot);
@@ -2604,17 +3462,16 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
 
   const passed = checks.filter((check) => check.passed).length;
   return {
-    schema_version: "project-orchestrator-self-test/v2",
+    schema_version: "project-orchestrator-self-test/v3",
     passed: passed === checks.length,
     assertions: { passed, failed: checks.length - passed, total: checks.length },
     failed_checks: checks.filter((check) => !check.passed),
     coverage: {
-      dry_run: ["unique F0-01", "empty GLOBAL FP set", "event/projection/product snapshots"],
-      policy: ["registered hash", "phase/Gate", "compiled hard stops", "deep freeze", "injection refusal"],
-      evidence: ["current control context", "clean worktree", "trusted identity", "scope including deletion", "secret", "same commit"],
-      event_log: ["HMAC", "private writer authority", "semantic replay", "truncated-tail recovery", "nonce lock ownership"],
-      recovery: ["failed evidence events", "three reworks", "two Replans", "critical ancestry", "deterministic resume"],
-      roles: ["coder", "auditor", "reviewer", "architect", "slice_gate_runner"],
+      guard: ["normalized known actions", "default deny unknown/destructive/external/paid"],
+      platform_trust: ["production Ed25519 provider path", "no private key in workspace", "receipt claims/signature/reuse"],
+      evidence: ["command stdout/regression", "identity", "audit", "review", "Git/scope/secret", "VERIFICATION_GATE replay"],
+      recovery: ["intermittent failure", "two Architect replans", "noncritical exhaustion", "cross-run lease", "stale candidate", "complete/truncated tail"],
+      budget: ["registered immutable limits", "platform metering only", "80/100 thresholds"],
     },
   };
 }
@@ -2641,16 +3498,25 @@ function parseCli(argv) {
   return { command, options };
 }
 
+function readCliJson(options, key, flag) {
+  invariant(options[key], `${flag} is required`, "CLI_ARGUMENT_INVALID");
+  const resolved = path.resolve(options[key]);
+  const basename = path.basename(resolved).toLowerCase();
+  invariant(basename !== ".env" && !basename.startsWith(".env."), `${flag} cannot read an environment file`, "CREDENTIAL_ACCESS");
+  return readJsonFile(resolved);
+}
+
 function usage() {
   return [
     "Usage:",
     "  node tools/project-orchestrator.mjs status [--run-id ID]",
     "  node tools/project-orchestrator.mjs dry-run [--run-id ID]",
-    "  node tools/project-orchestrator.mjs lease --run-id ID [--task-id ID] --role ROLE --actor-id ID --attempt-id ID [--ttl-seconds N]",
+    "  node tools/project-orchestrator.mjs lease --run-id ID [--task-id ID] --role ROLE --actor-id ID --attempt-id ID --platform-receipt-file PATH [--ttl-seconds N]",
     "  node tools/project-orchestrator.mjs record --run-id ID --report-file PATH",
-    "  node tools/project-orchestrator.mjs verify-evidence --run-id ID --task-id ID --candidate-commit SHA [--context-hash SHA256]",
-    "  node tools/project-orchestrator.mjs transition --run-id ID --task-id ID --to-status STATUS [--candidate-commit SHA]",
-    "  node tools/project-orchestrator.mjs unlock --run-id ID",
+    "  node tools/project-orchestrator.mjs verify-evidence --run-id ID --task-id ID --candidate-commit SHA --verification-receipt-file PATH [--context-hash SHA256]",
+    "  node tools/project-orchestrator.mjs transition --run-id ID --task-id ID --to-status STATUS [--platform-receipt-file PATH | --resolution-receipt-file PATH] [--candidate-commit SHA]",
+    "  node tools/project-orchestrator.mjs unlock --run-id ID --receipts-file PATH",
+    "  node tools/project-orchestrator.mjs record-usage --run-id ID --meter-receipt-file PATH",
     "  node tools/project-orchestrator.mjs resume --run-id ID",
     "  node tools/project-orchestrator.mjs report [--run-id ID] [--slice-id ID]",
     "  node tools/project-orchestrator.mjs prompt --role ROLE [--task-id ID] [--slice-id ID] [--candidate-commit SHA]",
@@ -2670,8 +3536,8 @@ function main() {
     }
     invariant(command, usage(), "CLI_USAGE");
     const root = options.root ? path.resolve(options.root) : DEFAULT_ROOT;
-    const stateDir = options.state_dir ? path.resolve(options.state_dir) : null;
-    const orchestrator = new ProjectOrchestrator({ root, stateDir });
+    invariant(!options.state_dir, "--state-dir is reserved for internal self-test authority", "CLI_ARGUMENT_INVALID");
+    const orchestrator = new ProjectOrchestrator({ root });
     const common = { runId: options.run_id ?? "default" };
     let output;
     if (command === "status") output = orchestrator.status(common);
@@ -2686,27 +3552,34 @@ function main() {
       contextHash: options.context_hash,
       baseCommit: options.base_commit,
       candidateCommit: options.candidate_commit,
+      platformReceipt: readCliJson(options, "platform_receipt_file", "--platform-receipt-file"),
     });
-    else if (command === "record") output = orchestrator.record({ ...common, report: readJsonFile(path.resolve(options.report_file)) });
+    else if (command === "record") output = orchestrator.record({ ...common, report: readCliJson(options, "report_file", "--report-file") });
     else if (command === "verify-evidence") output = orchestrator.verifyEvidence({
       ...common,
       taskId: options.task_id,
       candidateCommit: options.candidate_commit,
       contextHash: options.context_hash,
       attemptId: options.attempt_id,
+      verificationReceipt: readCliJson(options, "verification_receipt_file", "--verification-receipt-file"),
     });
-    else if (command === "transition") output = orchestrator.transition({
-      ...common,
-      taskId: options.task_id,
-      toStatus: options.to_status,
-      attemptId: options.attempt_id,
-      role: options.role ?? "orchestrator",
-      candidateCommit: options.candidate_commit,
-      contextHash: options.context_hash,
-      decisionLevel: options.decision_level ?? "TASK_AUTONOMOUS",
-      resolutionEvidence: options.resolution_evidence,
-    });
-    else if (command === "unlock") output = orchestrator.unlock(common);
+    else if (command === "transition") {
+      invariant(Boolean(options.platform_receipt_file) !== Boolean(options.resolution_receipt_file), "transition requires exactly one platform or resolution receipt file", "CLI_ARGUMENT_INVALID");
+      output = orchestrator.transition({
+        ...common,
+        taskId: options.task_id,
+        toStatus: options.to_status,
+        attemptId: options.attempt_id,
+        role: options.role ?? "orchestrator",
+        candidateCommit: options.candidate_commit,
+        contextHash: options.context_hash,
+        decisionLevel: options.decision_level ?? "TASK_AUTONOMOUS",
+        platformReceipt: options.platform_receipt_file ? readCliJson(options, "platform_receipt_file", "--platform-receipt-file") : null,
+        resolutionReceipt: options.resolution_receipt_file ? readCliJson(options, "resolution_receipt_file", "--resolution-receipt-file") : null,
+      });
+    }
+    else if (command === "unlock") output = orchestrator.unlock({ ...common, receiptsByTask: readCliJson(options, "receipts_file", "--receipts-file") });
+    else if (command === "record-usage") output = orchestrator.recordUsage({ ...common, meterReceipt: readCliJson(options, "meter_receipt_file", "--meter-receipt-file") });
     else if (command === "resume") output = orchestrator.resume(common);
     else if (command === "report") output = orchestrator.projectReport({ ...common, sliceId: options.slice_id ?? null });
     else if (command === "prompt") output = orchestrator.rolePrompt({
