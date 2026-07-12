@@ -1,20 +1,20 @@
 {
-  "schema_version": "g07-a-evidence/v9",
-  "evidence_status": "SUPERSEDED_IMPLEMENTATION_EVIDENCE",
+  "schema_version": "g07-a-evidence/v10",
+  "evidence_status": "ACTIVE_IMPLEMENTATION_EVIDENCE",
   "implementation": {
     "branch": "autonomy/integration",
     "g01_g06_base_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
-    "candidate_commit": "2d1cbfc1d005c466dd1b1d61832f5d62b9d395d3",
+    "candidate_commit": "c5c5e9460e875a3c66e748c514ebd23cd3d1aabe",
     "g07_gate": "PENDING",
     "g07_a_status": "IMPLEMENTED",
     "product_task_executed": false
   },
   "artifacts": {
     "tools/project-context-loader.mjs": "10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47",
-    "tools/project-orchestrator.mjs": "b9fef6b683fd9ba7a0722158c0cc9b15ad59eb28c0df603c2a0439477e1fcaad",
-    "tools/g07-control-evidence.mjs": "75acc3f28c5bd62528d3cff8eb1fa24803fda0d8aa2b9b2932ff644fffcd7623",
+    "tools/project-orchestrator.mjs": "b7740b350f6be74ee7359075354056002d27aee4e1d5cbec12bf1917237d86bd",
+    "tools/g07-control-evidence.mjs": "ba89c4402d3969b4aa08107cb7657f2168d6444ed3564104a4e259fc35b1cfd1",
     "tools/g07-sensitive-patterns.mjs": "6a565f3538a524d5c95b88f61ba5e59d9246d438ee67216cefba2c0f477dfba7",
-    ".autonomy/policy.json": "8a666932120f31f1c83711a8759e3591a5859233470e25a60a56e0e3ce8af01e"
+    ".autonomy/policy.json": "e171d92c9e7092006bc7279c9b7a1553baa8f36fef2e58824e0de742a20eb370"
   },
   "mechanical_claims": {
     "validation_version": "G07_EVIDENCE_SEMANTIC_V1",
@@ -45,9 +45,9 @@
         "command": "node tools/project-orchestrator.mjs --self-test",
         "exit_code": 0,
         "assertions": {
-          "passed": 138,
+          "passed": 161,
           "failed": 0,
-          "total": 138
+          "total": 161
         }
       },
       "evidence_tool": {
@@ -85,12 +85,12 @@
       "contracts": [
         {
           "key": "G07_A_POLICY_SCHEMA",
-          "expected": "g07-autonomy-policy/v5",
+          "expected": "g07-autonomy-policy/v6",
           "matches": true
         },
         {
           "key": "G07_A_REPORT_SCHEMA",
-          "expected": "g07-role-report/v5",
+          "expected": "g07-role-report/v6",
           "matches": true
         },
         {
@@ -124,7 +124,7 @@
     },
     "implementation_scope": {
       "base_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
-      "candidate_commit": "2d1cbfc1d005c466dd1b1d61832f5d62b9d395d3",
+      "candidate_commit": "c5c5e9460e875a3c66e748c514ebd23cd3d1aabe",
       "changed_paths": [
         ".autonomy/.gitignore",
         ".autonomy/policy.json",
@@ -138,6 +138,7 @@
         "docs/G07_A_EVIDENCE_V6.json",
         "docs/G07_A_EVIDENCE_V7.json",
         "docs/G07_A_EVIDENCE_V8.json",
+        "docs/G07_A_EVIDENCE_V9.json",
         "docs/IMPLEMENTATION_CONTROL.md",
         "tools/g07-control-evidence.mjs",
         "tools/g07-sensitive-patterns.mjs",
@@ -146,25 +147,21 @@
       ],
       "unexpected_paths": [],
       "scope_passed": true,
-      "candidate_diff_sha256": "c2662fafdea7b778da538aa27493efea1d9947ef3358b25b8e72b79a70358ebb",
+      "candidate_diff_sha256": "d3189b156bfd809b2e94a25970300baa7115bf2f4e7d69b7decdffdc268dfd30",
       "secret_scan": {
         "version": "G07_CANDIDATE_BLOBS_V2",
         "passed": true,
         "hit_types": [],
-        "scanned_blob_count": 17,
+        "scanned_blob_count": 18,
         "binary_blob_count": 0
       }
     }
   },
   "annotations": {
     "finding_closures": {
-      "P0_fine_grained_pat": "Both candidate scanners import one registered rule source and block github_pat_ plus the previously registered key formats in text or binary Git blobs.",
-      "P1_budget_review_stop": "At 100 percent, only CONTROL_PLANE_READ remains allowed; Task/Slice leases, read-only review, role/model, external and paid actions are blocked before dispatch.",
-      "P1_owner_rework_dispatch": "REWORK dispatch derives the primary role from the Task Index owner, including Auditor-owned evidence Tasks.",
-      "P1_prompt_editor_receipt": "Prompt Editor writer prompts require exact acceptance execution through a COMMAND_EXECUTION receipt and the workspace capability.",
-      "P1_report_rejection": "Invalid context, identity, model witness, stale candidate or Architect report on an active lease appends REPORT_REJECTED with a failure fingerprint, releases Task leases and moves to the machine-selected failure state.",
-      "P1_model_identity": "Every role report binds the registered recommended model tier and actual model through a platform-signed MODEL_SESSION receipt that is revalidated during replay.",
-      "P1_execution_view": "DEV_HARNESS exposes machine-readable active fields; --all compares them with IMPLEMENTATION_CONTROL and rejects a targeted semantic drift probe."
+      "P0_selector_spoofing": "A rejected report can affect a lease only when one platform-signed ROLE_REPORT receipt binds the exact submitted report hash and the active lease_id, actor_id, role, Task/Slice and attempt. Any provided selector that differs from the signed lease identity produces no event, state change or lease release.",
+      "P1_malformed_report_recovery": "Missing selector fields recover only through the exact lease-bound report receipt. The rejection releases that lease alone; a sibling Task lease remains active and the Task stays VERIFYING. Replay revalidates the receipt, submitted-selector projection and sibling lease set.",
+      "negative_fault_injection": "Tests cover forged actor, changed role, changed attempt, changed lease, changed Task, missing role/actor/attempt/lease/Task, two simultaneous review leases, cross-lease isolation and forged rejection-event replay."
     },
     "hash_normalization": {
       "version": "SEMANTIC_NORMALIZED_V1",
