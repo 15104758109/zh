@@ -11,6 +11,7 @@ const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const DEFAULT_ROOT = path.resolve(path.dirname(SCRIPT_PATH), "..");
 const CONTROL_PATH = "docs/IMPLEMENTATION_CONTROL.md";
 const HARNESS_PATH = "DEV_HARNESS.md";
+const README_PATH = "README.md";
 const POLICY_PATH = ".autonomy/policy.json";
 const BASELINE_COMMIT = "7faa8c132de6a2e66829d3d4b89364b56181e022";
 const BASELINE_LOADER_PATH = "tools/project-context-loader.mjs";
@@ -47,6 +48,7 @@ const ALLOWED_G07_PATHS = new Set([
   "docs/G07_A_EVIDENCE_V8.json",
   "docs/G07_A_EVIDENCE_V9.json",
   "docs/G07_A_EVIDENCE_V10.json",
+  "docs/G07_A_EVIDENCE_V11.json",
   "docs/IMPLEMENTATION_CONTROL.md",
   "tools/g07-control-evidence.mjs",
   "tools/g07-sensitive-patterns.mjs",
@@ -80,6 +82,26 @@ const ACTIVE_HASH_REGISTRATIONS = [
   ...ACTIVE_ARTIFACT_REGISTRATIONS.map(([, hashKey]) => hashKey),
   "G07_A_EVIDENCE_SHA256",
 ];
+
+const GOVERNANCE_MIRROR_KEYS = Object.freeze([
+  "G07_GATE",
+  "G07_A_STATUS",
+  "G07_A_COMMIT",
+  "G07_A_EVIDENCE_STATUS",
+  "G07_A_EVIDENCE_PATH",
+  "G07_A_EVIDENCE_SHA256",
+  "G07_LATEST_AUDIT_P0",
+  "G07_LATEST_AUDIT_P1",
+  "G07_LATEST_AUDIT_P2",
+  "G07_LATEST_AUDIT_DISPOSITION",
+]);
+
+const REMEDIATED_AUDIT_DISPOSITION = "REMEDIATED_AWAITING_INDEPENDENT_REAUDIT";
+const STALE_GOVERNANCE_PATTERNS = Object.freeze([
+  /最新(?:独立审计为 )?P0=0、P1=2/,
+  /已完成 v6 返修/,
+  /最新 G07-B/,
+]);
 
 function invariant(condition, message, code = "G07_EVIDENCE_ERROR", details = null) {
   if (condition) return;
@@ -131,6 +153,10 @@ function gitText(root, args) {
 
 function documentValues(root, relativePath) {
   const text = fs.readFileSync(path.join(root, relativePath), "utf8");
+  return documentValuesFromText(text);
+}
+
+function documentValuesFromText(text) {
   return new Map([...text.matchAll(/^([A-Z0-9_-]+)=(.*)$/gm)].map((match) => [match[1], match[2].trim()]));
 }
 
@@ -277,6 +303,74 @@ function harnessControlConsistency(root, values = controlValues(root)) {
   };
 }
 
+function tableRow(text, key) {
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trimStart().startsWith("|")) continue;
+    const cells = line.trim().slice(1, -1).split("|").map((cell) => cell.trim());
+    if ((cells[0] ?? "").replaceAll("`", "") === key) return cells;
+  }
+  return null;
+}
+
+function governanceSemanticConsistency(root, values = controlValues(root), overrides = {}) {
+  const controlText = overrides.controlText ?? fs.readFileSync(path.join(root, CONTROL_PATH), "utf8");
+  const readmeText = overrides.readmeText ?? fs.readFileSync(path.join(root, README_PATH), "utf8");
+  const readmeValues = documentValuesFromText(readmeText);
+  const comparisons = GOVERNANCE_MIRROR_KEYS.map((key) => ({
+    key,
+    control: values.get(key) ?? null,
+    readme: readmeValues.get(key) ?? null,
+    matches: Boolean(values.has(key) && readmeValues.has(key) && values.get(key) === readmeValues.get(key)),
+  }));
+  const audit = {
+    p0: values.get("G07_LATEST_AUDIT_P0") ?? null,
+    p1: values.get("G07_LATEST_AUDIT_P1") ?? null,
+    p2: values.get("G07_LATEST_AUDIT_P2") ?? null,
+    disposition: values.get("G07_LATEST_AUDIT_DISPOSITION") ?? null,
+  };
+  const auditValuesValid = [audit.p0, audit.p1, audit.p2].every((item) => /^\d+$/.test(item ?? ""))
+    && audit.disposition === REMEDIATED_AUDIT_DISPOSITION;
+  const gateRow = tableRow(controlText, "G07");
+  const expectedGateRow = [
+    "G07",
+    values.get("G07_GATE") ?? "",
+    "创作者",
+    `最新独立审计记录 P0=${audit.p0}、P1=${audit.p1}、P2=${audit.p2}；该 P1 已在当前活动候选完成返修，处置为 \`${audit.disposition}\``,
+    "等待新的独立 G07-B Audit/Review；不得自动批准 Gate 或执行产品 Task",
+  ];
+  const readmeStatusRow = tableRow(readmeText, "G07_GATE / G07_A_STATUS");
+  const expectedReadmeStatusRow = [
+    "`G07_GATE` / `G07_A_STATUS`",
+    `\`${values.get("G07_GATE")}\` / \`${values.get("G07_A_STATUS")}\`；最新独立审计记录 P0=${audit.p0}、P1=${audit.p1}、P2=${audit.p2}；该 P1 已在当前活动候选完成返修，等待新的独立 G07-B Audit/Review，不得执行产品 Task`,
+  ];
+  const staleNarratives = STALE_GOVERNANCE_PATTERNS
+    .filter((pattern) => pattern.test(`${controlText}\n${readmeText}`))
+    .map((pattern) => pattern.source);
+  const gateRegister = {
+    passed: stableJson(gateRow) === stableJson(expectedGateRow),
+    actual: gateRow,
+    expected: expectedGateRow,
+  };
+  const readmeCurrentStatus = {
+    passed: stableJson(readmeStatusRow) === stableJson(expectedReadmeStatusRow),
+    actual: readmeStatusRow,
+    expected: expectedReadmeStatusRow,
+  };
+  return {
+    path: README_PATH,
+    passed: comparisons.every((item) => item.matches)
+      && auditValuesValid
+      && gateRegister.passed
+      && readmeCurrentStatus.passed
+      && staleNarratives.length === 0,
+    comparisons,
+    audit: { ...audit, valid: auditValuesValid },
+    gate_register: gateRegister,
+    readme_current_status: readmeCurrentStatus,
+    stale_narratives: { passed: staleNarratives.length === 0, matches: staleNarratives },
+  };
+}
+
 function fullBaselineScope(root, candidateCommit = "HEAD", { values = controlValues(root) } = {}) {
   const baseCommit = values.get("G07_A_BASE_COMMIT");
   invariant(baseCommit === BASELINE_COMMIT, "G07_A_BASE_COMMIT drifted from the approved G01-G06 baseline", "G07_BASE_COMMIT_MISMATCH", { registered: baseCommit, expected: BASELINE_COMMIT });
@@ -308,6 +402,7 @@ function fullBaselineScope(root, candidateCommit = "HEAD", { values = controlVal
   const evidenceDocument = JSON.parse(evidenceBytes.toString("utf8").replace(/^\uFEFF/, ""));
   const evidenceSchema = expectedEvidenceSchema(values);
   const executionViewConsistency = harnessControlConsistency(root, values);
+  const governanceConsistency = governanceSemanticConsistency(root, values);
   const evidenceArtifactMatches = implementationArtifacts.every((item) => evidenceDocument.artifacts?.[item.path] === item.registered_sha256);
   const evidencePayloadMatches = evidenceDocument.evidence_status === "ACTIVE_IMPLEMENTATION_EVIDENCE"
     && evidenceDocument.implementation?.candidate_commit === implementationCommit
@@ -360,6 +455,7 @@ function fullBaselineScope(root, candidateCommit = "HEAD", { values = controlVal
       files: lfReproducibility,
     },
     execution_view_consistency: executionViewConsistency,
+    governance_semantic_consistency: governanceConsistency,
     gate_snapshot: {
       g07_gate: values.get("G07_GATE"),
       g07_a_status: values.get("G07_A_STATUS"),
@@ -456,6 +552,15 @@ function buildMechanicalClaims(root, { baseline, currentTests, syntax, dryRun, i
       compared_keys: scope.execution_view_consistency.comparisons.map((item) => item.key),
       contracts: scope.execution_view_consistency.contracts.map(({ key, expected, matches }) => ({ key, expected, matches })),
     },
+    governance_semantic_consistency: {
+      path: scope.governance_semantic_consistency.path,
+      passed: scope.governance_semantic_consistency.passed,
+      compared_keys: scope.governance_semantic_consistency.comparisons.map((item) => item.key),
+      audit: scope.governance_semantic_consistency.audit,
+      gate_register_passed: scope.governance_semantic_consistency.gate_register.passed,
+      readme_current_status_passed: scope.governance_semantic_consistency.readme_current_status.passed,
+      stale_narratives_passed: scope.governance_semantic_consistency.stale_narratives.passed,
+    },
     dry_run: {
       command: dryRun.command,
       exit_code: dryRun.exit_code,
@@ -521,11 +626,46 @@ function allReportPassed({ baseline, scope, currentTests, syntax, dryRun, eviden
     && (scope?.active_evidence.payload_matches_registration ?? true)
     && (scope?.lf_reproducibility.passed ?? true)
     && (scope?.execution_view_consistency.passed ?? true)
+    && (scope?.governance_semantic_consistency.passed ?? true)
     && (scope?.worktree_clean ?? true)
     && Object.values(currentTests ?? {}).every((item) => item.exit_code === 0)
     && (syntax?.exit_code ?? 0) === 0
     && (dryRun?.exit_code ?? 0) === 0
     && (evidenceClaims?.passed ?? true);
+}
+
+function governanceDriftProbes(root, healthyInputs) {
+  const controlText = fs.readFileSync(path.join(root, CONTROL_PATH), "utf8");
+  const readmeText = fs.readFileSync(path.join(root, README_PATH), "utf8");
+  const values = controlValues(root);
+  const probes = [
+    {
+      name: "README_ACTIVE_COMMIT_DRIFT",
+      overrides: { readmeText: readmeText.replace(/^G07_A_COMMIT=.*$/m, `G07_A_COMMIT=${"0".repeat(40)}`) },
+    },
+    {
+      name: "GATE_REGISTER_AUDIT_COUNT_DRIFT",
+      overrides: { controlText: controlText.replace("最新独立审计记录 P0=0、P1=1、P2=0", "最新独立审计记录 P0=0、P1=2、P2=0") },
+    },
+    {
+      name: "README_CURRENT_STATUS_DRIFT",
+      overrides: { readmeText: readmeText.replace("最新独立审计记录 P0=0、P1=1、P2=0", "最新独立审计记录 P0=0、P1=0、P2=0") },
+    },
+    {
+      name: "STALE_G07_NARRATIVE",
+      overrides: { readmeText: `${readmeText}\n已完成 v6 返修\n` },
+    },
+  ];
+  return probes.map((probe) => {
+    const consistency = governanceSemanticConsistency(root, values, probe.overrides);
+    const scope = { ...healthyInputs.scope, governance_semantic_consistency: consistency };
+    const allRejected = !allReportPassed({ ...healthyInputs, scope });
+    return {
+      name: probe.name,
+      drift_detected: consistency.passed === false,
+      all_rejected_drift: consistency.passed === false && allRejected,
+    };
+  });
 }
 
 function driftedSha256(value) {
@@ -604,6 +744,7 @@ function main() {
         evidenceClaims: { passed: true },
       };
       const hashDriftProbes = registeredHashDriftProbes(options.root, options.candidate, healthyInputs);
+      const governanceDrift = governanceDriftProbes(options.root, healthyInputs);
       const executionViewDriftValues = new Map(controlValues(options.root));
       executionViewDriftValues.set("G07_A_COMMIT", "0".repeat(40));
       const executionViewDrift = harnessControlConsistency(options.root, executionViewDriftValues);
@@ -623,6 +764,7 @@ function main() {
         stableJson(exactClaimProbe) === stableJson(JSON.parse(JSON.stringify(exactClaimProbe))),
         stableJson(exactClaimProbe) !== stableJson(staleClaimProbe),
         ...hashDriftProbes.map((probe) => probe.all_rejected_drift),
+        ...governanceDrift.map((probe) => probe.all_rejected_drift),
       ];
       const report = {
         schema_version: "g07-control-evidence-self-test/v1",
@@ -634,6 +776,7 @@ function main() {
         negative_tests: {
           empty_slice_acceptance: "COVERED_BY_PROJECT_ORCHESTRATOR_SELF_TEST",
           registered_hash_drift: hashDriftProbes,
+          governance_semantic_drift: governanceDrift,
           execution_view_drift: {
             rejected: executionViewDrift.passed === false,
             mismatched_keys: executionViewDrift.comparisons.filter((item) => !item.matches).map((item) => item.key),
@@ -665,6 +808,14 @@ function main() {
             passed: registration.execution_view_consistency.passed,
             compared_keys: registration.execution_view_consistency.comparisons.map((item) => item.key),
             contracts: registration.execution_view_consistency.contracts,
+          },
+          governance_semantic_consistency: {
+            passed: registration.governance_semantic_consistency.passed,
+            compared_keys: registration.governance_semantic_consistency.comparisons.map((item) => item.key),
+            audit: registration.governance_semantic_consistency.audit,
+            gate_register_passed: registration.governance_semantic_consistency.gate_register.passed,
+            readme_current_status_passed: registration.governance_semantic_consistency.readme_current_status.passed,
+            stale_narratives_passed: registration.governance_semantic_consistency.stale_narratives.passed,
           },
         },
       };
