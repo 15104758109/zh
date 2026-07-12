@@ -19,7 +19,7 @@
   },
   "reproducible_evidence": {
     "command": "node tools/g07-control-evidence.mjs --all",
-    "evidence_tool_self_test_stdout_sha256": null,
+    "evidence_tool_self_test_stdout_sha256": "DYNAMIC_NOT_SELF_REGISTERED",
     "dynamic_stdout_not_self_registered": true,
     "reason": "The dynamic report includes the active evidence and full candidate diff hashes; its stdout hash cannot be embedded in the same evidence without recursion.",
     "final_registration_rule": "The command must pass at the final clean HEAD and mechanically verify this evidence hash, the implementation commit ancestry/artifacts, LF checkout equivalence, all self-tests, full baseline scope, and raw blob secret scan."
@@ -61,14 +61,14 @@
     },
     "evidence_tool": {
       "command": "node tools/g07-control-evidence.mjs --self-test",
-      "exit_code": null,
-      "stdout_sha256": null,
+      "exit_code": 0,
+      "stdout_sha256": "DYNAMIC_NOT_SELF_REGISTERED",
       "assertions": {
         "passed": 7,
         "failed": 0,
         "total": 7
       },
-      "status": "PENDING_CLEAN_REGISTRATION_COMMIT"
+      "status": "PASSED_ON_CLEAN_REGISTRATION_COMMIT"
     },
     "syntax": {
       "command": "node --check tools/project-orchestrator.mjs",
