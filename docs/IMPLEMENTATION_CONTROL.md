@@ -57,17 +57,21 @@ G07_A_ORCHESTRATOR_TEST_ASSERTIONS=118
 G07_A_POLICY_PATH=.autonomy/policy.json
 G07_A_POLICY_SHA256=2eb39d5c0a33bb9419a005379fa00c88eb377711fc6b834825fe6250d7627fd5
 G07_A_EVIDENCE_TOOL_PATH=tools/g07-control-evidence.mjs
-G07_A_EVIDENCE_TOOL_SHA256=8faf56900e39940f2d3aa36d29f7180cd057661181e34d753c78673ccc734c61
-G07_A_EVIDENCE_TOOL_TEST_ASSERTIONS=9
+G07_A_EVIDENCE_TOOL_SHA256=ed839ae53fc836712011b3fb3bc446d0d43340e794783424a6751f182bbdeb93
+G07_A_EVIDENCE_TOOL_TEST_ASSERTIONS=16
 G07_A_FULL_EVIDENCE_COMMAND=node tools/g07-control-evidence.mjs --all
-G07_A_COMMIT=71a7555aef319d2a00cfec559fd8d094f460f661
+G07_A_COMMIT=0b0ff85ce460dcadc5364fcd75fc60e6860abeb3
+G07_A_SUPERSEDED_V7_DRAFT_COMMIT=6f6a9e99a4a987fa15f7e20b4e43f548ad6bf239
+G07_A_SUPERSEDED_V6_COMMIT=71a7555aef319d2a00cfec559fd8d094f460f661
 G07_A_SUPERSEDED_V5_COMMIT=7753c3f3c6f9acf088e25b37dc393aa5f58b8048
 G07_A_SUPERSEDED_V4_COMMIT=4466caa862673d7aa168a851ba1dfaa52c2098c6
 G07_A_SUPERSEDED_V3_COMMIT=f6a18f74d1dab1ba0856cd3b9ba00224dad77358
 G07_A_SUPERSEDED_COMMIT=e68accecac93d60c533c63eddc4a18c1053667d6
-G07_A_EVIDENCE_STATUS=ACTIVE_V6_IMPLEMENTATION_EVIDENCE
-G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V6.json
-G07_A_EVIDENCE_SHA256=2eeb86a7d475ef799fb0e1561a3a74d6b35ddd81bad05fbc787ad4772ee90eab
+G07_A_EVIDENCE_STATUS=ACTIVE_V7_IMPLEMENTATION_EVIDENCE
+G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V7.json
+G07_A_EVIDENCE_SHA256=dfb8a2f74b92d6f366d57e695fc9fa7577f3b18880b213cffc65aef3f7da34fc
+G07_A_SUPERSEDED_V6_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V6.json
+G07_A_SUPERSEDED_V6_EVIDENCE_SHA256=2eeb86a7d475ef799fb0e1561a3a74d6b35ddd81bad05fbc787ad4772ee90eab
 G07_A_SUPERSEDED_V5_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V5.json
 G07_A_SUPERSEDED_V5_EVIDENCE_SHA256=5c674d42c6193b922fd4b9700dc7a38af17db322b47694ca6332d15c0bba2891
 G07_A_SUPERSEDED_V4_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V4.json
@@ -76,14 +80,13 @@ G07_A_SUPERSEDED_V3_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V3.json
 G07_A_SUPERSEDED_V3_EVIDENCE_SHA256=0675b28c2e31a010f84b5ffb329ac22fe01df8a4c0ad7f96224e6f6b545c26db
 G07_A_SUPERSEDED_EVIDENCE_PATH=docs/G07_A_EVIDENCE.json
 G07_A_SUPERSEDED_EVIDENCE_SHA256=7928d9194bb823dc3a2378879d33e31e1acf78f98bb78b33649d086c3fefd601
-G07_A_G06_BASELINE_TEST_STDOUT_SHA256=ac92ab317b8c0504ce8f2f29f437c3295ab111e3a9a878d1060d5cf7293c4121
-G07_A_G06_TEST_STDOUT_SHA256=a23b93ddf7a7dbcb6c31b9a1df0029c094ed3f873141fd93a56bdd98812214aa
-G07_A_ORCHESTRATOR_TEST_STDOUT_SHA256=a29ec5cc65634c7afbb69d2f56b5f5b720e84113f3f59f3e5c84f40894dd8277
-G07_A_EVIDENCE_TOOL_TEST_STDOUT_SHA256=DYNAMIC_NOT_SELF_REGISTERED
-G07_A_FULL_EVIDENCE_STDOUT_SHA256=DYNAMIC_NOT_SELF_REGISTERED
-G07_A_DRY_RUN_EVIDENCE_SHA256=e83559f7918fd1dee218df7c2d3af9518062a45edf19b2ebad693eea0fdb1ac0
-G07_A_SCOPE_EVIDENCE_SHA256=201dc40aa868b8358baabf3eacc4f89c02588f685ebdd532ac41c65986514be9
-G07_A_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495e45837533f10e462c795235d58c69cea
+G07_A_EVIDENCE_HASH_MODE=SEMANTIC_NORMALIZED_V1
+G07_A_SUPERSEDED_V5_G06_BASELINE_TEST_STDOUT_SHA256=ac92ab317b8c0504ce8f2f29f437c3295ab111e3a9a878d1060d5cf7293c4121
+G07_A_SUPERSEDED_V5_G06_TEST_STDOUT_SHA256=a23b93ddf7a7dbcb6c31b9a1df0029c094ed3f873141fd93a56bdd98812214aa
+G07_A_SUPERSEDED_V5_ORCHESTRATOR_TEST_STDOUT_SHA256=a29ec5cc65634c7afbb69d2f56b5f5b720e84113f3f59f3e5c84f40894dd8277
+G07_A_SUPERSEDED_V5_DRY_RUN_EVIDENCE_SHA256=e83559f7918fd1dee218df7c2d3af9518062a45edf19b2ebad693eea0fdb1ac0
+G07_A_SUPERSEDED_V5_SCOPE_EVIDENCE_SHA256=201dc40aa868b8358baabf3eacc4f89c02588f685ebdd532ac41c65986514be9
+G07_A_SUPERSEDED_V5_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495e45837533f10e462c795235d58c69cea
 
 | Gate | 状态 | 批准主体 | 证据/进入条件 | 后续动作 |
 |---|---|---|---|---|
@@ -137,7 +140,7 @@ G07_A_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495e45837533f10e4
 
 ### 分支、模型、预算与硬停止
 
-1. G01-G06 干净基线后，自治只在 `autonomy/integration` 工作；不得自动合并主分支、push、部署、写生产数据、读取/提交凭据或修改 `.env`。`tools/g07-control-evidence.mjs --all` 从 `G07_A_BASE_COMMIT` 动态扫描到调用时 `HEAD`，包含证据登记 commit，逐 candidate blob 执行 scope/秘密检查，并从 Git 对象直接复现旧 G06 58 项；它还必须验证活动 evidence 文件自身哈希、`G07_A_COMMIT` 存在且为当前候选祖先、该实现 commit 内制品哈希与登记一致，以及登记治理文件在 `core.autocrlf=true` 下仍由 `.gitattributes` 固定为 LF。活动 evidence 不登记随 HEAD 漂移的 stdout/base/context 常量，而登记完整 `mechanical_claims`；`--all` 必须现场执行 G06/G07/证据工具自测、语法检查和 Dry Run，并与声明对象做完整结构相等比较，任何遗漏或陈旧声明都使总结果失败。上述条件不能由角色报告、测试或 Architect 放行。
+1. G01-G06 干净基线后，自治只在 `autonomy/integration` 工作；不得自动合并主分支、push、部署、写生产数据、读取/提交凭据或修改 `.env`。`tools/g07-control-evidence.mjs --all` 从 `G07_A_BASE_COMMIT` 动态扫描到调用时 `HEAD`，包含证据登记 commit，逐 candidate blob 执行 scope/秘密检查，并从 Git 对象直接复现旧 G06 58 项；它还必须验证活动 evidence 文件自身哈希、`G07_A_COMMIT` 存在且为当前候选祖先、该实现 commit 内制品哈希与登记一致，以及登记治理文件在 `core.autocrlf=true` 下仍由 `.gitattributes` 固定为 LF。活动 evidence 不登记随 HEAD 漂移的 stdout/base/context 常量，而登记完整 `mechanical_claims`；`--all` 必须现场执行 G06/G07/证据工具自测、语法检查和 Dry Run，并与声明对象做完整结构相等比较，任何遗漏或陈旧声明都使总结果失败。证据工具负向测试必须先证明未注入的健康判定可通过，再逐项漂移 7 个活动 SHA-256 登记并确认具体 mismatch 与 `--all` 拒绝；不得用 dirty 或其他失败条件冒充哈希漂移覆盖。上述条件不能由角色报告、测试或 Architect 放行。
 2. `MODEL::CODE_HIGH` 映射为当前环境可用的最强代码推理能力，`MODEL::CODE_MEDIUM` 映射为当前环境的标准代码推理档。若平台不能按角色选择模型，可使用当前最强模型，但必须保持独立会话、角色和证据隔离，并把实际可见模型写入事件；不得伪造模型切换。当前平台若不能向 Orchestrator 提供可信会话见证，只能保存角色报告并转 `ENVIRONMENT_APPROVAL_REQUIRED`，不能用自报字符串补足独立性。
 3. 预算上限只取已登记 `.autonomy/policy.json`，run/角色报告不得覆盖；实际用量只累加登记平台签发且不可复用的计量收据。token、时间和已知费用任一已配置维度达到 80% 必须通知，达到 100% 在产生下一次外部/模型/付费动作前硬停。未配置或环境不可见的费用必须明确记为 `unknown`，不得由报告方少报或假报为 0。
 4. G07-A 只实现控制面、状态机、证据校验、提示词生成和 dry-run；不得真实调用项目模型、运行付费测试、执行产品 Task、push、部署、写生产或访问凭据。平台审批无法自动绕过时输出 `ENVIRONMENT_APPROVAL_REQUIRED`。
@@ -146,7 +149,7 @@ G07_A_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495e45837533f10e4
 
 | 检查点 | 当前状态 | 机械证据 | 批准边界 |
 |---|---|---|---|
-| G07-A 实现 | `IMPLEMENTED` | `G07_A_COMMIT` 锁定 v6 实现；`G07_A_EVIDENCE_PATH/SHA256` 锁定 58/78/118/9 项测试、机械复现的 Dry Run 语义、实现 commit 制品和全基线证据；`G07_A_FULL_EVIDENCE_COMMAND` 动态覆盖到审计调用时 HEAD，包含登记提交 | 只证明控制面实现和内部机械验证，不能批准 Gate 或启动产品 Task |
+| G07-A 实现 | `IMPLEMENTED` | `G07_A_COMMIT` 锁定 v7 实现；`G07_A_EVIDENCE_PATH/SHA256` 锁定 58/78/118/16 项测试、机械复现的 Dry Run 语义、实现 commit 制品和全基线证据；`G07_A_FULL_EVIDENCE_COMMAND` 动态覆盖到审计调用时 HEAD，包含登记提交 | 只证明控制面实现和内部机械验证，不能批准 Gate 或启动产品 Task |
 | G07-B 独立审查 | `PENDING` | 独立角色复核同一 G07-A commit 的政策、状态机、证据、失败和恢复 | Reviewer 不得自批 Gate |
 | `G07_GATE` | `PENDING` | 创作者明确批准证据 | 只有创作者可改为 `APPROVED` |
 
