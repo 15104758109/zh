@@ -109,7 +109,8 @@
 | [自治状态编排器](./tools/project-orchestrator.mjs) | G07-A 当前实现的外部单调事件 head、Ed25519 收据、平台写 capability、模型会话见证、lease-bound 报告拒绝恢复、主责 Auditor/Slice Gate 机械执行证据、历史回放、原始 blob 秘密证据、预算和恢复控制面；不调用模型 |
 | [自治证据复现器](./tools/g07-control-evidence.mjs) | 从 G01-G06 基线 Git 对象复现旧 58 项，复用登记秘密规则，并现场执行自测、语法、执行视图、治理叙述语义一致性和 Dry Run，与活动 evidence 的完整机械声明逐项比对 |
 | [自治机器政策](./.autonomy/policy.json) | `G07::AUTONOMY` 的阶段/Gate/制品哈希、平台信任根、外部 head、可信 inbox、写 capability、预算和硬停止规则 |
-| [当前 G07-A v10 机械证据](./docs/G07_A_EVIDENCE_V10.json) | 锁定 v10 实现、58/78/161/20 项测试、签名租约拒绝绑定、畸形报告恢复、跨租约隔离、执行视图一致性、Dry Run 语义、实现 commit 制品和全基线扫描 |
+| [当前 G07-A v11 机械证据](./docs/G07_A_EVIDENCE_V11.json) | 锁定 v11 实现、58/78/161/24 项测试、治理叙述语义一致性、签名租约拒绝绑定、畸形报告恢复、跨租约隔离、执行视图一致性、Dry Run 语义、实现 commit 制品和全基线扫描 |
+| [历史 G07-A v10 机械证据](./docs/G07_A_EVIDENCE_V10.json) | 已被 v11 的 Gate Register、README 活动登记镜像与当前状态语义校验取代，仅保留审计追溯 |
 | [历史 G07-A v9 机械证据](./docs/G07_A_EVIDENCE_V9.json) | 已被 v10 的 selector 防伪和 lease-bound 畸形报告恢复条件取代，仅保留审计追溯 |
 | [历史 G07-A v8 机械证据](./docs/G07_A_EVIDENCE_V8.json) | 已被 v9 的 fine-grained PAT、模型见证、报告拒绝和执行视图一致性条件取代，仅保留审计追溯 |
 | [历史 G07-A v7 机械证据](./docs/G07_A_EVIDENCE_V7.json) | 已被 v8 的非零 Slice 验收制品条件取代，仅保留审计追溯，不代表当前返修通过 |
@@ -129,10 +130,10 @@
 ```text
 G07_GATE=PENDING
 G07_A_STATUS=IMPLEMENTED
-G07_A_COMMIT=c5c5e9460e875a3c66e748c514ebd23cd3d1aabe
-G07_A_EVIDENCE_STATUS=ACTIVE_V10_IMPLEMENTATION_EVIDENCE
-G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V10.json
-G07_A_EVIDENCE_SHA256=f9dfeab9bfc19e72ae7b863f96f623baf1aa6c5be3375126e3494b9d4468ecda
+G07_A_COMMIT=24f5df65c2714dab58880f35a8207f0d8fc37131
+G07_A_EVIDENCE_STATUS=ACTIVE_V11_IMPLEMENTATION_EVIDENCE
+G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V11.json
+G07_A_EVIDENCE_SHA256=d89a1253278ee41bce2a39e53ff093166cba4b3e986febf7bbd30306ffe91d3c
 G07_LATEST_AUDIT_P0=0
 G07_LATEST_AUDIT_P1=1
 G07_LATEST_AUDIT_P2=0
