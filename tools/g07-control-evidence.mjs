@@ -23,6 +23,7 @@ const ALLOWED_G07_PATHS = new Set([
   "docs/G07_A_EVIDENCE_V4.json",
   "docs/G07_A_EVIDENCE_V5.json",
   "docs/G07_A_EVIDENCE_V6.json",
+  "docs/G07_A_EVIDENCE_V7.json",
   "docs/IMPLEMENTATION_CONTROL.md",
   "tools/g07-control-evidence.mjs",
   "tools/project-context-loader.mjs",
@@ -46,6 +47,20 @@ const LF_REPRODUCIBLE_PATHS = [
   "docs/IMPLEMENTATION_CONTROL.md",
   "docs/G07_A_EVIDENCE_V4.json",
   "docs/G07_A_EVIDENCE_V5.json",
+];
+
+const ACTIVE_ARTIFACT_REGISTRATIONS = [
+  ["G06_ARTIFACT_PATH", "G06_ARTIFACT_SHA256"],
+  ["G07_A_ROUTER_PATH", "G07_A_ROUTER_SHA256"],
+  ["G07_A_ORCHESTRATOR_PATH", "G07_A_ORCHESTRATOR_SHA256"],
+  ["G07_A_POLICY_PATH", "G07_A_POLICY_SHA256"],
+  ["G07_A_EVIDENCE_TOOL_PATH", "G07_A_EVIDENCE_TOOL_SHA256"],
+];
+
+const ACTIVE_HASH_REGISTRATIONS = [
+  "G06_BASELINE_ARTIFACT_SHA256",
+  ...ACTIVE_ARTIFACT_REGISTRATIONS.map(([, hashKey]) => hashKey),
+  "G07_A_EVIDENCE_SHA256",
 ];
 
 function invariant(condition, message, code = "G07_EVIDENCE_ERROR", details = null) {
@@ -114,10 +129,9 @@ function commitFile(root, commit, relativePath) {
   return gitBuffer(root, ["show", `${commit}:${relativePath}`]);
 }
 
-function baselineCompatibility(root) {
+function baselineCompatibility(root, values = controlValues(root)) {
   const loaderBytes = gitBuffer(root, ["show", `${BASELINE_COMMIT}:${BASELINE_LOADER_PATH}`]);
   const controlBytes = gitBuffer(root, ["show", `${BASELINE_COMMIT}:${CONTROL_PATH}`]);
-  const values = controlValues(root);
   invariant(sha256(loaderBytes) === values.get("G06_BASELINE_ARTIFACT_SHA256"), "baseline loader hash does not match the active registration", "G06_BASELINE_HASH_MISMATCH");
   invariant(values.get("G06_BASELINE_TEST_ASSERTIONS") === "58", "baseline assertion registration is not 58", "G06_BASELINE_ASSERTIONS_MISMATCH");
 
@@ -218,20 +232,19 @@ function scanBaselineCandidate(root, baseCommit, candidateCommit) {
   };
 }
 
-function fullBaselineScope(root, candidateCommit = "HEAD") {
-  const values = controlValues(root);
+function expectedEvidenceSchema(values) {
+  const match = /^ACTIVE_V([0-9]+)_IMPLEMENTATION_EVIDENCE$/.exec(values.get("G07_A_EVIDENCE_STATUS") ?? "");
+  invariant(match, "active G07 evidence status does not declare a version", "G07_ACTIVE_EVIDENCE_STATUS_INVALID");
+  return `g07-a-evidence/v${match[1]}`;
+}
+
+function fullBaselineScope(root, candidateCommit = "HEAD", { values = controlValues(root) } = {}) {
   const baseCommit = values.get("G07_A_BASE_COMMIT");
   invariant(baseCommit === BASELINE_COMMIT, "G07_A_BASE_COMMIT drifted from the approved G01-G06 baseline", "G07_BASE_COMMIT_MISMATCH", { registered: baseCommit, expected: BASELINE_COMMIT });
   const scan = scanBaselineCandidate(root, baseCommit, candidateCommit);
   const candidate = scan.candidate_commit;
   const status = run(root, "git", ["status", "--porcelain=v1", "--untracked-files=all"]);
-  const artifactRegistrationKeys = [
-    ["G06_ARTIFACT_PATH", "G06_ARTIFACT_SHA256"],
-    ["G07_A_ORCHESTRATOR_PATH", "G07_A_ORCHESTRATOR_SHA256"],
-    ["G07_A_POLICY_PATH", "G07_A_POLICY_SHA256"],
-    ["G07_A_EVIDENCE_TOOL_PATH", "G07_A_EVIDENCE_TOOL_SHA256"],
-  ];
-  const artifactRegistrations = artifactRegistrationKeys.map(([pathKey, hashKey]) => {
+  const artifactRegistrations = ACTIVE_ARTIFACT_REGISTRATIONS.map(([pathKey, hashKey]) => {
     const relativePath = values.get(pathKey);
     const registeredSha256 = values.get(hashKey);
     invariant(relativePath && ALLOWED_G07_PATHS.has(relativePath) && /^[a-f0-9]{64}$/.test(registeredSha256 ?? ""), `artifact registration ${pathKey}/${hashKey} is invalid`, "G07_ARTIFACT_REGISTRATION_INVALID");
@@ -254,6 +267,7 @@ function fullBaselineScope(root, candidateCommit = "HEAD") {
   const evidenceBytes = fs.readFileSync(evidenceAbsolute);
   const evidenceActualSha256 = sha256(evidenceBytes);
   const evidenceDocument = JSON.parse(evidenceBytes.toString("utf8").replace(/^\uFEFF/, ""));
+  const evidenceSchema = expectedEvidenceSchema(values);
   const evidenceArtifactMatches = implementationArtifacts.every((item) => evidenceDocument.artifacts?.[item.path] === item.registered_sha256);
   const evidencePayloadMatches = evidenceDocument.evidence_status === "ACTIVE_IMPLEMENTATION_EVIDENCE"
     && evidenceDocument.implementation?.candidate_commit === implementationCommit
@@ -299,6 +313,7 @@ function fullBaselineScope(root, candidateCommit = "HEAD") {
       hash_matches: evidenceActualSha256 === evidenceRegisteredSha256,
       payload_matches_registration: evidencePayloadMatches,
       schema_version: evidenceDocument.schema_version ?? null,
+      expected_schema_version: evidenceSchema,
     },
     lf_reproducibility: {
       passed: lfReproducibility.every((item) => item.eol_lf && item.bytes_match_clean_checkout),
@@ -428,7 +443,7 @@ function buildMechanicalClaims(root, { baseline, currentTests, syntax, dryRun, i
 
 function validateEvidenceClaims(scope, actualClaims) {
   const document = scope.evidence_document;
-  const schemaValid = document?.schema_version === "g07-a-evidence/v6"
+  const schemaValid = document?.schema_version === scope.active_evidence.expected_schema_version
     && document.evidence_status === "ACTIVE_IMPLEMENTATION_EVIDENCE"
     && document.implementation?.candidate_commit === scope.implementation_registration.commit
     && document.implementation?.g01_g06_base_commit === scope.base_commit
@@ -445,6 +460,48 @@ function validateEvidenceClaims(scope, actualClaims) {
     declared: document?.mechanical_claims ?? null,
     actual: actualClaims,
   };
+}
+
+function allReportPassed({ baseline, scope, currentTests, syntax, dryRun, evidenceClaims }) {
+  return (baseline?.assertions.passed ?? 58) === 58
+    && (scope?.scope_passed ?? true)
+    && (scope?.secret_scan.passed ?? true)
+    && (scope?.registered_artifacts_match ?? true)
+    && (scope?.implementation_registration.exists ?? true)
+    && (scope?.implementation_registration.ancestor_of_candidate ?? true)
+    && (scope?.implementation_registration.artifacts_match ?? true)
+    && (scope?.active_evidence.hash_matches ?? true)
+    && (scope?.active_evidence.payload_matches_registration ?? true)
+    && (scope?.lf_reproducibility.passed ?? true)
+    && (scope?.worktree_clean ?? true)
+    && Object.values(currentTests ?? {}).every((item) => item.exit_code === 0)
+    && (syntax?.exit_code ?? 0) === 0
+    && (dryRun?.exit_code ?? 0) === 0
+    && (evidenceClaims?.passed ?? true);
+}
+
+function driftedSha256(value) {
+  invariant(/^[a-f0-9]{64}$/.test(value ?? ""), "registered hash probe requires a SHA-256 value", "G07_HASH_PROBE_INVALID");
+  return `${value[0] === "0" ? "1" : "0"}${value.slice(1)}`;
+}
+
+function registeredHashDriftProbes(root, candidateCommit, healthyInputs) {
+  return ACTIVE_HASH_REGISTRATIONS.map((hashKey) => {
+    const values = new Map(controlValues(root));
+    values.set(hashKey, driftedSha256(values.get(hashKey)));
+    try {
+      const baseline = hashKey === "G06_BASELINE_ARTIFACT_SHA256"
+        ? baselineCompatibility(root, values)
+        : healthyInputs.baseline;
+      const scope = hashKey === "G06_BASELINE_ARTIFACT_SHA256"
+        ? healthyInputs.scope
+        : fullBaselineScope(root, candidateCommit, { values });
+      const passed = allReportPassed({ ...healthyInputs, baseline, scope });
+      return { hash_key: hashKey, all_rejected_drift: !passed, failure_mode: passed ? "UNEXPECTED_PASS" : "ALL_VERDICT_FALSE" };
+    } catch (error) {
+      return { hash_key: hashKey, all_rejected_drift: true, failure_mode: error.code ?? "G07_EVIDENCE_ERROR" };
+    }
+  });
 }
 
 function parseArgs(argv) {
@@ -472,17 +529,31 @@ function main() {
       const registration = fullBaselineScope(options.root, options.candidate);
       const exactClaimProbe = { dry_run: { selected_task_id: "F0-01-REPO", policy_execution_allowed: false } };
       const staleClaimProbe = { dry_run: { ...exactClaimProbe.dry_run, stdout_sha256: "0".repeat(64) } };
+      const healthyInputs = {
+        baseline,
+        scope: registration,
+        currentTests: {
+          g06: { exit_code: 0 },
+          g07: { exit_code: 0 },
+          evidence_tool: { exit_code: 0 },
+        },
+        syntax: { exit_code: 0 },
+        dryRun: { exit_code: 0 },
+        evidenceClaims: { passed: true },
+      };
+      const hashDriftProbes = registeredHashDriftProbes(options.root, options.candidate, healthyInputs);
       const assertions = [
         baseline.assertions.passed === 58,
         binaryProbe.includes("OPENAI_KEY"),
         registration.active_evidence.hash_matches && registration.active_evidence.payload_matches_registration
-          && registration.active_evidence.schema_version === "g07-a-evidence/v6",
+          && registration.active_evidence.schema_version === registration.active_evidence.expected_schema_version,
         registration.implementation_registration.exists && registration.implementation_registration.ancestor_of_candidate,
         registration.implementation_registration.artifacts_match,
         registration.lf_reproducibility.passed,
         registration.scope_passed && registration.secret_scan.passed && registration.registered_artifacts_match,
         stableJson(exactClaimProbe) === stableJson(JSON.parse(JSON.stringify(exactClaimProbe))),
         stableJson(exactClaimProbe) !== stableJson(staleClaimProbe),
+        ...hashDriftProbes.map((probe) => probe.all_rejected_drift),
       ];
       const report = {
         schema_version: "g07-control-evidence-self-test/v1",
@@ -490,6 +561,10 @@ function main() {
         assertions: { passed: assertions.filter(Boolean).length, failed: assertions.filter((item) => !item).length, total: assertions.length },
         baseline,
         binary_secret_probe: binaryProbe,
+        negative_tests: {
+          empty_slice_acceptance: "COVERED_BY_PROJECT_ORCHESTRATOR_SELF_TEST",
+          registered_hash_drift: hashDriftProbes,
+        },
         registration: {
           active_evidence: {
             path: registration.active_evidence.path,
@@ -544,21 +619,7 @@ function main() {
       dry_run: dryRun,
       evidence_claims: evidenceClaims,
     };
-    report.passed = (baseline?.assertions.passed ?? 58) === 58
-      && (scope?.scope_passed ?? true)
-      && (scope?.secret_scan.passed ?? true)
-      && (scope?.registered_artifacts_match ?? true)
-      && (scope?.implementation_registration.exists ?? true)
-      && (scope?.implementation_registration.ancestor_of_candidate ?? true)
-      && (scope?.implementation_registration.artifacts_match ?? true)
-      && (scope?.active_evidence.hash_matches ?? true)
-      && (scope?.active_evidence.payload_matches_registration ?? true)
-      && (scope?.lf_reproducibility.passed ?? true)
-      && (scope?.worktree_clean ?? true)
-      && Object.values(report.current_tests ?? {}).every((item) => item.exit_code === 0)
-      && (syntax?.exit_code ?? 0) === 0
-      && (dryRun?.exit_code ?? 0) === 0
-      && (evidenceClaims?.passed ?? true);
+    report.passed = allReportPassed({ baseline, scope, currentTests, syntax, dryRun, evidenceClaims });
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     if (!report.passed) process.exitCode = 1;
   } catch (error) {
