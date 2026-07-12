@@ -1,0 +1,3 @@
+/tools/project-orchestrator.mjs text eol=lf
+/.autonomy/policy.json text eol=lf
+/.autonomy/.gitignore text eol=lf

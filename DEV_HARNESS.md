@@ -16,7 +16,7 @@ CURRENT_MODE=G04_R2_APPROVED_F0_01_READY
 G05_GATE=APPROVED
 G06_GATE=APPROVED
 G07_GATE=PENDING
-G07_A_STATUS=IMPLEMENTED
+G07_A_STATUS=REWORK
 ```
 
 - G02、G03-A~D 与历史 G04 revision 1 已由创作者批准；历史证据只登记在 `G04_R1_GATE=APPROVED`。
@@ -215,7 +215,7 @@ required_updates: <responsible fact sources>
 
 ## 10. G07-A 自治控制面
 
-稳定政策锚点为 `G07::AUTONOMY`，机器政策位于 `.autonomy/policy.json`。`tools/project-orchestrator.mjs` 只管理 append-only 事件、Task/Slice 状态投影、租约、证据、预算、恢复、简报和角色提示词；它不直接调用模型。Coder、Auditor、Reviewer、Architect 与 Slice Gate Runner 只返回 `g07-role-report/v1` 结构化报告，不得直接写 `.autonomy/events.jsonl` 或 Task 状态。
+稳定政策锚点为 `G07::AUTONOMY`，机器政策位于 `.autonomy/policy.json`。`tools/project-orchestrator.mjs` 只管理 HMAC 完整性事件、严格语义回放、Task/Slice 状态投影、nonce 租约、证据、预算、恢复、简报和角色提示词；它不直接调用模型。Coder、Auditor、Reviewer、Architect 与 Slice Gate Runner 只返回 `g07-role-report/v2` 结构化报告，不得直接写 ignored 运行时 `.autonomy/events.jsonl` 或 Task 状态。
 
 ```text
 node tools/project-context-loader.mjs --self-test
@@ -226,10 +226,10 @@ node tools/project-orchestrator.mjs resume --run-id <run-id>
 node tools/project-orchestrator.mjs report --run-id <run-id> [--slice-id <slice>]
 ```
 
-- `dry-run` 只能计算下一 Task、角色、FP 集、scope 和上下文哈希，不写事件、不改状态、不创建产品文件。
-- 只有 Orchestrator 可执行 `lease`、`record`、`verify-evidence`、`transition` 和 `unlock`；`record` 的 PASS/APPROVE 文字不能直接形成 `VERIFIED`。
+- `dry-run` 只能计算下一 Task、角色、FP 集、scope 和上下文哈希；它必须比较前后事件字节/哈希、Task 投影哈希和精确 scope 产品树哈希来证明不写事件、不改状态、不创建产品文件。
+- 只有 Orchestrator 可执行 `lease`、`record`、`verify-evidence`、`transition` 和 `unlock`；`record` 的 PASS/APPROVE 文字不能直接形成 `VERIFIED`。证据验证还必须绑定 clean worktree、当前稳定控制上下文、同一 commit、含删除的 scope、秘密扫描和可信平台身份/会话见证。
 - 同一 run 最多一个写租约和两个只读审查租约；过期租约只能由 `resume`/下一次原子租用记录恢复事件。
-- 三次返修进入 Replan；Architect 只处理 A/B/C/D，C 必须转 `CREATOR_REQUIRED`；两次 Replan 耗尽时按 `G07::AUTONOMY` 暂停关键路径。
+- 验收、scope、秘密、stale commit/context 等证据失败必须写 `EVIDENCE_REJECTED`、失败指纹和计数后进入返修；三次返修进入 Replan。Architect 只处理 A/B/C/D，C 必须转 `CREATOR_REQUIRED`；两次 Replan 耗尽时按依赖祖先闭包暂停关键路径。Orchestrator 不接受字符串解除 `CREATOR_REQUIRED`。
 - 预算任一已配置维度达到 80% 通知、100% 硬停；未知费用不得假报为 0。
-- G07 阶段禁止真实项目模型调用、付费测试、push、部署、生产写入、凭据访问和自动合并主分支。平台授权不可绕过，必须返回 `ENVIRONMENT_APPROVAL_REQUIRED`。
+- G07 阶段禁止真实项目模型调用、付费测试、push、部署、生产写入、凭据访问和自动合并主分支。平台授权不可绕过；当前没有可信角色会话见证提供方时也必须返回 `ENVIRONMENT_APPROVAL_REQUIRED`，不得把不同 actor/session 字符串当机械独立性。
 - 当前 `G07_GATE=PENDING`，因此即使路由器确认 `F0-01-REPO` 为唯一 READY，G07-A dry-run 也必须拒绝产品执行。测试、dry-run、G07-A/G07-B 或 Architect 均不得自行写 `G07_GATE=APPROVED`。

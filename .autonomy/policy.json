@@ -1,5 +1,5 @@
 {
-  "schema_version": "g07-autonomy-policy/v1",
+  "schema_version": "g07-autonomy-policy/v2",
   "control_anchor": "G07::AUTONOMY",
   "phase": "G07_A_CONTROL_PLANE_ONLY",
   "g07_gate_required": "APPROVED",
@@ -38,6 +38,22 @@
       "fallback": "current strongest available model in an independent role session",
       "must_record_actual_model_when_visible": true
     }
+  },
+  "event_integrity": {
+    "algorithm": "HMAC-SHA256",
+    "key_file": "integrity.key",
+    "key_must_be_ignored": true,
+    "semantic_replay_required": true
+  },
+  "identity_attestation": {
+    "required": true,
+    "provider": "UNAVAILABLE",
+    "missing_provider_decision": "ENVIRONMENT_APPROVAL_REQUIRED",
+    "caller_declared_actor_or_session_is_evidence": false
+  },
+  "critical_path": {
+    "derivation": "DEPENDENCY_ANCESTRY_OF_REGISTERED_PATH_ENDPOINTS_AND_CRITICAL_TASKS",
+    "literal_task_id_match_only": false
   },
   "replan_categories": {
     "A": "technical implementation change inside the same approved write scope",

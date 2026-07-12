@@ -1,2 +1,7 @@
+events.jsonl
+integrity.key
 orchestrator.lock
+orchestrator.lock.*
+quarantine/
+reports/
 *.tmp

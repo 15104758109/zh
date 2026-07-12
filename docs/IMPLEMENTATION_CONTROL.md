@@ -42,7 +42,7 @@ G06_UPGRADE_AUTHORITY=G07_A_CREATOR_EXPLICIT_IMPLEMENTATION_REQUEST
 G06_ARTIFACT_SHA256=10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47
 G06_TEST_ASSERTIONS=78
 G07_GATE=PENDING
-G07_A_STATUS=IMPLEMENTED
+G07_A_STATUS=REWORK
 G07_B_STATUS=PENDING
 G07_APPROVAL_EVIDENCE=NONE
 G07_POLICY_ANCHOR=G07::AUTONOMY
@@ -52,10 +52,10 @@ G07_A_ROUTER_PATH=tools/project-context-loader.mjs
 G07_A_ROUTER_SHA256=10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47
 G07_A_ROUTER_TEST_ASSERTIONS=78
 G07_A_ORCHESTRATOR_PATH=tools/project-orchestrator.mjs
-G07_A_ORCHESTRATOR_SHA256=176b55186d77538c4f3e1161eb83f3bfdca464c0d7de144db71b5eb8f33a0a49
-G07_A_ORCHESTRATOR_TEST_ASSERTIONS=56
+G07_A_ORCHESTRATOR_SHA256=4f84d5ff79111f8a40d7ccad43a04de10350574233d2f1613cd8b224273d303a
+G07_A_ORCHESTRATOR_TEST_ASSERTIONS=82
 G07_A_POLICY_PATH=.autonomy/policy.json
-G07_A_POLICY_SHA256=4204358b289120043fc9f3ccb816b7cef9e61b5028a7a7aa25cb54808ea0e785
+G07_A_POLICY_SHA256=fcca5a4166d35997d8c021aa8ef006f56a4787c0ae6988021a910e003709759e
 
 | Gate | 状态 | 批准主体 | 证据/进入条件 | 后续动作 |
 |---|---|---|---|---|
@@ -70,7 +70,7 @@ G07_A_POLICY_SHA256=4204358b289120043fc9f3ccb816b7cef9e61b5028a7a7aa25cb54808ea0
 | G04-r2 | APPROVED | 创作者 | 2026-07-11，创作者先要求依据四组回写重做，审阅修订后的 85-Task 蓝图后在本任务明确回复“批准”；`G04_REVISION_APPROVAL_EVIDENCE=CREATOR_EXPLICIT_APPROVAL_IN_TASK` | revision 2 依赖图、切片和 Task Index 生效；当前只把无依赖的 `F0-01-REPO` 置为 `READY`，不代表任何实现完成 |
 | G05 | APPROVED | 创作者 | 2026-07-11，创作者明确批准独立 G04 审计结果：P0=0、P1=0、P2=2、`NEXT_GATE=YES` | G05 审计 Gate 生效；两个 P2 保留，不提升任何实现成熟度，Task 状态仍为 1 READY、84 PLANNED |
 | G06 | APPROVED | 创作者 | 2026-07-11，创作者审阅单一项目上下文加载器的四域样例、58/58 自测和 `G05-CTX-BA-01~08` 后明确回复“批准 G06”；旧制品哈希和断言数保留在 `G06_BASELINE_*`。本轮创作者明确要求在 G07-A 扩展路由，当前制品由 `G06_ARTIFACT_SHA256` 与 78 项自测锁定，但不因此批准 G07 | G06 上下文路由职责继续生效；加载器按角色、Task 与精确 FP 范围路由，不提升任何 Task、Schema、代码或行为证据成熟度，状态仍为 1 READY、84 PLANNED |
-| G07 | PENDING | 创作者 | 本轮只授权实现 G07-A 自治控制面；G07-A 已实现并由登记哈希锁定，但实现、自测、dry-run 或独立 G07-B 结论都不能代替创作者批准 | 等待独立 G07-B 与创作者裁决；不得自动写 `G07_GATE=APPROVED`，不得据此执行产品 Task |
+| G07 | PENDING | 创作者 | 本轮只授权实现 G07-A 自治控制面；独立审查发现 P0/P1 后，G07-A 当前进入控制面返修；实现、自测、dry-run 或独立 G07-B 结论都不能代替创作者批准 | 完成返修和证据登记后等待新的独立 G07-B 与创作者裁决；不得自动写 `G07_GATE=APPROVED`，不得据此执行产品 Task |
 
 > Gate 规则：精确键值是自动检查入口，表格是人类可读解释。`G04_R1_GATE` 只保存历史；当前 Task Index 绑定 `G04_REVISION=2`，唯一活动执行键是 `G04_GATE`。其现值不是 APPROVED 时一律阻断。任何 Gate 不得由模型、开发代理、测试结果或 n8n 运行结果代替创作者批准。
 
@@ -93,22 +93,22 @@ G07_A_POLICY_SHA256=4204358b289120043fc9f3ccb816b7cef9e61b5028a7a7aa25cb54808ea0
 
 1. Task 机器状态固定为 `PLANNED -> READY -> LEASED -> IN_PROGRESS -> IMPLEMENTED -> VERIFYING -> VERIFIED`；失败可进入 `REWORK`、`REPLAN`、`BLOCKED` 或 `CREATOR_REQUIRED`。非法跃迁必须拒绝，`PLANNED -> READY` 只由 Orchestrator 在全部 `depends_on=VERIFIED` 后执行。
 2. Slice 状态由其必要 Task 的事件投影生成，不手工维护：全部必要 Task `VERIFIED` 才为 `VERIFIED`；存在租约/执行/验证时为 `IN_PROGRESS`；存在阻断或创作者裁决时分别为 `BLOCKED/CREATOR_REQUIRED`；否则按可解锁 Task 计算 `READY/PLANNED`。
-3. 只有 `tools/project-orchestrator.mjs` 可追加 `.autonomy/events.jsonl` 并产生 Task/Slice 状态投影。Coder、Auditor、Reviewer、Architect 和 Slice Gate Runner 只返回结构化报告，报告文字本身不能把 Task 或 Gate 判 PASS。
-4. 自动 Task Gate 的机械条件为：活动 G04 Gate/版本有效；直接依赖全部 `VERIFIED`；候选 commit 存在且未过期；上下文哈希、base/candidate commit、diff、scope、秘密扫描和验收命令证据同源；Auditor 与 Reviewer 针对同一候选 commit，且与 Coder 角色/会话独立；全部阻断项为零。任一条件缺失即不得 `VERIFIED`。
+3. 只有 `tools/project-orchestrator.mjs` 持有进程内事件写 authority，可追加 ignored 的运行时 `.autonomy/events.jsonl` 并产生 Task/Slice 状态投影。事件使用 ignored 本地密钥做 HMAC-SHA256 完整性校验，并在投影前严格回放事件类型、状态迁移、计数器与租约语义；合法哈希链不能代替合法状态机。Coder、Auditor、Reviewer、Architect 和 Slice Gate Runner 只返回结构化报告，报告文字本身不能把 Task 或 Gate 判 PASS。
+4. 自动 Task Gate 的机械条件为：活动 G04 Gate/版本有效；直接依赖全部 `VERIFIED`；候选 commit 存在且未过期；工作树 clean；由当前路由器和已登记 policy/tool 哈希重新推导的稳定控制上下文、base/candidate commit、diff、含删除路径的 scope、秘密扫描和验收命令证据同源；Auditor 与 Reviewer 针对同一候选 commit，且有可信平台身份/会话见证证明其与 Coder 独立；全部阻断项为零。调用方自报 actor/session 字符串不是独立性证据；环境没有可信见证提供方时必须转 `ENVIRONMENT_APPROVAL_REQUIRED`，不得 `VERIFIED`。
 5. 新 candidate commit 自动使旧 Auditor/Reviewer 证据失效。Slice Gate Runner 只有在切片全部必要 Task `VERIFIED` 后，才可从用户入口执行切片验收；它不得修改产品实现或项目 Gate。
 6. `G07_GATE` 只能由创作者明确批准后登记。测试全绿、dry-run、Task/Slice `VERIFIED`、Architect 结论或独立 G07-B 都不得自动写 `G07_GATE=APPROVED`。
 
 ### 并发、返修与 Replan
 
-1. 同一自治运行最多一个有写权限的活跃租约；Auditor/Reviewer 等只读审查租约合计最多两个。租约必须绑定 run、Task、attempt、角色、actor、base commit、context hash、worktree 和过期时间；过期后由 Orchestrator 记录恢复事件，禁止双写。
-2. Auditor `FAIL` 或 Reviewer `REQUEST_CHANGES` 使同一候选进入 `REWORK`。同一 Task 最多三次返修；第三次失败进入 `REPLAN`，不得开启第四次无裁决返修。
+1. 同一自治运行最多一个有写权限的活跃租约；Auditor/Reviewer 等只读审查租约合计最多两个。租约必须绑定 run、Task、attempt、角色、调用方声明 actor、Orchestrator 推导的 base commit/control-context hash、worktree、随机 lease/lock nonce 和过期时间；声明 actor 只用于关联，不能证明独立身份。过期后由 Orchestrator 记录恢复事件；锁释放只有 nonce 仍属于当前持有者时才能删除，禁止双写和旧持有者删除替代锁。
+2. Auditor `FAIL`、Reviewer `REQUEST_CHANGES`，以及验收、commit、clean worktree、context、scope、秘密或身份 Gate 失败，都必须登记失败指纹和拒绝事件并进入对应 `REWORK/REPLAN/BLOCKED/CREATOR_REQUIRED`，不能只抛错后把 Task 留在 `VERIFYING`。同一 Task 最多三次返修；第三次失败进入 `REPLAN`，不得开启第四次无裁决返修。
 3. Replan 分为：A=同一 scope 内更换技术实现；B=在现有业务结果、依赖和 owner 不变时调整技术步骤/证据方案；C=需要改变业务、全局裁决、G04/Task 语义或 Gate；D=工具、平台或环境阻断。A/B 可 `ARCHITECT_AUTONOMOUS`，C 必须 `CREATOR_REQUIRED`，D 只能 `BLOCKED_TECHNICAL` 或 `ENVIRONMENT_APPROVAL_REQUIRED`。
-4. 同一 Task 最多两次 Replan。第二次仍失败时，若命中 `G04::CRITICAL_PATH`，暂停该关键路径及依赖其未完成结果的派发并转 `CREATOR_REQUIRED`；非关键路径任务转 `BLOCKED`，只有满足严格非阻断条件时才可另记 `P2_TECH_DEBT`。
+4. 同一 Task 最多两次 Replan。关键 Task 由登记关键路径端点和 `CRITICAL` Task 的完整 `depends_on` 祖先闭包计算，不得只在叙述中按 Task ID 字面搜索。第二次仍失败时，若命中该闭包，暂停该关键路径及依赖其未完成结果的派发并转 `CREATOR_REQUIRED`；非关键路径任务转 `BLOCKED`，只有满足严格非阻断条件时才可另记 `P2_TECH_DEBT`。`CREATOR_REQUIRED` 不能由 Orchestrator 接受任意证据字符串后自行解除，必须等待另行登记的创作者控制面更新。
 
 ### 分支、模型、预算与硬停止
 
 1. G01-G06 干净基线后，自治只在 `autonomy/integration` 工作；不得自动合并主分支、push、部署、写生产数据、读取/提交凭据或修改 `.env`。这些动作不能由角色报告、测试或 Architect 放行。
-2. `MODEL::CODE_HIGH` 映射为当前环境可用的最强代码推理能力，`MODEL::CODE_MEDIUM` 映射为当前环境的标准代码推理档。若平台不能按角色选择模型，可使用当前最强模型，但必须保持独立会话、角色和证据隔离，并把实际可见模型写入事件；不得伪造模型切换。
+2. `MODEL::CODE_HIGH` 映射为当前环境可用的最强代码推理能力，`MODEL::CODE_MEDIUM` 映射为当前环境的标准代码推理档。若平台不能按角色选择模型，可使用当前最强模型，但必须保持独立会话、角色和证据隔离，并把实际可见模型写入事件；不得伪造模型切换。当前平台若不能向 Orchestrator 提供可信会话见证，只能保存角色报告并转 `ENVIRONMENT_APPROVAL_REQUIRED`，不能用自报字符串补足独立性。
 3. 预算按 run 的已配置 token、时间和已知费用上限分别计量；任一维度达到 80% 必须通知，达到 100% 在产生下一次外部/模型/付费动作前硬停。未配置或环境不可见的费用必须明确记为 `unknown`，不得假报为 0。
 4. G07-A 只实现控制面、状态机、证据校验、提示词生成和 dry-run；不得真实调用项目模型、运行付费测试、执行产品 Task、push、部署、写生产或访问凭据。平台审批无法自动绕过时输出 `ENVIRONMENT_APPROVAL_REQUIRED`。
 
@@ -116,7 +116,7 @@ G07_A_POLICY_SHA256=4204358b289120043fc9f3ccb816b7cef9e61b5028a7a7aa25cb54808ea0
 
 | 检查点 | 当前状态 | 机械证据 | 批准边界 |
 |---|---|---|---|
-| G07-A 实现 | `IMPLEMENTED` | 独立分支 commit、G06 扩展自测、Orchestrator 自测、F0-01 dry-run、范围/秘密扫描 | 只证明已实现，不能批准 Gate |
+| G07-A 实现 | `REWORK` | 独立审查已发现政策绑定、证据完整性、状态回放和恢复控制的 P0/P1；返修后须重新登记独立分支 commit、G06 扩展自测、Orchestrator 自测、F0-01 dry-run、范围/秘密扫描 | 返修完成也只证明已实现，不能批准 Gate |
 | G07-B 独立审查 | `PENDING` | 独立角色复核同一 G07-A commit 的政策、状态机、证据、失败和恢复 | Reviewer 不得自批 Gate |
 | `G07_GATE` | `PENDING` | 创作者明确批准证据 | 只有创作者可改为 `APPROVED` |
 
