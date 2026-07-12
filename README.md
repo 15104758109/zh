@@ -106,10 +106,11 @@
 |---|---|
 | [实施控制面](./docs/IMPLEMENTATION_CONTROL.md) | Gate、事实源职责、成熟度、术语/RPC、全局裁决、FP/Task 骨架和角色窗口 |
 | [项目上下文路由器](./tools/project-context-loader.mjs) | 按 Task、角色与精确 FP 范围生成带哈希的只读上下文路由 |
-| [自治状态编排器](./tools/project-orchestrator.mjs) | G07-A 当前实现的外部单调事件 head、Ed25519 收据、平台写 capability、主责 Auditor/Slice Gate 机械执行证据、历史回放、原始 blob 证据、预算和恢复控制面；不调用模型 |
-| [自治证据复现器](./tools/g07-control-evidence.mjs) | 从 G01-G06 基线 Git 对象复现旧 58 项，并现场执行自测、语法和 Dry Run，与活动 evidence 的完整机械声明逐项比对 |
+| [自治状态编排器](./tools/project-orchestrator.mjs) | G07-A 当前实现的外部单调事件 head、Ed25519 收据、平台写 capability、模型会话见证、主责 Auditor/Slice Gate 机械执行证据、报告拒绝落链、历史回放、原始 blob 秘密证据、预算和恢复控制面；不调用模型 |
+| [自治证据复现器](./tools/g07-control-evidence.mjs) | 从 G01-G06 基线 Git 对象复现旧 58 项，复用登记秘密规则，并现场执行自测、语法、执行视图一致性和 Dry Run，与活动 evidence 的完整机械声明逐项比对 |
 | [自治机器政策](./.autonomy/policy.json) | `G07::AUTONOMY` 的阶段/Gate/制品哈希、平台信任根、外部 head、可信 inbox、写 capability、预算和硬停止规则 |
-| [当前 G07-A v8 机械证据](./docs/G07_A_EVIDENCE_V8.json) | 锁定 v8 实现、58/78/119/16 项测试、Dry Run 语义、非零 Slice 验收制品、实现 commit 制品和全基线扫描；`--all` 对完整声明做结构相等验证并逐项拒绝活动登记哈希漂移 |
+| [当前 G07-A v9 机械证据](./docs/G07_A_EVIDENCE_V9.json) | 锁定 v9 实现、58/78/138/20 项测试、共享秘密规则、模型会话见证、报告拒绝落链、执行视图一致性、Dry Run 语义、实现 commit 制品和全基线扫描 |
+| [历史 G07-A v8 机械证据](./docs/G07_A_EVIDENCE_V8.json) | 已被 v9 的 fine-grained PAT、模型见证、报告拒绝和执行视图一致性条件取代，仅保留审计追溯 |
 | [历史 G07-A v7 机械证据](./docs/G07_A_EVIDENCE_V7.json) | 已被 v8 的非零 Slice 验收制品条件取代，仅保留审计追溯，不代表当前返修通过 |
 | [历史 G07-A v6 机械证据](./docs/G07_A_EVIDENCE_V6.json) | 已被 v7 的登记哈希逐项负向测试取代，仅保留审计追溯，不代表当前返修通过 |
 | [历史 G07-A v5 机械证据](./docs/G07_A_EVIDENCE_V5.json) | 已被最新 G07-B 的两项 P1 取代，仅保留审计追溯，不代表当前返修通过 |

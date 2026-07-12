@@ -1,0 +1,178 @@
+{
+  "schema_version": "g07-a-evidence/v9",
+  "evidence_status": "ACTIVE_IMPLEMENTATION_EVIDENCE",
+  "implementation": {
+    "branch": "autonomy/integration",
+    "g01_g06_base_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
+    "candidate_commit": "2d1cbfc1d005c466dd1b1d61832f5d62b9d395d3",
+    "g07_gate": "PENDING",
+    "g07_a_status": "IMPLEMENTED",
+    "product_task_executed": false
+  },
+  "artifacts": {
+    "tools/project-context-loader.mjs": "10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47",
+    "tools/project-orchestrator.mjs": "b9fef6b683fd9ba7a0722158c0cc9b15ad59eb28c0df603c2a0439477e1fcaad",
+    "tools/g07-control-evidence.mjs": "75acc3f28c5bd62528d3cff8eb1fa24803fda0d8aa2b9b2932ff644fffcd7623",
+    "tools/g07-sensitive-patterns.mjs": "6a565f3538a524d5c95b88f61ba5e59d9246d438ee67216cefba2c0f477dfba7",
+    ".autonomy/policy.json": "8a666932120f31f1c83711a8759e3591a5859233470e25a60a56e0e3ce8af01e"
+  },
+  "mechanical_claims": {
+    "validation_version": "G07_EVIDENCE_SEMANTIC_V1",
+    "command": "node tools/g07-control-evidence.mjs --all",
+    "baseline_compatibility": {
+      "command": "node tools/g07-control-evidence.mjs --g06-baseline",
+      "source_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
+      "execution_mode": "REPOSITORY_EXECUTABLE_IN_MEMORY_GIT_OBJECTS",
+      "exit_code": 0,
+      "assertions": {
+        "passed": 58,
+        "failed": 0,
+        "total": 58
+      },
+      "business_acceptance_passed": true
+    },
+    "current_tests": {
+      "g06": {
+        "command": "node tools/project-context-loader.mjs --self-test",
+        "exit_code": 0,
+        "assertions": {
+          "passed": 78,
+          "failed": 0,
+          "total": 78
+        }
+      },
+      "g07": {
+        "command": "node tools/project-orchestrator.mjs --self-test",
+        "exit_code": 0,
+        "assertions": {
+          "passed": 138,
+          "failed": 0,
+          "total": 138
+        }
+      },
+      "evidence_tool": {
+        "command": "node tools/g07-control-evidence.mjs --self-test",
+        "exit_code": 0,
+        "assertions": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20
+        }
+      },
+      "syntax": {
+        "command": "node --check tools/project-orchestrator.mjs",
+        "exit_code": 0
+      }
+    },
+    "execution_view_consistency": {
+      "path": "DEV_HARNESS.md",
+      "passed": true,
+      "compared_keys": [
+        "G07_GATE",
+        "G07_A_STATUS",
+        "G07_A_BRANCH",
+        "G07_A_COMMIT",
+        "G07_A_ORCHESTRATOR_SHA256",
+        "G07_A_ORCHESTRATOR_TEST_ASSERTIONS",
+        "G07_A_POLICY_SHA256",
+        "G07_A_EVIDENCE_TOOL_SHA256",
+        "G07_A_EVIDENCE_TOOL_TEST_ASSERTIONS",
+        "G07_A_SENSITIVE_PATTERNS_SHA256",
+        "G07_A_EVIDENCE_STATUS",
+        "G07_A_EVIDENCE_PATH",
+        "G07_A_EVIDENCE_SHA256"
+      ],
+      "contracts": [
+        {
+          "key": "G07_A_POLICY_SCHEMA",
+          "expected": "g07-autonomy-policy/v5",
+          "matches": true
+        },
+        {
+          "key": "G07_A_REPORT_SCHEMA",
+          "expected": "g07-role-report/v5",
+          "matches": true
+        },
+        {
+          "key": "G07_A_SECRET_SCAN_VERSION",
+          "expected": "G07_CANDIDATE_BLOBS_V2",
+          "matches": true
+        }
+      ]
+    },
+    "dry_run": {
+      "command": "node tools/project-orchestrator.mjs dry-run --run-id g07-a-evidence-replay",
+      "exit_code": 0,
+      "selected_task_id": "F0-01-REPO",
+      "selected_role": "coder",
+      "selection_reason": "UNIQUE_READY_TASK",
+      "ready_candidates": [
+        "F0-01-REPO"
+      ],
+      "task_status": "READY",
+      "fp_ids": [],
+      "base_commit_is_invocation_head": true,
+      "context_hash_is_sha256": true,
+      "router_execution_authorized": true,
+      "policy_execution_allowed": false,
+      "policy_stop_reason": "G07_PHASE_PRODUCT_TASK_EXECUTION_DISABLED",
+      "event_log_unchanged": true,
+      "event_count": 0,
+      "product_files_written": false,
+      "task_status_changed": false,
+      "g07_gate": "PENDING"
+    },
+    "implementation_scope": {
+      "base_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
+      "candidate_commit": "2d1cbfc1d005c466dd1b1d61832f5d62b9d395d3",
+      "changed_paths": [
+        ".autonomy/.gitignore",
+        ".autonomy/policy.json",
+        ".gitattributes",
+        "DEV_HARNESS.md",
+        "README.md",
+        "docs/G07_A_EVIDENCE.json",
+        "docs/G07_A_EVIDENCE_V3.json",
+        "docs/G07_A_EVIDENCE_V4.json",
+        "docs/G07_A_EVIDENCE_V5.json",
+        "docs/G07_A_EVIDENCE_V6.json",
+        "docs/G07_A_EVIDENCE_V7.json",
+        "docs/G07_A_EVIDENCE_V8.json",
+        "docs/IMPLEMENTATION_CONTROL.md",
+        "tools/g07-control-evidence.mjs",
+        "tools/g07-sensitive-patterns.mjs",
+        "tools/project-context-loader.mjs",
+        "tools/project-orchestrator.mjs"
+      ],
+      "unexpected_paths": [],
+      "scope_passed": true,
+      "candidate_diff_sha256": "c2662fafdea7b778da538aa27493efea1d9947ef3358b25b8e72b79a70358ebb",
+      "secret_scan": {
+        "version": "G07_CANDIDATE_BLOBS_V2",
+        "passed": true,
+        "hit_types": [],
+        "scanned_blob_count": 17,
+        "binary_blob_count": 0
+      }
+    }
+  },
+  "annotations": {
+    "finding_closures": {
+      "P0_fine_grained_pat": "Both candidate scanners import one registered rule source and block github_pat_ plus the previously registered key formats in text or binary Git blobs.",
+      "P1_budget_review_stop": "At 100 percent, only CONTROL_PLANE_READ remains allowed; Task/Slice leases, read-only review, role/model, external and paid actions are blocked before dispatch.",
+      "P1_owner_rework_dispatch": "REWORK dispatch derives the primary role from the Task Index owner, including Auditor-owned evidence Tasks.",
+      "P1_prompt_editor_receipt": "Prompt Editor writer prompts require exact acceptance execution through a COMMAND_EXECUTION receipt and the workspace capability.",
+      "P1_report_rejection": "Invalid context, identity, model witness, stale candidate or Architect report on an active lease appends REPORT_REJECTED with a failure fingerprint, releases Task leases and moves to the machine-selected failure state.",
+      "P1_model_identity": "Every role report binds the registered recommended model tier and actual model through a platform-signed MODEL_SESSION receipt that is revalidated during replay.",
+      "P1_execution_view": "DEV_HARNESS exposes machine-readable active fields; --all compares them with IMPLEMENTATION_CONTROL and rejects a targeted semantic drift probe."
+    },
+    "hash_normalization": {
+      "version": "SEMANTIC_NORMALIZED_V1",
+      "rule": "Evidence fixes commands, exit codes, assertion counts, execution-view contracts, Dry Run semantics and implementation scope; invocation-HEAD-dependent stdout, base commit and context hash values are checked structurally at execution time and are not self-registered."
+    },
+    "known_limitations": [
+      "Production platform trust, external monotonic head and trusted receipt inbox providers remain UNAVAILABLE; activation still requires environment approval.",
+      "This evidence does not approve G07, authorize any product Task, or replace independent G07-B Audit and Review."
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 {
   "schema_version": "g07-a-evidence/v8",
-  "evidence_status": "ACTIVE_IMPLEMENTATION_EVIDENCE",
+  "evidence_status": "SUPERSEDED_IMPLEMENTATION_EVIDENCE",
   "implementation": {
     "branch": "autonomy/integration",
     "g01_g06_base_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
