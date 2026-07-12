@@ -52,24 +52,27 @@ G07_A_ROUTER_PATH=tools/project-context-loader.mjs
 G07_A_ROUTER_SHA256=10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47
 G07_A_ROUTER_TEST_ASSERTIONS=78
 G07_A_ORCHESTRATOR_PATH=tools/project-orchestrator.mjs
-G07_A_ORCHESTRATOR_SHA256=2a39074b88bb96404171c6fcdb394cc6ff373bee408270a0217739b97f130713
-G07_A_ORCHESTRATOR_TEST_ASSERTIONS=118
+G07_A_ORCHESTRATOR_SHA256=c180fd2c05c63ca085673172db6ac734c93e8418d174d57eb0bb72dcd8ffe96f
+G07_A_ORCHESTRATOR_TEST_ASSERTIONS=119
 G07_A_POLICY_PATH=.autonomy/policy.json
 G07_A_POLICY_SHA256=2eb39d5c0a33bb9419a005379fa00c88eb377711fc6b834825fe6250d7627fd5
 G07_A_EVIDENCE_TOOL_PATH=tools/g07-control-evidence.mjs
-G07_A_EVIDENCE_TOOL_SHA256=ed839ae53fc836712011b3fb3bc446d0d43340e794783424a6751f182bbdeb93
+G07_A_EVIDENCE_TOOL_SHA256=31185e004a523be895bf68f44a1069519cf3d11ba514ced0246beaac5e812b60
 G07_A_EVIDENCE_TOOL_TEST_ASSERTIONS=16
 G07_A_FULL_EVIDENCE_COMMAND=node tools/g07-control-evidence.mjs --all
-G07_A_COMMIT=0b0ff85ce460dcadc5364fcd75fc60e6860abeb3
+G07_A_COMMIT=f55184c76a9941613cdfcf9d2e316941069afc2c
+G07_A_SUPERSEDED_V7_COMMIT=0b0ff85ce460dcadc5364fcd75fc60e6860abeb3
 G07_A_SUPERSEDED_V7_DRAFT_COMMIT=6f6a9e99a4a987fa15f7e20b4e43f548ad6bf239
 G07_A_SUPERSEDED_V6_COMMIT=71a7555aef319d2a00cfec559fd8d094f460f661
 G07_A_SUPERSEDED_V5_COMMIT=7753c3f3c6f9acf088e25b37dc393aa5f58b8048
 G07_A_SUPERSEDED_V4_COMMIT=4466caa862673d7aa168a851ba1dfaa52c2098c6
 G07_A_SUPERSEDED_V3_COMMIT=f6a18f74d1dab1ba0856cd3b9ba00224dad77358
 G07_A_SUPERSEDED_COMMIT=e68accecac93d60c533c63eddc4a18c1053667d6
-G07_A_EVIDENCE_STATUS=ACTIVE_V7_IMPLEMENTATION_EVIDENCE
-G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V7.json
-G07_A_EVIDENCE_SHA256=dfb8a2f74b92d6f366d57e695fc9fa7577f3b18880b213cffc65aef3f7da34fc
+G07_A_EVIDENCE_STATUS=ACTIVE_V8_IMPLEMENTATION_EVIDENCE
+G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V8.json
+G07_A_EVIDENCE_SHA256=9d1752ceb1ad88667573222607b3ef94fc8fab0044eab4b6341a4aee9ea3acd4
+G07_A_SUPERSEDED_V7_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V7.json
+G07_A_SUPERSEDED_V7_EVIDENCE_SHA256=dfb8a2f74b92d6f366d57e695fc9fa7577f3b18880b213cffc65aef3f7da34fc
 G07_A_SUPERSEDED_V6_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V6.json
 G07_A_SUPERSEDED_V6_EVIDENCE_SHA256=2eeb86a7d475ef799fb0e1561a3a74d6b35ddd81bad05fbc787ad4772ee90eab
 G07_A_SUPERSEDED_V5_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V5.json
@@ -128,7 +131,7 @@ G07_A_SUPERSEDED_V5_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495
 4. 所有可提升状态的租约、迁移、解锁、角色身份/报告、命令执行、审计、评审、Architect 边界、阻断解除、计量和最终 Gate 必须由登记平台 Ed25519 收据授权，并在投影前重新验签、验 claims、验 receipt 唯一性和状态机语义。私钥不得位于工作区或角色可读权限域；历史 `VERIFIED` 事件保存其不可变 control-context facts，回放使用历史验收命令、scope 和秘密扫描版本，不因后续合法 policy/tool/control 升级而失效。
 5. 写租约还必须取得 `WORKSPACE_CAPABILITY`：平台 sandbox 只开放该 Task 精确 write scope，并拒绝 `.git/**`、`.autonomy/**`、`.env*`、可信收据 inbox 和 scope 外路径；签名主体/会话必须与主责执行报告一致。Coder、Prompt Editor，以及 Task Index 明确登记为 `VIEW::AUDITOR` 的主责证据 Task 共用这一单写入者能力边界；后者不能借审计身份绕过 scope，也不能修改产品实现制造 PASS。普通 `git status` 或提示词不是能力隔离。CLI 只可读取登记在工作区外可信 inbox 内的普通单链接 JSON 文件，必须通过 lexical boundary、realpath、类型、大小、符号链接/目录联接和硬链接检查；平台公钥和外部 head 命令使用同等文件边界。
 6. 自动 Task Gate 的机械条件为：活动 G04 Gate/版本有效；直接依赖全部 `VERIFIED`；候选 commit 存在且未过期；工作树 tracked/untracked clean；平台 capability 有效；由稳定 control context 绑定 base/candidate commit、含删除路径的 diff/scope、验收命令和原始 candidate Git blobs。秘密扫描逐 blob 读取文本/二进制对象；超限或不可扫描对象直接阻断。登记平台还须签发精确命令、退出码、stdout 哈希与回归制品收据；主责执行者、独立 Auditor、Reviewer 必须针对同一 commit 且具有互异的平台主体和会话。调用方自报 actor/session、exit code 或任意 64 位字符串不是证据。
-7. 新 candidate commit 自动使旧 Auditor/Reviewer 证据失效。Architect lease/report 必须绑定投影中的真实 REPLAN candidate、当前 base/context 和同一租约，detached 或不存在的 candidate 一律拒绝。Slice Gate Runner 只有在切片全部必要 Task `VERIFIED` 且每个 Task 有机械证据哈希后，才可取得专用只读 slice lease；PASS 还必须取得唯一 `SLICE_GATE_EXECUTION` 平台收据，绑定登记用户入口、完成边界、全部 Task evidence、同一 commit/context、退出码、stdout 和回归制品。空 acceptance、失败退出或任意自报哈希不得产生 PASS；报告与执行收据必须进入同一可信事件链，且不得修改产品实现、Task 状态或项目 Gate。
+7. 新 candidate commit 自动使旧 Auditor/Reviewer 证据失效。Architect lease/report 必须绑定投影中的真实 REPLAN candidate、当前 base/context 和同一租约，detached 或不存在的 candidate 一律拒绝。Slice Gate Runner 只有在切片全部必要 Task `VERIFIED` 且每个 Task 有机械证据哈希后，才可取得专用只读 slice lease；PASS 还必须取得唯一 `SLICE_GATE_EXECUTION` 平台收据，绑定登记用户入口、完成边界、全部 Task evidence、同一 commit/context、退出码、stdout、回归制品哈希和大于零的制品字节数。空 acceptance、零字节制品、失败退出或任意自报哈希不得产生 PASS；报告与执行收据必须进入同一可信事件链，且不得修改产品实现、Task 状态或项目 Gate。
 8. `G07_GATE` 只能由创作者明确批准后登记。测试全绿、dry-run、Task/Slice `VERIFIED`、Architect 结论或独立 G07-B 都不得自动写 `G07_GATE=APPROVED`。
 
 ### 并发、返修与 Replan
@@ -149,7 +152,7 @@ G07_A_SUPERSEDED_V5_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495
 
 | 检查点 | 当前状态 | 机械证据 | 批准边界 |
 |---|---|---|---|
-| G07-A 实现 | `IMPLEMENTED` | `G07_A_COMMIT` 锁定 v7 实现；`G07_A_EVIDENCE_PATH/SHA256` 锁定 58/78/118/16 项测试、机械复现的 Dry Run 语义、实现 commit 制品和全基线证据；`G07_A_FULL_EVIDENCE_COMMAND` 动态覆盖到审计调用时 HEAD，包含登记提交 | 只证明控制面实现和内部机械验证，不能批准 Gate 或启动产品 Task |
+| G07-A 实现 | `IMPLEMENTED` | `G07_A_COMMIT` 锁定 v8 实现；`G07_A_EVIDENCE_PATH/SHA256` 锁定 58/78/119/16 项测试、机械复现的 Dry Run 语义、实现 commit 制品和全基线证据；`G07_A_FULL_EVIDENCE_COMMAND` 动态覆盖到审计调用时 HEAD，包含登记提交 | 只证明控制面实现和内部机械验证，不能批准 Gate 或启动产品 Task |
 | G07-B 独立审查 | `PENDING` | 独立角色复核同一 G07-A commit 的政策、状态机、证据、失败和恢复 | Reviewer 不得自批 Gate |
 | `G07_GATE` | `PENDING` | 创作者明确批准证据 | 只有创作者可改为 `APPROVED` |
 

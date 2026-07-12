@@ -215,7 +215,7 @@ required_updates: <responsible fact sources>
 
 ## 10. G07-A 自治控制面
 
-稳定政策锚点为 `G07::AUTONOMY`，机器政策位于 `.autonomy/policy.json`。`tools/project-orchestrator.mjs` 管理 v4 事件链上的 v6 控制面实现：工作区外单调 head、Ed25519 收据、平台写 capability、严格历史语义回放、Task/Slice 投影、租约、blob 证据、预算、恢复、简报和角色提示词；它不直接调用模型。Coder、Auditor、Reviewer、Architect 与 Slice Gate Runner 只返回 `g07-role-report/v4`，不得直接写事件或 Task 状态。Task Index 中主责为 Auditor 的证据 Task 以单写入者 capability 执行，之后仍需独立 Auditor/Reviewer；Slice Gate Runner 使用专用只读 slice lease，且 PASS 必须携带绑定登记用户入口、Task evidence、commit/context 和执行制品的 `SLICE_GATE_EXECUTION` 平台收据。平台私钥、单调 head、head provider 命令和可信收据 inbox 都必须位于角色不可写域，head 命令每次执行前复核哈希；任一 provider 不可用时必须硬停为 `ENVIRONMENT_APPROVAL_REQUIRED`。
+稳定政策锚点为 `G07::AUTONOMY`，机器政策位于 `.autonomy/policy.json`。`tools/project-orchestrator.mjs` 管理 v4 事件链上的当前控制面实现：工作区外单调 head、Ed25519 收据、平台写 capability、严格历史语义回放、Task/Slice 投影、租约、blob 证据、预算、恢复、简报和角色提示词；它不直接调用模型。Coder、Auditor、Reviewer、Architect 与 Slice Gate Runner 只返回 `g07-role-report/v4`，不得直接写事件或 Task 状态。Task Index 中主责为 Auditor 的证据 Task 以单写入者 capability 执行，之后仍需独立 Auditor/Reviewer；Slice Gate Runner 使用专用只读 slice lease，且 PASS 必须携带绑定登记用户入口、Task evidence、commit/context、执行结果及大于零制品字节数的 `SLICE_GATE_EXECUTION` 平台收据。平台私钥、单调 head、head provider 命令和可信收据 inbox 都必须位于角色不可写域，head 命令每次执行前复核哈希；任一 provider 不可用时必须硬停为 `ENVIRONMENT_APPROVAL_REQUIRED`。
 
 ```text
 node tools/project-context-loader.mjs --self-test
