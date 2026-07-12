@@ -16,7 +16,7 @@ CURRENT_MODE=G04_R2_APPROVED_F0_01_READY
 G05_GATE=APPROVED
 G06_GATE=APPROVED
 G07_GATE=PENDING
-G07_A_STATUS=REWORK
+G07_A_STATUS=IMPLEMENTED
 ```
 
 - G02、G03-A~D 与历史 G04 revision 1 已由创作者批准；历史证据只登记在 `G04_R1_GATE=APPROVED`。
@@ -244,4 +244,4 @@ node tools/project-orchestrator.mjs report --run-id <run-id> [--slice-id <slice>
 - G07 阶段禁止真实项目模型调用、付费测试、push、部署、生产写入、凭据访问和自动合并主分支。平台授权不可绕过；当前没有可信角色会话见证提供方时也必须返回 `ENVIRONMENT_APPROVAL_REQUIRED`，不得把不同 actor/session 字符串当机械独立性。
 - 当前 `G07_GATE=PENDING`，因此即使路由器确认 `F0-01-REPO` 为唯一 READY，G07-A dry-run 也必须拒绝产品执行。测试、dry-run、G07-A/G07-B 或 Architect 均不得自行写 `G07_GATE=APPROVED`。
 - `tools/g07-control-evidence.mjs --all` 是独立复现入口：从 Git 对象运行旧 G06 58 项，运行当前 G06/G07 自测，并从 `G07_A_BASE_COMMIT` 动态扫描到调用时 `HEAD`，所以证据登记 commit 也在 scope 和原始 blob 秘密检查内。
-- 第三轮独立审查已把 v3 实现 `f6a18f74d1dab1ba0856cd3b9ba00224dad77358` 与 `docs/G07_A_EVIDENCE_V3.json` 判为历史证据；活动 `G07_A_STATUS=REWORK`。新实现/完整基线证据登记完成前不得据此启动产品 Task。
+- 第三轮独立审查已把 v3 实现/证据判为历史。活动 v4 实现为 `4466caa862673d7aa168a851ba1dfaa52c2098c6`，证据为 `docs/G07_A_EVIDENCE_V4.json`；`G07_A_STATUS=IMPLEMENTED` 只表示等待新的独立 G07-B。审计必须在最终 HEAD 运行 `node tools/g07-control-evidence.mjs --all`，不得据此启动产品 Task。
