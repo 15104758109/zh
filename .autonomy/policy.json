@@ -66,6 +66,8 @@
     "stream_id": "zhreplan-g07-autonomy",
     "command_path": null,
     "command_sha256": null,
+    "command_outside_workspace_required": true,
+    "command_hash_rechecked_before_each_spawn": true,
     "timeout_ms": 5000,
     "missing_provider_decision": "ENVIRONMENT_APPROVAL_REQUIRED"
   },
@@ -89,6 +91,16 @@
       "**/.env.*"
     ],
     "ignored_paths_must_be_unchanged": true
+  },
+  "role_lifecycle": {
+    "primary_task_writer_roles": [
+      "coder",
+      "prompt_editor",
+      "auditor"
+    ],
+    "auditor_owner_requires_independent_auditor_and_reviewer": true,
+    "slice_gate_requires_read_only_lease": true,
+    "slice_gate_report_must_enter_event_chain": true
   },
   "secret_scan": {
     "version": "G07_CANDIDATE_BLOBS_V1",

@@ -21,6 +21,7 @@ const ALLOWED_G07_PATHS = new Set([
   "docs/G07_A_EVIDENCE.json",
   "docs/G07_A_EVIDENCE_V3.json",
   "docs/G07_A_EVIDENCE_V4.json",
+  "docs/G07_A_EVIDENCE_V5.json",
   "docs/IMPLEMENTATION_CONTROL.md",
   "tools/g07-control-evidence.mjs",
   "tools/project-context-loader.mjs",
@@ -36,6 +37,14 @@ const SECRET_PATTERNS = new Map([
   ["SLACK_TOKEN", /xox[baprs]-[0-9A-Za-z-]{20,}/],
   ["PRIVATE_KEY", /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
 ]);
+
+const LF_REPRODUCIBLE_PATHS = [
+  "tools/project-context-loader.mjs",
+  "tools/g07-control-evidence.mjs",
+  "tools/project-orchestrator.mjs",
+  "docs/IMPLEMENTATION_CONTROL.md",
+  "docs/G07_A_EVIDENCE_V4.json",
+];
 
 function invariant(condition, message, code = "G07_EVIDENCE_ERROR", details = null) {
   if (condition) return;
@@ -80,6 +89,19 @@ function gitText(root, args) {
 function controlValues(root) {
   const text = fs.readFileSync(path.join(root, CONTROL_PATH), "utf8");
   return new Map([...text.matchAll(/^([A-Z0-9_-]+)=(.*)$/gm)].map((match) => [match[1], match[2].trim()]));
+}
+
+function commitExists(root, commit) {
+  if (!/^[a-f0-9]{40,64}$/.test(String(commit ?? ""))) return false;
+  return run(root, "git", ["cat-file", "-e", `${commit}^{commit}`], { allowFailure: true }).status === 0;
+}
+
+function commitIsAncestor(root, ancestor, descendant) {
+  return run(root, "git", ["merge-base", "--is-ancestor", ancestor, descendant], { allowFailure: true }).status === 0;
+}
+
+function commitFile(root, commit, relativePath) {
+  return gitBuffer(root, ["show", `${commit}:${relativePath}`]);
 }
 
 function baselineCompatibility(root) {
@@ -172,17 +194,54 @@ function fullBaselineScope(root, candidateCommit = "HEAD") {
   }
   const diff = gitBuffer(root, ["diff", "--no-ext-diff", "--binary", baseCommit, candidate]);
   const status = run(root, "git", ["status", "--porcelain=v1", "--untracked-files=all"]);
-  const artifactRegistrations = [
+  const artifactRegistrationKeys = [
     ["G06_ARTIFACT_PATH", "G06_ARTIFACT_SHA256"],
     ["G07_A_ORCHESTRATOR_PATH", "G07_A_ORCHESTRATOR_SHA256"],
     ["G07_A_POLICY_PATH", "G07_A_POLICY_SHA256"],
     ["G07_A_EVIDENCE_TOOL_PATH", "G07_A_EVIDENCE_TOOL_SHA256"],
-  ].map(([pathKey, hashKey]) => {
+  ];
+  const artifactRegistrations = artifactRegistrationKeys.map(([pathKey, hashKey]) => {
     const relativePath = values.get(pathKey);
     const registeredSha256 = values.get(hashKey);
+    invariant(relativePath && ALLOWED_G07_PATHS.has(relativePath) && /^[a-f0-9]{64}$/.test(registeredSha256 ?? ""), `artifact registration ${pathKey}/${hashKey} is invalid`, "G07_ARTIFACT_REGISTRATION_INVALID");
     const absolutePath = path.join(root, ...normalizePath(relativePath).split("/"));
     const actualSha256 = sha256(fs.readFileSync(absolutePath));
     return { path_key: pathKey, hash_key: hashKey, path: relativePath, registered_sha256: registeredSha256, actual_sha256: actualSha256, matches: actualSha256 === registeredSha256 };
+  });
+  const implementationCommit = values.get("G07_A_COMMIT");
+  const implementationCommitExists = commitExists(root, implementationCommit);
+  const implementationIsAncestor = implementationCommitExists && commitIsAncestor(root, implementationCommit, candidate);
+  const implementationArtifacts = artifactRegistrations.map((registration) => {
+    const bytes = implementationCommitExists ? commitFile(root, implementationCommit, registration.path) : Buffer.alloc(0);
+    const commitSha256 = sha256(bytes);
+    return { ...registration, implementation_commit_sha256: commitSha256, matches_implementation_commit: commitSha256 === registration.registered_sha256 };
+  });
+  const evidencePath = normalizePath(values.get("G07_A_EVIDENCE_PATH"));
+  const evidenceRegisteredSha256 = values.get("G07_A_EVIDENCE_SHA256");
+  invariant(ALLOWED_G07_PATHS.has(evidencePath) && /^[a-f0-9]{64}$/.test(evidenceRegisteredSha256 ?? ""), "active G07 evidence registration is invalid", "G07_ACTIVE_EVIDENCE_REGISTRATION_INVALID");
+  const evidenceAbsolute = path.join(root, ...evidencePath.split("/"));
+  const evidenceBytes = fs.readFileSync(evidenceAbsolute);
+  const evidenceActualSha256 = sha256(evidenceBytes);
+  const evidenceDocument = JSON.parse(evidenceBytes.toString("utf8").replace(/^\uFEFF/, ""));
+  const evidenceArtifactMatches = implementationArtifacts.every((item) => evidenceDocument.artifacts?.[item.path] === item.registered_sha256);
+  const evidencePayloadMatches = evidenceDocument.evidence_status === "ACTIVE_IMPLEMENTATION_EVIDENCE"
+    && evidenceDocument.implementation?.candidate_commit === implementationCommit
+    && evidenceDocument.implementation?.g01_g06_base_commit === baseCommit
+    && evidenceDocument.implementation?.branch === gitText(root, ["branch", "--show-current"])
+    && evidenceArtifactMatches;
+  const lfPaths = [...new Set([...LF_REPRODUCIBLE_PATHS, evidencePath])].sort();
+  const lfReproducibility = lfPaths.map((relativePath) => {
+    const worktreeBytes = fs.readFileSync(path.join(root, ...relativePath.split("/")));
+    const committedBytes = commitFile(root, candidate, relativePath);
+    const attribute = gitText(root, ["check-attr", "eol", "--", relativePath]);
+    return {
+      path: relativePath,
+      attribute,
+      eol_lf: attribute.endsWith(": eol: lf"),
+      worktree_sha256: sha256(worktreeBytes),
+      committed_sha256: sha256(committedBytes),
+      bytes_match_clean_checkout: Buffer.compare(worktreeBytes, committedBytes) === 0,
+    };
   });
   return {
     base_commit: baseCommit,
@@ -195,6 +254,25 @@ function fullBaselineScope(root, candidateCommit = "HEAD") {
     candidate_diff_sha256: sha256(diff),
     registered_artifacts: artifactRegistrations,
     registered_artifacts_match: artifactRegistrations.every((item) => item.matches),
+    implementation_registration: {
+      commit: implementationCommit,
+      exists: implementationCommitExists,
+      ancestor_of_candidate: implementationIsAncestor,
+      artifacts: implementationArtifacts,
+      artifacts_match: implementationArtifacts.every((item) => item.matches_implementation_commit),
+    },
+    active_evidence: {
+      path: evidencePath,
+      registered_sha256: evidenceRegisteredSha256,
+      actual_sha256: evidenceActualSha256,
+      hash_matches: evidenceActualSha256 === evidenceRegisteredSha256,
+      payload_matches_registration: evidencePayloadMatches,
+      schema_version: evidenceDocument.schema_version ?? null,
+    },
+    lf_reproducibility: {
+      passed: lfReproducibility.every((item) => item.eol_lf && item.bytes_match_clean_checkout),
+      files: lfReproducibility,
+    },
     gate_snapshot: {
       g07_gate: values.get("G07_GATE"),
       g07_a_status: values.get("G07_A_STATUS"),
@@ -241,12 +319,27 @@ function main() {
     const scope = ["all", "scope"].includes(options.mode) ? fullBaselineScope(options.root, options.candidate) : null;
     const binaryProbe = scanBlob(Buffer.concat([Buffer.from([0, 1]), Buffer.from(`sk-proj-${"A".repeat(24)}`), Buffer.from([0])]));
     if (options.mode === "self-test") {
+      const registration = fullBaselineScope(options.root, options.candidate);
+      const assertions = [
+        baseline.assertions.passed === 58,
+        binaryProbe.includes("OPENAI_KEY"),
+        registration.active_evidence.hash_matches && registration.active_evidence.payload_matches_registration,
+        registration.implementation_registration.exists && registration.implementation_registration.ancestor_of_candidate,
+        registration.implementation_registration.artifacts_match,
+        registration.lf_reproducibility.passed,
+        registration.scope_passed && registration.secret_scan.passed && registration.registered_artifacts_match,
+      ];
       const report = {
         schema_version: "g07-control-evidence-self-test/v1",
-        passed: baseline.assertions.passed === 58 && binaryProbe.includes("OPENAI_KEY"),
-        assertions: { passed: 2, failed: 0, total: 2 },
+        passed: assertions.every(Boolean),
+        assertions: { passed: assertions.filter(Boolean).length, failed: assertions.filter((item) => !item).length, total: assertions.length },
         baseline,
         binary_secret_probe: binaryProbe,
+        registration: {
+          active_evidence: registration.active_evidence,
+          implementation_registration: registration.implementation_registration,
+          lf_reproducibility: registration.lf_reproducibility,
+        },
       };
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
       if (!report.passed) process.exitCode = 1;
@@ -268,6 +361,12 @@ function main() {
       && (scope?.scope_passed ?? true)
       && (scope?.secret_scan.passed ?? true)
       && (scope?.registered_artifacts_match ?? true)
+      && (scope?.implementation_registration.exists ?? true)
+      && (scope?.implementation_registration.ancestor_of_candidate ?? true)
+      && (scope?.implementation_registration.artifacts_match ?? true)
+      && (scope?.active_evidence.hash_matches ?? true)
+      && (scope?.active_evidence.payload_matches_registration ?? true)
+      && (scope?.lf_reproducibility.passed ?? true)
       && (scope?.worktree_clean ?? true)
       && Object.values(report.current_tests ?? {}).every((item) => item.exit_code === 0);
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

@@ -66,6 +66,9 @@ const EVENT_TYPES = new Set([
   "USAGE_RECORDED",
   "HARD_STOP",
   "EVENT_LOG_TAIL_RECOVERED",
+  "SLICE_GATE_LEASE_ACQUIRED",
+  "SLICE_GATE_LEASE_EXPIRED",
+  "SLICE_GATE_REPORT_RECORDED",
 ]);
 
 const TASK_STATUSES = new Set([
@@ -216,17 +219,23 @@ function normalizedHead(value, streamId) {
 }
 
 class ExternalCommandMonotonicHead {
-  constructor({ commandPath, commandSha256, streamId, timeoutMs = 5000 }) {
+  constructor({ commandPath, commandSha256, streamId, workspaceRoot, timeoutMs = 5000 }) {
     const basename = path.basename(commandPath ?? "").toLowerCase();
     invariant(basename !== ".env" && !basename.startsWith(".env."), "monotonic head command cannot be an environment file", "CREDENTIAL_ACCESS");
     const checked = assertRegularFileWithoutLinks(commandPath, { maxBytes: 64 * 1024 * 1024, purpose: "monotonic head command" });
+    invariant(!pathInside(workspaceRoot, checked.absolute), "monotonic head command must be outside the role-writable workspace", "EVENT_HEAD_COMMAND_BOUNDARY_INVALID");
     invariant(hashFile(checked.absolute) === commandSha256, "monotonic head command hash drifted", "EVENT_HEAD_COMMAND_HASH_MISMATCH");
     this.commandPath = checked.absolute;
+    this.commandSha256 = commandSha256;
+    this.workspaceRoot = path.resolve(workspaceRoot);
     this.streamId = streamId;
     this.timeoutMs = Number(timeoutMs);
   }
 
   run(args) {
+    const checked = assertRegularFileWithoutLinks(this.commandPath, { maxBytes: 64 * 1024 * 1024, purpose: "monotonic head command" });
+    invariant(checked.absolute === this.commandPath && !pathInside(this.workspaceRoot, checked.absolute), "monotonic head command boundary drifted", "EVENT_HEAD_COMMAND_BOUNDARY_INVALID");
+    invariant(hashFile(checked.absolute) === this.commandSha256, "monotonic head command hash drifted before execution", "EVENT_HEAD_COMMAND_HASH_MISMATCH");
     const result = spawnSync(this.commandPath, args, {
       encoding: "utf8",
       windowsHide: true,
@@ -267,7 +276,7 @@ class ExternalCommandMonotonicHead {
   }
 }
 
-function monotonicHeadFromPolicy(policy) {
+function monotonicHeadFromPolicy(policy, workspaceRoot) {
   const config = policy.monotonic_head;
   if (config?.provider === "UNAVAILABLE") return null;
   invariant(config?.provider === "EXTERNAL_COMMAND", "unsupported monotonic head provider", "EVENT_HEAD_PROVIDER_INVALID");
@@ -275,6 +284,7 @@ function monotonicHeadFromPolicy(policy) {
     commandPath: config.command_path,
     commandSha256: config.command_sha256,
     streamId: config.stream_id,
+    workspaceRoot,
     timeoutMs: config.timeout_ms,
   });
 }
@@ -540,7 +550,7 @@ class EventStore {
     };
   }
 
-  verifyMonotonicHead(events) {
+  verifyMonotonicHead(events, { allowLocalAhead = false } = {}) {
     const local = this.localHead(events);
     if (!this.monotonicHead) {
       invariant(events.length === 0, "a non-empty event log requires the registered external monotonic head provider", "ENVIRONMENT_APPROVAL_REQUIRED", { reason: "MONOTONIC_HEAD_PROVIDER_UNAVAILABLE" });
@@ -552,7 +562,10 @@ class EventStore {
       invariant(local.event_hash === external.event_hash, "local event log head differs from the external monotonic head", "EVENT_HEAD_MISMATCH", { local, external });
       return { local, external, synchronized: true };
     }
-    invariant(false, "local event log is ahead of the external monotonic head and requires resume reconciliation", "EVENT_HEAD_RECONCILIATION_REQUIRED", { local, external });
+    const anchoredPrefixHash = external.event_count === 0 ? null : events[external.event_count - 1]?.event_hash;
+    invariant(anchoredPrefixHash === external.event_hash, "external monotonic head is not a prefix of the local log", "EVENT_HEAD_MISMATCH", { local, external, anchored_prefix_hash: anchoredPrefixHash });
+    invariant(allowLocalAhead, "local event log is ahead of the external monotonic head and requires resume reconciliation", "EVENT_HEAD_RECONCILIATION_REQUIRED", { local, external });
+    return { local, external, synchronized: false, reconcilable: true };
   }
 
   read({ verifyExternalHead = true } = {}) {
@@ -687,7 +700,7 @@ class EventStore {
       }
       if (completeJson) {
         const events = this.parse(text);
-        this.verifyMonotonicHead(events);
+        this.verifyMonotonicHead(events, { allowLocalAhead: true });
         const descriptor = fs.openSync(this.eventsPath, "a");
         try {
           fs.writeSync(descriptor, "\n", null, "utf8");
@@ -701,7 +714,7 @@ class EventStore {
           complete_tail_bytes: Buffer.byteLength(tail, "utf8"),
         };
       }
-      if (prefix.trim()) this.verifyMonotonicHead(this.parse(prefix));
+      if (prefix.trim()) this.verifyMonotonicHead(this.parse(prefix), { allowLocalAhead: true });
       fs.mkdirSync(this.quarantinePath, { recursive: true });
       const tailHash = sha256(tail);
       const quarantineFile = path.join(this.quarantinePath, `events-tail-${safeTimestampFragment(this.clock().toISOString())}-${tailHash.slice(0, 16)}.jsonl`);
@@ -825,7 +838,7 @@ class ProjectOrchestrator {
     this.#testControlOverrides = testControlOverrides;
     this.#internalTest = internalTest;
     this.#platformTrust = platformTrust ?? platformTrustFromPolicy(this.policy, this.root, this.clock);
-    this.#monotonicHead = monotonicHead ?? monotonicHeadFromPolicy(this.policy);
+    this.#monotonicHead = monotonicHead ?? monotonicHeadFromPolicy(this.policy, this.root);
     this.#storeAuthority = Symbol("project-orchestrator-event-writer");
     this.validatePolicy();
     const store = new EventStore({
@@ -865,10 +878,13 @@ class ProjectOrchestrator {
       && this.policy.platform_trust?.private_key_material_in_workspace === false, "platform trust policy is invalid", "POLICY_PLATFORM_TRUST_INVALID");
     invariant(["UNAVAILABLE", "EXTERNAL_COMMAND"].includes(this.policy.monotonic_head?.provider)
       && typeof this.policy.monotonic_head?.stream_id === "string"
-      && this.policy.monotonic_head.stream_id.length >= 8, "external monotonic head policy is invalid", "POLICY_MONOTONIC_HEAD_INVALID");
+      && this.policy.monotonic_head.stream_id.length >= 8
+      && this.policy.monotonic_head.command_outside_workspace_required === true
+      && this.policy.monotonic_head.command_hash_rechecked_before_each_spawn === true, "external monotonic head policy is invalid", "POLICY_MONOTONIC_HEAD_INVALID");
     if (this.policy.monotonic_head.provider === "EXTERNAL_COMMAND") {
       invariant(path.isAbsolute(this.policy.monotonic_head.command_path ?? "")
         && isSha256(this.policy.monotonic_head.command_sha256), "external monotonic head command registration is incomplete", "POLICY_MONOTONIC_HEAD_INVALID");
+      invariant(!pathInside(this.root, this.policy.monotonic_head.command_path), "external monotonic head command must be outside the role-writable workspace", "POLICY_MONOTONIC_HEAD_INVALID");
     }
     invariant(["UNAVAILABLE", "PLATFORM_DIRECTORY"].includes(this.policy.receipt_inbox?.provider)
       && Number.isInteger(this.policy.receipt_inbox?.max_file_bytes)
@@ -882,6 +898,10 @@ class ProjectOrchestrator {
       && Array.isArray(this.policy.workspace_capability?.denied_patterns)
       && this.policy.workspace_capability.denied_patterns.includes(".autonomy/**")
       && this.policy.workspace_capability.denied_patterns.includes(".env"), "workspace capability policy is incomplete", "POLICY_WORKSPACE_CAPABILITY_INVALID");
+    invariant(sameStringSet(this.policy.role_lifecycle?.primary_task_writer_roles, ["coder", "prompt_editor", "auditor"])
+      && this.policy.role_lifecycle.auditor_owner_requires_independent_auditor_and_reviewer === true
+      && this.policy.role_lifecycle.slice_gate_requires_read_only_lease === true
+      && this.policy.role_lifecycle.slice_gate_report_must_enter_event_chain === true, "role lifecycle policy is incomplete", "POLICY_ROLE_LIFECYCLE_INVALID");
     invariant(this.policy.secret_scan?.version === "G07_CANDIDATE_BLOBS_V1"
       && this.policy.secret_scan?.scan_binary_blobs === true
       && this.policy.secret_scan?.oversize_result === "BLOCKING"
@@ -992,6 +1012,12 @@ class ProjectOrchestrator {
     };
   }
 
+  initialVerifiedEvidence(task) {
+    if (!this.#internalTest || task.values["状态"] !== "VERIFIED") return null;
+    const evidence = this.#testControlOverrides?.bootstrap_verified_evidence?.[task.id] ?? null;
+    return isSha256(evidence) ? evidence : null;
+  }
+
   requirePlatformTrust(reason = "PLATFORM_TRUST_PROVIDER_UNAVAILABLE") {
     invariant(this.#platformTrust, "the registered platform trust provider is unavailable", "ENVIRONMENT_APPROVAL_REQUIRED", { reason });
     return this.#platformTrust;
@@ -1038,6 +1064,7 @@ class ProjectOrchestrator {
       session_id: signed.session_id,
       role: report.role,
       task_id: report.task_id,
+      slice_id: report.slice_id ?? null,
       attempt_id: report.attempt_id,
       base_commit: report.base_commit,
       candidate_commit: report.candidate_commit,
@@ -1053,6 +1080,7 @@ class ProjectOrchestrator {
     const reportClaims = {
       role: report.role,
       task_id: report.task_id,
+      slice_id: report.slice_id ?? null,
       attempt_id: report.attempt_id,
       base_commit: report.base_commit,
       candidate_commit: report.candidate_commit,
@@ -1070,10 +1098,11 @@ class ProjectOrchestrator {
     };
   }
 
-  leaseReceiptClaims({ runId, taskId, attemptId, role, actorId, mode, leaseId, acquiredAt, expiresAt, baseCommit, candidateCommit, contextHash, fromStatus, toStatus, workspaceCapabilityReceiptId = null }) {
+  leaseReceiptClaims({ runId, taskId, sliceId = null, attemptId, role, actorId, mode, leaseId, acquiredAt, expiresAt, baseCommit, candidateCommit, contextHash, fromStatus, toStatus, workspaceCapabilityReceiptId = null }) {
     return {
       autonomy_run_id: runId,
       task_id: taskId,
+      slice_id: sliceId,
       attempt_id: attemptId,
       role,
       actor_id: actorId,
@@ -1208,9 +1237,11 @@ class ProjectOrchestrator {
       candidate_commit: null,
       context_hash: null,
       last_event_id: null,
+      last_evidence: this.initialVerifiedEvidence(task),
     }]));
     const leases = new Map();
     const reports = new Map();
+    const sliceGateReports = new Map();
     const eventIds = new Set();
     const receiptIds = new Set();
     let previousTimestamp = null;
@@ -1240,6 +1271,87 @@ class ProjectOrchestrator {
         receiptIds.add(receipt.receipt_id);
       };
       for (const receipt of event.platform_receipts) trackReceipt(receipt);
+
+      if (!event.task_id && event.role === "slice_gate_runner") {
+        invariant(event.slice_id && this.router.sliceRows.some((row) => row.values["切片"] === event.slice_id), "slice gate event has an unknown slice", "EVENT_SLICE_INVALID");
+        invariant(event.from_status === null && event.to_status === null, "slice gate event cannot carry Task status", "EVENT_STATE_INVALID");
+        if (event.event_type === "SLICE_GATE_LEASE_ACQUIRED") {
+          invariant(event.lease?.action === "ACQUIRE" && event.lease.mode === "READ_ONLY"
+            && event.lease.role === "slice_gate_runner" && event.lease.slice_id === event.slice_id, "slice gate lease is malformed", "EVENT_LEASE_INVALID");
+          invariant(!leases.has(event.lease.lease_id)
+            && [...leases.values()].filter((lease) => lease.mode === "READ_ONLY").length < this.policy.concurrency.max_read_only_reviewers, "slice gate lease exceeds independent reviewer concurrency", "EVENT_REVIEW_CONCURRENCY_INVALID");
+          const facts = event.payload?.slice_context;
+          const expectedEvidence = this.router.tasks
+            .filter((task) => task.values["切片"] === event.slice_id)
+            .sort((left, right) => left.id.localeCompare(right.id, "en"))
+            .map((task) => {
+              const taskState = states.get(task.id);
+              return { task_id: task.id, status: taskState.status, evidence_hash: taskState.last_evidence, candidate_commit: taskState.candidate_commit };
+            });
+          invariant(facts?.schema_version === "g07-slice-gate-context/v1"
+            && facts.slice_id === event.slice_id
+            && facts.branch === this.policy.integration_branch
+            && stableJson(facts.task_evidence) === stableJson(expectedEvidence)
+            && expectedEvidence.length > 0
+            && expectedEvidence.every((item) => item.status === "VERIFIED" && isSha256(item.evidence_hash))
+            && sha256(stableJson(facts)) === event.context_hash, "slice gate lease is not bound to the full VERIFIED Task evidence set", "EVENT_SLICE_CONTEXT_INVALID");
+          const receipt = event.platform_receipts.find((item) => item.kind === "LEASE_GRANT");
+          this.verifyPlatformReceipt(receipt, "LEASE_GRANT", this.leaseReceiptClaims({
+            runId: event.autonomy_run_id,
+            taskId: null,
+            sliceId: event.slice_id,
+            attemptId: event.attempt_id,
+            role: event.role,
+            actorId: event.lease.actor_id,
+            mode: event.lease.mode,
+            leaseId: event.lease.lease_id,
+            acquiredAt: event.lease.acquired_at,
+            expiresAt: event.lease.expires_at,
+            baseCommit: event.base_commit,
+            candidateCommit: event.candidate_commit,
+            contextHash: event.context_hash,
+            fromStatus: null,
+            toStatus: null,
+          }), { at: event.timestamp });
+          leases.set(event.lease.lease_id, { ...event.lease, task_id: null, slice_id: event.slice_id });
+        } else if (event.event_type === "SLICE_GATE_REPORT_RECORDED") {
+          const report = event.payload?.report;
+          const active = [...leases.values()].find((lease) => lease.slice_id === event.slice_id
+            && lease.role === "slice_gate_runner"
+            && lease.actor_id === report?.actor_id
+            && lease.attempt_id === report?.attempt_id);
+          invariant(active && event.lease?.action === "RELEASE" && event.lease.lease_id === active.lease_id, "slice gate report has no matching active lease", "EVENT_REPORT_LEASE_INVALID");
+          invariant(report.task_id === null && report.slice_id === event.slice_id
+            && report.role === "slice_gate_runner"
+            && ["PASS", "FAIL"].includes(report.verdict)
+            && report.base_commit === active.base_commit
+            && report.candidate_commit === active.candidate_commit
+            && report.context_hash === active.context_hash
+            && event.base_commit === active.base_commit
+            && event.candidate_commit === active.candidate_commit
+            && event.context_hash === active.context_hash, "slice gate report is detached from its lease/context", "EVENT_REPORT_INVALID");
+          trackReceipt(report.identity_attestation);
+          trackReceipt(report.report_receipt);
+          const trustedReport = this.verifyReportTrust(report, { at: event.timestamp });
+          invariant(stableJson(event.payload?.trusted_report) === stableJson(trustedReport), "slice gate trusted-report projection was tampered", "EVENT_REPORT_TRUST_INVALID");
+          const priorIdentities = events.slice(0, index)
+            .filter((prior) => prior.task_id && prior.slice_id === event.slice_id && prior.event_type === "ROLE_REPORT_RECORDED")
+            .map((prior) => prior.payload?.trusted_report)
+            .filter(Boolean);
+          invariant(priorIdentities.every((identity) => identity.principal_id !== trustedReport.principal_id
+            && identity.session_id !== trustedReport.session_id)
+            && stableJson(event.payload?.independent_from ?? []) === stableJson(priorIdentities), "slice gate runner independence evidence is invalid", "SELF_REVIEW_BLOCKED");
+          leases.delete(active.lease_id);
+        } else if (event.event_type === "SLICE_GATE_LEASE_EXPIRED") {
+          const active = leases.get(event.lease?.lease_id);
+          invariant(active?.slice_id === event.slice_id && event.lease.action === "EXPIRE"
+            && Date.parse(event.timestamp) >= Date.parse(active.expires_at), "slice gate expiration does not target an expired active lease", "EVENT_LEASE_INVALID");
+          leases.delete(active.lease_id);
+        } else {
+          invariant(false, `taskless slice gate event type ${event.event_type} is forbidden`, "EVENT_TYPE_INVALID");
+        }
+        continue;
+      }
 
       if (!event.task_id) {
         invariant(["USAGE_RECORDED", "HARD_STOP", "EVENT_LOG_TAIL_RECOVERED"].includes(event.event_type), `taskless event type ${event.event_type} is forbidden`, "EVENT_TASK_REQUIRED");
@@ -1290,7 +1402,8 @@ class ProjectOrchestrator {
         invariant(event.lease.role === event.role && event.lease.attempt_id === event.attempt_id, "lease identity does not match event", "EVENT_LEASE_INVALID");
         invariant(event.lease.context_hash === event.context_hash && event.lease.base_commit === event.base_commit, "lease version does not match event", "EVENT_LEASE_INVALID");
         if (event.lease.mode === "WRITE") {
-          invariant(["coder", "prompt_editor"].includes(event.role), "write lease role is invalid", "EVENT_LEASE_INVALID");
+          invariant(["coder", "prompt_editor", "auditor"].includes(event.role)
+            && this.taskOwnerRole(event.task_id) === event.role, "write lease role is not the registered Task owner", "EVENT_LEASE_INVALID");
           invariant(event.from_status === "READY" && event.to_status === "LEASED", "write lease must be READY -> LEASED", "EVENT_SEMANTICS_INVALID");
           invariant([...leases.values()].filter((lease) => lease.mode === "WRITE").length < 1, "semantic replay found two active writers", "EVENT_WRITER_CONCURRENCY_INVALID");
           const capability = event.platform_receipts.find((item) => item.kind === "WORKSPACE_CAPABILITY");
@@ -1319,6 +1432,8 @@ class ProjectOrchestrator {
         } else {
           invariant(event.lease.mode === "READ_ONLY", "unknown lease mode", "EVENT_LEASE_INVALID");
           invariant(["auditor", "reviewer", "architect"].includes(event.role), "read-only lease role is invalid", "EVENT_LEASE_INVALID");
+          invariant(event.candidate_commit && event.candidate_commit === state.candidate_commit
+            && event.lease.candidate_commit === state.candidate_commit, "read-only lease is detached from the projected candidate", "EVENT_LEASE_CANDIDATE_INVALID");
           invariant((event.from_status === "IMPLEMENTED" && event.to_status === "VERIFYING")
             || (event.from_status === "VERIFYING" && event.to_status === "VERIFYING")
             || (event.role === "architect" && event.from_status === "REPLAN" && event.to_status === "REPLAN"), "read-only lease status pair is invalid", "EVENT_SEMANTICS_INVALID");
@@ -1366,7 +1481,7 @@ class ProjectOrchestrator {
             .map((role) => [...events.slice(0, index)].reverse().find((priorEvent) => priorEvent.event_type === "ROLE_REPORT_RECORDED"
               && priorEvent.task_id === event.task_id
               && priorEvent.role === role
-              && priorEvent.candidate_commit === report.candidate_commit)?.payload?.trusted_report)
+              && priorEvent.candidate_commit === state.candidate_commit)?.payload?.trusted_report)
             .filter(Boolean);
           this.assertIndependentIdentities([...priorIdentities, trustedReport]);
           invariant(stableJson(event.payload?.architect_independent_from ?? []) === stableJson(priorIdentities), "Architect independence projection was tampered", "EVENT_REPORT_TRUST_INVALID");
@@ -1377,15 +1492,23 @@ class ProjectOrchestrator {
           && lease.role === event.role
           && lease.attempt_id === event.attempt_id);
         invariant(activeForRole, "role report has no matching active lease", "EVENT_REPORT_LEASE_INVALID");
-        if (["coder", "prompt_editor"].includes(event.role)) {
+        if (activeForRole.mode === "READ_ONLY") {
+          invariant(report.candidate_commit === activeForRole.candidate_commit
+            && event.candidate_commit === activeForRole.candidate_commit
+            && state.candidate_commit === activeForRole.candidate_commit, "role report is detached from the active projected candidate", "EVENT_REPORT_CANDIDATE_INVALID");
+        } else {
+          invariant(report.candidate_commit && event.candidate_commit === report.candidate_commit
+            && activeForRole.candidate_commit === null, "writer report must introduce exactly one candidate commit", "EVENT_REPORT_CANDIDATE_INVALID");
+        }
+        if (activeForRole.mode === "WRITE") {
           invariant(report.workspace_capability_receipt_id === activeForRole.workspace_capability_receipt_id
             && trustedReport.principal_id === activeForRole.capability_principal_id
             && trustedReport.session_id === activeForRole.capability_session_id, "writer report is not bound to its platform workspace capability", "EVENT_WORKSPACE_CAPABILITY_INVALID");
         }
-        const allowedPair = (["coder", "prompt_editor"].includes(event.role)
+        const allowedPair = (activeForRole.mode === "WRITE"
           && event.from_status === "IN_PROGRESS"
           && ["IN_PROGRESS", "BLOCKED", "CREATOR_REQUIRED"].includes(event.to_status))
-          || (["auditor", "reviewer"].includes(event.role)
+          || (activeForRole.mode === "READ_ONLY" && ["auditor", "reviewer"].includes(event.role)
             && event.from_status === "VERIFYING"
             && ["VERIFYING", "REWORK", "REPLAN", "BLOCKED", "CREATOR_REQUIRED"].includes(event.to_status))
           || (event.role === "architect"
@@ -1411,7 +1534,7 @@ class ProjectOrchestrator {
               && isSha256(event.failure_fingerprint), "Architect D must remain technically/environment blocked with a failure fingerprint", "EVENT_ARCHITECT_DECISION_INVALID");
           }
         }
-        if (["coder", "prompt_editor"].includes(event.role)) {
+        if (activeForRole.mode === "WRITE") {
           if (report.verdict === "CREATOR_REQUIRED") {
             invariant(event.to_status === "CREATOR_REQUIRED" && event.decision_level === "CREATOR_REQUIRED"
               && Boolean(event.creator_required_reason), "writer CREATOR_REQUIRED report was remapped", "EVENT_WRITER_DECISION_INVALID");
@@ -1428,6 +1551,13 @@ class ProjectOrchestrator {
         invariant(!(event.from_status === "PLANNED" && event.to_status === "READY"), "unlock event is required", "EVENT_SEMANTICS_INVALID");
         invariant(!(event.from_status === "READY" && event.to_status === "LEASED"), "lease event is required", "EVENT_SEMANTICS_INVALID");
         invariant(!["VERIFIED", "REWORK", "REPLAN"].includes(event.to_status), "reserved transition event target", "EVENT_SEMANTICS_INVALID");
+        if (event.to_status === "IMPLEMENTED") {
+          const producerRole = this.taskOwnerRole(event.task_id);
+          const producer = [...(reports.get(event.task_id) ?? [])].reverse().find((report) => report.role === producerRole
+            && report.verdict === "IMPLEMENTED"
+            && report.candidate_commit === event.candidate_commit);
+          invariant(producer, "IMPLEMENTED transition has no structured primary executor report", "EVENT_PRIMARY_REPORT_MISSING");
+        }
         if (event.from_status === "BLOCKED" && event.to_status === "READY") {
           invariant(event.payload?.failed_event_id === state.last_event_id
             && event.payload?.failure_fingerprint === state.failure_fingerprint
@@ -1492,6 +1622,7 @@ class ProjectOrchestrator {
       if (event.failure_fingerprint) state.failure_fingerprint = event.failure_fingerprint;
       if (event.candidate_commit) state.candidate_commit = event.candidate_commit;
       if (event.context_hash) state.context_hash = event.context_hash;
+      if (event.event_type === "EVIDENCE_VERIFIED") state.last_evidence = event.event_hash;
       state.last_event_id = event.event_id;
     }
     return true;
@@ -1507,11 +1638,12 @@ class ProjectOrchestrator {
       candidate_commit: null,
       context_hash: null,
       last_event_id: null,
-      last_evidence: null,
+      last_evidence: this.initialVerifiedEvidence(task),
       failure_fingerprint: null,
     }]));
     const leases = new Map();
     const reports = new Map();
+    const sliceGateReports = new Map();
     const usageByRun = new Map();
     const stopsByRun = new Map();
 
@@ -1537,8 +1669,13 @@ class ProjectOrchestrator {
       }
 
       if (event.payload?.report) {
-        if (!reports.has(event.task_id)) reports.set(event.task_id, []);
-        reports.get(event.task_id).push(event.payload.report);
+        if (event.task_id) {
+          if (!reports.has(event.task_id)) reports.set(event.task_id, []);
+          reports.get(event.task_id).push(event.payload.report);
+        } else if (event.role === "slice_gate_runner") {
+          if (!sliceGateReports.has(event.slice_id)) sliceGateReports.set(event.slice_id, []);
+          sliceGateReports.get(event.slice_id).push(event.payload.report);
+        }
       }
       if (event.event_type === "HARD_STOP") stopsByRun.set(event.autonomy_run_id, event);
 
@@ -1569,7 +1706,8 @@ class ProjectOrchestrator {
       else if (states.length && states.every((state) => state.status === "VERIFIED")) status = "VERIFIED";
       else if (states.some((state) => ["LEASED", "IN_PROGRESS", "IMPLEMENTED", "VERIFYING", "REWORK"].includes(state.status))) status = "IN_PROGRESS";
       else if (states.some((state) => state.status === "READY")) status = "READY";
-      slices.set(sliceId, { slice_id: sliceId, status, task_count: states.length });
+      const gateReport = sliceGateReports.get(sliceId)?.at(-1) ?? null;
+      slices.set(sliceId, { slice_id: sliceId, status, task_count: states.length, gate_verdict: gateReport?.verdict ?? null });
     }
 
     return {
@@ -1579,6 +1717,7 @@ class ProjectOrchestrator {
       activeLeases,
       expiredLeases,
       reports,
+      sliceGateReports,
       usageByRun,
       stopsByRun,
     };
@@ -1587,6 +1726,33 @@ class ProjectOrchestrator {
   dependenciesVerified(taskId, projection) {
     const task = this.router.taskById.get(taskId);
     return this.router.taskGraph(task).upstream.every((dependency) => projection.taskStates.get(dependency.task_id)?.status === "VERIFIED");
+  }
+
+  taskOwnerRole(taskId) {
+    const task = this.router.taskById.get(taskId);
+    invariant(task, `unknown Task: ${taskId}`, "TASK_NOT_FOUND");
+    return task.values["角色"].replace("VIEW::", "").toLowerCase();
+  }
+
+  isPrimaryExecutor(taskId, role, state) {
+    return state.status === "READY"
+      && ["coder", "prompt_editor", "auditor"].includes(role)
+      && this.taskOwnerRole(taskId) === role;
+  }
+
+  requestsPrimaryWrite(taskId, role, state) {
+    if (this.taskOwnerRole(taskId) !== role || !["coder", "prompt_editor", "auditor"].includes(role)) return false;
+    if (["coder", "prompt_editor"].includes(role)) return true;
+    return !["IMPLEMENTED", "VERIFYING", "REPLAN", "BLOCKED", "CREATOR_REQUIRED", "VERIFIED"].includes(state.status);
+  }
+
+  latestProducerReport(projection, taskId, candidateCommit = null) {
+    const producerRole = this.taskOwnerRole(taskId);
+    return [...(projection.reports.get(taskId) ?? [])]
+      .reverse()
+      .find((report) => report.role === producerRole
+        && report.verdict === "IMPLEMENTED"
+        && (!candidateCommit || report.candidate_commit === candidateCommit)) ?? null;
   }
 
   routeControlBlockers(route) {
@@ -1649,6 +1815,36 @@ class ProjectOrchestrator {
       router_context_hash: route.context_hash,
       route,
     };
+  }
+
+  sliceGateContext(sliceId, projection) {
+    const slice = projection.slices.get(sliceId);
+    invariant(slice, `unknown slice: ${sliceId}`, "SLICE_NOT_FOUND");
+    const taskEvidence = [...projection.taskStates.values()]
+      .filter((state) => state.slice_id === sliceId)
+      .sort((left, right) => left.task_id.localeCompare(right.task_id, "en"))
+      .map((state) => ({
+        task_id: state.task_id,
+        status: state.status,
+        evidence_hash: state.last_evidence,
+        candidate_commit: state.candidate_commit,
+      }));
+    invariant(taskEvidence.length > 0 && taskEvidence.every((item) => item.status === "VERIFIED" && isSha256(item.evidence_hash)), "slice gate requires every necessary Task VERIFIED with evidence", "SLICE_NOT_VERIFIED");
+    const row = this.router.sliceRows.find((item) => item.values["切片"] === sliceId);
+    const facts = {
+      schema_version: "g07-slice-gate-context/v1",
+      slice_id: sliceId,
+      branch: this.policy.integration_branch,
+      control_document_sha256: this.router.control.sha256,
+      policy_sha256: this.policyHash,
+      router_sha256: hashFile(path.join(this.root, ...ROUTER_FILE.split("/"))),
+      orchestrator_sha256: hashFile(path.join(this.root, ...ORCHESTRATOR_FILE.split("/"))),
+      g07_gate: this.controlGateSnapshot().g07_gate,
+      task_evidence: taskEvidence,
+      user_entry_acceptance_sha256: sha256(row?.values["创作者可演示验收"] ?? ""),
+      completion_boundary_sha256: sha256(row?.values["完成边界"] ?? ""),
+    };
+    return { facts, hash: sha256(stableJson(facts)), taskEvidence, row };
   }
 
   criticalTaskIds() {
@@ -1937,6 +2133,22 @@ class ProjectOrchestrator {
   expiredLeaseDrafts(projection, runId) {
     const drafts = [];
     for (const lease of projection.expiredLeases) {
+      if (!lease.task_id && lease.role === "slice_gate_runner" && lease.slice_id) {
+        drafts.push(this.makeDraft({
+          eventType: "SLICE_GATE_LEASE_EXPIRED",
+          runId,
+          attemptId: lease.attempt_id,
+          role: "slice_gate_runner",
+          baseCommit: lease.base_commit,
+          candidateCommit: lease.candidate_commit,
+          contextHash: lease.context_hash,
+          lease: { ...lease, action: "EXPIRE" },
+          decisionLevel: "BLOCKED_TECHNICAL",
+          fingerprint: failureFingerprint("SLICE_GATE_LEASE_EXPIRED"),
+          payload: { slice_id: lease.slice_id, reason: "SLICE_GATE_LEASE_EXPIRED_RECOVERED", original_run_id: lease.run_id, recovery_run_id: runId },
+        }));
+        continue;
+      }
       const state = projection.taskStates.get(lease.task_id);
       const writer = lease.mode === "WRITE";
       const toStatus = writer && ["LEASED", "IN_PROGRESS"].includes(state.status) ? "READY" : state.status;
@@ -1964,11 +2176,135 @@ class ProjectOrchestrator {
     return drafts;
   }
 
-  lease({ runId, taskId = null, role, actorId, attemptId, ttlSeconds = null, contextHash = null, baseCommit = null, candidateCommit = null, platformReceipt = null, workspaceCapabilityReceipt = null }) {
-    invariant(runId && role && actorId && attemptId, "lease requires runId, role, actorId and attemptId", "LEASE_INPUT_INVALID");
-    invariant(["coder", "prompt_editor", "auditor", "reviewer", "architect"].includes(role), `role cannot lease: ${role}`, "LEASE_ROLE_INVALID");
-    const guard = this.evaluateAction(role === "coder" || role === "prompt_editor" ? "PRODUCT_TASK_WRITE" : "READ_ONLY_REVIEW", runId);
+  leaseSliceGate({ runId, sliceId, actorId, attemptId, ttlSeconds = null, contextHash = null, baseCommit = null, candidateCommit = null, platformReceipt = null }) {
+    invariant(runId && sliceId && actorId && attemptId, "slice gate lease requires runId, sliceId, actorId and attemptId", "LEASE_INPUT_INVALID");
+    const guard = this.evaluateAction("READ_ONLY_REVIEW", runId);
     invariant(guard.allowed, guard.reason, guard.decision_level, guard);
+    this.requirePlatformTrust();
+    invariant(platformReceipt && typeof platformReceipt === "object", "slice gate lease requires a platform grant receipt", "PLATFORM_RECEIPT_REQUIRED");
+    const ttl = Number(ttlSeconds ?? this.policy.concurrency.default_lease_seconds);
+    invariant(Number.isFinite(ttl) && ttl > 0, "lease ttl must be positive", "LEASE_TTL_INVALID");
+    const finalized = this.store.transact(this.#storeAuthority, (events) => {
+      let projection = this.project(events);
+      const drafts = this.expiredLeaseDrafts(projection, runId);
+      projection = this.project([...events, ...drafts]);
+      invariant(projection.activeLeases.filter((item) => item.mode === "READ_ONLY").length < this.policy.concurrency.max_read_only_reviewers, "read-only review concurrency limit reached", "REVIEW_CONCURRENCY_BLOCKED");
+      const context = this.sliceGateContext(sliceId, projection);
+      const effectiveCommit = this.git.head();
+      invariant(this.git.commitExists(effectiveCommit) && this.git.isClean(), "slice gate lease requires a clean committed candidate", "WORKTREE_DIRTY");
+      invariant(!contextHash || contextHash === context.hash, "slice gate caller context does not match the VERIFIED slice projection", "LEASE_CONTEXT_MISMATCH");
+      invariant(!baseCommit || baseCommit === effectiveCommit, "slice gate base commit must equal current HEAD", "LEASE_BASE_COMMIT_MISMATCH");
+      invariant(!candidateCommit || candidateCommit === effectiveCommit, "slice gate candidate commit must equal current HEAD", "CANDIDATE_COMMIT_MISMATCH");
+      const signed = platformReceipt.claims ?? {};
+      const leaseId = signed.lease_id;
+      const acquiredAt = new Date(signed.acquired_at);
+      const expiresAt = new Date(signed.expires_at);
+      const now = this.clock();
+      invariant(typeof leaseId === "string" && leaseId.length >= 12
+        && !Number.isNaN(acquiredAt.getTime()) && !Number.isNaN(expiresAt.getTime())
+        && acquiredAt.getTime() <= now.getTime() && expiresAt.getTime() > now.getTime()
+        && expiresAt.getTime() - acquiredAt.getTime() <= ttl * 1000, "slice gate platform lease lifetime is invalid", "LEASE_RECEIPT_INVALID");
+      const claims = this.leaseReceiptClaims({
+        runId,
+        taskId: null,
+        sliceId,
+        attemptId,
+        role: "slice_gate_runner",
+        actorId,
+        mode: "READ_ONLY",
+        leaseId,
+        acquiredAt: acquiredAt.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        baseCommit: effectiveCommit,
+        candidateCommit: effectiveCommit,
+        contextHash: context.hash,
+        fromStatus: null,
+        toStatus: null,
+      });
+      this.verifyPlatformReceipt(platformReceipt, "LEASE_GRANT", claims);
+      const lease = {
+        action: "ACQUIRE",
+        lease_id: leaseId,
+        mode: "READ_ONLY",
+        role: "slice_gate_runner",
+        actor_id: actorId,
+        attempt_id: attemptId,
+        slice_id: sliceId,
+        acquired_at: acquiredAt.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        base_commit: effectiveCommit,
+        candidate_commit: effectiveCommit,
+        context_hash: context.hash,
+        workspace_capability_receipt_id: null,
+        capability_principal_id: null,
+        capability_session_id: null,
+      };
+      drafts.push(this.makeDraft({
+        eventType: "SLICE_GATE_LEASE_ACQUIRED",
+        runId,
+        attemptId,
+        role: "slice_gate_runner",
+        baseCommit: effectiveCommit,
+        candidateCommit: effectiveCommit,
+        contextHash: context.hash,
+        lease,
+        platformReceipts: [platformReceipt],
+        payload: { slice_id: sliceId, actor_id: actorId, slice_context: context.facts },
+      }));
+      return drafts;
+    });
+    return finalized.at(-1);
+  }
+
+  recordSliceGate({ runId, report }) {
+    const finalized = this.store.transact(this.#storeAuthority, (events) => {
+      const projection = this.project(events);
+      const lease = projection.activeLeases.find((item) => item.role === "slice_gate_runner"
+        && item.slice_id === report.slice_id
+        && item.actor_id === report.actor_id
+        && item.attempt_id === report.attempt_id);
+      invariant(lease, "slice gate report does not match an active lease", "REPORT_LEASE_MISMATCH");
+      const context = this.sliceGateContext(report.slice_id, projection);
+      invariant(report.context_hash === lease.context_hash && report.context_hash === context.hash, "slice gate report context is stale", "STALE_CONTROL_CONTEXT");
+      invariant(report.base_commit === lease.base_commit && report.candidate_commit === lease.candidate_commit
+        && this.git.head() === lease.candidate_commit && this.git.commitExists(lease.candidate_commit)
+        && this.git.isClean(), "slice gate report is detached from the current clean candidate", "STALE_CANDIDATE_COMMIT");
+      invariant(report.branch === this.git.branch() && report.branch === this.policy.integration_branch, "slice gate report branch mismatch", "REPORT_BRANCH_MISMATCH");
+      invariant(normalizePath(path.resolve(report.worktree)) === this.git.worktree(), "slice gate report worktree mismatch", "REPORT_WORKTREE_MISMATCH");
+      invariant(["PASS", "FAIL"].includes(report.verdict), "slice gate verdict must be PASS or FAIL", "REPORT_VERDICT_INVALID");
+      const trustedReport = this.verifyReportTrust(report);
+      const priorIdentities = projection.events
+        .filter((event) => event.task_id && event.slice_id === report.slice_id && event.event_type === "ROLE_REPORT_RECORDED")
+        .map((event) => event.payload?.trusted_report)
+        .filter(Boolean);
+      invariant(priorIdentities.every((identity) => identity.principal_id !== trustedReport.principal_id
+        && identity.session_id !== trustedReport.session_id), "slice gate runner is not independent from a Task role in the slice", "SELF_REVIEW_BLOCKED");
+      return [this.makeDraft({
+        eventType: "SLICE_GATE_REPORT_RECORDED",
+        runId,
+        attemptId: report.attempt_id,
+        role: "slice_gate_runner",
+        baseCommit: report.base_commit,
+        candidateCommit: report.candidate_commit,
+        contextHash: report.context_hash,
+        lease: { ...lease, action: "RELEASE" },
+        acceptance: report.acceptance,
+        decisionLevel: "TASK_AUTONOMOUS",
+        execution: report.execution,
+        fingerprint: report.verdict === "FAIL" ? failureFingerprint(report.failure_fingerprint ?? report.summary ?? "SLICE_GATE_FAIL") : null,
+        payload: { slice_id: report.slice_id, report, trusted_report: trustedReport, independent_from: priorIdentities },
+      })];
+    });
+    return finalized[0];
+  }
+
+  lease({ runId, taskId = null, sliceId = null, role, actorId, attemptId, ttlSeconds = null, contextHash = null, baseCommit = null, candidateCommit = null, platformReceipt = null, workspaceCapabilityReceipt = null }) {
+    invariant(runId && role && actorId && attemptId, "lease requires runId, role, actorId and attemptId", "LEASE_INPUT_INVALID");
+    invariant(["coder", "prompt_editor", "auditor", "reviewer", "architect", "slice_gate_runner"].includes(role), `role cannot lease: ${role}`, "LEASE_ROLE_INVALID");
+    if (role === "slice_gate_runner") {
+      invariant(!taskId, "slice gate runner leases a slice, not a Task", "LEASE_TASK_MISMATCH");
+      return this.leaseSliceGate({ runId, sliceId, actorId, attemptId, ttlSeconds, contextHash, baseCommit, candidateCommit, platformReceipt });
+    }
     this.requirePlatformTrust();
     invariant(platformReceipt && typeof platformReceipt === "object", "lease requires a platform grant receipt", "PLATFORM_RECEIPT_REQUIRED");
     const ttl = Number(ttlSeconds ?? this.policy.concurrency.default_lease_seconds);
@@ -1984,14 +2320,16 @@ class ProjectOrchestrator {
       const task = this.router.taskById.get(selected.task_id);
       invariant(task, `unknown Task: ${selected.task_id}`, "TASK_NOT_FOUND");
       const state = projection.taskStates.get(task.id);
-      const mode = ["coder", "prompt_editor"].includes(role) ? "WRITE" : "READ_ONLY";
+      const mode = this.requestsPrimaryWrite(task.id, role, state) ? "WRITE" : "READ_ONLY";
+      const guard = this.evaluateAction(mode === "WRITE" ? "PRODUCT_TASK_WRITE" : "READ_ONLY_REVIEW", runId, projection);
+      invariant(guard.allowed, guard.reason, guard.decision_level, guard);
       if (mode === "READ_ONLY") {
         invariant(projection.activeLeases.filter((item) => item.mode === "READ_ONLY").length < this.policy.concurrency.max_read_only_reviewers, "read-only review concurrency limit reached", "REVIEW_CONCURRENCY_BLOCKED");
       }
       if (mode === "WRITE") {
         invariant(state.status === "READY", `writer lease requires READY, got ${state.status}`, "TASK_NOT_READY");
         invariant(this.dependenciesVerified(task.id, projection), "Task dependencies are not VERIFIED", "DEPENDENCIES_NOT_VERIFIED");
-        invariant(task.values["角色"] === `VIEW::${role.toUpperCase()}`, `Task owner is ${task.values["角色"]}`, "TASK_ROLE_MISMATCH");
+        invariant(this.taskOwnerRole(task.id) === role, `Task owner is ${task.values["角色"]}`, "TASK_ROLE_MISMATCH");
         invariant(projection.activeLeases.filter((item) => item.mode === "WRITE").length < this.policy.concurrency.max_writers, "another writer lease is active", "DOUBLE_WRITER_BLOCKED");
         invariant(this.git.isClean(), "writer lease requires a clean worktree", "WORKTREE_DIRTY");
       } else if (["auditor", "reviewer"].includes(role)) {
@@ -1999,6 +2337,8 @@ class ProjectOrchestrator {
         invariant(candidateCommit && state.candidate_commit === candidateCommit, "review lease must bind the current candidate commit", "CANDIDATE_COMMIT_MISMATCH");
       } else if (role === "architect") {
         invariant(state.status === "REPLAN", `architect lease requires REPLAN, got ${state.status}`, "TASK_NOT_IN_REPLAN");
+        invariant(state.candidate_commit && candidateCommit === state.candidate_commit, "architect lease must bind the projected Replan candidate", "CANDIDATE_COMMIT_MISMATCH");
+        invariant(this.git.commitExists(state.candidate_commit) && this.git.head() === state.candidate_commit, "architect candidate is missing or stale relative to HEAD", "STALE_CANDIDATE_COMMIT");
       }
 
       const routeRole = role === "architect" ? "architect" : role;
@@ -2007,14 +2347,14 @@ class ProjectOrchestrator {
       invariant(this.routeControlBlockers(route).length === 0, "router has blocking control conflicts", "ROUTER_BLOCKING_CONFLICT", this.routeControlBlockers(route));
       const gate = this.router.gateSnapshot();
       invariant(gate.active_execution_gate_valid && gate.g05.valid && gate.g06.valid, "active Gate or registered router artifact is invalid", "GATE_INVALID");
-      const latestCoderReport = this.latestReport(projection, task.id, "coder", state.candidate_commit);
+      const latestProducerReport = this.latestProducerReport(projection, task.id, state.candidate_commit);
       const expectedContextHash = mode === "READ_ONLY" ? state.context_hash : controlContext.hash;
       invariant(expectedContextHash && expectedContextHash === controlContext.hash, "frozen Task control context drifted", "STALE_CONTROL_CONTEXT", {
         frozen: expectedContextHash,
         current: controlContext.hash,
       });
       invariant(!contextHash || contextHash === expectedContextHash, "caller context hash does not match the Orchestrator control context", "LEASE_CONTEXT_MISMATCH");
-      const expectedBaseCommit = mode === "READ_ONLY" ? latestCoderReport?.base_commit : this.git.head();
+      const expectedBaseCommit = mode === "READ_ONLY" ? latestProducerReport?.base_commit : this.git.head();
       invariant(expectedBaseCommit, "lease could not derive the base commit", "LEASE_BASE_COMMIT_MISSING");
       invariant(!baseCommit || baseCommit === expectedBaseCommit, "caller base commit does not match the Orchestrator-derived base", "LEASE_BASE_COMMIT_MISMATCH");
       if (mode === "READ_ONLY") invariant(candidateCommit === state.candidate_commit, "review candidate must equal the projected candidate", "CANDIDATE_COMMIT_MISMATCH");
@@ -2126,14 +2466,22 @@ class ProjectOrchestrator {
 
   validateReport(report) {
     invariant(report && typeof report === "object", "report must be a JSON object", "REPORT_INVALID");
-    for (const field of ["report_version", "task_id", "role", "actor_id", "session_id", "attempt_id", "base_commit", "candidate_commit", "context_hash", "verdict", "identity_attestation", "report_receipt"]) {
+    for (const field of ["report_version", "role", "actor_id", "session_id", "attempt_id", "base_commit", "candidate_commit", "context_hash", "verdict", "identity_attestation", "report_receipt"]) {
       invariant(Object.hasOwn(report, field) && report[field] !== "", `report is missing ${field}`, "REPORT_SCHEMA_INVALID");
     }
+    invariant(Object.hasOwn(report, "task_id"), "report is missing task_id", "REPORT_SCHEMA_INVALID");
     invariant(report.report_version === "g07-role-report/v4", "unsupported role report", "REPORT_SCHEMA_INVALID");
     invariant(REPORT_ROLES.has(report.role), `invalid report role: ${report.role}`, "REPORT_ROLE_INVALID");
-    invariant(this.router.taskById.has(report.task_id), `unknown report Task: ${report.task_id}`, "TASK_NOT_FOUND");
+    if (report.role === "slice_gate_runner") {
+      invariant(report.task_id === null && typeof report.slice_id === "string"
+        && this.router.sliceRows.some((row) => row.values["切片"] === report.slice_id), "slice gate report must identify one registered slice and no Task", "REPORT_SLICE_INVALID");
+    } else {
+      invariant(this.router.taskById.has(report.task_id), `unknown report Task: ${report.task_id}`, "TASK_NOT_FOUND");
+    }
     invariant(isSha256(report.context_hash), "report context_hash must be SHA-256", "REPORT_CONTEXT_INVALID");
-    if (["coder", "prompt_editor"].includes(report.role)) {
+    const ownerRole = report.task_id ? this.taskOwnerRole(report.task_id) : null;
+    const primaryVerdict = ["IMPLEMENTED", "BLOCKED", "CREATOR_REQUIRED"].includes(report.verdict);
+    if (report.role === ownerRole && primaryVerdict) {
       invariant(typeof report.workspace_capability_receipt_id === "string" && report.workspace_capability_receipt_id.length >= 12, "writer report must bind its platform workspace capability", "WORKSPACE_CAPABILITY_INVALID");
     }
     for (const [field, value] of [["tokens", report.execution?.tokens ?? 0], ["time_ms", report.execution?.time_ms ?? 0]]) {
@@ -2159,6 +2507,7 @@ class ProjectOrchestrator {
   record({ runId, report }) {
     this.validateReport(report);
     invariant(runId, "record requires runId", "RUN_ID_REQUIRED");
+    if (report.role === "slice_gate_runner") return this.recordSliceGate({ runId, report });
     const finalized = this.store.transact(this.#storeAuthority, (events) => {
       const projection = this.project(events);
       const state = projection.taskStates.get(report.task_id);
@@ -2175,20 +2524,24 @@ class ProjectOrchestrator {
       });
       invariant(report.base_commit === lease.base_commit, "report base_commit does not match lease", "REPORT_BASE_COMMIT_MISMATCH");
       const trustedReport = this.verifyReportTrust(report);
-      if (report.role !== "architect") {
-        invariant(report.candidate_commit && this.git.commitExists(report.candidate_commit), "candidate commit does not exist", "CANDIDATE_COMMIT_MISSING");
-        invariant(this.git.head() === report.candidate_commit, "candidate commit is stale relative to HEAD", "STALE_CANDIDATE_COMMIT");
-        invariant(this.git.commitExists(report.base_commit) && this.git.isAncestor(report.base_commit, report.candidate_commit), "report base commit is missing or not an ancestor", "BASE_COMMIT_INVALID");
+      if (lease.mode === "READ_ONLY") {
+        invariant(report.candidate_commit === lease.candidate_commit
+          && report.candidate_commit === state.candidate_commit, "report candidate does not match its active lease and projected Task", "REPORT_CANDIDATE_MISMATCH");
+      } else {
+        invariant(lease.candidate_commit === null, "writer lease must not carry a preselected candidate", "REPORT_CANDIDATE_MISMATCH");
       }
+      invariant(report.candidate_commit && this.git.commitExists(report.candidate_commit), "candidate commit does not exist", "CANDIDATE_COMMIT_MISSING");
+      invariant(this.git.head() === report.candidate_commit, "candidate commit is stale relative to HEAD", "STALE_CANDIDATE_COMMIT");
+      invariant(this.git.commitExists(report.base_commit) && this.git.isAncestor(report.base_commit, report.candidate_commit), "report base commit is missing or not an ancestor", "BASE_COMMIT_INVALID");
       invariant(report.branch === this.git.branch() && report.branch === this.policy.integration_branch, "report is not bound to the autonomy integration branch", "REPORT_BRANCH_MISMATCH");
       invariant(normalizePath(path.resolve(report.worktree)) === this.git.worktree(), "report worktree does not match the orchestrator worktree", "REPORT_WORKTREE_MISMATCH");
-      if (["coder", "prompt_editor"].includes(report.role)) {
-        invariant(state.status === "IN_PROGRESS", `${report.role} report requires IN_PROGRESS, got ${state.status}`, "REPORT_STATE_INVALID");
+      if (lease.mode === "WRITE") {
+        invariant(state.status === "IN_PROGRESS", `primary ${report.role} report requires IN_PROGRESS, got ${state.status}`, "REPORT_STATE_INVALID");
         invariant(report.workspace_capability_receipt_id === lease.workspace_capability_receipt_id
           && trustedReport.principal_id === lease.capability_principal_id
           && trustedReport.session_id === lease.capability_session_id, "writer report identity does not match the platform-enforced workspace capability", "WORKSPACE_CAPABILITY_IDENTITY_MISMATCH");
       }
-      if (["auditor", "reviewer"].includes(report.role)) {
+      if (lease.mode === "READ_ONLY" && ["auditor", "reviewer"].includes(report.role)) {
         invariant(state.candidate_commit === report.candidate_commit, "review targets a stale candidate commit", "STALE_REVIEW_COMMIT");
       }
       if (report.role === "architect" && ["A", "B"].includes(report.decision?.category)) {
@@ -2201,7 +2554,7 @@ class ProjectOrchestrator {
           .map((role) => [...projection.events].reverse().find((event) => event.event_type === "ROLE_REPORT_RECORDED"
             && event.task_id === report.task_id
             && event.role === role
-            && event.candidate_commit === report.candidate_commit)?.payload?.trusted_report)
+            && event.candidate_commit === state.candidate_commit)?.payload?.trusted_report)
           .filter(Boolean);
         this.assertIndependentIdentities([...architectIndependentFrom, trustedReport]);
       }
@@ -2213,11 +2566,11 @@ class ProjectOrchestrator {
       let environmentReason = null;
       let counters = { ...state.counters };
       let leaseAction = { ...lease, action: "RELEASE" };
-      const auditorVerdict = report.role === "auditor" ? report.verdict : null;
-      const reviewerVerdict = report.role === "reviewer" ? report.verdict : null;
+      const auditorVerdict = lease.mode === "READ_ONLY" && report.role === "auditor" ? report.verdict : null;
+      const reviewerVerdict = lease.mode === "READ_ONLY" && report.role === "reviewer" ? report.verdict : null;
 
-      const reviewFailed = (report.role === "auditor" && report.verdict === "FAIL")
-        || (report.role === "reviewer" && report.verdict === "REQUEST_CHANGES");
+      const reviewFailed = lease.mode === "READ_ONLY" && ((report.role === "auditor" && report.verdict === "FAIL")
+        || (report.role === "reviewer" && report.verdict === "REQUEST_CHANGES"));
       if (reviewFailed) {
         invariant(state.status === "VERIFYING", `review failure requires VERIFYING, got ${state.status}`, "REPORT_STATE_INVALID");
         counters.rework += 1;
@@ -2259,7 +2612,7 @@ class ProjectOrchestrator {
           environmentReason = report.decision.environment_approval_required ? report.decision.reason ?? "REPLAN_D_ENVIRONMENT" : null;
           fingerprint = failureFingerprint(report.failure_fingerprint ?? `architect:D:${report.decision.reason ?? "blocked"}`);
         }
-      } else if (["coder", "prompt_editor"].includes(report.role) && ["BLOCKED", "CREATOR_REQUIRED"].includes(report.verdict)) {
+      } else if (lease.mode === "WRITE" && ["BLOCKED", "CREATOR_REQUIRED"].includes(report.verdict)) {
         toStatus = report.verdict;
         decisionLevel = report.verdict === "CREATOR_REQUIRED" ? "CREATOR_REQUIRED" : "BLOCKED_TECHNICAL";
         creatorReason = report.verdict === "CREATOR_REQUIRED" ? report.summary ?? "CODER_ESCALATION" : null;
@@ -2320,15 +2673,15 @@ class ProjectOrchestrator {
         invariant(projection.activeLeases.some((lease) => lease.task_id === taskId && lease.mode === "WRITE"), "active writer lease required", "LEASE_REQUIRED");
       }
       if (toStatus === "IMPLEMENTED") {
-        const report = this.latestReport(projection, taskId, "coder", candidateCommit);
-        invariant(report && report.verdict === "IMPLEMENTED", "structured coder IMPLEMENTED report is required", "CODER_REPORT_REQUIRED");
+        const report = this.latestProducerReport(projection, taskId, candidateCommit);
+        invariant(report, "structured primary executor IMPLEMENTED report is required", "PRIMARY_REPORT_REQUIRED");
         invariant(candidateCommit && this.git.commitExists(candidateCommit), "candidate commit does not exist", "CANDIDATE_COMMIT_MISSING");
         invariant(this.git.head() === candidateCommit, "candidate commit is stale relative to HEAD", "STALE_CANDIDATE_COMMIT");
       }
       const leaseAction = ["IMPLEMENTED", "REWORK", "REPLAN", "BLOCKED", "CREATOR_REQUIRED"].includes(toStatus)
         ? { action: "RELEASE_ALL_TASK", task_id: taskId, lease_id: null }
         : null;
-      const effectiveBaseCommit = this.latestReport(projection, taskId, "coder", candidateCommit)?.base_commit ?? this.git.head();
+      const effectiveBaseCommit = this.latestProducerReport(projection, taskId, candidateCommit)?.base_commit ?? this.git.head();
       const effectiveCandidateCommit = candidateCommit ?? state.candidate_commit;
       let receipts;
       let resolutionPayload = {};
@@ -2533,14 +2886,14 @@ class ProjectOrchestrator {
       const state = projection.taskStates.get(taskId);
       if (!state || state.status !== "VERIFYING") return [];
       const disposition = this.evidenceFailureState(taskId, state, error);
-      const coder = this.latestReport(projection, taskId, "coder", state.candidate_commit);
+      const producer = this.latestProducerReport(projection, taskId, state.candidate_commit);
       return [this.makeDraft({
         eventType: "EVIDENCE_REJECTED",
         runId,
         taskId,
-        attemptId: attemptId ?? coder?.attempt_id ?? null,
+        attemptId: attemptId ?? producer?.attempt_id ?? null,
         role: "orchestrator",
-        baseCommit: coder?.base_commit ?? null,
+        baseCommit: producer?.base_commit ?? null,
         candidateCommit: state.candidate_commit ?? candidateCommit,
         contextHash: state.context_hash,
         lease: { action: "RELEASE_ALL_TASK", task_id: taskId, lease_id: null },
@@ -2563,17 +2916,18 @@ class ProjectOrchestrator {
     return finalized[0] ?? null;
   }
 
-  verificationGateClaims({ taskId, coder, auditor, reviewer, diffHash, scopeEvidenceHash, secretEvidenceHash }) {
+  verificationGateClaims({ taskId, producer, auditor, reviewer, diffHash, scopeEvidenceHash, secretEvidenceHash }) {
     return {
       task_id: taskId,
-      attempt_id: coder.attempt_id,
-      base_commit: coder.base_commit,
-      candidate_commit: coder.candidate_commit,
-      context_hash: coder.context_hash,
-      coder_report_receipt_id: coder.report_receipt.receipt_id,
+      attempt_id: producer.attempt_id,
+      base_commit: producer.base_commit,
+      candidate_commit: producer.candidate_commit,
+      context_hash: producer.context_hash,
+      producer_role: producer.role,
+      producer_report_receipt_id: producer.report_receipt.receipt_id,
       auditor_report_receipt_id: auditor.report_receipt.receipt_id,
       reviewer_report_receipt_id: reviewer.report_receipt.receipt_id,
-      command_receipts_sha256: sha256(stableJson((coder.acceptance?.commands ?? []).map((entry) => entry.receipt?.receipt_id ?? null))),
+      command_receipts_sha256: sha256(stableJson((producer.acceptance?.commands ?? []).map((entry) => entry.receipt?.receipt_id ?? null))),
       auditor_receipts_sha256: sha256(stableJson((auditor.evidence ?? []).map((entry) => entry.receipt?.receipt_id ?? null))),
       reviewer_receipt_id: reviewer.review_receipt?.receipt_id ?? null,
       diff_hash: diffHash,
@@ -2584,21 +2938,23 @@ class ProjectOrchestrator {
 
   mechanicallyVerifyEvidence({ taskId, candidateCommit, contextHash, reports, verificationReceipt, controlContextFacts = null, at = this.clock(), requireCurrent = false }) {
     const latest = (role) => [...reports].reverse().find((report) => report.role === role && report.candidate_commit === candidateCommit) ?? null;
-    const coder = latest("coder");
+    const producerRole = this.taskOwnerRole(taskId);
+    const producer = [...reports].reverse().find((report) => report.role === producerRole
+      && report.verdict === "IMPLEMENTED"
+      && report.candidate_commit === candidateCommit) ?? null;
     const auditor = latest("auditor");
     const reviewer = latest("reviewer");
-    invariant(coder && auditor && reviewer, "coder, auditor and reviewer reports are all required for the same candidate commit", "INCOMPLETE_ROLE_EVIDENCE");
-    invariant(coder.verdict === "IMPLEMENTED", "coder verdict must be IMPLEMENTED", "CODER_VERDICT_INVALID");
-    invariant(typeof coder.workspace_capability_receipt_id === "string" && coder.workspace_capability_receipt_id.length >= 12, "coder evidence is missing its platform workspace capability", "WORKSPACE_CAPABILITY_INVALID");
+    invariant(producer && auditor && reviewer, "primary executor, auditor and reviewer reports are all required for the same candidate commit", "INCOMPLETE_ROLE_EVIDENCE");
+    invariant(typeof producer.workspace_capability_receipt_id === "string" && producer.workspace_capability_receipt_id.length >= 12, "primary executor evidence is missing its platform workspace capability", "WORKSPACE_CAPABILITY_INVALID");
     invariant(auditor.verdict === "PASS", "auditor verdict must be PASS", "AUDITOR_VERDICT_INVALID");
     invariant(reviewer.verdict === "APPROVE", "reviewer verdict must be APPROVE", "REVIEWER_VERDICT_INVALID");
-    invariant([coder, auditor, reviewer].every((report) => report.base_commit === coder.base_commit
+    invariant([producer, auditor, reviewer].every((report) => report.base_commit === producer.base_commit
       && report.candidate_commit === candidateCommit
       && report.context_hash === contextHash), "all reports must bind the same base/candidate/control context", "EVIDENCE_VERSION_MISMATCH");
-    invariant([coder, auditor, reviewer].every((report) => report.branch === this.policy.integration_branch
+    invariant([producer, auditor, reviewer].every((report) => report.branch === this.policy.integration_branch
       && normalizePath(path.resolve(report.worktree)) === this.git.worktree()), "all reports must bind the integration branch and current worktree", "EVIDENCE_WORKTREE_MISMATCH");
-    invariant(this.git.commitExists(candidateCommit) && this.git.commitExists(coder.base_commit)
-      && this.git.isAncestor(coder.base_commit, candidateCommit), "base/candidate commit evidence is invalid", "BASE_COMMIT_INVALID");
+    invariant(this.git.commitExists(candidateCommit) && this.git.commitExists(producer.base_commit)
+      && this.git.isAncestor(producer.base_commit, candidateCommit), "base/candidate commit evidence is invalid", "BASE_COMMIT_INVALID");
     if (requireCurrent) {
       invariant(this.git.head() === candidateCommit, "candidate commit is stale relative to HEAD", "STALE_CANDIDATE_COMMIT");
       invariant(this.git.isClean(), "evidence verification requires a clean worktree", "WORKTREE_DIRTY");
@@ -2623,16 +2979,16 @@ class ProjectOrchestrator {
         && Number.isInteger(controlContextFacts.secret_scan_max_blob_bytes), "historical VERIFIED event lacks its immutable control-context snapshot", "EVENT_HISTORICAL_CONTEXT_INVALID");
       effectiveControlFacts = controlContextFacts;
     }
-    const trustedIdentities = this.attestIndependentReports([coder, auditor, reviewer], { at });
+    const trustedIdentities = this.attestIndependentReports([producer, auditor, reviewer], { at });
 
     const expectedCommand = effectiveControlFacts.acceptance_command;
-    const matchingCommands = (coder.acceptance?.commands ?? []).filter((entry) => entry.command === expectedCommand);
+    const matchingCommands = (producer.acceptance?.commands ?? []).filter((entry) => entry.command === expectedCommand);
     invariant(matchingCommands.length === 1, "exactly one platform command result is required for the registered acceptance command", "ACCEPTANCE_EVIDENCE_INVALID");
     const command = matchingCommands[0];
     invariant(Number.isInteger(command.exit_code)
       && isSha256(command.stdout_sha256)
       && isSha256(command.regression_artifact_sha256), "acceptance command lacks exit/stdout/regression evidence", "ACCEPTANCE_EVIDENCE_INVALID");
-    this.verifyPlatformReceipt(command.receipt, "COMMAND_EXECUTION", this.commandReceiptClaims(coder, command), { at });
+    this.verifyPlatformReceipt(command.receipt, "COMMAND_EXECUTION", this.commandReceiptClaims(producer, command), { at });
     invariant(command.exit_code === 0, "registered acceptance command failed", "ACCEPTANCE_COMMAND_FAILED", { exit_code: command.exit_code });
 
     const auditorEvidence = auditor.evidence ?? [];
@@ -2645,28 +3001,28 @@ class ProjectOrchestrator {
     invariant(["contract", "diff", "write_channel", "cross_fp"].every((key) => reviewer.checks?.[key] === true), "reviewer contract/diff/write-channel/cross-FP checks must pass", "REVIEWER_EVIDENCE_INCOMPLETE");
     this.verifyPlatformReceipt(reviewer.review_receipt, "REVIEW_EVIDENCE", this.reviewReceiptClaims(reviewer), { at });
 
-    const diffNames = this.git.diffNames(coder.base_commit, candidateCommit);
+    const diffNames = this.git.diffNames(producer.base_commit, candidateCommit);
     const allowedPatterns = effectiveControlFacts.expanded_write_scope;
     const outOfScope = diffNames.filter((file) => !allowedPatterns.some((pattern) => globToRegExp(pattern).test(file)));
     invariant(outOfScope.length === 0, `diff exceeds Task write_scope: ${outOfScope.join(", ")}`, "SCOPE_VIOLATION", { out_of_scope: outOfScope });
-    const diffPatch = this.git.diffPatch(coder.base_commit, candidateCommit);
+    const diffPatch = this.git.diffPatch(producer.base_commit, candidateCommit);
     const diffHash = sha256(diffPatch);
-    invariant(coder.scope?.diff_hash === diffHash && reviewer.scope?.diff_hash === diffHash, "coder/reviewer diff hash does not match candidate diff", "DIFF_HASH_MISMATCH");
-    invariant(stableJson(sortedUnique(coder.scope?.changed_paths ?? [])) === stableJson(diffNames), "coder changed path evidence does not match Git", "DIFF_PATH_MISMATCH");
-    const secretScan = this.scanCandidateSecrets(coder.base_commit, candidateCommit, {
+    invariant(producer.scope?.diff_hash === diffHash && reviewer.scope?.diff_hash === diffHash, "primary executor/reviewer diff hash does not match candidate diff", "DIFF_HASH_MISMATCH");
+    invariant(stableJson(sortedUnique(producer.scope?.changed_paths ?? [])) === stableJson(diffNames), "primary executor changed path evidence does not match Git", "DIFF_PATH_MISMATCH");
+    const secretScan = this.scanCandidateSecrets(producer.base_commit, candidateCommit, {
       version: effectiveControlFacts.secret_scan_version,
       maxBlobBytes: effectiveControlFacts.secret_scan_max_blob_bytes,
     });
     invariant(secretScan.passed, `secret scan failed: ${secretScan.hit_types.join(", ")}`, "SECRET_SCAN_FAILED", { hit_types: secretScan.hit_types });
-    invariant(coder.secret_scan?.passed === true && reviewer.secret_scan?.passed === true
-      && coder.secret_scan.evidence_hash === secretScan.evidence_hash
+    invariant(producer.secret_scan?.passed === true && reviewer.secret_scan?.passed === true
+      && producer.secret_scan.evidence_hash === secretScan.evidence_hash
       && reviewer.secret_scan.evidence_hash === secretScan.evidence_hash, "role secret scan evidence does not match Git diff", "SECRET_EVIDENCE_MISMATCH");
-    invariant(coder.workspace_guard?.capability_enforced === true
-      && coder.workspace_guard?.ignored_paths_sha256 === secretScan.ignored_paths_sha256, "coder did not bind the ignored-path snapshot to its platform workspace capability", "WORKSPACE_CAPABILITY_EVIDENCE_MISMATCH");
+    invariant(producer.workspace_guard?.capability_enforced === true
+      && producer.workspace_guard?.ignored_paths_sha256 === secretScan.ignored_paths_sha256, "primary executor did not bind the ignored-path snapshot to its platform workspace capability", "WORKSPACE_CAPABILITY_EVIDENCE_MISMATCH");
     const scopeEvidenceHash = sha256(stableJson({ allowedPatterns, diffNames }));
     const gateClaims = this.verificationGateClaims({
       taskId,
-      coder,
+      producer,
       auditor,
       reviewer,
       diffHash,
@@ -2674,7 +3030,7 @@ class ProjectOrchestrator {
       secretEvidenceHash: secretScan.evidence_hash,
     });
     const gate = this.verifyPlatformReceipt(verificationReceipt, "VERIFICATION_GATE", gateClaims, { at });
-    const commandSummary = (coder.acceptance?.commands ?? []).map((entry) => ({
+    const commandSummary = (producer.acceptance?.commands ?? []).map((entry) => ({
       command: entry.command,
       exit_code: entry.exit_code,
       stdout_sha256: entry.stdout_sha256,
@@ -2682,7 +3038,8 @@ class ProjectOrchestrator {
       receipt_id: entry.receipt.receipt_id,
     }));
     return {
-      coder,
+      producer,
+      coder: producer,
       auditor,
       reviewer,
       trustedIdentities,
@@ -2783,14 +3140,14 @@ class ProjectOrchestrator {
         details: { candidate_commit: state.candidate_commit, git_head: this.git.head() },
       });
       const disposition = this.evidenceFailureState(state.task_id, state, error);
-      const coder = this.latestReport(projection, state.task_id, "coder", state.candidate_commit);
+      const producer = this.latestProducerReport(projection, state.task_id, state.candidate_commit);
       drafts.push(this.makeDraft({
         eventType: "CANDIDATE_INVALIDATED",
         runId,
         taskId: state.task_id,
-        attemptId: coder?.attempt_id ?? null,
+        attemptId: producer?.attempt_id ?? null,
         role: "orchestrator",
-        baseCommit: coder?.base_commit ?? null,
+        baseCommit: producer?.base_commit ?? null,
         candidateCommit: state.candidate_commit,
         contextHash: state.context_hash,
         lease: { action: "RELEASE_ALL_TASK", task_id: state.task_id, lease_id: null },
@@ -2840,7 +3197,7 @@ class ProjectOrchestrator {
     return {
       schema_version: "project-orchestrator-resume/v1",
       autonomy_run_id: runId,
-      recovered_expired_leases: recovered.filter((event) => event.event_type === "LEASE_EXPIRED").map((event) => event.event_id),
+      recovered_expired_leases: recovered.filter((event) => ["LEASE_EXPIRED", "SLICE_GATE_LEASE_EXPIRED"].includes(event.event_type)).map((event) => event.event_id),
       recovered_stale_candidates: recovered.filter((event) => event.event_type === "CANDIDATE_INVALIDATED").map((event) => event.event_id),
       recovered_truncated_tail: tailRecovery,
       external_head_reconciled: headReconciliation,
@@ -2863,19 +3220,23 @@ class ProjectOrchestrator {
       invariant(sliceId, "slice gate prompt requires sliceId", "SLICE_ID_REQUIRED");
       const slice = projection.slices.get(sliceId);
       invariant(slice, `unknown slice: ${sliceId}`, "SLICE_NOT_FOUND");
-      const tasks = [...projection.taskStates.values()].filter((state) => state.slice_id === sliceId);
-      invariant(tasks.length > 0 && tasks.every((state) => state.status === "VERIFIED"), "slice gate requires every necessary Task VERIFIED", "SLICE_NOT_VERIFIED");
-      const row = this.router.sliceRows.find((item) => item.values["切片"] === sliceId);
+      const context = this.sliceGateContext(sliceId, projection);
       return {
         schema_version: "g07-role-prompt/v4",
         role,
         autonomy_run_id: runId,
         slice_id: sliceId,
         read_only: true,
-        task_evidence: tasks.map((state) => ({ task_id: state.task_id, evidence_hash: state.last_evidence })),
-        user_entry_acceptance: row?.values["创作者可演示验收"] ?? null,
-        completion_boundary: row?.values["完成边界"] ?? null,
-        instructions: "Start from the registered user entry, run the slice acceptance only, return a structured PASS/FAIL report, and do not modify implementation or any Gate.",
+        base_commit: this.git.head(),
+        candidate_commit: this.git.head(),
+        context_hash: context.hash,
+        task_evidence: context.taskEvidence,
+        user_entry_acceptance: context.row?.values["创作者可演示验收"] ?? null,
+        completion_boundary: context.row?.values["完成边界"] ?? null,
+        report_schema: "g07-role-report/v4",
+        platform_receipts_required: ["LEASE_GRANT", "ROLE_IDENTITY", "ROLE_REPORT"],
+        source_bodies_embedded: false,
+        instructions: "Acquire the slice_gate_runner lease, start from the registered user entry, run the slice acceptance only, return a platform-signed PASS/FAIL report for this exact slice context, and do not modify implementation, Task status, or any Gate.",
       };
     }
     invariant(taskId && REPORT_ROLES.has(role), "prompt requires a Task role and taskId", "PROMPT_INPUT_INVALID");
@@ -2886,12 +3247,15 @@ class ProjectOrchestrator {
     const controlContext = this.controlContext(taskId);
     invariant(this.routeControlBlockers(route).length === 0, "router has blocking control conflicts", "ROUTER_BLOCKING_CONFLICT", this.routeControlBlockers(route));
     invariant(!state.context_hash || state.context_hash === controlContext.hash, "Task control context drifted before prompt generation", "STALE_CONTROL_CONTEXT");
-    const latestCoderReport = this.latestReport(projection, taskId, "coder", state.candidate_commit);
-    const isWriter = ["coder", "prompt_editor"].includes(role);
+    const latestProducerReport = this.latestProducerReport(projection, taskId, state.candidate_commit);
+    const isWriter = this.isPrimaryExecutor(taskId, role, state);
+    if (["coder", "prompt_editor"].includes(role) && !isWriter) {
+      invariant(false, `${role} prompt requires its owned Task READY, got ${state.status}`, "TASK_NOT_READY");
+    }
     if (isWriter) {
       invariant(state.status === "READY", `writer prompt requires READY, got ${state.status}`, "TASK_NOT_READY");
       invariant(this.dependenciesVerified(taskId, projection), "writer prompt requires all dependencies VERIFIED", "DEPENDENCIES_NOT_VERIFIED");
-      invariant(task.values["角色"] === `VIEW::${role.toUpperCase()}`, `Task owner is ${task.values["角色"]}`, "TASK_ROLE_MISMATCH");
+      invariant(this.taskOwnerRole(taskId) === role, `Task owner is ${task.values["角色"]}`, "TASK_ROLE_MISMATCH");
       const gate = this.router.gateSnapshot();
       invariant(gate.active_execution_gate_valid && gate.g05.valid && gate.g06.valid, "writer prompt requires valid G04/G05/G06 controls", "GATE_INVALID");
       const action = this.evaluateAction("PRODUCT_TASK_WRITE", runId, projection);
@@ -2910,7 +3274,7 @@ class ProjectOrchestrator {
       role,
       task_id: taskId,
       task_status: state.status,
-      base_commit: isWriter ? this.git.head() : latestCoderReport?.base_commit ?? this.git.head(),
+      base_commit: isWriter ? this.git.head() : latestProducerReport?.base_commit ?? this.git.head(),
       candidate_commit: isWriter ? null : state.candidate_commit,
       context_hash: controlContext.hash,
       router_context_hash: controlContext.router_context_hash,
@@ -2926,7 +3290,7 @@ class ProjectOrchestrator {
       platform_receipts_required: ["ROLE_IDENTITY", "ROLE_REPORT"],
       source_bodies_embedded: false,
     };
-    if (role === "coder") return {
+    if (role === "coder" && isWriter) return {
       ...common,
       exact_write_scope: route.access.expanded_write_patterns,
       required_command_receipt: "COMMAND_EXECUTION",
@@ -2934,10 +3298,18 @@ class ProjectOrchestrator {
       platform_denied_write_patterns: this.policy.workspace_capability.denied_patterns,
       instructions: "Implement exactly one Task inside the platform-enforced capability. Do not change business intent or write .git/.autonomy/.env/receipt paths. Return a platform-signed role report and command result; do not write Task state or the event log.",
     };
+    if (role === "auditor" && isWriter) return {
+      ...common,
+      exact_write_scope: route.access.expanded_write_patterns,
+      required_command_receipt: "COMMAND_EXECUTION",
+      required_workspace_capability_receipt: "WORKSPACE_CAPABILITY",
+      platform_denied_write_patterns: this.policy.workspace_capability.denied_patterns,
+      instructions: "Execute this Auditor-owned Task as its primary evidence producer inside the platform-enforced capability. Write only the registered fixtures/evidence scope, do not modify product implementation to manufacture PASS, and return IMPLEMENTED with signed command evidence.",
+    };
     if (role === "auditor") return { ...common, read_only: true, required_evidence: ["normal", "exception", "recovery"], required_evidence_receipt: "AUDIT_EVIDENCE", instructions: "Audit the exact candidate commit independently. Return platform-signed evidence and PASS/FAIL; do not modify implementation." };
     if (role === "reviewer") return { ...common, read_only: true, required_checks: ["contract", "diff", "write_channel", "cross_fp"], required_review_receipt: "REVIEW_EVIDENCE", instructions: "Review the exact candidate commit independently. Return a platform-signed APPROVE/REQUEST_CHANGES report; do not repair the diff." };
     if (role === "architect") return { ...common, read_only: true, replan_categories: this.policy.replan_categories, required_boundary_receipt: "ARCHITECT_BOUNDARY_FOR_A_OR_B", instructions: "Handle only Replan A/B/C/D. A/B require a platform-signed unchanged-boundary receipt, C is CREATOR_REQUIRED, and D is technical/environment blocking." };
-    if (role === "prompt_editor") return { ...common, exact_write_scope: route.access.expanded_write_patterns, required_workspace_capability_receipt: "WORKSPACE_CAPABILITY", platform_denied_write_patterns: this.policy.workspace_capability.denied_patterns, instructions: "Edit only an instantiated Prompt revision target anchor inside the platform-enforced capability. Do not write .git/.autonomy/.env/receipt paths, publish, activate, change code/Schema/business, or review your own revision." };
+    if (role === "prompt_editor" && isWriter) return { ...common, exact_write_scope: route.access.expanded_write_patterns, required_workspace_capability_receipt: "WORKSPACE_CAPABILITY", platform_denied_write_patterns: this.policy.workspace_capability.denied_patterns, instructions: "Edit only an instantiated Prompt revision target anchor inside the platform-enforced capability. Do not write .git/.autonomy/.env/receipt paths, publish, activate, change code/Schema/business, or review your own revision." };
     return { ...common, read_only: true, instructions: "Return a structured gap report only. Do not modify implementation or infer missing facts." };
   }
 
@@ -3125,7 +3497,7 @@ function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO"
       scope_evidence_hash: sha256(stableJson({ changed_paths: fakeGit.diffNames(baseCommit, candidateCommit) })),
       secret_scan_evidence_hash: secretScan.evidence_hash,
     },
-    evidence: evidence ?? (role === "auditor" ? ["normal", "exception", "recovery"].map((kind) => ({
+    evidence: evidence ?? (role === "auditor" && verdict !== "IMPLEMENTED" ? ["normal", "exception", "recovery"].map((kind) => ({
       kind,
       passed: true,
       evidence_hash: sha256(`self-test-audit:${kind}:${candidateCommit}:${attemptId}`),
@@ -3133,13 +3505,13 @@ function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO"
     checks: checks ?? (role === "reviewer" ? { contract: true, diff: true, write_channel: true, cross_fp: true } : {}),
     scope: { changed_paths: fakeGit.diffNames(baseCommit, candidateCommit), diff_hash: diffHash },
     secret_scan: { passed: secretScan.passed, evidence_hash: secretScan.evidence_hash },
-    workspace_guard: { capability_enforced: role === "coder", ignored_paths_sha256: secretScan.ignored_paths_sha256 },
+    workspace_guard: { capability_enforced: verdict === "IMPLEMENTED", ignored_paths_sha256: secretScan.ignored_paths_sha256 },
     decision,
     review_receipt: null,
     execution: { model_tier: "MODEL::CODE_HIGH", actual_model: "self-test-model", tokens: 0, time_ms: 1, known_cost: null },
     workspace_capability_receipt_id: null,
   };
-  if (role === "coder") {
+  if (verdict === "IMPLEMENTED") {
     const command = {
       command: task.values["验收命令"],
       exit_code: commandExitCode,
@@ -3150,7 +3522,7 @@ function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO"
     command.receipt = platform.issue("COMMAND_EXECUTION", orchestrator.commandReceiptClaims(report, command));
     report.acceptance.commands = [command];
   }
-  if (role === "auditor") {
+  if (role === "auditor" && verdict !== "IMPLEMENTED") {
     report.evidence = report.evidence.map((entry) => ({
       ...entry,
       receipt: entry.receipt ?? platform.issue("AUDIT_EVIDENCE", orchestrator.auditReceiptClaims(report, entry)),
@@ -3168,6 +3540,7 @@ function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO"
     session_id: attestedSessionId,
     role,
     task_id: report.task_id,
+    slice_id: null,
     attempt_id: attemptId,
     base_commit: baseCommit,
     candidate_commit: candidateCommit,
@@ -3176,6 +3549,7 @@ function selfTestReport({ orchestrator, fakeGit, platform, taskId = "F0-01-REPO"
   report.report_receipt = platform.issue("ROLE_REPORT", {
     role,
     task_id: report.task_id,
+    slice_id: null,
     attempt_id: attemptId,
     base_commit: baseCommit,
     candidate_commit: candidateCommit,
@@ -3215,7 +3589,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     g07_a_status: "REWORK",
     g07_approval_evidence_sha256: "a".repeat(64),
   };
-  const makeHarness = ({ policyChanges = {}, clock = () => new Date("2026-07-11T12:00:00.000Z"), withPlatform = true, readyTaskId = null } = {}) => {
+  const makeHarness = ({ policyChanges = {}, clock = () => new Date("2026-07-11T12:00:00.000Z"), withPlatform = true, readyTaskId = null, verifiedSliceId = null } = {}) => {
     const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "g07-orchestrator-v3-"));
     tempRoots.push(stateDir);
     const receiptInbox = path.join(stateDir, "receipt-inbox");
@@ -3243,15 +3617,23 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     const fakeGit = new FakeGitClient(root);
     const monotonicHead = new FakeMonotonicHead(policy.monotonic_head.stream_id);
     let harnessRouter = router;
-    if (readyTaskId && readyTaskId !== "F0-01-REPO") {
+    if ((readyTaskId && readyTaskId !== "F0-01-REPO") || verifiedSliceId) {
       harnessRouter = new ProjectContextRouter(root);
-      const target = harnessRouter.taskById.get(readyTaskId);
-      invariant(target, `unknown self-test ready Task: ${readyTaskId}`);
-      const dependencies = new Set(harnessRouter.taskGraph(target).upstream.map((item) => item.task_id));
-      for (const task of harnessRouter.tasks) {
-        task.values["状态"] = task.id === readyTaskId ? "READY" : dependencies.has(task.id) ? "VERIFIED" : "PLANNED";
+      if (verifiedSliceId) {
+        invariant(harnessRouter.sliceRows.some((row) => row.values["切片"] === verifiedSliceId), `unknown self-test slice: ${verifiedSliceId}`);
+        for (const task of harnessRouter.tasks) task.values["状态"] = task.values["切片"] === verifiedSliceId ? "VERIFIED" : "PLANNED";
+      } else {
+        const target = harnessRouter.taskById.get(readyTaskId);
+        invariant(target, `unknown self-test ready Task: ${readyTaskId}`);
+        const dependencies = new Set(harnessRouter.taskGraph(target).upstream.map((item) => item.task_id));
+        for (const task of harnessRouter.tasks) {
+          task.values["状态"] = task.id === readyTaskId ? "READY" : dependencies.has(task.id) ? "VERIFIED" : "PLANNED";
+        }
       }
     }
+    const bootstrapVerifiedEvidence = Object.fromEntries((harnessRouter?.tasks ?? [])
+      .filter((task) => task.values["状态"] === "VERIFIED")
+      .map((task) => [task.id, sha256(`self-test-bootstrap-evidence:${task.id}`)]));
     const orchestrator = new ProjectOrchestrator({
       root,
       stateDir,
@@ -3262,7 +3644,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       idFactory: () => `self-test-v3-${String(++idCounter).padStart(6, "0")}`,
       platformTrust: withPlatform ? platform : null,
       monotonicHead,
-      testControlOverrides: approvedControl,
+      testControlOverrides: { ...approvedControl, bootstrap_verified_evidence: bootstrapVerifiedEvidence },
       authority: SELF_TEST_AUTHORITY,
     });
     return { orchestrator, fakeGit, stateDir, policy, platform, monotonicHead, clock };
@@ -3272,9 +3654,9 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     const { orchestrator, platform } = harness;
     const projection = orchestrator.project();
     const state = projection.taskStates.get(taskId);
-    const mode = ["coder", "prompt_editor"].includes(role) ? "WRITE" : "READ_ONLY";
-    const latestCoder = orchestrator.latestReport(projection, taskId, "coder", state.candidate_commit);
-    const baseCommit = mode === "READ_ONLY" ? latestCoder?.base_commit : harness.fakeGit.head();
+    const mode = orchestrator.requestsPrimaryWrite(taskId, role, state) ? "WRITE" : "READ_ONLY";
+    const latestProducer = orchestrator.latestProducerReport(projection, taskId, state.candidate_commit);
+    const baseCommit = mode === "READ_ONLY" ? latestProducer?.base_commit : harness.fakeGit.head();
     const contextHash = mode === "READ_ONLY" ? state.context_hash : contextHashFor(harness, taskId);
     const toStatus = mode === "WRITE" ? "LEASED" : state.status === "IMPLEMENTED" ? "VERIFYING" : state.status;
     const ttl = Number(ttlSeconds ?? harness.policy.concurrency.default_lease_seconds);
@@ -3289,8 +3671,8 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
         attemptId,
         role,
         actorId,
-        principalId: principalId ?? `attested-coder-${attemptId}`,
-        sessionId: sessionId ?? `attested-coder-session-${attemptId}`,
+        principalId: principalId ?? `attested-${role}-${attemptId}`,
+        sessionId: sessionId ?? `attested-${role}-session-${attemptId}`,
         capabilityId: `self-test-capability-${sha256(`${runId}:${taskId}:${attemptId}`).slice(0, 20)}`,
         sandboxId: `sandbox-${sha256(`${actorId}:${attemptId}`).slice(0, 16)}`,
         sandboxInstanceSha256: sha256(stableJson({ runId, taskId, attemptId, actorId, enforcement: "PLATFORM_SANDBOX" })),
@@ -3319,12 +3701,86 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     }));
     return orchestrator.lease({ runId, taskId, role, actorId, attemptId, ttlSeconds, candidateCommit, platformReceipt: receipt, workspaceCapabilityReceipt });
   };
+  const signedSliceGateLease = (harness, { runId, sliceId, actorId, attemptId, ttlSeconds = null }) => {
+    const { orchestrator, platform, fakeGit } = harness;
+    const context = orchestrator.sliceGateContext(sliceId, orchestrator.project());
+    const ttl = Number(ttlSeconds ?? harness.policy.concurrency.default_lease_seconds);
+    const acquiredAt = harness.clock();
+    const expiresAt = new Date(acquiredAt.getTime() + ttl * 1000);
+    const leaseId = `self-test-slice-lease-${sha256(stableJson({ runId, sliceId, actorId, attemptId })).slice(0, 20)}`;
+    const commit = fakeGit.head();
+    const receipt = platform.issue("LEASE_GRANT", orchestrator.leaseReceiptClaims({
+      runId,
+      taskId: null,
+      sliceId,
+      attemptId,
+      role: "slice_gate_runner",
+      actorId,
+      mode: "READ_ONLY",
+      leaseId,
+      acquiredAt: acquiredAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      baseCommit: commit,
+      candidateCommit: commit,
+      contextHash: context.hash,
+      fromStatus: null,
+      toStatus: null,
+    }));
+    return orchestrator.lease({ runId, sliceId, role: "slice_gate_runner", actorId, attemptId, ttlSeconds, candidateCommit: commit, platformReceipt: receipt });
+  };
+  const signedSliceGateReport = (harness, { runId, sliceId, actorId, attemptId, verdict = "PASS", principalId = null, sessionId = null }) => {
+    const { orchestrator, platform, fakeGit } = harness;
+    const lease = orchestrator.project().activeLeases.find((item) => item.role === "slice_gate_runner" && item.slice_id === sliceId && item.attempt_id === attemptId);
+    invariant(lease, "self-test slice report requires an active lease");
+    const report = {
+      report_version: "g07-role-report/v4",
+      task_id: null,
+      slice_id: sliceId,
+      role: "slice_gate_runner",
+      actor_id: actorId,
+      session_id: `declared-slice-session-${attemptId}`,
+      attempt_id: attemptId,
+      base_commit: lease.base_commit,
+      candidate_commit: lease.candidate_commit,
+      context_hash: lease.context_hash,
+      branch: fakeGit.branch(),
+      worktree: fakeGit.worktree(),
+      verdict,
+      identity_attestation: null,
+      report_receipt: null,
+      summary: `slice_gate_runner:${verdict}`,
+      acceptance: emptyAcceptance(),
+      execution: emptyExecution(),
+    };
+    report.identity_attestation = platform.issue("ROLE_IDENTITY", {
+      principal_id: principalId ?? `attested-slice-${attemptId}`,
+      session_id: sessionId ?? `attested-slice-session-${attemptId}`,
+      role: report.role,
+      task_id: null,
+      slice_id: sliceId,
+      attempt_id: attemptId,
+      base_commit: report.base_commit,
+      candidate_commit: report.candidate_commit,
+      context_hash: report.context_hash,
+    });
+    report.report_receipt = platform.issue("ROLE_REPORT", {
+      role: report.role,
+      task_id: null,
+      slice_id: sliceId,
+      attempt_id: attemptId,
+      base_commit: report.base_commit,
+      candidate_commit: report.candidate_commit,
+      context_hash: report.context_hash,
+      report_sha256: sha256(stableJson(orchestrator.reportCore(report))),
+    });
+    return orchestrator.record({ runId, report });
+  };
   const signedTransition = (harness, { runId, taskId = "F0-01-REPO", toStatus, attemptId, role = "orchestrator", candidateCommit = null, decisionLevel = "TASK_AUTONOMOUS" }) => {
     const { orchestrator, platform, fakeGit } = harness;
     const projection = orchestrator.project();
     const state = projection.taskStates.get(taskId);
     const contextHash = contextHashFor(harness, taskId);
-    const baseCommit = orchestrator.latestReport(projection, taskId, "coder", candidateCommit)?.base_commit ?? fakeGit.head();
+    const baseCommit = orchestrator.latestProducerReport(projection, taskId, candidateCommit)?.base_commit ?? fakeGit.head();
     const effectiveCandidate = candidateCommit ?? state.candidate_commit;
     const receipt = platform.issue("STATE_TRANSITION", orchestrator.transitionReceiptClaims({
       runId,
@@ -3343,6 +3799,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     report.report_receipt = harness.platform.issue("ROLE_REPORT", {
       role: report.role,
       task_id: report.task_id,
+      slice_id: report.slice_id ?? null,
       attempt_id: report.attempt_id,
       base_commit: report.base_commit,
       candidate_commit: report.candidate_commit,
@@ -3361,27 +3818,28 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     invariant(state.status === "READY", `self-test implementation helper requires READY, got ${state.status}`);
     const contextHash = contextHashFor(harness, taskId);
     const baseCommit = fakeGit.head();
-    const effectivePrincipalId = principalId ?? `attested-coder-${attempt}`;
-    const effectiveSessionId = attestedSessionId ?? `attested-coder-session-${attempt}`;
+    const producerRole = orchestrator.taskOwnerRole(taskId);
+    const effectivePrincipalId = principalId ?? `attested-${producerRole}-${attempt}`;
+    const effectiveSessionId = attestedSessionId ?? `attested-${producerRole}-session-${attempt}`;
     const lease = signedLease(harness, {
       runId,
       taskId,
-      role: "coder",
-      actorId: `declared-coder-${attempt}`,
+      role: producerRole,
+      actorId: `declared-${producerRole}-${attempt}`,
       attemptId: attempt,
       principalId: effectivePrincipalId,
       sessionId: effectiveSessionId,
     });
-    signedTransition(harness, { runId, taskId, toStatus: "IN_PROGRESS", attemptId: attempt, role: "coder" });
+    signedTransition(harness, { runId, taskId, toStatus: "IN_PROGRESS", attemptId: attempt, role: producerRole });
     fakeGit.addCommit(candidateCommit, { baseCommit, paths, patch, blobs });
     const report = selfTestReport({
       orchestrator,
       fakeGit,
       platform,
       taskId,
-      role: "coder",
-      actorId: `declared-coder-${attempt}`,
-      sessionId: `declared-coder-session-${attempt}`,
+      role: producerRole,
+      actorId: `declared-${producerRole}-${attempt}`,
+      sessionId: `declared-${producerRole}-session-${attempt}`,
       principalId: effectivePrincipalId,
       attestedSessionId: effectiveSessionId,
       attemptId: attempt,
@@ -3399,7 +3857,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     }
     orchestrator.record({ runId, report });
     signedTransition(harness, { runId, taskId, toStatus: "IMPLEMENTED", attemptId: attempt, candidateCommit });
-    return { taskId, baseCommit, candidateCommit, contextHash, lease, coderReport: report };
+    return { taskId, baseCommit, candidateCommit, contextHash, lease, producerReport: report, coderReport: report };
   };
   const review = ({ harness, runId, implementation, role, verdict, attempt, principalId = null, attestedSessionId = null, record = true }) => {
     const actorId = `declared-${role}-${attempt}`;
@@ -3449,14 +3907,16 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     const state = projection.taskStates.get(taskId);
     const reports = projection.reports.get(taskId) ?? [];
     const latest = (role) => [...reports].reverse().find((report) => report.role === role && report.candidate_commit === state.candidate_commit);
-    const coder = latest("coder");
+    const producerRole = harness.orchestrator.taskOwnerRole(taskId);
+    const producer = [...reports].reverse().find((report) => report.role === producerRole
+      && report.verdict === "IMPLEMENTED" && report.candidate_commit === state.candidate_commit);
     const auditor = latest("auditor");
     const reviewer = latest("reviewer");
-    const diffNames = harness.fakeGit.diffNames(coder.base_commit, state.candidate_commit);
-    const diffHash = sha256(harness.fakeGit.diffPatch(coder.base_commit, state.candidate_commit));
+    const diffNames = harness.fakeGit.diffNames(producer.base_commit, state.candidate_commit);
+    const diffHash = sha256(harness.fakeGit.diffPatch(producer.base_commit, state.candidate_commit));
     const scopeEvidenceHash = sha256(stableJson({ allowedPatterns: harness.orchestrator.router.expandWriteScope(harness.orchestrator.router.taskById.get(taskId)), diffNames }));
-    const secretEvidenceHash = harness.orchestrator.scanCandidateSecrets(coder.base_commit, state.candidate_commit).evidence_hash;
-    return harness.platform.issue("VERIFICATION_GATE", harness.orchestrator.verificationGateClaims({ taskId, coder, auditor, reviewer, diffHash, scopeEvidenceHash, secretEvidenceHash }));
+    const secretEvidenceHash = harness.orchestrator.scanCandidateSecrets(producer.base_commit, state.candidate_commit).evidence_hash;
+    return harness.platform.issue("VERIFICATION_GATE", harness.orchestrator.verificationGateClaims({ taskId, producer, auditor, reviewer, diffHash, scopeEvidenceHash, secretEvidenceHash }));
   };
   const verifySigned = (harness, runId, implementation) => harness.orchestrator.verifyEvidence({
     runId,
@@ -3542,6 +4002,23 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       public_key_sha256: hashFile(path.join(providerRoot, "public-key-alias.pem")),
     } });
     expectError("platform:public-key-hardlink-alias-rejected", () => platformTrustFromPolicy(hardlinkProviderPolicy, providerRoot, providerClock), "TRUSTED_FILE_HARDLINK_FORBIDDEN");
+    const headCommandPath = path.join(providerRoot, "monotonic-head-provider.cmd");
+    fs.writeFileSync(headCommandPath, "@echo off\r\nexit /b 0\r\n", "utf8");
+    const headCommandHash = hashFile(headCommandPath);
+    expectError("monotonic-head:workspace-provider-rejected", () => new ExternalCommandMonotonicHead({
+      commandPath: path.join(root, ORCHESTRATOR_FILE),
+      commandSha256: hashFile(path.join(root, ORCHESTRATOR_FILE)),
+      streamId: "self-test-workspace-head",
+      workspaceRoot: root,
+    }), "EVENT_HEAD_COMMAND_BOUNDARY_INVALID");
+    const externalHeadProvider = new ExternalCommandMonotonicHead({
+      commandPath: headCommandPath,
+      commandSha256: headCommandHash,
+      streamId: "self-test-external-head",
+      workspaceRoot: root,
+    });
+    fs.writeFileSync(headCommandPath, "@echo off\r\nrem replaced\r\nexit /b 0\r\n", "utf8");
+    expectError("monotonic-head:hash-rechecked-before-every-spawn", () => externalHeadProvider.read(), "EVENT_HEAD_COMMAND_HASH_MISMATCH");
 
     const inboxParent = fs.mkdtempSync(path.join(os.tmpdir(), "g07-receipt-inbox-"));
     tempRoots.push(inboxParent);
@@ -3564,6 +4041,36 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
       && prompt.platform_receipts_required.includes("ROLE_REPORT"), prompt);
     expectError("prompt:planned-coder-rejected", () => promptHarness.orchestrator.rolePrompt({ runId: "prompt", taskId: "F0-02-CONTRACTS", role: "coder" }), "TASK_NOT_READY");
     expectError("prompt:slice-before-verified", () => promptHarness.orchestrator.rolePrompt({ runId: "prompt", role: "slice_gate_runner", sliceId: "F0" }), "SLICE_NOT_VERIFIED");
+
+    const auditorTaskHarness = makeHarness({ readyTaskId: "S7-FULL-BOOK-FAULT-CAMPAIGN" });
+    const auditorTaskPrompt = auditorTaskHarness.orchestrator.rolePrompt({ runId: "auditor-owner", taskId: "S7-FULL-BOOK-FAULT-CAMPAIGN", role: "auditor" });
+    assertCheck("auditor-owner:ready-prompt-has-exact-write-scope", auditorTaskPrompt.read_only !== true
+      && auditorTaskPrompt.exact_write_scope.includes("fixtures/full-book/**")
+      && auditorTaskPrompt.required_workspace_capability_receipt === "WORKSPACE_CAPABILITY", auditorTaskPrompt);
+    const auditorTaskImplementation = implement({
+      harness: auditorTaskHarness,
+      runId: "auditor-owner",
+      taskId: "S7-FULL-BOOK-FAULT-CAMPAIGN",
+      attempt: "auditor-owner-1",
+      candidateCommit: sha256("auditor-owner-candidate").slice(0, 40),
+      paths: ["fixtures/full-book/fault-case.json"],
+    });
+    assertCheck("auditor-owner:primary-lease-is-single-writer", auditorTaskImplementation.lease.lease.mode === "WRITE"
+      && auditorTaskImplementation.producerReport.role === "auditor", auditorTaskImplementation.lease.lease);
+    passReviews({ harness: auditorTaskHarness, runId: "auditor-owner", implementation: auditorTaskImplementation, suffix: "auditor-owner" });
+    const auditorTaskVerified = verifySigned(auditorTaskHarness, "auditor-owner", auditorTaskImplementation);
+    assertCheck("auditor-owner:full-lifecycle-verifies-independently", auditorTaskVerified.to_status === "VERIFIED", auditorTaskVerified);
+
+    const sliceGateHarness = makeHarness({ verifiedSliceId: "S6" });
+    const slicePrompt = sliceGateHarness.orchestrator.rolePrompt({ runId: "slice-gate", role: "slice_gate_runner", sliceId: "S6" });
+    assertCheck("slice-gate:prompt-binds-complete-verified-context", slicePrompt.task_evidence.length === 3
+      && slicePrompt.task_evidence.every((item) => item.status === "VERIFIED" && isSha256(item.evidence_hash))
+      && isSha256(slicePrompt.context_hash), slicePrompt);
+    const sliceLease = signedSliceGateLease(sliceGateHarness, { runId: "slice-gate", sliceId: "S6", actorId: "slice-runner", attemptId: "slice-gate-1" });
+    const sliceReportEvent = signedSliceGateReport(sliceGateHarness, { runId: "slice-gate", sliceId: "S6", actorId: "slice-runner", attemptId: "slice-gate-1", verdict: "PASS" });
+    assertCheck("slice-gate:lease-and-report-enter-trusted-event-chain", sliceLease.event_type === "SLICE_GATE_LEASE_ACQUIRED"
+      && sliceReportEvent.event_type === "SLICE_GATE_REPORT_RECORDED"
+      && sliceGateHarness.orchestrator.project().slices.get("S6").gate_verdict === "PASS", sliceReportEvent);
 
     const leaseHarness = makeHarness();
     expectError("lease:missing-platform-receipt", () => leaseHarness.orchestrator.lease({ runId: "lease", taskId: "F0-01-REPO", role: "coder", actorId: "writer", attemptId: "lease-1" }), "PLATFORM_RECEIPT_REQUIRED");
@@ -3655,6 +4162,7 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
           session_id: "different-platform-session",
           role: report.role,
           task_id: report.task_id,
+          slice_id: report.slice_id ?? null,
           attempt_id: report.attempt_id,
           base_commit: report.base_commit,
           candidate_commit: report.candidate_commit,
@@ -3855,7 +4363,29 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     };
     const firstReplan = failThree(1);
     assertCheck("replan:first-three-reworks", firstReplan.to_status === "REPLAN" && firstReplan.counters.replan === 1, firstReplan);
+    expectError("architect:detached-or-missing-candidate-lease-rejected", () => signedLease(retryHarness, {
+      runId: "retry",
+      role: "architect",
+      actorId: "architect-detached",
+      attemptId: "architect-detached-1",
+      candidateCommit: "d".repeat(40),
+    }), "CANDIDATE_COMMIT_MISMATCH");
     const architectLease = signedLease(retryHarness, { runId: "retry", role: "architect", actorId: "architect-invalid", attemptId: "architect-1", candidateCommit: lastImplementation.candidateCommit });
+    const detachedArchitectReport = selfTestReport({
+      orchestrator: retryHarness.orchestrator,
+      fakeGit: retryHarness.fakeGit,
+      platform: retryHarness.platform,
+      role: "architect",
+      actorId: "architect-invalid",
+      sessionId: "architect-detached-report-session",
+      attemptId: "architect-1",
+      baseCommit: architectLease.base_commit,
+      candidateCommit: "d".repeat(40),
+      contextHash: lastImplementation.contextHash,
+      verdict: "REPLAN",
+      decision: { category: "A", reason: "detached report candidate" },
+    });
+    expectError("architect:detached-report-candidate-rejected", () => retryHarness.orchestrator.record({ runId: "retry", report: detachedArchitectReport }), "REPORT_CANDIDATE_MISMATCH");
     const invalidArchitect = selfTestReport({
       orchestrator: retryHarness.orchestrator,
       fakeGit: retryHarness.fakeGit,
@@ -4049,6 +4579,18 @@ function runOrchestratorSelfTest(root = DEFAULT_ROOT) {
     assertCheck("resume:complete-json-tail-normalized", completeTailResume.recovered_truncated_tail?.complete_tail_newline_added === true
       && completeTailHarness.orchestrator.store.read().at(-1).event_type === "EVENT_LOG_TAIL_RECOVERED", completeTailResume.recovered_truncated_tail);
 
+    const combinedRecoveryHarness = makeHarness();
+    combinedRecoveryHarness.orchestrator.recordUsage({ runId: "combined-recovery", meterReceipt: signedMeter(combinedRecoveryHarness, "combined-recovery", { tokens: 1, timeMs: 1, knownCost: 0 }) });
+    combinedRecoveryHarness.orchestrator.recordUsage({ runId: "combined-recovery", meterReceipt: signedMeter(combinedRecoveryHarness, "combined-recovery", { tokens: 2, timeMs: 2, knownCost: 0 }) });
+    const combinedEvents = combinedRecoveryHarness.orchestrator.store.read();
+    combinedRecoveryHarness.monotonicHead.forceForSemanticTest([combinedEvents[0]]);
+    fs.writeFileSync(combinedRecoveryHarness.orchestrator.store.eventsPath, fs.readFileSync(combinedRecoveryHarness.orchestrator.store.eventsPath, "utf8").trimEnd(), "utf8");
+    const combinedResume = combinedRecoveryHarness.orchestrator.resume({ runId: "combined-recovery" });
+    assertCheck("resume:local-ahead-complete-tail-without-newline-reconciles", combinedResume.recovered_truncated_tail?.complete_tail_newline_added === true
+      && combinedResume.external_head_reconciled?.from?.event_count === 1
+      && combinedResume.external_head_reconciled?.to?.event_count === 2
+      && combinedRecoveryHarness.monotonicHead.read().event_count === 3, combinedResume);
+
     const deterministicHarness = makeHarness();
     deterministicHarness.orchestrator.recordUsage({ runId: "deterministic", meterReceipt: signedMeter(deterministicHarness, "deterministic", { tokens: 1, timeMs: 2, knownCost: 0 }) });
     const firstDeterministicResume = deterministicHarness.orchestrator.resume({ runId: "deterministic" });
@@ -4214,7 +4756,7 @@ function usage() {
     "Usage:",
     "  node tools/project-orchestrator.mjs status [--run-id ID]",
     "  node tools/project-orchestrator.mjs dry-run [--run-id ID]",
-    "  node tools/project-orchestrator.mjs lease --run-id ID [--task-id ID] --role ROLE --actor-id ID --attempt-id ID --platform-receipt-file NAME --workspace-capability-receipt-file NAME [--ttl-seconds N]",
+    "  node tools/project-orchestrator.mjs lease --run-id ID [--task-id ID | --slice-id ID] --role ROLE --actor-id ID --attempt-id ID --platform-receipt-file NAME [--workspace-capability-receipt-file NAME] [--ttl-seconds N]",
     "  node tools/project-orchestrator.mjs record --run-id ID --report-file PATH",
     "  node tools/project-orchestrator.mjs verify-evidence --run-id ID --task-id ID --candidate-commit SHA --verification-receipt-file PATH [--context-hash SHA256]",
     "  node tools/project-orchestrator.mjs transition --run-id ID --task-id ID --to-status STATUS [--platform-receipt-file PATH | --resolution-receipt-file PATH] [--candidate-commit SHA]",
@@ -4249,6 +4791,7 @@ function main() {
     else if (command === "lease") output = orchestrator.lease({
       ...common,
       taskId: options.task_id ?? null,
+      sliceId: options.slice_id ?? null,
       role: options.role,
       actorId: options.actor_id,
       attemptId: options.attempt_id,
@@ -4257,7 +4800,7 @@ function main() {
       baseCommit: options.base_commit,
       candidateCommit: options.candidate_commit,
       platformReceipt: orchestrator.readTrustedJson(options.platform_receipt_file, "--platform-receipt-file"),
-      workspaceCapabilityReceipt: ["coder", "prompt_editor"].includes(options.role)
+      workspaceCapabilityReceipt: options.workspace_capability_receipt_file
         ? orchestrator.readTrustedJson(options.workspace_capability_receipt_file, "--workspace-capability-receipt-file")
         : null,
     });

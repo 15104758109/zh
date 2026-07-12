@@ -215,7 +215,7 @@ required_updates: <responsible fact sources>
 
 ## 10. G07-A 自治控制面
 
-稳定政策锚点为 `G07::AUTONOMY`，机器政策位于 `.autonomy/policy.json`。`tools/project-orchestrator.mjs` 管理 v4 事件链、工作区外单调 head、Ed25519 收据、平台写 capability、严格历史语义回放、Task/Slice 投影、租约、blob 证据、预算、恢复、简报和角色提示词；它不直接调用模型。Coder、Auditor、Reviewer、Architect 与 Slice Gate Runner 只返回 `g07-role-report/v4`，不得直接写事件或 Task 状态。平台私钥、单调 head 和可信收据 inbox 都必须位于角色不可写域；任一 provider 不可用时必须硬停为 `ENVIRONMENT_APPROVAL_REQUIRED`。
+稳定政策锚点为 `G07::AUTONOMY`，机器政策位于 `.autonomy/policy.json`。`tools/project-orchestrator.mjs` 管理 v4 事件链上的 v5 控制面实现：工作区外单调 head、Ed25519 收据、平台写 capability、严格历史语义回放、Task/Slice 投影、租约、blob 证据、预算、恢复、简报和角色提示词；它不直接调用模型。Coder、Auditor、Reviewer、Architect 与 Slice Gate Runner 只返回 `g07-role-report/v4`，不得直接写事件或 Task 状态。Task Index 中主责为 Auditor 的证据 Task 以单写入者 capability 执行，之后仍需独立 Auditor/Reviewer；Slice Gate Runner 使用专用只读 slice lease，报告进入事件链。平台私钥、单调 head、head provider 命令和可信收据 inbox 都必须位于角色不可写域，head 命令每次执行前复核哈希；任一 provider 不可用时必须硬停为 `ENVIRONMENT_APPROVAL_REQUIRED`。
 
 ```text
 node tools/project-context-loader.mjs --self-test
@@ -225,6 +225,7 @@ node tools/g07-control-evidence.mjs --all
 node tools/project-orchestrator.mjs status --run-id <run-id>
 node tools/project-orchestrator.mjs dry-run --run-id <run-id>
 node tools/project-orchestrator.mjs lease --run-id <run-id> --task-id <task-id> --role <role> --actor-id <actor> --attempt-id <attempt> --platform-receipt-file <signed-receipt.json> --workspace-capability-receipt-file <signed-capability.json>
+node tools/project-orchestrator.mjs lease --run-id <run-id> --slice-id <slice-id> --role slice_gate_runner --actor-id <actor> --attempt-id <attempt> --platform-receipt-file <signed-receipt.json>
 node tools/project-orchestrator.mjs record --run-id <run-id> --report-file <signed-role-report.json>
 node tools/project-orchestrator.mjs verify-evidence --run-id <run-id> --task-id <task-id> --candidate-commit <sha> --verification-receipt-file <signed-receipt.json>
 node tools/project-orchestrator.mjs transition --run-id <run-id> --task-id <task-id> --to-status <status> --platform-receipt-file <signed-receipt.json>
@@ -236,7 +237,7 @@ node tools/project-orchestrator.mjs report --run-id <run-id> [--slice-id <slice>
 
 - `dry-run` 只能计算下一 Task、角色、FP 集、scope 和上下文哈希；它比较前后事件字节/哈希、Task 投影、精确 scope 产品树和 ignored 路径名称哈希，证明不写事件、不改状态、不创建产品文件。
 - 只有 Orchestrator 可执行状态命令；所有 JSON 输入只允许来自 policy 登记的工作区外可信 inbox，且拒绝越界、realpath 逃逸、非普通文件、符号链接/目录联接、硬链接和超限文件。平台公钥与单调 head 命令使用相同文件检查。
-- 写租约必须同时验证 `LEASE_GRANT` 和 `WORKSPACE_CAPABILITY`。后者由平台 sandbox 强制只开放精确 write scope，并拒绝 `.git/.autonomy/.env`、inbox 和所有 scope 外路径；Coder 的平台主体/会话必须与 capability 一致。
+- 写租约必须同时验证 `LEASE_GRANT` 和 `WORKSPACE_CAPABILITY`。后者由平台 sandbox 强制只开放精确 write scope，并拒绝 `.git/.autonomy/.env`、inbox 和所有 scope 外路径；Coder、Prompt Editor 或主责 Auditor 的平台主体/会话必须与 capability 一致。
 - `VERIFIED` 绑定同一 commit、历史/当前 control context、含删除 scope、原始文本/二进制 candidate blobs、超限阻断、平台命令制品和独立身份。合法升级后旧 `VERIFIED` 使用事件内历史 facts 回放，不要求当前 context hash 相等。
 - 所有 run 合计最多一个写租约和两个只读审查租约；本地事件数/末哈希每次都与外部单调 head 核对，删尾或整日志删除立即阻断。任意恢复 run 可 CAS 对账合法本地领先、清理过期租约并 quarantine stale 损坏锁。
 - 验收、scope、秘密、stale commit/context 等证据失败必须写 `EVIDENCE_REJECTED`、失败指纹和计数后进入返修；三次返修进入 Replan。Architect 只处理 A/B/C/D，C 必须转 `CREATOR_REQUIRED`；两次 Replan 耗尽时按依赖祖先闭包暂停关键路径。Orchestrator 不接受字符串解除 `CREATOR_REQUIRED`。
