@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zhreplan:contract:config-version-ref:1",
+  "title": "ConfigVersionRef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["config_id", "version", "domain", "source"],
+  "properties": {
+    "config_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "domain": {
+      "enum": ["prompt", "model", "budget", "automation", "presentation"]
+    },
+    "source": {
+      "enum": ["system_default", "local_operator", "book", "run"]
+    }
+  }
+}
