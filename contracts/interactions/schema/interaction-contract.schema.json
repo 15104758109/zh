@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zhreplan:interaction-contract:1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "contract_id", "owner", "object_scope", "actions"],
+  "properties": {
+    "version": { "const": 1 },
+    "contract_id": { "type": "string", "pattern": "^(FP[0-9]{3}-[0-9]{2}|cap-[a-z0-9-]+)$" },
+    "owner": { "type": "string", "pattern": "^(F0|S[1-7]|W0)-[A-Z0-9-]+$" },
+    "object_scope": { "type": "object", "minProperties": 1 },
+    "actions": { "type": "array", "minItems": 1 }
+  }
+}
