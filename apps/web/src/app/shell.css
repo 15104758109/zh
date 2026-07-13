@@ -1,0 +1,29 @@
+:root { color: #24312e; background: #edf1ed; font-family: Arial, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button, select { font: inherit; }
+.app-shell { max-width: 1120px; margin: 0 auto; padding: 24px; }
+.app-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; border-bottom: 1px solid #bdc8bf; padding-bottom: 18px; }
+.eyebrow { margin: 0 0 4px; color: #607069; font-size: 13px; }
+h1, h2, p { margin-top: 0; }
+h1 { margin-bottom: 0; font-size: 26px; font-weight: 650; }
+h2 { margin-bottom: 8px; font-size: 17px; }
+.context-readout { text-align: right; font-size: 13px; }
+.context-readout span { display: block; color: #607069; }
+.context-readout strong { font-weight: 600; }
+.shell-controls { display: flex; flex-wrap: wrap; gap: 16px; padding: 18px 0; }
+label { display: grid; gap: 6px; color: #43524c; font-size: 14px; font-weight: 600; }
+select { min-width: 190px; min-height: 36px; border: 1px solid #82928a; border-radius: 4px; background: #fff; color: #24312e; padding: 6px 8px; }
+select:focus-visible { outline: 3px solid #d5a53c; outline-offset: 2px; }
+.system-state, .config-summary { border: 1px solid #bdc8bf; border-radius: 6px; background: #fff; padding: 18px; }
+.system-state { min-height: 150px; margin-bottom: 18px; border-left: 5px solid #647d70; }
+.system-state--warning { border-left-color: #bd8518; }
+.system-state--danger { border-left-color: #b94e3b; }
+.system-state--positive { border-left-color: #3f8468; }
+.system-state p { margin-bottom: 8px; line-height: 1.5; }
+.system-state__summary, .section-note { color: #52645b; font-size: 14px; }
+.section-note { margin-bottom: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { border-bottom: 1px solid #d7dfd9; padding: 10px 8px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+th { color: #52645b; font-weight: 650; }
+@media (max-width: 640px) { .app-shell { padding: 16px; } .app-header { align-items: start; flex-direction: column; gap: 12px; } .context-readout { text-align: left; } .shell-controls { display: grid; } label, select { width: 100%; } table { display: block; overflow-x: auto; white-space: nowrap; } }
