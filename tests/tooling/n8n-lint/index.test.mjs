@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { lintN8n } from '../../../scripts/n8n-lint/index.mjs';
 
 const hash = (value) => createHash('sha256').update(value).digest('hex');
+const workflowHash = (value) => hash(value.replace(/\r\n|\r/g, '\n'));
 const source = fileURLToPath(new URL('../../../scripts/n8n-lint/index.mjs', import.meta.url));
 
 function validNode(index, node = {}) {
@@ -45,7 +46,7 @@ async function syncFixture(fixture) {
   fixture.baseline.workflows = [...fixture.files.entries()].filter(([name]) => !name.includes('/')).sort(([a], [b]) => a.localeCompare(b)).map(([name, value]) => {
     const raw = typeof value === 'string' ? value : JSON.stringify(value);
     const parsed = typeof value === 'string' ? null : value;
-    return { path: `references/${name}`, id: parsed?.id ?? `workflow-${name}`, name: parsed?.name ?? name, sha256: hash(raw) };
+    return { path: `references/${name}`, id: parsed?.id ?? `workflow-${name}`, name: parsed?.name ?? name, sha256: workflowHash(raw) };
   });
   for (const [name, value] of fixture.files) {
     const target = join(fixture.references, name);
@@ -73,6 +74,24 @@ test('accepts the exact 17-workflow manifest with six bound known findings deter
   const first = await lint(fixture); const second = await lint(fixture);
   assert.equal(first.workflow_count, 17); assert.deepEqual(first.summary, { known: 6, new: 0, total: 6 });
   assert.equal(hash(JSON.stringify(first)), hash(JSON.stringify(second)));
+}));
+
+test('canonicalizes LF, CRLF, and CR workflow content without ignoring non-newline changes', async () => withFixture(async (fixture) => {
+  const rewrite = async (ending) => {
+    for (const [name, value] of fixture.files) {
+      const raw = JSON.stringify(value, null, 2).replace(/\n/g, ending);
+      await writeFile(join(fixture.references, name), raw);
+      const entry = fixture.baseline.workflows.find((candidate) => candidate.path === `references/${name}`);
+      if (entry) entry.sha256 = workflowHash(raw);
+    }
+    for (const finding of fixture.baseline.known_semantic_findings) finding.workflow_sha256 = fixture.baseline.workflows.find((entry) => entry.path === finding.path).sha256;
+    await writeBaseline(fixture);
+    return lint(fixture);
+  };
+  const lf = await rewrite('\n'); const crlf = await rewrite('\r\n'); const cr = await rewrite('\r');
+  assert.deepEqual(lf.summary, { known: 6, new: 0, total: 6 }); assert.deepEqual(crlf.summary, lf.summary); assert.deepEqual(cr.summary, lf.summary);
+  await writeFile(join(fixture.references, 'workflow-10.json'), `${JSON.stringify(fixture.files.get('workflow-10.json'), null, 2)} `);
+  assert.ok(codes(await lint(fixture)).includes('CONTENT_DRIFT'));
 }));
 
 test('rejects malformed, undersized, oversized, duplicate, unsafe, and fingerprint-based manifests', async () => {

@@ -18,6 +18,7 @@ const CODE_TYPE = 'n8n-nodes-base.code';
 const FUNCTION_TYPE = 'n8n-nodes-base.function';
 
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
+const workflowSha256 = (value) => createHash('sha256').update(Buffer.from(value.replace(/\r\n|\r/g, '\n'), 'utf8')).digest('hex');
 const normalizedPath = (value) => value.replaceAll('\\', '/');
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value) && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 const fail = (message) => { throw new Error(`Baseline integrity failure: ${message}`); };
@@ -115,7 +116,7 @@ export async function lintN8n({ referenceDir = DEFAULT_REFERENCE_DIR, baselinePa
     const path = `${validated.referencePath}/${file}`; const entry = validated.entries.get(path); seen.add(path);
     const { raw, workflow } = await readWorkflow(resolve(validated.absoluteReferenceDir, file));
     if (!workflow) { findings.push(issue('INVALID_JSON', path)); continue; }
-    const actualHash = sha256(raw); actualHashes.set(path, actualHash);
+    const actualHash = workflowSha256(raw); actualHashes.set(path, actualHash);
     if (!entry) findings.push(issue('UNREGISTERED_WORKFLOW', path)); else { if (entry.sha256 !== actualHash) findings.push(issue('CONTENT_DRIFT', path)); if (!isPlainObject(workflow) || entry.id !== workflow.id || entry.name !== workflow.name) findings.push(issue('WORKFLOW_IDENTITY_DRIFT', path)); }
     if (!isPlainObject(workflow)) { findings.push(issue('INVALID_WORKFLOW_STRUCTURE', path)); continue; }
     const structural = workflowStructure(workflow, path); if (structural) findings.push(structural);
