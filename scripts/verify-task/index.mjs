@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
-import { isAbsolute, extname } from "node:path";
+import { readFileSync, realpathSync, statSync } from "node:fs";
+import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const taskCommands = Object.freeze({
@@ -32,18 +32,29 @@ export function parseTaskArguments(args) {
   return args[0];
 }
 
-function runPnpm(args) {
-  const npmExecPath = process.env.npm_execpath;
-  if (
-    typeof npmExecPath !== "string"
-    || !isAbsolute(npmExecPath)
-    || ![".js", ".cjs", ".mjs"].includes(extname(npmExecPath))
-    || !existsSync(npmExecPath)
-    || !statSync(npmExecPath).isFile()
-  ) {
+export function resolvePnpmExecPath(npmExecPath) {
+  try {
+    if (typeof npmExecPath !== "string" || !isAbsolute(npmExecPath) || ![".js", ".cjs", ".mjs"].includes(extname(npmExecPath))) {
+      throw new Error();
+    }
+    const cli = realpathSync(npmExecPath);
+    if (!statSync(cli).isFile()) throw new Error();
+    const packageRoot = dirname(dirname(cli));
+    const metadata = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
+    const bin = typeof metadata.bin === "string" ? metadata.bin : metadata.bin?.pnpm;
+    if (metadata.name !== "pnpm" || metadata.version !== "9.15.9" || typeof bin !== "string") throw new Error();
+    const binPath = resolve(packageRoot, bin);
+    const binRelative = relative(packageRoot, binPath);
+    if (!binRelative || binRelative.startsWith("..") || isAbsolute(binRelative) || realpathSync(binPath) !== cli) throw new Error();
+    return cli;
+  } catch {
     throw new Error("PNPM_EXEC_PATH_UNAVAILABLE");
   }
-  const result = spawnSync(process.execPath, [npmExecPath, ...args], {
+}
+
+function runPnpm(args) {
+  const validatedCli = resolvePnpmExecPath(process.env.npm_execpath);
+  const result = spawnSync(process.execPath, [validatedCli, ...args], {
     cwd: process.cwd(),
     stdio: "inherit",
     shell: false,
