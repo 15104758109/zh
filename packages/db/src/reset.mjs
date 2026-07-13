@@ -1,5 +1,5 @@
-import { ensureDatabase, sql } from "./database.mjs";
+import { databaseSchema, ensureDatabase, sql } from "./database.mjs";
 
 ensureDatabase();
-sql("DROP SCHEMA zhreplan CASCADE; CREATE SCHEMA zhreplan");
+sql(`DROP SCHEMA ${databaseSchema} CASCADE; CREATE SCHEMA ${databaseSchema}`);
 await import("./migrate.mjs");

@@ -1,15 +1,15 @@
-CREATE TABLE runtime_runs (
+CREATE TABLE zhreplan.runtime_runs (
   run_id uuid PRIMARY KEY,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 
-CREATE TABLE audit_attempt_log (
+CREATE TABLE zhreplan.audit_attempt_log (
   audit_attempt_id uuid PRIMARY KEY,
-  run_id uuid NOT NULL REFERENCES runtime_runs(run_id),
+  run_id uuid NOT NULL REFERENCES zhreplan.runtime_runs(run_id),
   created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 
-CREATE TABLE idempotency_keys (
+CREATE TABLE zhreplan.idempotency_keys (
   idempotency_key text PRIMARY KEY,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );

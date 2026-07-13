@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
-import { migrations, ensureDatabase, sql } from "./database.mjs";
+import { databaseSchema, migrations, ensureDatabase, sql } from "./database.mjs";
 
 const checkOnly = process.argv.includes("--check");
 
 function appliedMigrations() {
-  const rows = sql("SELECT migration_name || '|' || checksum FROM schema_migrations ORDER BY migration_name").trim();
+  const rows = sql(`SELECT migration_name || '|' || checksum FROM ${databaseSchema}.schema_migrations ORDER BY migration_name`).trim();
   return new Map(rows ? rows.split("\n").map((row) => row.split("|", 2)) : []);
 }
 
@@ -17,7 +17,7 @@ function verifyApplied(available, applied) {
 }
 
 ensureDatabase();
-sql(`CREATE TABLE IF NOT EXISTS schema_migrations (
+sql(`CREATE TABLE IF NOT EXISTS ${databaseSchema}.schema_migrations (
   migration_name text PRIMARY KEY,
   checksum text NOT NULL,
   applied_at timestamptz NOT NULL DEFAULT clock_timestamp()
@@ -39,7 +39,7 @@ for (const migration of available.values()) {
   const body = readFileSync(migration.filename, "utf8");
   sql(`BEGIN;
 ${body}
-INSERT INTO schema_migrations (migration_name, checksum) VALUES ('${migration.name}', '${migration.checksum}');
+INSERT INTO ${databaseSchema}.schema_migrations (migration_name, checksum) VALUES ('${migration.name}', '${migration.checksum}');
 COMMIT;`);
   process.stdout.write(`applied ${migration.name}\n`);
 }
