@@ -10,15 +10,12 @@ const ACTIVE_FP_OWNER_PAIRS: readonly (readonly [string, string])[] = [
     ["FP017-00", "F0-04-LOCAL-OPERATOR"], ["FP017-01", "S7-FP017-01"],
 ];
 
-export const DEFAULT_COVERAGE_MODEL = {
-  active: ACTIVE_FP_OWNER_PAIRS.map(([id, owner]) => ({ id, owner })),
-} as const;
+const OFFICIAL_OWNER_BY_FP = new Map(ACTIVE_FP_OWNER_PAIRS);
 
 import { ContractValidator } from "@zh/contracts";
 
 export type LintIssue = { code: string; file: string; path: string; message: string };
 export type InteractionContract = Record<string, unknown>;
-export type CoverageModel = { active?: readonly { id: string; owner?: string }[] };
 export type InteractionSchema = { $id?: string; $schema?: string };
 
 function scalar(value: string): unknown {
@@ -80,7 +77,7 @@ export function parseInteractionYaml(source: string): InteractionContract {
   return root;
 }
 
-export function lintContract(contract: InteractionContract, schema: InteractionSchema, file = "<memory>", model: CoverageModel = DEFAULT_COVERAGE_MODEL): LintIssue[] {
+export function lintContract(contract: InteractionContract, schema: InteractionSchema, file = "<memory>"): LintIssue[] {
   const issues: LintIssue[] = [];
   const validator = ContractValidator.create([schema]);
   if (!validator.ok || typeof schema.$id !== "string") {
@@ -89,7 +86,37 @@ export function lintContract(contract: InteractionContract, schema: InteractionS
   }
   const validation = validator.value.validateRaw(schema.$id, "interaction-contract", 1, contract);
   if (!validation.ok) for (const error of validation.errors) issues.push({ code: error.code, file, path: error.path, message: error.message });
-  const expectedOwner = model.active?.find((item) => item.id === contract.contract_id)?.owner;
+  const expectedOwner = typeof contract.contract_id === "string" ? OFFICIAL_OWNER_BY_FP.get(contract.contract_id) : undefined;
   if (expectedOwner && contract.owner !== expectedOwner) issues.push({ code: "OWNER_MISMATCH", file, path: "owner", message: `Expected owner ${expectedOwner}.` });
   return issues;
+}
+
+type LintRecord = { contract: InteractionContract; issues: LintIssue[] };
+
+export function createInteractionLintSession(schema: InteractionSchema) {
+  const records: LintRecord[] = [];
+  const byContractId = new Map<string, LintRecord>();
+  return {
+    lintFile(contract: InteractionContract, file: string): readonly LintIssue[] {
+      const issues = lintContract(contract, schema, file);
+      const id = typeof contract.contract_id === "string" ? contract.contract_id : undefined;
+      if (id) {
+        const expectedName = `${id.startsWith("FP") ? id.toLowerCase() : id}.yaml`;
+        if (file.split(/[\\/]/).at(-1) !== expectedName) issues.push({ code: "FILE_IDENTITY", file, path: "contract_id", message: `Expected filename ${expectedName}.` });
+        const prior = byContractId.get(id);
+        if (prior) {
+          const duplicate = { code: "DUPLICATE_CONTRACT_ID", file, path: "contract_id", message: `Duplicate contract_id ${id}.` };
+          prior.issues.push(duplicate);
+          issues.push(duplicate);
+        } else byContractId.set(id, { contract, issues });
+      }
+      records.push({ contract, issues });
+      return issues;
+    },
+    coverage() {
+      const present = new Set(records.filter((record) => record.issues.length === 0).map((record) => record.contract.contract_id));
+      const missing = ACTIVE_FP_OWNER_PAIRS.filter(([id]) => !present.has(id)).map(([id]) => id);
+      return { active_fp_count: ACTIVE_FP_OWNER_PAIRS.length, covered_active_fp_count: ACTIVE_FP_OWNER_PAIRS.length - missing.length, missing_active_fp: missing, merged_responsibilities: [{ id: "FP007-02", owner: "S3-FP007-01", status: "merged", independent_contract_required: false }] };
+    },
+  };
 }

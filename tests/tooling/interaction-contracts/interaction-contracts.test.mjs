@@ -6,11 +6,12 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import * as interactionContracts from "../../../packages/interaction-contracts/dist/src/index.js";
-import { DEFAULT_COVERAGE_MODEL, lintContract, parseInteractionYaml } from "../../../packages/interaction-contracts/dist/src/index.js";
+import { lintContract, parseInteractionYaml } from "../../../packages/interaction-contracts/dist/src/index.js";
 import { runInteractionLint } from "../../../scripts/interaction-contract-lint/index.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const schema = JSON.parse(await readFile(path.join(ROOT, "contracts/interactions/schema/interaction-contract.schema.json"), "utf8"));
+const OFFICIAL = Object.freeze(`FP001-01=S1-FP001-01 FP001-02=S1-FP001-02 FP001-03=S1-FP001-03 FP001-05=S1-FP001-05 FP001-06=S1-FP001-06 FP001-07=S1-FP001-07 FP002-01=S2-FP002-01 FP002-02=S2-FP002-02 FP002-03=S2-FP002-03 FP002-04=S2-FP002-04 FP003-01=S2-FP003-01 FP003-02=S2-FP003-02 FP003-03=S2-FP003-03 FP003-04=S2-FP003-04 FP004-00=S2-FP004-00 FP004-01=S2-FP004-01 FP004-02=S2-FP004-02 FP004-04=S2-FP004-04 FP004-05=S2-FP004-05 FP005-00=S3-FP005-00 FP005-01=S3-FP005-01 FP006-01=S3-FP006-01 FP006-02=S3-FP006-02 FP007-01=S3-FP007-01 FP008-01=S4-FP008-01 FP008-02=S4-FP008-02 FP008-03=S4-FP008-03 FP008-04=S4-FP008-04 FP009-00=S5-FP009-00 FP009-01=S5-FP009-01 FP010-01=S5-FP010-01 FP010-02=S5-FP010-02 FP011-01=S5-FP011-01 FP011-02=S5-FP011-02 FP012-01=S5-FP012-01 FP012-02=S5-FP012-02 FP012-03=S5-FP012-03 FP012-04=S5-FP012-04 FP013-01=S5-FP013-01 FP013-02=S5-FP013-02 FP014-00=S7-FP014-00 FP014-01=S7-FP014-01 FP014-02=S7-FP014-02 FP014-03=S7-FP014-03 FP014-04=S7-FP014-04 FP015-01=S3-FP015-01 FP015-02=S7-FP015-02 FP016-01=S1-FP016-01 FP017-00=F0-04-LOCAL-OPERATOR FP017-01=S7-FP017-01`.split(" ").map((entry) => { const [id, owner] = entry.split("="); return { id, owner }; }));
 const ACTIVE_COMMANDS = [
   ["RPC-001", "rpc_create_book_project"], ["RPC-002", "rpc_commit_world_settings"], ["RPC-003", "rpc_commit_character_settings"], ["RPC-004", "rpc_generate_l1a_conflicts"], ["RPC-005", "rpc_finalize_l1a"], ["RPC-007", "rpc_persist_chapter_execution_plan"], ["RPC-009", "rpc_finalize_deduction_snapshot"], ["RPC-010", "rpc_persist_candidate_text"], ["RPC-011", "rpc_execute_audit"], ["RPC-012", "rpc_confirm_audit_result"], ["RPC-013", "rpc_archive_shadow_version"], ["RPC-014", "rpc_enhance_prose"], ["RPC-015", "rpc_commit_chapter"], ["RPC-016", "rpc_promote_prompt_config"],
 ];
@@ -31,11 +32,11 @@ test("active registry pairs pass; deprecated and fake command names fail", () =>
 test("loaded Draft 2020-12 schema, not only its id, controls validation", () => {
   assert.deepEqual(lintContract(validContract(), schema), []);
   assert.ok(lintContract(validContract(), { $id: schema.$id, not: {} }, "x.yaml").length > 0);
-  assert.equal(DEFAULT_COVERAGE_MODEL.active.length, 50);
+  assert.equal(OFFICIAL.length, 50);
 });
 
 test("Reviewer malformed 50/50 counterexample cannot become covered", () => {
-  const malformed = Array.from({ length: 50 }, (_, index) => validContract({ contract_id: DEFAULT_COVERAGE_MODEL.active[index].id, owner: DEFAULT_COVERAGE_MODEL.active[index].owner, actions: [{ ...validContract().actions[0], prerequisites: [index], backend_command: { registry_id: "RPC-001", command_id: "rpc_fake" }, success: {}, failure: {}, recovery: {}, permission: {}, projection: { mode: "mutable", fields: [] }, extra: true }], object_scope: { local_operator_id: index, unknown: "required" } }));
+  const malformed = Array.from({ length: 50 }, (_, index) => validContract({ contract_id: OFFICIAL[index].id, owner: OFFICIAL[index].owner, actions: [{ ...validContract().actions[0], prerequisites: [index], backend_command: { registry_id: "RPC-001", command_id: "rpc_fake" }, success: {}, failure: {}, recovery: {}, permission: {}, projection: { mode: "mutable", fields: [] }, extra: true }], object_scope: { local_operator_id: index, unknown: "required" } }));
   assert.ok(malformed.flatMap((contract) => lintContract(contract, schema)).length >= 50);
 });
 
@@ -45,7 +46,7 @@ test("tab-indented YAML is rejected and 50 invalid files cannot report coverage"
   const quotedTab = yaml(validContract()).replace("Choose another title.", '"Choose\tanother title."');
   assert.deepEqual(lintContract(parseInteractionYaml(quotedTab), schema), []);
   const root = await mkdtemp(path.join(tmpdir(), "interaction-contract-tabs-"));
-  for (const item of DEFAULT_COVERAGE_MODEL.active) {
+  for (const item of OFFICIAL) {
     const contract = validContract({ contract_id: item.id, owner: item.owner });
     await writeFile(path.join(root, `${item.id.toLowerCase()}.yaml`), yaml(contract).replace("\n  local_operator_id", "\n\tlocal_operator_id"));
   }
@@ -54,6 +55,25 @@ test("tab-indented YAML is rejected and 50 invalid files cannot report coverage"
   assert.equal(result.ok, false);
   assert.equal(result.coverage.covered_active_fp_count, 0);
   assert.equal(result.coverage.missing_active_fp.length, 50);
+});
+
+test("official owner truth cannot be replaced through lint options or extra arguments", async () => {
+  const wrongRoot = await mkdtemp(path.join(tmpdir(), "interaction-contract-wrong-owner-"));
+  for (const item of OFFICIAL) await writeFile(path.join(wrongRoot, `${item.id.toLowerCase()}.yaml`), yaml(validContract({ contract_id: item.id, owner: "WRONG-OWNER" })));
+  const malicious = await runInteractionLint({ contractsDirectory: wrongRoot, enforceCoverage: true, coverageModel: { active: OFFICIAL.map(({ id }) => ({ id })) } });
+  const ordinary = await runInteractionLint({ contractsDirectory: wrongRoot, enforceCoverage: true });
+  assert.equal(malicious.ok, false);
+  assert.equal(malicious.coverage.covered_active_fp_count, 0);
+  assert.equal(malicious.coverage.missing_active_fp.length, 50);
+  assert.equal(malicious.issues.filter((item) => item.code === "OWNER_MISMATCH").length, 50);
+  assert.deepEqual(ordinary.coverage, malicious.coverage);
+  assert.ok(lintContract(validContract({ owner: "WRONG-OWNER" }), schema, "fp001-01.yaml", { active: [] }).some((item) => item.code === "OWNER_MISMATCH"));
+
+  const correctRoot = await mkdtemp(path.join(tmpdir(), "interaction-contract-correct-owner-"));
+  for (const item of OFFICIAL) await writeFile(path.join(correctRoot, `${item.id.toLowerCase()}.yaml`), yaml(validContract({ contract_id: item.id, owner: item.owner })));
+  const correct = await runInteractionLint({ contractsDirectory: correctRoot, enforceCoverage: true });
+  assert.equal(correct.ok, true);
+  assert.equal(correct.coverage.covered_active_fp_count, 50);
 });
 
 test("file identity, duplicate ids, and invalid records do not count as coverage", async () => {
@@ -73,6 +93,7 @@ test("owner, duplicate YAML keys, and 0/50 reporting remain explicit", async () 
   assert.throws(() => parseInteractionYaml(`${yaml(validContract())}owner: S1-FP001-01`), /Duplicate YAML key/);
   const root = await mkdtemp(path.join(tmpdir(), "interaction-contracts-"));
   assert.equal("coverageReport" in interactionContracts, false);
+  assert.equal("DEFAULT_COVERAGE_MODEL" in interactionContracts, false);
   assert.throws(() => interactionContracts.coverageReport([{ contract_id: "FP001-01" }]));
   const report = await runInteractionLint({ contractsDirectory: root });
   assert.equal(report.coverage.active_fp_count, 50);

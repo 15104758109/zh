@@ -4,19 +4,11 @@ import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
-  DEFAULT_COVERAGE_MODEL,
-  lintContract,
+  createInteractionLintSession,
   parseInteractionYaml,
 } from "../../packages/interaction-contracts/dist/src/index.js";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-
-function coverageReport(validContracts, model = DEFAULT_COVERAGE_MODEL) {
-  const active = model.active ?? [];
-  const present = new Set(validContracts.map((contract) => contract.contract_id));
-  const missing = active.filter((item) => !present.has(item.id)).map((item) => item.id);
-  return { active_fp_count: active.length, covered_active_fp_count: active.length - missing.length, missing_active_fp: missing, merged_responsibilities: [{ id: "FP007-02", owner: "S3-FP007-01", status: "merged", independent_contract_required: false }] };
-}
 
 async function contractFiles(directory) {
   try {
@@ -33,37 +25,27 @@ async function contractFiles(directory) {
   }
 }
 
-export async function runInteractionLint({ contractsDirectory = path.join(REPO_ROOT, "contracts/interactions"), coverageModel, enforceCoverage = false } = {}) {
+export async function runInteractionLint({ contractsDirectory = path.join(REPO_ROOT, "contracts/interactions"), enforceCoverage = false } = {}) {
   const schemaPath = path.join(REPO_ROOT, "contracts/interactions/schema/interaction-contract.schema.json");
   let schema;
   try { schema = JSON.parse(await readFile(schemaPath, "utf8")); }
-  catch (error) { return { ok: false, files: 0, issues: [{ code: "SCHEMA", file: schemaPath, path: "", message: error instanceof Error ? error.message : String(error) }], coverage: coverageReport([], coverageModel) }; }
+  catch (error) {
+    const session = createInteractionLintSession({});
+    return { ok: false, files: 0, issues: [{ code: "SCHEMA", file: schemaPath, path: "", message: error instanceof Error ? error.message : String(error) }], coverage: session.coverage() };
+  }
+  const session = createInteractionLintSession(schema);
   const files = await contractFiles(contractsDirectory);
   const issues = [];
-  const records = [];
-  const byContractId = new Map();
   for (const file of files) {
     try {
       const contract = parseInteractionYaml(await readFile(file, "utf8"));
-      const contractIssues = lintContract(contract, schema, file, coverageModel);
-      const id = typeof contract.contract_id === "string" ? contract.contract_id : undefined;
-      if (id) {
-        const expectedName = `${id.startsWith("FP") ? id.toLowerCase() : id}.yaml`;
-        if (path.basename(file) !== expectedName) contractIssues.push({ code: "FILE_IDENTITY", file, path: "contract_id", message: `Expected filename ${expectedName}.` });
-        const prior = byContractId.get(id);
-        if (prior) {
-          const duplicate = { code: "DUPLICATE_CONTRACT_ID", file, path: "contract_id", message: `Duplicate contract_id ${id}.` };
-          prior.issues.push(duplicate);
-          contractIssues.push(duplicate);
-        } else byContractId.set(id, { issues: contractIssues });
-      }
-      records.push({ contract, issues: contractIssues });
+      const contractIssues = session.lintFile(contract, file);
       issues.push(...contractIssues);
     } catch (error) {
       issues.push({ code: "PARSE", file, path: "", message: error instanceof Error ? error.message : String(error) });
     }
   }
-  const coverage = coverageReport(records.filter((record) => record.issues.length === 0).map((record) => record.contract), coverageModel);
+  const coverage = session.coverage();
   return { ok: issues.length === 0 && (!enforceCoverage || coverage.missing_active_fp.length === 0), files: files.length, issues, coverage, coverage_enforced: enforceCoverage };
 }
 
