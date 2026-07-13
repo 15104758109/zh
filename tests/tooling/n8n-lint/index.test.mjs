@@ -29,12 +29,12 @@ async function makeFixture() {
   const files = new Map();
   for (let index = 0; index < 17; index += 1) files.set(`workflow-${index}.json`, workflow(index));
   files.set('workflow-0.json', workflow(0, { id: 'experimental', type: 'n8n-nodes-base.code', parameters: { text: 'rpc_acquire_run_lock' } }));
-  for (let index = 1; index < 6; index += 1) files.set(`workflow-${index}.json`, workflow(index, { id: `write-${index}`, type: 'n8n-nodes-base.code', parameters: { jsCode: `INSERT INTO table_${index}` } }));
+  for (let index = 1; index < 6; index += 1) files.set(`workflow-${index}.json`, workflow(index, { id: `write-${index}`, type: 'n8n-nodes-base.postgres', parameters: { operation: 'update' } }));
   const fixture = { cwd, references, files, baseline: { schema_version: 'n8n-reference-baseline/v2', workflows: [], known_semantic_findings: [] } };
   await syncFixture(fixture);
   fixture.baseline.known_semantic_findings = [
     known('EXPERIMENTAL_RPC', 0, 'experimental', { rpc: 'rpc_acquire_run_lock' }),
-    ...[1, 2, 3, 4, 5].map((index) => known('BARE_DATABASE_WRITE', index, `write-${index}`, { location: 'nodes.0.parameters.jsCode' })),
+    ...[1, 2, 3, 4, 5].map((index) => known('BARE_DATABASE_WRITE', index, `write-${index}`, { location: 'nodes.0.parameters.operation' })),
   ];
   await syncFixture(fixture);
   return fixture;
@@ -93,10 +93,10 @@ test('recursively finds case-insensitive unregistered JSON and separately reject
   const duplicate = await lint(fixture); assert.equal(duplicate.findings.filter((finding) => finding.code === 'DUPLICATE_WORKFLOW_IDENTITY' && finding.field === 'id').length, 1); assert.equal(duplicate.findings.filter((finding) => finding.code === 'DUPLICATE_WORKFLOW_IDENTITY' && finding.field === 'name').length, 1);
 }));
 
-test('classifies every SQL write token while excluding SELECT and ordinary update text', async () => {
-  const writes = ['INSERT', 'UPDATE', 'DELETE', 'UPSERT', 'MERGE', 'CREATE', 'ALTER', 'DROP', 'TRUNCATE', 'GRANT', 'REVOKE'];
+test('classifies high-confidence SQL writes while excluding SELECT and ordinary update text', async () => {
+  const writes = ['INSERT INTO target', 'UPDATE target SET x = 1', 'DELETE FROM target', 'UPSERT INTO target', 'MERGE INTO target', 'CREATE TABLE target'];
   for (const token of writes) await withFixture(async (fixture) => {
-    fixture.files.set('workflow-10.json', workflow(10, { id: `write-${token}`, parameters: { jsCode: `/* note */ db.query(\"${token} target\")` } })); await syncFixture(fixture);
+    fixture.files.set('workflow-10.json', workflow(10, { id: `write-${token}`, parameters: { jsCode: `/* note */ db.query(\"${token}\")` } })); await syncFixture(fixture);
     const report = await lint(fixture); assert.equal(report.findings.filter((finding) => finding.path === 'references/workflow-10.json' && finding.code === 'BARE_DATABASE_WRITE').length, 1);
   });
   await withFixture(async (fixture) => {
@@ -105,34 +105,43 @@ test('classifies every SQL write token while excluding SELECT and ordinary updat
   });
 });
 
-test('fails closed for registered malformed JSON or missing workflow structure', async () => withFixture(async (fixture) => {
-  fixture.files.set('workflow-10.json', '{}'); await syncFixture(fixture); await assert.rejects(lint(fixture), /Baseline integrity failure/);
-  fixture.files.set('workflow-10.json', '{'); fixture.baseline.workflows.find((entry) => entry.path === 'references/workflow-10.json').sha256 = hash('{'); await writeBaseline(fixture); await writeFile(join(fixture.references, 'workflow-10.json'), '{'); await assert.rejects(lint(fixture), /Baseline integrity failure/);
+test('reports malformed JSON or missing workflow structure as new integrity findings', async () => withFixture(async (fixture) => {
+  fixture.files.set('workflow-10.json', '{}'); await syncFixture(fixture); assert.ok(codes(await lint(fixture)).includes('INVALID_WORKFLOW_STRUCTURE'));
+  fixture.files.set('workflow-10.json', '{'); await writeFile(join(fixture.references, 'workflow-10.json'), '{'); assert.ok(codes(await lint(fixture)).includes('INVALID_JSON'));
 }));
 
-test('fails closed for null nodes and invalid required node fields or types', async () => {
+test('reports null nodes and invalid minimal node fields or types', async () => {
   const mutations = [
     (workflowValue) => { workflowValue.nodes = [null]; },
     (workflowValue) => { delete workflowValue.nodes[0].name; },
     (workflowValue) => { workflowValue.nodes[0].type = ''; },
     (workflowValue) => { workflowValue.nodes[0].parameters = []; },
-    (workflowValue) => { workflowValue.nodes[0].position = [0, Number.NaN]; },
+    (workflowValue) => { workflowValue.nodes[0].parameters = null; },
     (workflowValue) => { workflowValue.connections = []; },
   ];
   for (const mutate of mutations) await withFixture(async (fixture) => {
     const value = workflow(10, { id: 'structural' }); mutate(value); fixture.files.set('workflow-10.json', value); await syncFixture(fixture);
-    await assert.rejects(lint(fixture), /Baseline integrity failure/);
+    assert.ok(codes(await lint(fixture)).includes('INVALID_WORKFLOW_STRUCTURE'));
   });
 });
 
-test('scans sensitive descendants, SQL writes, active state, and RPC registry without echoing secrets', async () => withFixture(async (fixture) => {
-  fixture.files.set('workflow-10.json', { ...workflow(10), pinData: { x: [{ json: { apiKey: { value: 'plaintext-credential' }, password: { value: ['opaque-secret'] } } }] } });
+test('scans high-confidence secrets, SQL writes, active state, and RPC registry without echoing secrets', async () => withFixture(async (fixture) => {
+  fixture.files.set('workflow-10.json', { ...workflow(10), pinData: { x: [{ json: { password: 'opaque-secret', note: 'ordinary text' } }] }, nodes: [validNode(10, { parameters: { apiKey: 'plaintext-credential', tokenCountMode: 'estimated', credentials: { id: 'ref', name: 'ref' } } })] });
   fixture.files.set('workflow-11.json', workflow(11, { id: 'code-write', type: 'n8n-nodes-base.code', parameters: { jsCode: 'db.query(\"UPDATE table SET x = 1\")' } }));
   fixture.files.set('workflow-12.json', workflow(12, { id: 'old-rpc', type: 'n8n-nodes-base.code', parameters: { jsCode: 'rpc_create_chapter_target(); rpc_persist_deduction_draft();' } }));
   fixture.files.set('workflow-13.json', workflow(13, { id: 'unknown-rpc', parameters: { jsCode: 'rpc_not_registered_anywhere(); rpc_commit_chapter();' } }));
   fixture.files.set('workflow-14.json', workflow(14, { id: 'read-only', parameters: { jsCode: '// update available\ndb.query(\"SELECT * FROM chapters\")' } }));
   fixture.files.set('workflow-15.json', { ...workflow(15), active: true }); await syncFixture(fixture);
   const report = await lint(fixture); assert.ok(codes(report).includes('SECRET_LITERAL')); assert.ok(codes(report).includes('BARE_DATABASE_WRITE')); assert.equal(report.findings.filter((finding) => finding.code === 'DEPRECATED_RPC').length, 2); assert.equal(report.findings.filter((finding) => finding.code === 'UNKNOWN_RPC').length, 1); assert.ok(codes(report).includes('ACTIVE_STATUS_ANOMALY')); assert.equal(report.findings.filter((finding) => finding.path === 'references/workflow-14.json' && finding.code === 'BARE_DATABASE_WRITE').length, 0); assert.ok(!JSON.stringify(report).includes('plaintext-credential'));
+}));
+
+test('continues semantic scanning after parseable content and identity drift and binds known to SHA', async () => withFixture(async (fixture) => {
+  const changed = { ...workflow(0, { id: 'experimental', type: 'n8n-nodes-base.postgres', parameters: { operation: 'update', apiKey: 'plaintext-credential', text: 'rpc_acquire_run_lock', query: 'INSERT INTO chapter VALUES (1)' } }), id: 'changed-id', active: true };
+  await writeFile(join(fixture.references, 'workflow-0.json'), JSON.stringify(changed));
+  const report = await lint(fixture);
+  for (const code of ['CONTENT_DRIFT', 'WORKFLOW_IDENTITY_DRIFT', 'ACTIVE_STATUS_ANOMALY', 'SECRET_LITERAL', 'EXPERIMENTAL_RPC', 'BARE_DATABASE_WRITE']) assert.ok(codes(report).includes(code));
+  assert.equal(report.findings.find((finding) => finding.code === 'EXPERIMENTAL_RPC').baseline, 'new');
+  const cli = spawnSync(process.execPath, [source, '--reference-dir', fixture.references, '--baseline', join(fixture.cwd, 'baseline.json')], { cwd: fixture.cwd }); assert.equal(cli.status, 1);
 }));
 
 test('integrity findings and CLI fatal errors cannot be waived', async () => withFixture(async (fixture) => {
