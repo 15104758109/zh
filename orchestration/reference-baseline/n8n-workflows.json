@@ -1,0 +1,30 @@
+{
+  "schema_version": "n8n-reference-baseline/v1",
+  "workflows": [
+    { "path": "docs/后端/n8n/ZH01-新书创建.json", "id": "cf9bbb86-83ca-4f3b-a693-5cb8a527467f", "name": "ZH01-新书创建", "sha256": "5fa85c0a71b6d6f4ed139f0b969ef8a1b6d3a0aab8fe7d74271b95dceb157f9c" },
+    { "path": "docs/后端/n8n/ZH02-L1A生成.json", "id": "97cbecfa-4fb0-45b6-ac2d-c808da1611dd", "name": "ZH02-L1A生成", "sha256": "9e9083548bdb8e3cba2b32fa2be0df6e05a8490e1a535bbe63591931808994c2" },
+    { "path": "docs/后端/n8n/ZH03-三线排序.json", "id": "7b19c1eb-8993-42ef-ac44-117a01b2fd48", "name": "ZH03-三线排序", "sha256": "04b059332cbdb3eb137ba7bb82034356fa5b4fc77ed8b4392ec5e58e9641290f" },
+    { "path": "docs/后端/n8n/ZH04-生产拆解.json", "id": "26518707-d485-4140-af04-ff1444edb9d5", "name": "ZH04-生产拆解", "sha256": "5b29ace8daaf29282c608e8e1391eb5881c09822d2f10d5651859f3ce4126bb4" },
+    { "path": "docs/后端/n8n/ZH05-正文推演.json", "id": "fc798416-f7be-4ee6-abe6-199a98f97933", "name": "ZH05-正文推演", "sha256": "965cdc8dc69e9b87512a6aa6bd73e88275867a1a9d4ab10f6bdea130551568bb" },
+    { "path": "docs/后端/n8n/ZH06-审计阶段.json", "id": "ed2280fe-25ab-401f-a700-d2a79d40c369", "name": "ZH06-审计阶段", "sha256": "f11f88929ea8ed599f47c3ba94654c29756154b23a1b57558a28f344b6f18c8d" },
+    { "path": "docs/后端/n8n/ZH07-迭代阶段.json", "id": "79a37e5c-de2a-4761-ae32-7efc6b78a987", "name": "ZH07-迭代阶段", "sha256": "d61ca381d060fe9e67b438990116d55f95e3598924f4f63855b15dbf00929f07" },
+    { "path": "docs/后端/n8n/世界设定生成助手.json", "id": "O3irY0thoN3iqgsZ", "name": "世界设定生成助手", "sha256": "1f9165547ce51945c3ea2746f41f3a903a3b76458aca484d267fd4f51aba85a7" },
+    { "path": "docs/后端/n8n/主角工作器.json", "id": "f004612b-b592-46c7-a99d-646fc3ad1cba", "name": "主角工作器", "sha256": "36b20c3314d989be83b575dd965939834de389708f462040148ce51f927f983f" },
+    { "path": "docs/后端/n8n/前端变体_主线健康助手.json", "id": "kP78P5PL30k4HqML", "name": "前端变体/主线健康助手", "sha256": "dc70a7d96c4c65481ea73f17cb51d9b14a91e23e18bae61a409c634a7c7ff2b8" },
+    { "path": "docs/后端/n8n/反派_环境压力工作器.json", "id": "e05bc484-6997-4bdc-9a4d-bc159e2119eb", "name": "反派_环境压力工作器", "sha256": "25c5185b451344ed36cacba1988100fbe5f33c52757d0a958df333b0ba403410" },
+    { "path": "docs/后端/n8n/影子融合工具.json", "id": "Zfejr9HOEu19nlZf", "name": "影子融合工具", "sha256": "cd179d7c2bf063090f3571b25ba64181dc0a18632f6aad1b1ee00a513fbb0f45" },
+    { "path": "docs/后端/n8n/技能评价与优化.json", "id": "NGWtvgwPAzRb6xNL", "name": "技能评价与优化", "sha256": "268305b7064567245e43242d0bcf19a4c009a6e417edbca7cf5fab0aef50c5b5" },
+    { "path": "docs/后端/n8n/提示词代理.json", "id": "7WctNeWx8XcCtVTY", "name": "提示词代理", "sha256": "5c0c8893b28a3017b8ecdf35816c3eca8b52fd9d7d247f1062946b4ab1064d36" },
+    { "path": "docs/后端/n8n/群像工作器.json", "id": "aac643fb-cf04-4ea5-a40d-8b01d3e3944a", "name": "群像工作器", "sha256": "d7eb9732db582451ebfd7b347c0c40dd89297e53e92d3660339304e5459c2360" },
+    { "path": "docs/后端/n8n/角色设定生成助手.json", "id": "jXyjrlofGgwUY1Kx", "name": "角色设定生成助手", "sha256": "aacb73ba0fb72afa1a6d918aa1147b1bbcf630c7c2071674ff86e02307028d85" },
+    { "path": "docs/后端/n8n/配角工作器.json", "id": "12a44ae6-57fd-4a10-a7d1-0ce30f640996", "name": "配角工作器", "sha256": "7325f5c80e6a93cce58e8211be5278d877d73f29c63c378e21065a336b32eb6b" }
+  ],
+  "known_issue_fingerprints": [
+    "07a63fbb135d8b22f928f9f488cba85c85dc8eb88e63cb4c310156f6af201486",
+    "4845ecb3ba7fb4f382c0af039d1717948616c1f3053b9e3e7fba303b60e5bfd5",
+    "7da53634add0d2550d41a0cbfedcfd4c1716ec05bc7b0932fadc1f40d3f64f61",
+    "82a2589f0f9160e1cd13e595628ceb5efae120de028123a17b754e63daa271f0",
+    "be1522b98c13e851fa3ae1ed76d590ccd44a83feb4a5b79ebd04d23a5a79c656",
+    "e64d14387d4108e8ab093f13d9401e8e26df917899f84d64f4c4cf8735673db1"
+  ]
+}
