@@ -41,6 +41,11 @@ G06_BASELINE_TEST_ASSERTIONS=58
 G06_UPGRADE_AUTHORITY=G07_A_CREATOR_EXPLICIT_IMPLEMENTATION_REQUEST
 G06_ARTIFACT_SHA256=10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47
 G06_TEST_ASSERTIONS=78
+F0_02_CONTRACT_GATE=APPROVED
+F0_02_CONTRACT_APPROVED_AT=2026-07-13
+F0_02_CONTRACT_APPROVAL_EVIDENCE=CREATOR_EXPLICIT_APPROVAL_IN_TASK
+F0_02_CONTRACT_DECISION_ID=GD-026-MINIMAL-CONTRACTS
+F0_02_CONTRACT_PROFILE=MINIMAL_JSON_V1
 G07_GATE=PENDING
 G07_A_STATUS=IMPLEMENTED
 G07_B_STATUS=PENDING
@@ -366,6 +371,261 @@ SCOPE_ALLOWED_WRITES=docs/IMPLEMENTATION_CONTROL.md;README.md;DEV_HARNESS.md
 | GD-023 | 全局恢复由 `F0-16-RECOVERY-COORDINATOR` 依据恢复描述符、锁、配置版本和预算路由到原垂直 FP；各垂直 FP 仍唯一拥有自己的 checkpoint、局部状态迁移和 resume adapter。协调器不得猜测领域状态或重放已完成副作用 | 长任务、FP008-FP013、跨章与全书运行 |
 | GD-024 | `F0-17-INTERACTION-CONTRACTS` 只拥有交互合同 Schema、lint 与覆盖检查；每个垂直 Task 在自己的 write_scope 内编写 `contracts/interactions/fpddd-dd.yaml`，用户可见 capability Task 编写 `cap-name.yaml`，独立 `VIEW::AUDITOR` 依据合同验收 | 所有用户可见垂直/能力 Task、交互矩阵、测试 |
 | GD-025 | Prompt 生命周期分责：F0-08 负责 revision intake、Schema/哈希校验和注册；仅按需实例化且经架构批准的 `TASKCLASS::PROMPT_REVISION(FPddd-dd)` 可修改 Prompt 源；独立 Reviewer 复核；F0-15 是 Prompt 源制品发布、运行绑定和技术回滚的唯一责任。FP014-04 只可在已发布制品集合内提升业务配置 candidate，普通垂直 Task 不得静默改源或发布 | Prompt 源、注册表、部署绑定、FP014、所有 LLM Task |
+| GD-026-MINIMAL-CONTRACTS | F0-02 采用 `MINIMAL_JSON_V1`：内部只建立最小闭合 JSON Schema、注册、SAME/CHANGED 比较、技术校验错误、现有记录包装、三态纯规则和四类引用。n8n 负责编排既有重试/退回/P0 阻断，FP008-02 保持既有内存例外；PostgreSQL 继续拥有真值、事务、锁、唯一约束、CAS、回滚、既有审计持久化和成本唯一性。前端与用户只能经受控 API/n8n 命令调整，不得直写数据库或直接改/删 formal；MVP 不新增留痕、事件投递或复杂治理功能 | `GLOBAL::CONTRACTS`、全部受控写入口、n8n、PostgreSQL、前端、测试 |
+
+### GD-026-MINIMAL-CONTRACTS
+
+> 决策 ID：`GD-026-MINIMAL-CONTRACTS`。批准配置：`MINIMAL_JSON_V1`。这是 F0-02 最小机器合同的完整事实源，不是摘要，也不是产品实现或验证证据。局部 `F0_02_CONTRACT_GATE=APPROVED` 只关闭此前公共字段未裁决的 `CREATOR_REQUIRED`；正式 `F0-02-CONTRACTS` Task 行、`depends_on`、owner、write scope、验收命令和 `PLANNED` 状态保持原样，且不提升 G04 或 G07。
+>
+> 创作者批准的业务边界是：事实版本保留 `candidate -> formal -> shadow` 历史，formal 不得直接修改或删除；临时故障可重试、输入问题定向退回、P0 继续硬阻断。MVP 不新增留痕功能，只保证本文件已经要求的记录/审计由原 owner 持久化；用户调整必须走系统受控路径。公共合同保持内部简单 JSON，n8n 负责编排，PostgreSQL 负责事务和真值，外部标准与复杂事件治理延后。
+
+#### 被取代草案与禁止实现
+
+此前为解决 F0-02 缺字段而讨论、但未获批准的下列方案统一标记为 `SUPERSEDED_DRAFT`、`NOT_APPROVED`、`MUST_NOT_IMPLEMENT`。后续实现不得导出、模拟或以扩展点保留这些治理层：
+
+| 被取代草案 | 状态 | 本版本规则 |
+|---|---|---|
+| RFC 9457 Problem Details 错误对象 | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 只实现本文 `TechnicalValidationError`；不得导出 Problem Details 字段或媒体类型 |
+| CloudEvents 事件信封 | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 只实现包装既有记录的 `MinimalRecordEnvelope`；不得导出 CloudEvents 字段或协议 |
+| 独立 `EventRegistry`、`ErrorRegistry` | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 只有 Schema registry；错误码是 `GLOBAL::CONTRACTS` 的固定六值，不建立第二注册表 |
+| extension、delivery、dedup 治理 | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 不定义 extension map、投递、重放、消费、去重、确认或 dead-letter 语义 |
+| 独立 exact-version URN 解析/协商治理 | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 只保留 `SchemaDescriptor.schema_uri` 的机械派生字符串，不提供解析、协商或发现层 |
+| 复杂 SemVer/结构兼容推断 | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 版本仅为递增整数；比较结果仅 `SAME` 或 `CHANGED` |
+
+#### 公共词法与 JSON Schema 基线
+
+1. `StableId` 是长度 `1..128` 的 string，pattern 精确为 `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`。
+2. `OwnerKey` 只允许稳定 FP owner `FP::FPddd-dd` 或全局 owner `GLOBAL::UPPER`；机器 pattern 为 `^(?:FP::FP[0-9]{3}-[0-9]{2}|GLOBAL::[A-Z][A-Z0-9_]*)$`。
+3. F0-02 项目对象使用 JSON Schema Draft 2020-12。每一个对象层都必须显式 `additionalProperties: false`；嵌套引用对象和 envelope 内由已登记 data schema 校验的对象也不例外。不得以 `unevaluatedProperties`、自由 extension map 或忽略未知字段绕过关闭对象。
+4. 本锚点明确列出的 F0-02 descriptor、error、envelope、state 和 ref 版本字段按各自条目约束；这些通用约束不得外溢到未来 owner 的 `data` payload。`FactState.state_version` 必须为 integer `>=0`。
+5. Schema 校验器必须拒绝未知字段和本文列明的废弃字段，不得删除字段后继续处理，也不得把校验 PASS 解释成数据库、事务或业务门禁 PASS。
+
+#### SchemaDescriptor 与 DeprecatedField
+
+`SchemaDescriptor` 是 registry 的唯一登记单元，且自身是关闭对象。字段合同如下：
+
+| 字段 | 必需/约束 | 语义 |
+|---|---|---|
+| `schema_id` | 必需；string 长度 `3..64`；pattern `^[a-z][a-z0-9-]{2,63}$` | package 内稳定 kebab-case 合同 ID |
+| `version` | 必需；integer `>=1` | owner 显式发布的整数版本 |
+| `schema_uri` | 必需；const 派生值 `urn:zhreplan:contract:<schema_id>:<version>` | 只作精确登记标识，不提供外部发现或协商 |
+| `draft` | 必需；const `https://json-schema.org/draft/2020-12/schema` | 目标 JSON Schema draft |
+| `owner` | 必需；`OwnerKey` | 唯一语义 owner；F0-02 不代替领域 owner |
+| `schema_path` | 必需；package-relative，pattern `^src/schemas/.+\.schema\.json$` | 指向 `packages/contracts` 内的真实 schema 文件，不接受绝对路径或 `..` |
+| `sha256` | 必需；lowercase hex string，pattern `^[a-f0-9]{64}$` | schema 文件的 SHA-256，登记时必须一致 |
+| `status` | 必需；`active \| deprecated` | 每个 `schema_id` 精确一个 current active；deprecated 版本禁止新写 |
+| `replaces_version` | `version>1` 时必需且为 integer `>=1` | owner 显式声明被替代版本 |
+| `replacement_version` | `status=deprecated` 时必需且为 integer `>=1` | deprecated 版本的明确后继 |
+| `deprecated_fields` | 必需；array，可为空 | 当前版本明确拒绝的新写字段清单 |
+
+`DeprecatedField` 是关闭对象：`path` 必需且为 non-empty JSON Pointer string，`since_version` 必需且为 integer `>=1`，`replacement_path` 是唯一可选字段且为 non-empty JSON Pointer string。
+
+Registry 必须检查：`(schema_id, version)` 唯一；`schema_uri` 与 ID/version 派生一致；`schema_path` 在允许目录；文件 hash 一致；Draft 编译通过；每个 ID 只有一个 current active；replaces/replacement 字段满足上述存在条件；deprecated schema 和 `deprecated_fields[]` 均拒绝新写。缺 descriptor 时不得猜测或按“最新”替代。
+
+#### SAME/CHANGED 比较
+
+1. compare 输出枚举只有 `SAME`、`CHANGED`。
+2. 两个 descriptor 的 `schema_id + version + sha256` 全部相同才是 `SAME`；任一不同即 `CHANGED`。
+3. `CHANGED` 不声称兼容、破坏、向前或向后兼容，也不得静默替换 registry 内容。同一 ID/version 但 hash 改变必须拒绝；合法变化由 owner 显式发布下一个整数版本。
+4. F0-02 不做结构 diff、关键字子集、hash 以外的自动兼容推断或复杂 SemVer。需要判断领域升级可否消费时，由 descriptor owner 在自己的 Task 中裁决并测试。
+
+#### TechnicalValidationError
+
+`TechnicalValidationError` 仅归 `GLOBAL::CONTRACTS`，是关闭对象，字段固定为：`error_version=1`、`code`、经过脱敏且长度 `1..500` 的 string `message`、`contract_id`、`contract_version`、`path`，以及唯一可选、长度 `1..128` 的 string `field`。`contract_id` 对应 `schema_id`，`contract_version` 对应精确整数版本，`path`/`field` 只定位校验失败位置，不携带原值。
+
+`code` 枚举精确为六值：
+
+| code |
+|---|
+| `CONTRACT_NOT_FOUND` |
+| `CONTRACT_INVALID` |
+| `CONTRACT_CHANGED` |
+| `CONTRACT_PAYLOAD_INVALID` |
+| `CONTRACT_UNKNOWN_FIELD` |
+| `CONTRACT_DEPRECATED_FIELD` |
+
+`message` 必须脱敏。错误对象禁止 `details`、`stack`、SQL、raw payload、credential、Prompt、正文、`retryable`、`severity` 或 P0 字段。临时故障是否重试、输入问题退回何处、P0 是否阻断均继续由原 owner/API/n8n 状态机决定，不得塞进 F0-02 技术错误。
+
+#### MinimalRecordEnvelope
+
+`MinimalRecordEnvelope` 只包装本文件已经要求持久化的记录，不创建表、事件、日志类别、record type、投递、消费、重放或去重语义。它是关闭对象，字段为：
+
+| 字段 | 必需/约束 |
+|---|---|
+| `envelope_version` | 必需；const integer `1` |
+| `record_id`、`trace_id` | 必需；各为 `StableId` |
+| `recorded_at` | 必需；string，format `date-time` |
+| `owner` | 必需；`OwnerKey` |
+| `local_operator_id` | 必需；`StableId` |
+| `book_id`、`run_id`、`chapter_id`、`candidate_id`、`audit_attempt_id`、`model_attempt_id` | 各自可选；存在时为 `StableId` |
+| `retry_index` | 条件可选；integer `>=0`；仅在 `model_attempt_id` 同时存在时允许，否则拒绝 |
+| `config_ref` | 可选；精确 `ConfigVersionRef` |
+| `budget_ref` | 可选；精确 `BudgetVersionRef` |
+| `data_schema_id`、`data_schema_version` | 必需；分别匹配一个 current active descriptor 的 `schema_id`/精确 `version` |
+| `data` | 必需；按 `data_schema_id + data_schema_version` dispatch 到已登记 schema；内容语义仍归 descriptor owner |
+
+Envelope PASS 只证明 wrapper 和 dispatch 后 payload 的 JSON 形状正确。它不证明投递、幂等、锁、事务、留痕持久化、成本唯一计费或业务状态迁移；重复模型 attempt 的计费/重试唯一性继续由 PostgreSQL 与对应 owner 保证。
+
+#### FactState 与三态纯规则
+
+`FactState` 是关闭对象，字段精确为 `fact_id`、`fact_version`、`state`、`state_version` 和条件字段 `replaces_version`。`fact_id` 为 `StableId`；`fact_version` 为 integer `>=1`；`state_version` 为 integer `>=0`；`state` 枚举精确为 `candidate \| shadow \| formal`。`fact_version=1` 时禁止 `replaces_version`；`fact_version>1` 时必须提供 integer `replaces_version>=1`，目标存在性、当前性和替换资格由 owner/API/PostgreSQL 校验。
+
+F0-02 只提供以下确定性纯规则，且不得发明领域状态：
+
+1. 新事实版本只能创建为 `candidate`。
+2. `candidate -> formal` 只能由 owner 的受控命令发起，并仍须通过其 P0、范围、锁、CAS、版本和事务门禁。
+3. 未获批准或被替代前的候选可执行 `candidate -> shadow`。
+4. 替换当前 formal 必须在同一 PostgreSQL 事务中把旧 formal 转为 shadow，并把已批准 candidate 转为 formal；任何一步失败全部回滚。
+5. `shadow` 是 terminal，不得回到 candidate/formal，也不得原地覆盖或物理删除。
+6. `formal` 不得直接编辑或删除；除同事务替换为 shadow 外不得迁移。
+7. `state_version` 是 CAS 输入；Schema 只校验 integer 形状，数据库/API 校验当前值、单 formal、锁、事务和并发。
+8. `deduction_locked` 是 FP008-04 的独立里程碑，不是 FactState 字段或状态。`finalized` 状态值、`is_finalized` 字段和 `deduction_locked` 字段均拒绝。
+
+#### 四个关闭引用
+
+以下引用全部逐层 `additionalProperties:false`，只表达精确版本引用，不拥有对应领域生命周期：
+
+| 引用 | 精确字段与枚举 | F0-02 不拥有 |
+|---|---|---|
+| `LocalOperatorRef` | `local_operator_id: StableId` | operator 的生成、本地持久化、恢复或认证语义 |
+| `ConfigVersionRef` | `config_id: StableId`、`version>=1`、`domain: prompt \| model \| budget \| automation \| presentation`、`source: system_default \| local_operator \| book \| run` | 配置解析、active 选择、有效值、快照冻结或保存生命周期 |
+| `BudgetVersionRef` | `budget_id: StableId`、`version>=1`、`source: system_default \| local_operator \| book \| run` | 预算数值/单位、预留、计费、到顶状态、暂停或恢复 |
+| `SkillVersionRef` | `skill_id: StableId`、`version>=1`、`source: system_builtin \| user_managed` | skill 内容、所有权写入、active/archived、引用保护、召回或删除生命周期 |
+
+引用中不得附加 `owner`、`local_operator_id`、`book_id`、有效值或领域状态。对象范围由 envelope/API/数据库的原 owner 校验，不能靠引用对象自行提权。
+
+#### 最小示例
+
+以下 JSON 只展示有效形状，不是 registry 事实、真实业务数据或测试成功证据。
+
+Schema descriptor：
+
+```json
+{
+  "schema_id": "fact-state",
+  "version": 1,
+  "schema_uri": "urn:zhreplan:contract:fact-state:1",
+  "draft": "https://json-schema.org/draft/2020-12/schema",
+  "owner": "GLOBAL::CONTRACTS",
+  "schema_path": "src/schemas/fact-state.schema.json",
+  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "status": "active",
+  "deprecated_fields": [
+    { "path": "/is_finalized", "since_version": 1, "replacement_path": "/state" }
+  ]
+}
+```
+
+Technical validation error：
+
+```json
+{
+  "error_version": 1,
+  "code": "CONTRACT_PAYLOAD_INVALID",
+  "message": "payload does not match the registered contract",
+  "contract_id": "fact-state",
+  "contract_version": 1,
+  "path": "/state",
+  "field": "state"
+}
+```
+
+Minimal record envelope：
+
+```json
+{
+  "envelope_version": 1,
+  "record_id": "record:001",
+  "recorded_at": "2026-07-13T00:00:00Z",
+  "owner": "GLOBAL::CONTRACTS",
+  "local_operator_id": "operator:local",
+  "trace_id": "trace:001",
+  "data_schema_id": "fact-state",
+  "data_schema_version": 1,
+  "data": {
+    "fact_id": "fact:001",
+    "fact_version": 1,
+    "state": "candidate",
+    "state_version": 1
+  }
+}
+```
+
+Fact state：
+
+```json
+{
+  "fact_id": "fact:001",
+  "fact_version": 2,
+  "state": "candidate",
+  "state_version": 1,
+  "replaces_version": 1
+}
+```
+
+#### 必须拒绝的输入
+
+1. 任一层 unknown field，或 `deprecated_fields[]` 命中的字段。
+2. descriptor 缺失、路径越界、Draft 不符、hash 不符、重复 `(schema_id,version)` 或零/多 current active。
+3. 同 ID/version 但 hash 改变；结果必须为 `CHANGED` 并拒绝静默替换。
+4. envelope 的 `data_schema_id/version` 与 descriptor 或 payload dispatch 不匹配。
+5. FactState 的 `finalized`、`is_finalized`、`deduction_locked`，以及本文未列明的第四状态。
+6. TechnicalValidationError 的未知 code、`details`、`stack`、raw payload、`retryable`、`severity` 或 P0 字段。
+7. 没有 `model_attempt_id` 却出现 `retry_index`。
+8. 四类引用中塞入 `owner`、对象范围、有效值或生命周期字段。
+9. CloudEvents/RFC 9457 字段、extension、delivery、dedup 或 registry 字段；即使名称合法也因关闭对象被拒绝。
+10. 前端或 n8n 直接写 PostgreSQL、裸 SQL 改 formal、绕过 owner API/RPC 的输入；此项由 API/DB/n8n lint 和事务测试拒绝，不由 JSON Schema 假装证明。
+
+#### 分层执行责任
+
+| 层 | 必须执行 | Schema PASS 不得声称 |
+|---|---|---|
+| F0-02 / `GLOBAL::CONTRACTS` | Draft 编译、descriptor/registry 不变量、关闭对象、unknown/deprecated 拒绝、六种技术错误、payload dispatch、`SAME/CHANGED`、FactState 纯迁移规则、四类引用形状 | PostgreSQL 事务、业务幂等、锁、CAS 当前性、既有留痕已持久化、单 formal、唯一计费 |
+| PostgreSQL | 权威真值、事务、唯一约束、锁、CAS、required existing audit 持久化、失败回滚、成本事件/模型 attempt 唯一计费 | 前端动作已获授权、P0 已通过、n8n 编排正确 |
+| API/RPC owner | `local_operator_id`/book/run 范围、锁所有权、P0、退回目标、幂等、调整命令、版本/CAS 和受控 formal 替换入口 | n8n 已完成流程、Schema PASS 等于业务批准 |
+| n8n | 调用受控 API/RPC 编排既有重试、输入问题退回、P0 阻断和恢复；禁止裸 SQL或 direct formal write | 自身是真值、可绕过 PostgreSQL/API、可新增状态/事件治理 |
+| FP008-02 | 保持 GD-006 的既有内存推演/断点例外，直到 FP008-04 受控持久化 | 内存对象已 formal、已 `deduction_locked` 或可绕过预算/P0 |
+
+MVP 不因本合同新增用户可见历史、审计、日志或留痕功能；本文件既有 required record/audit 仍由其原 owner 按上述层次保存。用户的调整意见、退回、重生成和重审必须经系统受控命令，不能直接编辑正式数据。
+
+#### 后续 F0-02 package 边界
+
+本治理候选不授权或包含产品 code/type。正式 F0-02 后续获得独立执行授权时，仍只能在原 Task `packages/contracts/**` scope 内使用下列边界：
+
+| 允许路径 | 允许内容 |
+|---|---|
+| `packages/contracts/package.json` | package-local scripts/exports |
+| `packages/contracts/src/index.ts` | minimal public exports |
+| `packages/contracts/src/common-types.ts` | 本锚点列出的公共对象与引用类型 |
+| `packages/contracts/src/registry.ts` | descriptor registry |
+| `packages/contracts/src/validator.ts` | schema/payload validation 与技术错误 |
+| `packages/contracts/src/compare.ts` | `SAME/CHANGED` compare |
+| `packages/contracts/src/state.ts` | FactState 纯规则 |
+| `packages/contracts/src/schemas/*.schema.json` | 本锚点定义的 Draft 2020-12 schemas |
+| `packages/contracts/test/**` | 对应最小测试和合成 fixtures |
+
+禁止路径/产物包括 package 外文件、数据库迁移、API/RPC、n8n/Prompt/原型修改、领域表/领域 DTO、领域状态机、预算计费实现、operator/skill/config 生命周期、RFC 9457/CloudEvents、EventRegistry/ErrorRegistry、extension/delivery/dedup、结构兼容算法、复杂 SemVer 和任何未由具体 FP owner 批准的 code/type。根 `pnpm-lock.yaml` 不在 F0-02 scope。
+
+#### MINIMAL_JSON_V1 最小测试矩阵
+
+| 测试 ID | 必须覆盖 | 通过条件 |
+|---|---|---|
+| `MCV1-T01` | Draft 编译 | 已登记 Draft 2020-12 schema 可编译，无效 schema 被拒绝 |
+| `MCV1-T02` | descriptor | SchemaDescriptor 与 DeprecatedField 的必需、条件、pattern 和关闭对象规则可验证 |
+| `MCV1-T03` | duplicate/hash | 重复 ID/version、hash 不一致、同 ID/version changed hash 被拒绝 |
+| `MCV1-T04` | active/deprecated | 每 ID 一个 current active，deprecated schema/field 拒绝新写 |
+| `MCV1-T05` | SAME/CHANGED | 三元组全同返回 SAME，任一不同返回 CHANGED，不输出兼容/破坏结论 |
+| `MCV1-T06` | unknown/deprecated | 每层 unknown field 和 deprecated field 被拒绝 |
+| `MCV1-T07` | 六种错误 | 六个精确 code、message/field 长度和禁止字段可验证；未知 code 被拒绝 |
+| `MCV1-T08` | record + payload dispatch | 合法 envelope 与 exact-version payload dispatch 通过；缺 descriptor、version mismatch 和坏 payload 被拒绝 |
+| `MCV1-T09` | retry 条件 | `retry_index` 只在 `model_attempt_id` 存在时允许，且必须为 integer `>=0` |
+| `MCV1-T10` | 三态形状/transition | candidate/shadow/formal 形状和本文列出的合法/非法 transition 可验证 |
+| `MCV1-T11` | legacy/deduction 拒绝 | finalized、is_finalized、FactState 内 deduction_locked 和未知状态被拒绝 |
+| `MCV1-T12` | 四 refs | LocalOperatorRef、ConfigVersionRef、BudgetVersionRef、SkillVersionRef 的字段、枚举和关闭对象规则可验证 |
+| `MCV1-T13` | 无外部治理 export | 不导出 RFC 9457、CloudEvents、EventRegistry/ErrorRegistry、extension/delivery/dedup 或兼容/SemVer API |
+| `MCV1-T14` | Task test 重复通过 | `pnpm --filter @zh/contracts test` 可重复运行并通过 |
+
+上述 14 项只定义正式 F0-02 实现的验收面，不把当前治理文档候选或未来 package test 结果写成 `VERIFIED`。
 
 ## FP 对齐矩阵骨架
 
