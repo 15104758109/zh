@@ -1,0 +1,22 @@
+{
+  "name": "zhreplan",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=9 <10"
+  },
+  "scripts": {
+    "lint": "eslint apps/api/src/bootstrap apps/web/src/bootstrap --max-warnings 0",
+    "typecheck": "tsc --project tsconfig.base.json --noEmit",
+    "build": "tsc --project tsconfig.base.json"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.36.0",
+    "eslint": "9.36.0",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.44.1"
+  }
+}
