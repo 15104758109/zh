@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+import http from "node:http";
 import path from "node:path";
 import test, { before } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -29,6 +30,53 @@ function expectCode(callback, code) {
   assert.throws(callback, (error) => error?.code === code && error.message === code);
 }
 
+async function createEightWayBarrier() {
+  const waiting = [];
+  let readyCount = 0;
+  const server = http.createServer((request, response) => {
+    if (request.url !== "/ready") {
+      response.writeHead(404).end();
+      return;
+    }
+    readyCount += 1;
+    waiting.push(response);
+    if (readyCount === 8) {
+      for (const pending of waiting) pending.end("release");
+    }
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  return {
+    readyUrl: `http://127.0.0.1:${address.port}/ready`,
+    readyCount: () => readyCount,
+    close: () => new Promise((resolve) => server.close(resolve)),
+  };
+}
+
+function spawnBarrierWorker(script, events) {
+  const child = spawn(process.execPath, ["--input-type=module", "--eval", script], {
+    cwd: repositoryRoot,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let output = "";
+  let pending = "";
+  child.stdout.on("data", (chunk) => {
+    output += chunk;
+    pending += chunk;
+    const lines = pending.split(/\r?\n/);
+    pending = lines.pop();
+    for (const line of lines) if (line) events.push(line);
+  });
+  return {
+    child,
+    complete: new Promise((resolve, reject) => {
+      child.on("error", reject);
+      child.on("close", (code) => code === 0 ? resolve(output) : reject(new Error(`worker failed: ${code}`)));
+    }),
+  };
+}
+
 before(() => reset());
 
 test("01 first bootstrap creates one stable local operator", () => {
@@ -44,9 +92,33 @@ test("02 restart loads the same local operator", () => {
   assert.equal(count(), 1);
 });
 
-test("03 eight production-service subprocesses converge on one id", () => {
-  const script = `import { loadOrCreateLocalOperator } from ${JSON.stringify(moduleUrl)}; process.stdout.write(loadOrCreateLocalOperator().local_operator_id);`;
-  const ids = Array.from({ length: 8 }, () => execFileSync(process.execPath, ["--input-type=module", "--eval", script], { cwd: repositoryRoot, encoding: "utf8" }).trim());
+test("03 eight concurrent production-service subprocesses converge on one id", async (t) => {
+  reset();
+  const barrier = await createEightWayBarrier();
+  t.after(async () => {
+    await barrier.close();
+  });
+  const events = [];
+  const script = `import { loadOrCreateLocalOperator } from ${JSON.stringify(moduleUrl)};
+await fetch(${JSON.stringify(barrier.readyUrl)});
+process.stdout.write("START\\n");
+const result = loadOrCreateLocalOperator();
+process.stdout.write(\`DONE \${result.local_operator_id}\\n\`);`;
+  const workers = Array.from({ length: 8 }, () => spawnBarrierWorker(script, events));
+  t.after(() => workers.forEach(({ child }) => child.kill()));
+  let timer;
+  try {
+    await Promise.race([
+      Promise.all(workers.map(({ complete }) => complete)),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("eight-way barrier did not release")), 10_000); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+  assert.equal(barrier.readyCount(), 8, "all workers must wait before any production call is released");
+  assert.deepEqual(events.slice(0, 8), Array(8).fill("START"), "every worker must enter the production call before any worker completes");
+  const ids = events.filter((event) => event.startsWith("DONE ")).map((event) => event.slice("DONE ".length));
+  assert.equal(ids.length, 8);
   assert.equal(new Set(ids).size, 1);
   assert.equal(count(), 1);
 });
