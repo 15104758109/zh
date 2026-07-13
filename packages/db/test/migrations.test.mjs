@@ -24,6 +24,13 @@ function migrationPath(name) {
   return path.join(migrationsDirectory, name);
 }
 
+function nextMigrationVersion() {
+  const versions = migrations().map((migration) => Number(migration.name.slice(0, 4)));
+  const version = Math.max(...versions) + 1;
+  assert.ok(version <= 9999, "migration fixture version must fit four digits");
+  return String(version).padStart(4, "0");
+}
+
 function withMigration(name, contents, callback) {
   const filename = migrationPath(name);
   writeFileSync(filename, contents);
@@ -75,10 +82,11 @@ test("migration checksum drift is rejected", () => {
 });
 
 test("invalid migration filenames and duplicate versions fail closed", () => {
-  withMigration("0002__Invalid.sql", "SELECT 1;\n", () => {
+  const version = nextMigrationVersion();
+  withMigration(`${version}__Invalid.sql`, "SELECT 1;\n", () => {
     assert.throws(() => migrations(), /invalid SQL migration filename/);
   });
-  withMigration("0001__duplicate.sql", "SELECT 1;\n", () => {
+  withMigration(`${migrations()[0].name.slice(0, 4)}__duplicate.sql`, "SELECT 1;\n", () => {
     assert.throws(() => migrations(), /duplicate migration version/);
   });
 });
@@ -89,7 +97,7 @@ test("unknown ledger entries and pending migrations are rejected", () => {
   assert.throws(() => run("db:migrate:check"), /applied migration is missing from disk/);
 
   run("db:reset");
-  withMigration("0002__pending.sql", "SELECT 1;\n", () => {
+  withMigration(`${nextMigrationVersion()}__pending.sql`, "SELECT 1;\n", () => {
     assert.throws(() => run("db:migrate:check"), /pending migrations/);
   });
 });
