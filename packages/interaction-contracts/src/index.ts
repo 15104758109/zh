@@ -44,6 +44,7 @@ export function parseInteractionYaml(source: string): InteractionContract {
   for (let index = 0; index < lines.length; index += 1) {
     const raw = lines[index] ?? "";
     if (!raw.trim() || raw.trimStart().startsWith("#")) continue;
+    if (/^ *\t/.test(raw)) throw new Error("Tab indentation is not permitted in YAML contracts.");
     if (/[*&!{}\[\]]/.test(raw)) throw new Error(`Unsupported YAML construct: ${raw.trim()}`);
     const indent = raw.length - raw.trimStart().length;
     const line = raw.trim();
@@ -91,11 +92,4 @@ export function lintContract(contract: InteractionContract, schema: InteractionS
   const expectedOwner = model.active?.find((item) => item.id === contract.contract_id)?.owner;
   if (expectedOwner && contract.owner !== expectedOwner) issues.push({ code: "OWNER_MISMATCH", file, path: "owner", message: `Expected owner ${expectedOwner}.` });
   return issues;
-}
-
-export function coverageReport(contracts: readonly InteractionContract[], model: CoverageModel = DEFAULT_COVERAGE_MODEL): Record<string, unknown> {
-  const active = model.active ?? [];
-  const present = new Set(contracts.map((contract) => contract.contract_id).filter((id): id is string => typeof id === "string"));
-  const missing = active.filter((item) => !present.has(item.id)).map((item) => item.id);
-  return { active_fp_count: active.length, covered_active_fp_count: active.length - missing.length, missing_active_fp: missing, merged_responsibilities: [{ id: "FP007-02", owner: "S3-FP007-01", status: "merged", independent_contract_required: false }] };
 }

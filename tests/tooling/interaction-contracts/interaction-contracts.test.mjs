@@ -5,7 +5,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { DEFAULT_COVERAGE_MODEL, coverageReport, lintContract, parseInteractionYaml } from "../../../packages/interaction-contracts/dist/src/index.js";
+import * as interactionContracts from "../../../packages/interaction-contracts/dist/src/index.js";
+import { DEFAULT_COVERAGE_MODEL, lintContract, parseInteractionYaml } from "../../../packages/interaction-contracts/dist/src/index.js";
 import { runInteractionLint } from "../../../scripts/interaction-contract-lint/index.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -38,6 +39,23 @@ test("Reviewer malformed 50/50 counterexample cannot become covered", () => {
   assert.ok(malformed.flatMap((contract) => lintContract(contract, schema)).length >= 50);
 });
 
+test("tab-indented YAML is rejected and 50 invalid files cannot report coverage", async () => {
+  const single = yaml(validContract()).replace("\n  local_operator_id", "\n\tlocal_operator_id");
+  assert.throws(() => parseInteractionYaml(single), /Tab indentation/);
+  const quotedTab = yaml(validContract()).replace("Choose another title.", '"Choose\tanother title."');
+  assert.deepEqual(lintContract(parseInteractionYaml(quotedTab), schema), []);
+  const root = await mkdtemp(path.join(tmpdir(), "interaction-contract-tabs-"));
+  for (const item of DEFAULT_COVERAGE_MODEL.active) {
+    const contract = validContract({ contract_id: item.id, owner: item.owner });
+    await writeFile(path.join(root, `${item.id.toLowerCase()}.yaml`), yaml(contract).replace("\n  local_operator_id", "\n\tlocal_operator_id"));
+  }
+  const result = await runInteractionLint({ contractsDirectory: root, enforceCoverage: true });
+  assert.equal(result.files, 50);
+  assert.equal(result.ok, false);
+  assert.equal(result.coverage.covered_active_fp_count, 0);
+  assert.equal(result.coverage.missing_active_fp.length, 50);
+});
+
 test("file identity, duplicate ids, and invalid records do not count as coverage", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "interaction-contracts-"));
   await mkdir(root, { recursive: true });
@@ -54,10 +72,12 @@ test("owner, duplicate YAML keys, and 0/50 reporting remain explicit", async () 
   assert.ok(lintContract(validContract({ owner: "S7-FP017-01" }), schema).some((item) => item.code === "OWNER_MISMATCH"));
   assert.throws(() => parseInteractionYaml(`${yaml(validContract())}owner: S1-FP001-01`), /Duplicate YAML key/);
   const root = await mkdtemp(path.join(tmpdir(), "interaction-contracts-"));
-  const report = coverageReport([]);
-  assert.equal(report.active_fp_count, 50);
-  assert.equal(report.covered_active_fp_count, 0);
-  assert.equal(report.merged_responsibilities[0].status, "merged");
-  assert.equal((await runInteractionLint({ contractsDirectory: root })).ok, true);
+  assert.equal("coverageReport" in interactionContracts, false);
+  assert.throws(() => interactionContracts.coverageReport([{ contract_id: "FP001-01" }]));
+  const report = await runInteractionLint({ contractsDirectory: root });
+  assert.equal(report.coverage.active_fp_count, 50);
+  assert.equal(report.coverage.covered_active_fp_count, 0);
+  assert.equal(report.coverage.merged_responsibilities[0].status, "merged");
+  assert.equal(report.ok, true);
   assert.equal((await runInteractionLint({ contractsDirectory: root, enforceCoverage: true })).ok, false);
 });
