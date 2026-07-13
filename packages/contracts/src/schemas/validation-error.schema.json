@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zhreplan:contract:validation-error:1",
+  "title": "TechnicalValidationError",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "error_version",
+    "code",
+    "message",
+    "contract_id",
+    "contract_version",
+    "path"
+  ],
+  "properties": {
+    "error_version": {
+      "const": 1
+    },
+    "code": {
+      "enum": [
+        "CONTRACT_NOT_FOUND",
+        "CONTRACT_INVALID",
+        "CONTRACT_CHANGED",
+        "CONTRACT_PAYLOAD_INVALID",
+        "CONTRACT_UNKNOWN_FIELD",
+        "CONTRACT_DEPRECATED_FIELD"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "contract_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9-]{2,63}$"
+    },
+    "contract_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "path": {
+      "type": "string"
+    },
+    "field": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    }
+  }
+}
