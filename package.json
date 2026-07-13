@@ -16,7 +16,11 @@
     "db:migrate": "node packages/db/src/migrate.mjs",
     "db:reset": "node packages/db/src/reset.mjs",
     "db:migrate:check": "node packages/db/src/migrate.mjs --check",
-    "test:db": "node --test packages/db/test/migrations.test.mjs"
+    "test:db": "node --test packages/db/test/migrations.test.mjs",
+    "verify:task": "node scripts/verify-task/index.mjs",
+    "interaction:lint": "pnpm --filter @zh/contracts run build && pnpm --filter @zh/interaction-contracts run lint",
+    "test:interaction-contracts": "pnpm --filter @zh/contracts run build && pnpm --filter @zh/interaction-contracts test",
+    "test:n8n-lint": "node --test tests/tooling/n8n-lint/index.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.36.0",

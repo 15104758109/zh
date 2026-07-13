@@ -34,6 +34,14 @@ importers:
         specifier: 3.0.1
         version: 3.0.1(ajv@8.20.0)
 
+  packages/db: {}
+
+  packages/interaction-contracts:
+    dependencies:
+      '@zh/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
 packages:
 
   '@eslint-community/eslint-utils@4.9.1':
