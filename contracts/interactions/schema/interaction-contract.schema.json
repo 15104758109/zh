@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:zhreplan:interaction-contract:1", "type": "object", "additionalProperties": false,
+  "required": ["version", "contract_id", "owner", "object_scope", "actions"],
+  "properties": {
+    "version": { "const": 1 }, "contract_id": { "type": "string", "pattern": "^(FP[0-9]{3}-[0-9]{2}|cap-[a-z0-9-]+)$" }, "owner": { "type": "string", "minLength": 1 },
+    "object_scope": { "type": "object", "additionalProperties": false, "required": ["local_operator_id"], "properties": { "local_operator_id": { "$ref": "#/$defs/scope" }, "book_id": { "$ref": "#/$defs/scope" }, "chapter_id": { "$ref": "#/$defs/scope" }, "run_id": { "$ref": "#/$defs/scope" } } },
+    "actions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/action" } }
+  },
+  "$defs": {
+    "scope": { "enum": ["required", "optional", "not_applicable"] },
+    "command": { "type": "object", "additionalProperties": false, "required": ["registry_id", "command_id"], "properties": { "registry_id": { "type": "string" }, "command_id": { "type": "string" } }, "oneOf": [
+      { "properties": { "registry_id": { "const": "RPC-001" }, "command_id": { "const": "rpc_create_book_project" } } }, { "properties": { "registry_id": { "const": "RPC-002" }, "command_id": { "const": "rpc_commit_world_settings" } } },
+      { "properties": { "registry_id": { "const": "RPC-003" }, "command_id": { "const": "rpc_commit_character_settings" } } }, { "properties": { "registry_id": { "const": "RPC-004" }, "command_id": { "const": "rpc_generate_l1a_conflicts" } } },
+      { "properties": { "registry_id": { "const": "RPC-005" }, "command_id": { "const": "rpc_finalize_l1a" } } }, { "properties": { "registry_id": { "const": "RPC-007" }, "command_id": { "const": "rpc_persist_chapter_execution_plan" } } },
+      { "properties": { "registry_id": { "const": "RPC-009" }, "command_id": { "const": "rpc_finalize_deduction_snapshot" } } }, { "properties": { "registry_id": { "const": "RPC-010" }, "command_id": { "const": "rpc_persist_candidate_text" } } },
+      { "properties": { "registry_id": { "const": "RPC-011" }, "command_id": { "const": "rpc_execute_audit" } } }, { "properties": { "registry_id": { "const": "RPC-012" }, "command_id": { "const": "rpc_confirm_audit_result" } } },
+      { "properties": { "registry_id": { "const": "RPC-013" }, "command_id": { "const": "rpc_archive_shadow_version" } } }, { "properties": { "registry_id": { "const": "RPC-014" }, "command_id": { "const": "rpc_enhance_prose" } } },
+      { "properties": { "registry_id": { "const": "RPC-015" }, "command_id": { "const": "rpc_commit_chapter" } } }, { "properties": { "registry_id": { "const": "RPC-016" }, "command_id": { "const": "rpc_promote_prompt_config" } } }
+    ] },
+    "action": { "type": "object", "additionalProperties": false, "required": ["id", "prerequisites", "backend_command", "success", "failure", "recovery", "permission", "projection"], "properties": {
+      "id": { "type": "string", "minLength": 1 }, "prerequisites": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }, "backend_command": { "$ref": "#/$defs/command" },
+      "success": { "type": "object", "additionalProperties": false, "required": ["result", "state_change"], "properties": { "result": { "type": "string", "minLength": 1 }, "state_change": { "type": "boolean" } } },
+      "failure": { "type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": { "code": { "type": "string", "minLength": 1 }, "message": { "type": "string", "minLength": 1 } } }, "recovery": { "type": "object", "additionalProperties": false, "required": ["strategy"], "properties": { "strategy": { "type": "string", "minLength": 1 } } },
+      "permission": { "type": "object", "additionalProperties": false, "required": ["source", "enforcement"], "properties": { "source": { "const": "object_scope" }, "enforcement": { "const": "backend" } } }, "projection": { "type": "object", "additionalProperties": false, "required": ["mode", "fields"], "properties": { "mode": { "const": "readonly" }, "fields": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } } } }
+    } }
+  }
+}
