@@ -14,14 +14,12 @@ export const DEFAULT_COVERAGE_MODEL = {
   active: ACTIVE_FP_OWNER_PAIRS.map(([id, owner]) => ({ id, owner })),
 } as const;
 
+import { ContractValidator } from "@zh/contracts";
+
 export type LintIssue = { code: string; file: string; path: string; message: string };
 export type InteractionContract = Record<string, unknown>;
 export type CoverageModel = { active?: readonly { id: string; owner?: string }[] };
 export type InteractionSchema = { $id?: string; $schema?: string };
-
-const CONTROLLED_RPC_IDS = new Set(Array.from({ length: 16 }, (_, index) => `RPC-${String(index + 1).padStart(3, "0")}`));
-const TOP_FIELDS = new Set(["version", "contract_id", "owner", "object_scope", "actions"]);
-const ACTION_FIELDS = new Set(["id", "prerequisites", "backend_command", "success", "failure", "recovery", "permission", "projection"]);
 
 function scalar(value: string): unknown {
   const trimmed = value.trim();
@@ -81,57 +79,17 @@ export function parseInteractionYaml(source: string): InteractionContract {
   return root;
 }
 
-function issue(issues: LintIssue[], code: string, file: string, path: string, message: string) { issues.push({ code, file, path, message }); }
-function closedObject(value: unknown, fields: readonly string[], issues: LintIssue[], file: string, path: string): value is Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) { issue(issues, "TYPE", file, path, "Expected an object."); return false; }
-  for (const key of Object.keys(value)) if (!fields.includes(key)) issue(issues, "UNKNOWN_FIELD", file, `${path}.${key}`, "Unknown field.");
-  return true;
-}
-function requiredString(value: unknown, issues: LintIssue[], file: string, path: string) { if (typeof value !== "string" || value.length === 0) issue(issues, "TYPE", file, path, "Expected a nonempty string."); }
-
-export function validateInteractionContract(contract: InteractionContract, schema: InteractionSchema | undefined, file = "<memory>"): LintIssue[] {
-  const issues: LintIssue[] = [];
-  if (!schema || schema.$id !== "urn:zhreplan:interaction-contract:1") { issue(issues, "SCHEMA", file, "", "Interaction contract schema is unavailable or invalid."); return issues; }
-  for (const key of Object.keys(contract)) if (!TOP_FIELDS.has(key)) issue(issues, "UNKNOWN_FIELD", file, key, "Unknown field.");
-  for (const field of TOP_FIELDS) if (!(field in contract)) issue(issues, "REQUIRED_FIELD", file, field, `Missing ${field}.`);
-  if (contract.version !== 1) issue(issues, "VERSION", file, "version", "version must be 1.");
-  if (typeof contract.contract_id !== "string" || !/^(FP\d{3}-\d{2}|cap-[a-z0-9-]+)$/.test(contract.contract_id)) issue(issues, "CONTRACT_ID", file, "contract_id", "contract_id must identify an FP or capability.");
-  requiredString(contract.owner, issues, file, "owner");
-  const scope = contract.object_scope;
-  if (closedObject(scope, ["local_operator_id", "book_id", "chapter_id", "run_id"], issues, file, "object_scope")) {
-    if (!Object.hasOwn(scope, "local_operator_id")) issue(issues, "REQUIRED_FIELD", file, "object_scope.local_operator_id", "Missing local_operator_id boundary.");
-    for (const [key, value] of Object.entries(scope)) if (typeof value !== "string" || !["required", "optional", "not_applicable"].includes(value)) issue(issues, "OBJECT_SCOPE", file, `object_scope.${key}`, "Scope values must be required, optional, or not_applicable.");
-  }
-  if (!Array.isArray(contract.actions) || contract.actions.length === 0) { issue(issues, "ACTIONS", file, "actions", "At least one action is required."); return issues; }
-  contract.actions.forEach((action, index) => {
-    const path = `actions[${index}]`;
-    if (!closedObject(action, [...ACTION_FIELDS], issues, file, path)) return;
-    for (const field of ACTION_FIELDS) if (!Object.hasOwn(action, field)) issue(issues, "REQUIRED_FIELD", file, `${path}.${field}`, `Missing ${field}.`);
-    requiredString(action.id, issues, file, `${path}.id`);
-    if (!Array.isArray(action.prerequisites) || action.prerequisites.length === 0 || action.prerequisites.some((item) => typeof item !== "string" || item.length === 0)) issue(issues, "PREREQUISITES", file, `${path}.prerequisites`, "Prerequisites must be a nonempty string list.");
-    const command = action.backend_command;
-    if (closedObject(command, ["registry_id", "command_id"], issues, file, `${path}.backend_command`)) {
-      requiredString(command.registry_id, issues, file, `${path}.backend_command.registry_id`);
-      requiredString(command.command_id, issues, file, `${path}.backend_command.command_id`);
-      if (typeof command.registry_id === "string" && !CONTROLLED_RPC_IDS.has(command.registry_id)) issue(issues, "BACKEND_COMMAND", file, `${path}.backend_command.registry_id`, "Command must cite a registered controlled RPC.");
-    }
-    for (const [field, keys] of [["success", ["result", "state_change"]], ["failure", ["code", "message"]], ["recovery", ["strategy"]], ["permission", ["source", "enforcement"]], ["projection", ["mode", "fields"]]] as const) {
-      const value = action[field];
-      if (!closedObject(value, keys, issues, file, `${path}.${field}`)) continue;
-      for (const key of keys) if (!Object.hasOwn(value, key)) issue(issues, "REQUIRED_FIELD", file, `${path}.${field}.${key}`, `Missing ${key}.`);
-      for (const key of keys.filter((key) => key !== "state_change" && key !== "fields")) requiredString(value[key], issues, file, `${path}.${field}.${key}`);
-      if (field === "success" && typeof value.state_change !== "boolean") issue(issues, "SUCCESS", file, `${path}.success.state_change`, "Success must explicitly declare state_change.");
-      if (field === "permission" && (value.source !== "object_scope" || value.enforcement !== "backend")) issue(issues, "PERMISSION", file, `${path}.permission`, "Permission must be enforced by the declared object scope at the backend.");
-      if (field === "projection" && (value.mode !== "readonly" || !Array.isArray(value.fields) || value.fields.length === 0 || value.fields.some((item) => typeof item !== "string" || item.length === 0))) issue(issues, "READONLY_PROJECTION", file, `${path}.projection`, "Projection must be readonly with nonempty fields.");
-    }
-  });
-  return issues;
-}
-
 export function lintContract(contract: InteractionContract, schema: InteractionSchema, file = "<memory>", model: CoverageModel = DEFAULT_COVERAGE_MODEL): LintIssue[] {
-  const issues = validateInteractionContract(contract, schema, file);
+  const issues: LintIssue[] = [];
+  const validator = ContractValidator.create([schema]);
+  if (!validator.ok || typeof schema.$id !== "string") {
+    issues.push({ code: "SCHEMA", file, path: "", message: "Interaction contract schema could not be compiled." });
+    return issues;
+  }
+  const validation = validator.value.validateRaw(schema.$id, "interaction-contract", 1, contract);
+  if (!validation.ok) for (const error of validation.errors) issues.push({ code: error.code, file, path: error.path, message: error.message });
   const expectedOwner = model.active?.find((item) => item.id === contract.contract_id)?.owner;
-  if (expectedOwner && contract.owner !== expectedOwner) issue(issues, "OWNER_MISMATCH", file, "owner", `Expected owner ${expectedOwner}.`);
+  if (expectedOwner && contract.owner !== expectedOwner) issues.push({ code: "OWNER_MISMATCH", file, path: "owner", message: `Expected owner ${expectedOwner}.` });
   return issues;
 }
 

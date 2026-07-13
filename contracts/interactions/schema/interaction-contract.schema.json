@@ -8,7 +8,15 @@
   },
   "$defs": {
     "scope": { "enum": ["required", "optional", "not_applicable"] },
-    "command": { "type": "object", "additionalProperties": false, "required": ["registry_id", "command_id"], "properties": { "registry_id": { "enum": ["RPC-001", "RPC-002", "RPC-003", "RPC-004", "RPC-005", "RPC-006", "RPC-007", "RPC-008", "RPC-009", "RPC-010", "RPC-011", "RPC-012", "RPC-013", "RPC-014", "RPC-015", "RPC-016"] }, "command_id": { "type": "string", "minLength": 1 } } },
+    "command": { "type": "object", "additionalProperties": false, "required": ["registry_id", "command_id"], "properties": { "registry_id": { "type": "string" }, "command_id": { "type": "string" } }, "oneOf": [
+      { "properties": { "registry_id": { "const": "RPC-001" }, "command_id": { "const": "rpc_create_book_project" } } }, { "properties": { "registry_id": { "const": "RPC-002" }, "command_id": { "const": "rpc_commit_world_settings" } } },
+      { "properties": { "registry_id": { "const": "RPC-003" }, "command_id": { "const": "rpc_commit_character_settings" } } }, { "properties": { "registry_id": { "const": "RPC-004" }, "command_id": { "const": "rpc_generate_l1a_conflicts" } } },
+      { "properties": { "registry_id": { "const": "RPC-005" }, "command_id": { "const": "rpc_finalize_l1a" } } }, { "properties": { "registry_id": { "const": "RPC-007" }, "command_id": { "const": "rpc_persist_chapter_execution_plan" } } },
+      { "properties": { "registry_id": { "const": "RPC-009" }, "command_id": { "const": "rpc_finalize_deduction_snapshot" } } }, { "properties": { "registry_id": { "const": "RPC-010" }, "command_id": { "const": "rpc_persist_candidate_text" } } },
+      { "properties": { "registry_id": { "const": "RPC-011" }, "command_id": { "const": "rpc_execute_audit" } } }, { "properties": { "registry_id": { "const": "RPC-012" }, "command_id": { "const": "rpc_confirm_audit_result" } } },
+      { "properties": { "registry_id": { "const": "RPC-013" }, "command_id": { "const": "rpc_archive_shadow_version" } } }, { "properties": { "registry_id": { "const": "RPC-014" }, "command_id": { "const": "rpc_enhance_prose" } } },
+      { "properties": { "registry_id": { "const": "RPC-015" }, "command_id": { "const": "rpc_commit_chapter" } } }, { "properties": { "registry_id": { "const": "RPC-016" }, "command_id": { "const": "rpc_promote_prompt_config" } } }
+    ] },
     "action": { "type": "object", "additionalProperties": false, "required": ["id", "prerequisites", "backend_command", "success", "failure", "recovery", "permission", "projection"], "properties": {
       "id": { "type": "string", "minLength": 1 }, "prerequisites": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }, "backend_command": { "$ref": "#/$defs/command" },
       "success": { "type": "object", "additionalProperties": false, "required": ["result", "state_change"], "properties": { "result": { "type": "string", "minLength": 1 }, "state_change": { "type": "boolean" } } },

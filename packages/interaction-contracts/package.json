@@ -5,6 +5,9 @@
   "type": "module",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
+  "dependencies": {
+    "@zh/contracts": "workspace:*"
+  },
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "lint": "pnpm run build && node ../../scripts/interaction-contract-lint/index.mjs",

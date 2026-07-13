@@ -32,18 +32,31 @@ export async function runInteractionLint({ contractsDirectory = path.join(REPO_R
   try { schema = JSON.parse(await readFile(schemaPath, "utf8")); }
   catch (error) { return { ok: false, files: 0, issues: [{ code: "SCHEMA", file: schemaPath, path: "", message: error instanceof Error ? error.message : String(error) }], coverage: coverageReport([], coverageModel) }; }
   const files = await contractFiles(contractsDirectory);
-  const contracts = [];
   const issues = [];
+  const records = [];
+  const byContractId = new Map();
   for (const file of files) {
     try {
       const contract = parseInteractionYaml(await readFile(file, "utf8"));
-      contracts.push(contract);
-      issues.push(...lintContract(contract, schema, file, coverageModel));
+      const contractIssues = lintContract(contract, schema, file, coverageModel);
+      const id = typeof contract.contract_id === "string" ? contract.contract_id : undefined;
+      if (id) {
+        const expectedName = `${id.startsWith("FP") ? id.toLowerCase() : id}.yaml`;
+        if (path.basename(file) !== expectedName) contractIssues.push({ code: "FILE_IDENTITY", file, path: "contract_id", message: `Expected filename ${expectedName}.` });
+        const prior = byContractId.get(id);
+        if (prior) {
+          const duplicate = { code: "DUPLICATE_CONTRACT_ID", file, path: "contract_id", message: `Duplicate contract_id ${id}.` };
+          prior.issues.push(duplicate);
+          contractIssues.push(duplicate);
+        } else byContractId.set(id, { issues: contractIssues });
+      }
+      records.push({ contract, issues: contractIssues });
+      issues.push(...contractIssues);
     } catch (error) {
       issues.push({ code: "PARSE", file, path: "", message: error instanceof Error ? error.message : String(error) });
     }
   }
-  const coverage = coverageReport(contracts, coverageModel);
+  const coverage = coverageReport(records.filter((record) => record.issues.length === 0).map((record) => record.contract), coverageModel);
   return { ok: issues.length === 0 && (!enforceCoverage || coverage.missing_active_fp.length === 0), files: files.length, issues, coverage, coverage_enforced: enforceCoverage };
 }
 
