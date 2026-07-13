@@ -105,6 +105,17 @@ test('classifies high-confidence SQL writes while excluding SELECT and ordinary 
   });
 });
 
+test('uses exact node types for Postgres, Code, and Function SQL contexts', async () => withFixture(async (fixture) => {
+  fixture.files.set('workflow-10.json', workflow(10, { type: 'n8n-nodes-base.function', parameters: { functionCode: "db.query('UPDATE chapter SET title = 1')" } }));
+  fixture.files.set('workflow-11.json', workflow(11, { type: 'n8n-nodes-base.postgresTrigger', parameters: { operation: 'update' } }));
+  fixture.files.set('workflow-12.json', workflow(12, { type: 'custom.notpostgreshelper', parameters: { query: 'INSERT INTO chapter VALUES (1)' } }));
+  fixture.files.set('workflow-13.json', workflow(13, { type: 'custom.decoder', parameters: { jsCode: "db.query('UPDATE chapter SET title = 1')" } }));
+  await syncFixture(fixture);
+  const report = await lint(fixture);
+  assert.equal(report.findings.filter((finding) => finding.code === 'BARE_DATABASE_WRITE' && finding.path === 'references/workflow-10.json').length, 1);
+  for (const index of [11, 12, 13]) assert.equal(report.findings.filter((finding) => finding.code === 'BARE_DATABASE_WRITE' && finding.path === `references/workflow-${index}.json`).length, 0);
+}));
+
 test('reports malformed JSON or missing workflow structure as new integrity findings', async () => withFixture(async (fixture) => {
   fixture.files.set('workflow-10.json', '{}'); await syncFixture(fixture); assert.ok(codes(await lint(fixture)).includes('INVALID_WORKFLOW_STRUCTURE'));
   fixture.files.set('workflow-10.json', '{'); await writeFile(join(fixture.references, 'workflow-10.json'), '{'); assert.ok(codes(await lint(fixture)).includes('INVALID_JSON'));
@@ -142,6 +153,13 @@ test('continues semantic scanning after parseable content and identity drift and
   for (const code of ['CONTENT_DRIFT', 'WORKFLOW_IDENTITY_DRIFT', 'ACTIVE_STATUS_ANOMALY', 'SECRET_LITERAL', 'EXPERIMENTAL_RPC', 'BARE_DATABASE_WRITE']) assert.ok(codes(report).includes(code));
   assert.equal(report.findings.find((finding) => finding.code === 'EXPERIMENTAL_RPC').baseline, 'new');
   const cli = spawnSync(process.execPath, [source, '--reference-dir', fixture.references, '--baseline', join(fixture.cwd, 'baseline.json')], { cwd: fixture.cwd }); assert.equal(cli.status, 1);
+}));
+
+test('continues safe semantic checks when connections has the wrong type', async () => withFixture(async (fixture) => {
+  const changed = { ...workflow(10, { type: 'n8n-nodes-base.postgres', parameters: { operation: 'update', password: 'opaque-secret', text: 'rpc_not_registered_anywhere' } }), active: true, connections: [] };
+  await writeFile(join(fixture.references, 'workflow-10.json'), JSON.stringify(changed));
+  const report = await lint(fixture);
+  for (const code of ['INVALID_WORKFLOW_STRUCTURE', 'CONTENT_DRIFT', 'ACTIVE_STATUS_ANOMALY', 'SECRET_LITERAL', 'UNKNOWN_RPC', 'BARE_DATABASE_WRITE']) assert.ok(codes(report).includes(code));
 }));
 
 test('integrity findings and CLI fatal errors cannot be waived', async () => withFixture(async (fixture) => {

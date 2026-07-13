@@ -13,6 +13,9 @@ const REGISTERED_RPCS = new Set(['rpc_archive_shadow_version', 'rpc_commit_chapt
 const SECRET_KEYS = new Set(['apikey', 'authorization', 'password', 'clientsecret', 'accesstoken', 'refreshtoken', 'privatekey', 'databaseurl']);
 const WRITE_OPERATIONS = new Set(['insert', 'update', 'delete', 'upsert', 'merge', 'create', 'alter', 'drop', 'truncate', 'grant', 'revoke']);
 const INTEGRITY_CODES = new Set(['INVALID_JSON', 'MISSING_WORKFLOW', 'UNREGISTERED_WORKFLOW', 'CONTENT_DRIFT', 'WORKFLOW_IDENTITY_DRIFT', 'DUPLICATE_WORKFLOW_IDENTITY', 'INVALID_WORKFLOW_STRUCTURE']);
+const POSTGRES_TYPES = new Set(['n8n-nodes-base.postgres', 'n8n-nodes-base.postgresTool']);
+const CODE_TYPE = 'n8n-nodes-base.code';
+const FUNCTION_TYPE = 'n8n-nodes-base.function';
 
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const normalizedPath = (value) => value.replaceAll('\\', '/');
@@ -52,8 +55,10 @@ function codeWrite(value) {
 
 function scanWorkflow(workflow, path) {
   const findings = []; const rpcSeen = new Set(); const writeSeen = new Set(); const secretSeen = new Set();
-  if (workflow.active !== false) findings.push(issue('ACTIVE_STATUS_ANOMALY', path, { actual: workflow.active }));
-  workflow.nodes.forEach((node, index) => {
+  if (workflow.active !== false) findings.push(issue('ACTIVE_STATUS_ANOMALY', path, { actual: workflow.active ?? null }));
+  const nodes = Array.isArray(workflow.nodes) ? workflow.nodes : [];
+  nodes.forEach((node, index) => {
+    if (!isPlainObject(node) || typeof node.name !== 'string' || node.name === '' || typeof node.type !== 'string' || node.type === '' || !isPlainObject(node.parameters)) return;
     const nodeId = nodeKey(node, index);
     const strings = [{ value: node.name, location: `nodes.${index}.name` }];
     walk(node.parameters, (value, parts) => { if (typeof value === 'string') strings.push({ value, location: `nodes.${index}.parameters.${parts.join('.')}`, leaf: parts.at(-1) }); });
@@ -66,8 +71,10 @@ function scanWorkflow(workflow, path) {
         else if (!REGISTERED_RPCS.has(rpc)) findings.push(issue('UNKNOWN_RPC', path, { node: nodeId, rpc }));
       }
     }
-    const type = node.type.toLowerCase(); const operation = node.parameters.operation; const query = node.parameters.query;
-    const bareWrite = /postgres(?:tool)?/.test(type) && ((typeof operation === 'string' && WRITE_OPERATIONS.has(operation.toLowerCase())) || (typeof query === 'string' && sqlWrite(query))) || /(?:code|function)/.test(type) && typeof node.parameters.jsCode === 'string' && codeWrite(node.parameters.jsCode);
+    const operation = node.parameters.operation; const query = node.parameters.query;
+    const postgresWrite = POSTGRES_TYPES.has(node.type) && ((typeof operation === 'string' && WRITE_OPERATIONS.has(operation.toLowerCase())) || (typeof query === 'string' && sqlWrite(query)));
+    const source = node.type === CODE_TYPE ? node.parameters.jsCode : node.type === FUNCTION_TYPE ? node.parameters.functionCode : undefined;
+    const bareWrite = postgresWrite || (typeof source === 'string' && codeWrite(source));
     if (bareWrite && !writeSeen.has(nodeId)) { writeSeen.add(nodeId); const location = typeof operation === 'string' && WRITE_OPERATIONS.has(operation.toLowerCase()) ? `nodes.${index}.parameters.operation` : `nodes.${index}.parameters.query`; findings.push(issue('BARE_DATABASE_WRITE', path, { node: nodeId, location })); }
   });
   walk(workflow.pinData, (value, parts) => { if (isSecret(value, parts.at(-1))) findings.push(issue('SECRET_LITERAL', path)); });
@@ -108,11 +115,12 @@ export async function lintN8n({ referenceDir = DEFAULT_REFERENCE_DIR, baselinePa
     const path = `${validated.referencePath}/${file}`; const entry = validated.entries.get(path); seen.add(path);
     const { raw, workflow } = await readWorkflow(resolve(validated.absoluteReferenceDir, file));
     if (!workflow) { findings.push(issue('INVALID_JSON', path)); continue; }
-    const structural = workflowStructure(workflow, path); if (structural) { findings.push(structural); continue; }
     const actualHash = sha256(raw); actualHashes.set(path, actualHash);
-    if (!entry) findings.push(issue('UNREGISTERED_WORKFLOW', path)); else { if (entry.sha256 !== actualHash) findings.push(issue('CONTENT_DRIFT', path)); if (entry.id !== workflow.id || entry.name !== workflow.name) findings.push(issue('WORKFLOW_IDENTITY_DRIFT', path)); }
-    if (ids.has(workflow.id)) findings.push(issue('DUPLICATE_WORKFLOW_IDENTITY', path, { field: 'id', duplicate_of: ids.get(workflow.id) })); else ids.set(workflow.id, path);
-    if (names.has(workflow.name)) findings.push(issue('DUPLICATE_WORKFLOW_IDENTITY', path, { field: 'name', duplicate_of: names.get(workflow.name) })); else names.set(workflow.name, path);
+    if (!entry) findings.push(issue('UNREGISTERED_WORKFLOW', path)); else { if (entry.sha256 !== actualHash) findings.push(issue('CONTENT_DRIFT', path)); if (!isPlainObject(workflow) || entry.id !== workflow.id || entry.name !== workflow.name) findings.push(issue('WORKFLOW_IDENTITY_DRIFT', path)); }
+    if (!isPlainObject(workflow)) { findings.push(issue('INVALID_WORKFLOW_STRUCTURE', path)); continue; }
+    const structural = workflowStructure(workflow, path); if (structural) findings.push(structural);
+    if (typeof workflow.id === 'string') { if (ids.has(workflow.id)) findings.push(issue('DUPLICATE_WORKFLOW_IDENTITY', path, { field: 'id', duplicate_of: ids.get(workflow.id) })); else ids.set(workflow.id, path); }
+    if (typeof workflow.name === 'string') { if (names.has(workflow.name)) findings.push(issue('DUPLICATE_WORKFLOW_IDENTITY', path, { field: 'name', duplicate_of: names.get(workflow.name) })); else names.set(workflow.name, path); }
     findings.push(...scanWorkflow(workflow, path));
   }
   for (const path of validated.entries.keys()) if (!seen.has(path)) findings.push(issue('MISSING_WORKFLOW', path));
