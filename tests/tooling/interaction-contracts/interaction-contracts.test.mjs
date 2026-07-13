@@ -29,6 +29,22 @@ test("active registry pairs pass; deprecated and fake command names fail", () =>
   for (const backend_command of [{ registry_id: "RPC-006", command_id: "rpc_create_chapter_target" }, { registry_id: "RPC-008", command_id: "rpc_persist_deduction_draft" }, { registry_id: "RPC-001", command_id: "rpc_fake" }]) assert.ok(lintContract(validContract({ actions: [{ ...validContract().actions[0], backend_command }] }), schema).length > 0);
 });
 
+test("internal commands require their exact pair and not_applicable backend permission", () => {
+  const action = validContract().actions[0];
+  for (const command_id of ["load_or_create_local_operator", "assert_object_scope"]) {
+    const internal = { ...action, backend_command: { registry_id: "INTERNAL-F0-04", command_id }, permission: { source: "not_applicable", enforcement: "backend" } };
+    assert.deepEqual(lintContract(validContract({ actions: [internal] }), schema), []);
+    assert.ok(lintContract(validContract({ actions: [{ ...internal, permission: { source: "object_scope", enforcement: "backend" } }] }), schema).length > 0);
+  }
+  for (const backend_command of [
+    { registry_id: "INTERNAL-F0-04", command_id: "rpc_create_book_project" },
+    { registry_id: "RPC-001", command_id: "load_or_create_local_operator" },
+    { registry_id: "INTERNAL-F0-04", command_id: "load_local_operator" },
+  ]) assert.ok(lintContract(validContract({ actions: [{ ...action, backend_command, permission: { source: "not_applicable", enforcement: "backend" } }] }), schema).length > 0);
+  assert.ok(lintContract(validContract({ actions: [{ ...action, permission: { source: "not_applicable", enforcement: "backend" } }] }), schema).length > 0);
+  assert.ok(lintContract(validContract({ actions: [{ ...action, backend_command: { registry_id: "RPC-001", command_id: "rpc_create_book_project", extra: true } }] }), schema).length > 0);
+});
+
 test("loaded Draft 2020-12 schema, not only its id, controls validation", () => {
   assert.deepEqual(lintContract(validContract(), schema), []);
   assert.ok(lintContract(validContract(), { $id: schema.$id, not: {} }, "x.yaml").length > 0);
