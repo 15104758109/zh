@@ -21,6 +21,28 @@ import { ContractValidator, createTechnicalValidationError } from "./validator.j
 
 const DESCRIPTOR_SCHEMA_PATH = "src/schemas/schema-descriptor.schema.json";
 const SCHEMA_PATH_PATTERN = /^src\/schemas\/.+\.schema\.json$/;
+const RECORD_ENVELOPE_SCHEMA_URI = "urn:zhreplan:contract:record-envelope:1";
+
+const SCHEMA_MAP_KEYWORDS = [
+  "$defs",
+  "definitions",
+  "dependentSchemas",
+  "patternProperties",
+  "properties",
+] as const;
+const SCHEMA_ARRAY_KEYWORDS = ["allOf", "anyOf", "oneOf", "prefixItems"] as const;
+const SCHEMA_SINGLE_KEYWORDS = [
+  "additionalProperties",
+  "contains",
+  "contentSchema",
+  "else",
+  "if",
+  "items",
+  "not",
+  "propertyNames",
+  "then",
+  "unevaluatedProperties",
+] as const;
 
 const BUILTIN_SCHEMAS = [
   ["schema-descriptor", "src/schemas/schema-descriptor.schema.json"],
@@ -33,27 +55,77 @@ const BUILTIN_SCHEMAS = [
   ["skill-version-ref", "src/schemas/refs/skill-version-ref.schema.json"],
 ] as const;
 
-function canonicalize(value: unknown): string {
-  if (value === null || typeof value === "boolean" || typeof value === "string") return JSON.stringify(value);
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new TypeError("JSON numbers must be finite.");
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) return `[${value.map((item) => canonicalize(item)).join(",")}]`;
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const entries = Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${canonicalize(record[key])}`);
-    return `{${entries.join(",")}}`;
-  }
-  throw new TypeError("Value is not JSON.");
+interface LoadedSchemaDocument {
+  readonly schema: JsonSchema;
+  readonly sha256: string;
 }
 
-export function canonicalizeJson(value: unknown): string {
-  return canonicalize(value);
+function rawDocumentSha256(source: Uint8Array): string {
+  return createHash("sha256").update(source).digest("hex");
 }
 
-export function schemaDocumentSha256(schema: JsonSchema): string {
-  return createHash("sha256").update(canonicalizeJson(schema), "utf8").digest("hex");
+function isSchemaRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function pointerPath(parent: string, segment: string): string {
+  const escaped = segment.replaceAll("~", "~0").replaceAll("/", "~1");
+  return `${parent}/${escaped}`;
+}
+
+function findOpenObjectSubschema(schema: JsonSchema, schemaUri: string): string | undefined {
+  function visit(value: unknown, location: string): string | undefined {
+    if (!isSchemaRecord(value)) return undefined;
+    const declaredType = value.type;
+    const declaresObject = declaredType === "object"
+      || (Array.isArray(declaredType) && declaredType.includes("object"));
+    const isEnvelopeData = schemaUri === RECORD_ENVELOPE_SCHEMA_URI
+      && location === "/properties/data"
+      && declaredType === "object"
+      && value.additionalProperties === true;
+    if (declaresObject && value.additionalProperties !== false && !isEnvelopeData) {
+      return location || "/";
+    }
+
+    for (const keyword of SCHEMA_MAP_KEYWORDS) {
+      const children = value[keyword];
+      if (!isSchemaRecord(children)) continue;
+      for (const [name, child] of Object.entries(children)) {
+        const open = visit(child, pointerPath(pointerPath(location, keyword), name));
+        if (open) return open;
+      }
+    }
+    for (const keyword of SCHEMA_ARRAY_KEYWORDS) {
+      const children = value[keyword];
+      if (!Array.isArray(children)) continue;
+      for (const [index, child] of children.entries()) {
+        const open = visit(child, pointerPath(pointerPath(location, keyword), String(index)));
+        if (open) return open;
+      }
+    }
+    for (const keyword of SCHEMA_SINGLE_KEYWORDS) {
+      const open = visit(value[keyword], pointerPath(location, keyword));
+      if (open) return open;
+    }
+    return undefined;
+  }
+
+  return visit(schema, "");
+}
+
+function deepFreeze<T>(value: T): T {
+  if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
+    for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+function immutableEntry(descriptor: SchemaDescriptor, schema: JsonSchema): RegisteredContract {
+  return deepFreeze({
+    descriptor: structuredClone(descriptor),
+    schema: structuredClone(schema),
+  });
 }
 
 function defaultPackageRoot(): string {
@@ -68,7 +140,7 @@ function derivedSchemaUri(schemaId: string, version: number): string {
   return `urn:zhreplan:contract:${schemaId}:${version}`;
 }
 
-function loadSchema(packageRoot: string, schemaPath: string): ContractResult<JsonSchema> {
+function loadSchema(packageRoot: string, schemaPath: string): ContractResult<LoadedSchemaDocument> {
   const segments = schemaPath.split("/");
   if (
     !SCHEMA_PATH_PATTERN.test(schemaPath)
@@ -85,11 +157,18 @@ function loadSchema(packageRoot: string, schemaPath: string): ContractResult<Jso
     return invalidSchemaResult("Schema path is outside the approved package directory.");
   }
   try {
-    const parsed = JSON.parse(readFileSync(absolutePath, "utf8")) as unknown;
+    const source = readFileSync(absolutePath);
+    const parsed = JSON.parse(source.toString("utf8")) as unknown;
     if (typeof parsed !== "boolean" && (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))) {
       return invalidSchemaResult("Schema file does not contain a JSON Schema.");
     }
-    return { ok: true, value: parsed as JsonSchema };
+    return {
+      ok: true,
+      value: {
+        schema: parsed as JsonSchema,
+        sha256: rawDocumentSha256(source),
+      },
+    };
   } catch {
     return invalidSchemaResult("Schema file could not be loaded.");
   }
@@ -172,7 +251,9 @@ export class SchemaRegistry {
     return this.#validator.validate<T>(found.value.descriptor, value);
   }
 
-  validateEnvelope<T>(value: unknown): ContractResult<MinimalRecordEnvelope<T>> {
+  validateEnvelope<T extends object = Record<string, unknown>>(
+    value: unknown,
+  ): ContractResult<MinimalRecordEnvelope<T>> {
     const envelopeResult = this.validate<MinimalRecordEnvelope<T>>("record-envelope", 1, value);
     if (!envelopeResult.ok) return envelopeResult;
     const envelope = envelopeResult.value;
@@ -204,7 +285,7 @@ export function createSchemaRegistry(
   const packageRoot = options.packageRoot ?? defaultPackageRoot();
   const descriptorSchemaResult = loadSchema(packageRoot, DESCRIPTOR_SCHEMA_PATH);
   if (!descriptorSchemaResult.ok) return descriptorSchemaResult;
-  const descriptorValidatorResult = ContractValidator.create([descriptorSchemaResult.value]);
+  const descriptorValidatorResult = ContractValidator.create([descriptorSchemaResult.value.schema]);
   if (!descriptorValidatorResult.ok) return descriptorValidatorResult;
 
   for (const descriptor of descriptors) {
@@ -245,15 +326,19 @@ export function createSchemaRegistry(
   for (const descriptor of descriptors) {
     const schemaResult = loadSchema(packageRoot, descriptor.schema_path);
     if (!schemaResult.ok) return schemaResult;
-    const schema = schemaResult.value;
-    if (schemaDocumentSha256(schema) !== descriptor.sha256) {
+    const { schema, sha256 } = schemaResult.value;
+    if (sha256 !== descriptor.sha256) {
       return invalidSchemaResult("Schema hash does not match its descriptor.");
     }
     if (typeof schema !== "object" || schema.$schema !== DRAFT_2020_12 || schema.$id !== descriptor.schema_uri) {
       return invalidSchemaResult("Schema identity does not match its descriptor.");
     }
-    schemas.push(schema);
-    entries.set(schemaKey(descriptor.schema_id, descriptor.version), { descriptor, schema });
+    if (findOpenObjectSubschema(schema, descriptor.schema_uri)) {
+      return invalidSchemaResult("Schema contains an object subschema that is not closed.");
+    }
+    const entry = immutableEntry(descriptor, schema);
+    schemas.push(structuredClone(entry.schema));
+    entries.set(schemaKey(descriptor.schema_id, descriptor.version), entry);
   }
 
   const validatorResult = ContractValidator.create(schemas);
@@ -284,7 +369,7 @@ export function loadBuiltinSchemaDescriptors(options: RegistryOptions = {}): Con
       draft: DRAFT_2020_12,
       owner: "GLOBAL::CONTRACTS",
       schema_path: schemaPath,
-      sha256: schemaDocumentSha256(schemaResult.value),
+      sha256: schemaResult.value.sha256,
       status: "active",
       deprecated_fields: deprecatedFields,
     });

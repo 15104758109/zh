@@ -72,7 +72,7 @@ export interface SkillVersionRef {
   readonly source: "system_builtin" | "user_managed";
 }
 
-export interface MinimalRecordEnvelope<T = unknown> {
+export interface MinimalRecordEnvelope<T extends object = Record<string, unknown>> {
   readonly envelope_version: 1;
   readonly record_id: string;
   readonly recorded_at: string;

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import {
   copyFile,
+  cp,
   mkdir,
   mkdtemp,
   readFile,
@@ -19,13 +21,11 @@ const {
   CONTRACT_ERROR_CODES,
   ContractValidator,
   DRAFT_2020_12,
-  canonicalizeJson,
   compareSchemaDescriptors,
   createBuiltinSchemaRegistry,
   createSchemaRegistry,
   isFactStateTransitionAllowed,
   loadBuiltinSchemaDescriptors,
-  schemaDocumentSha256,
 } = contracts;
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -90,6 +90,10 @@ function schemaUri(schemaId, version) {
   return `urn:zhreplan:contract:${schemaId}:${version}`;
 }
 
+function rawSha256(source) {
+  return createHash("sha256").update(source).digest("hex");
+}
+
 function closedValueSchema(schemaId, version, extra = {}) {
   return {
     $schema: DRAFT_2020_12,
@@ -104,18 +108,24 @@ function closedValueSchema(schemaId, version, extra = {}) {
   };
 }
 
-async function fixtureRoot(t) {
+async function fixtureRoot(t, options = {}) {
   const root = await mkdtemp(path.join(tmpdir(), "zh-contracts-"));
   t.after(async () => rm(root, { recursive: true, force: true }));
   const schemaDirectory = path.join(root, "src", "schemas");
-  await mkdir(schemaDirectory, { recursive: true });
-  await copyFile(DESCRIPTOR_SCHEMA_PATH, path.join(schemaDirectory, "schema-descriptor.schema.json"));
+  if (options.copyBuiltins) {
+    await mkdir(path.dirname(schemaDirectory), { recursive: true });
+    await cp(path.join(PACKAGE_ROOT, "src", "schemas"), schemaDirectory, { recursive: true });
+  } else {
+    await mkdir(schemaDirectory, { recursive: true });
+    await copyFile(DESCRIPTOR_SCHEMA_PATH, path.join(schemaDirectory, "schema-descriptor.schema.json"));
+  }
   return root;
 }
 
-async function addFixtureSchema(root, schemaId, version, schema, overrides = {}) {
+async function addFixtureSchema(root, schemaId, version, schema, overrides = {}, document) {
   const schemaPath = `src/schemas/${schemaId}.v${version}.schema.json`;
-  await writeFile(path.join(root, ...schemaPath.split("/")), `${JSON.stringify(schema, null, 2)}\n`, "utf8");
+  const source = document ?? `${JSON.stringify(schema, null, 2)}\n`;
+  await writeFile(path.join(root, ...schemaPath.split("/")), source, "utf8");
   const descriptor = {
     schema_id: schemaId,
     version,
@@ -123,7 +133,7 @@ async function addFixtureSchema(root, schemaId, version, schema, overrides = {})
     draft: DRAFT_2020_12,
     owner: "GLOBAL::CONTRACTS",
     schema_path: schemaPath,
-    sha256: schemaDocumentSha256(schema),
+    sha256: rawSha256(source),
     status: "active",
     deprecated_fields: [],
   };
@@ -218,13 +228,27 @@ test("MCV1-T03 duplicate versions, changed hashes, and hash mismatches are rejec
     "CONTRACT_INVALID",
   );
 
-  const canonicalInput = { b: 2, a: [true, { z: null, y: "x" }] };
-  assert.equal(canonicalizeJson(canonicalInput), '{"a":[true,{"y":"x","z":null}],"b":2}');
-  assert.equal(
-    schemaDocumentSha256(canonicalInput),
-    "e04620b6f83d45701d6f42791333c388ea61b39c5309af94e0f23470d5b179de",
+  const schemaFile = path.join(root, ...descriptor.schema_path.split("/"));
+  const originalBytes = await readFile(schemaFile);
+  const compactDocument = `${JSON.stringify(schema)}\n`;
+  assert.equal(descriptor.sha256, rawSha256(originalBytes));
+  assert.notEqual(descriptor.sha256, rawSha256(compactDocument));
+  await writeFile(schemaFile, compactDocument, "utf8");
+  assert.deepEqual(JSON.parse(originalBytes.toString("utf8")), JSON.parse(compactDocument));
+  expectFailure(
+    createSchemaRegistry([descriptor], { packageRoot: root }),
+    "CONTRACT_INVALID",
   );
-  assert.equal(schemaDocumentSha256(canonicalInput), schemaDocumentSha256({ a: canonicalInput.a, b: 2 }));
+  expectOk(createSchemaRegistry(
+    [{ ...descriptor, sha256: rawSha256(compactDocument) }],
+    { packageRoot: root },
+  ));
+
+  const builtinDescriptors = expectOk(loadBuiltinSchemaDescriptors({ packageRoot: PACKAGE_ROOT }));
+  for (const builtin of builtinDescriptors) {
+    const bytes = await readFile(path.join(PACKAGE_ROOT, ...builtin.schema_path.split("/")));
+    assert.equal(builtin.sha256, rawSha256(bytes));
+  }
 });
 
 test("MCV1-T04 exactly one active version is current and deprecated writes fail", async (t) => {
@@ -309,6 +333,58 @@ test("MCV1-T06 unknown fields at every object layer and deprecated pointers are 
   );
 
   const root = await fixtureRoot(t);
+  const openSchemas = [
+    closedValueSchema("open-nested-test", 1, {
+      properties: {
+        value: {
+          type: "object",
+          properties: { child: { type: "string" } },
+        },
+      },
+    }),
+    closedValueSchema("open-array-test", 1, {
+      properties: {
+        value: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: { child: { type: "string" } },
+          },
+        },
+      },
+    }),
+    closedValueSchema("open-defs-test", 1, {
+      properties: { value: { $ref: "#/$defs/entry" } },
+      $defs: {
+        entry: {
+          type: "object",
+          properties: { child: { type: "string" } },
+        },
+      },
+    }),
+    closedValueSchema("open-branch-test", 1, {
+      properties: {
+        value: {
+          anyOf: [
+            {
+              type: "object",
+              properties: { child: { type: "string" } },
+            },
+            { type: "string" },
+          ],
+        },
+      },
+    }),
+  ];
+  for (const openSchema of openSchemas) {
+    const schemaId = openSchema.$id.split(":").at(-2);
+    const openDescriptor = await addFixtureSchema(root, schemaId, 1, openSchema);
+    expectFailure(
+      createSchemaRegistry([openDescriptor], { packageRoot: root }),
+      "CONTRACT_INVALID",
+    );
+  }
+
   const schemaId = "nested-test";
   const schema = closedValueSchema(schemaId, 1, {
     required: ["nested"],
@@ -394,7 +470,7 @@ test("MCV1-T07 the technical error contract has exactly six codes and no sensiti
   assert.equal(JSON.stringify(errors).includes("sensitive-input-value"), false);
 });
 
-test("MCV1-T08 envelopes dispatch payloads by exact current descriptor version", () => {
+test("MCV1-T08 envelopes dispatch object payloads by exact current descriptor version", async (t) => {
   const registry = builtinRegistry();
   const validEnvelope = envelope({
     config_ref: {
@@ -429,6 +505,41 @@ test("MCV1-T08 envelopes dispatch payloads by exact current descriptor version",
       data_schema_id: "local-operator-ref",
       data: fact(),
     }),
+  );
+
+  const root = await fixtureRoot(t, { copyBuiltins: true });
+  const builtinDescriptors = expectOk(loadBuiltinSchemaDescriptors({ packageRoot: root }));
+  const stringSchema = {
+    $schema: DRAFT_2020_12,
+    $id: schemaUri("string-target", 1),
+    type: "string",
+  };
+  const booleanSchema = {
+    $schema: DRAFT_2020_12,
+    $id: schemaUri("boolean-target", 1),
+    type: "boolean",
+  };
+  const stringDescriptor = await addFixtureSchema(root, "string-target", 1, stringSchema);
+  const booleanDescriptor = await addFixtureSchema(root, "boolean-target", 1, booleanSchema);
+  const primitiveRegistry = expectOk(createSchemaRegistry(
+    [...builtinDescriptors, stringDescriptor, booleanDescriptor],
+    { packageRoot: root },
+  ));
+  expectOk(primitiveRegistry.validate("string-target", 1, "primitive"));
+  expectOk(primitiveRegistry.validate("boolean-target", 1, true));
+  expectFailure(
+    primitiveRegistry.validateEnvelope(envelope({
+      data_schema_id: "string-target",
+      data: "primitive",
+    })),
+    "CONTRACT_PAYLOAD_INVALID",
+  );
+  expectFailure(
+    primitiveRegistry.validateEnvelope(envelope({
+      data_schema_id: "boolean-target",
+      data: true,
+    })),
+    "CONTRACT_PAYLOAD_INVALID",
   );
 });
 
@@ -565,13 +676,11 @@ test("MCV1-T13 public exports and schemas contain no superseded governance surfa
     "OWNER_KEY_PATTERN",
     "STABLE_ID_PATTERN",
     "SchemaRegistry",
-    "canonicalizeJson",
     "compareSchemaDescriptors",
     "createBuiltinSchemaRegistry",
     "createSchemaRegistry",
     "isFactStateTransitionAllowed",
     "loadBuiltinSchemaDescriptors",
-    "schemaDocumentSha256",
   ]);
 
   const sourceFiles = [];
@@ -608,6 +717,41 @@ test("MCV1-T13 public exports and schemas contain no superseded governance surfa
 test("MCV1-T14 package test entry is real and core validation is repeatable", async () => {
   const packageJson = JSON.parse(await readFile(path.join(PACKAGE_ROOT, "package.json"), "utf8"));
   assert.equal(packageJson.scripts.test, "pnpm run build && node --test test/contracts.test.js");
+
+  const inputDescriptors = expectOk(loadBuiltinSchemaDescriptors({ packageRoot: PACKAGE_ROOT }));
+  const factInput = inputDescriptors.find((descriptor) => descriptor.schema_id === "fact-state");
+  assert.ok(factInput);
+  const originalHash = factInput.sha256;
+  const immutableRegistry = expectOk(createSchemaRegistry(inputDescriptors, { packageRoot: PACKAGE_ROOT }));
+  factInput.status = "deprecated";
+  factInput.sha256 = "0".repeat(64);
+  factInput.deprecated_fields.push({ path: "/state", since_version: 1 });
+
+  expectOk(immutableRegistry.validate("fact-state", 1, fact()));
+  const listedFact = immutableRegistry.listDescriptors()
+    .find((descriptor) => descriptor.schema_id === "fact-state");
+  assert.ok(listedFact);
+  assert.equal(listedFact.status, "active");
+  assert.equal(listedFact.sha256, originalHash);
+  assert.equal(Object.isFrozen(listedFact), true);
+  assert.equal(Object.isFrozen(listedFact.deprecated_fields), true);
+  assert.throws(() => {
+    listedFact.status = "deprecated";
+  }, TypeError);
+
+  const exact = expectOk(immutableRegistry.getExact("fact-state", 1));
+  assert.equal(Object.isFrozen(exact), true);
+  assert.equal(Object.isFrozen(exact.schema), true);
+  assert.equal(Object.isFrozen(exact.descriptor), true);
+  assert.equal(Object.isFrozen(exact.schema.properties.state.enum), true);
+  assert.throws(() => {
+    exact.schema.properties.state.enum.push("archived");
+  }, TypeError);
+  expectFailure(
+    immutableRegistry.validate("fact-state", 1, fact({ state: "archived" })),
+    "CONTRACT_PAYLOAD_INVALID",
+  );
+  assert.equal(expectOk(immutableRegistry.getCurrent("fact-state")).descriptor.status, "active");
 
   const snapshots = [];
   for (let iteration = 0; iteration < 2; iteration += 1) {

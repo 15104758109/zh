@@ -26,12 +26,10 @@ export type {
 } from "./common-types.js";
 export { compareSchemaDescriptors } from "./compare.js";
 export {
-  canonicalizeJson,
   createBuiltinSchemaRegistry,
   createSchemaRegistry,
   loadBuiltinSchemaDescriptors,
   SchemaRegistry,
-  schemaDocumentSha256,
 } from "./registry.js";
 export { isFactStateTransitionAllowed } from "./state.js";
 export { ContractValidator } from "./validator.js";
