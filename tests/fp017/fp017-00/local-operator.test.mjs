@@ -31,15 +31,29 @@ function expectCode(callback, code) {
 }
 
 async function createEightWayBarrier() {
-  const waiting = [];
+  const waiting = new Set();
+  const readyWaiters = [];
   let readyCount = 0;
+  let closePromise;
+  let closed = false;
+  function notifyReadyWaiters() {
+    for (let index = readyWaiters.length - 1; index >= 0; index -= 1) {
+      const waiter = readyWaiters[index];
+      if (readyCount >= waiter.count) {
+        readyWaiters.splice(index, 1);
+        waiter.resolve();
+      }
+    }
+  }
   const server = http.createServer((request, response) => {
     if (request.url !== "/ready") {
       response.writeHead(404).end();
       return;
     }
     readyCount += 1;
-    waiting.push(response);
+    waiting.add(response);
+    response.on("close", () => waiting.delete(response));
+    notifyReadyWaiters();
     if (readyCount === 8) {
       for (const pending of waiting) pending.end("release");
     }
@@ -50,7 +64,24 @@ async function createEightWayBarrier() {
   return {
     readyUrl: `http://127.0.0.1:${address.port}/ready`,
     readyCount: () => readyCount,
-    close: () => new Promise((resolve) => server.close(resolve)),
+    pendingCount: () => waiting.size,
+    whenReady: (count) => readyCount >= count
+      ? Promise.resolve()
+      : new Promise((resolve) => readyWaiters.push({ count, resolve })),
+    abort: () => {
+      for (const pending of waiting) pending.destroy();
+    },
+    close: () => {
+      if (closePromise) return closePromise;
+      closed = true;
+      server.closeAllConnections?.();
+      closePromise = new Promise((resolve) => server.close((error) => {
+        if (error && error.code !== "ERR_SERVER_NOT_RUNNING") throw error;
+        resolve();
+      }));
+      return closePromise;
+    },
+    isClosed: () => closed,
   };
 }
 
@@ -68,13 +99,27 @@ function spawnBarrierWorker(script, events) {
     pending = lines.pop();
     for (const line of lines) if (line) events.push(line);
   });
-  return {
-    child,
-    complete: new Promise((resolve, reject) => {
-      child.on("error", reject);
-      child.on("close", (code) => code === 0 ? resolve(output) : reject(new Error(`worker failed: ${code}`)));
-    }),
-  };
+  let settled = false;
+  let resolveSettlement;
+  const settlement = new Promise((resolve) => { resolveSettlement = resolve; });
+  function settle(result) {
+    if (settled) return;
+    settled = true;
+    resolveSettlement({ ...result, output });
+  }
+  child.on("error", (error) => settle({ kind: "error", error }));
+  child.on("close", (code, signal) => settle({ kind: "close", code, signal }));
+  return { child, settlement };
+}
+
+async function cleanupBarrierWorkers(barrier, workers, timer) {
+  barrier.abort();
+  for (const { child } of workers) {
+    if (child.exitCode === null && child.signalCode === null) child.kill();
+  }
+  await Promise.all(workers.map(({ settlement }) => settlement));
+  await barrier.close();
+  clearTimeout(timer);
 }
 
 before(() => reset());
@@ -92,12 +137,9 @@ test("02 restart loads the same local operator", () => {
   assert.equal(count(), 1);
 });
 
-test("03 eight concurrent production-service subprocesses converge on one id", async (t) => {
+test("03 eight concurrent production-service subprocesses converge on one id", async () => {
   reset();
   const barrier = await createEightWayBarrier();
-  t.after(async () => {
-    await barrier.close();
-  });
   const events = [];
   const script = `import { loadOrCreateLocalOperator } from ${JSON.stringify(moduleUrl)};
 await fetch(${JSON.stringify(barrier.readyUrl)});
@@ -105,34 +147,55 @@ process.stdout.write("START\\n");
 const result = loadOrCreateLocalOperator();
 process.stdout.write(\`DONE \${result.local_operator_id}\\n\`);`;
   const workers = Array.from({ length: 8 }, () => spawnBarrierWorker(script, events));
-  t.after(() => workers.forEach(({ child }) => child.kill()));
+  let timer;
+  try {
+    const results = await Promise.race([
+      Promise.all(workers.map(({ settlement }) => settlement)),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("eight-way barrier did not release")), 10_000); }),
+    ]);
+    assert.deepEqual(results.map(({ kind, code }) => ({ kind, code })), Array(8).fill({ kind: "close", code: 0 }));
+    assert.equal(barrier.readyCount(), 8, "all workers must wait before any production call is released");
+    assert.deepEqual(events.slice(0, 8), Array(8).fill("START"), "every worker must enter the production call before any worker completes");
+    const ids = events.filter((event) => event.startsWith("DONE ")).map((event) => event.slice("DONE ".length));
+    assert.equal(ids.length, 8);
+    assert.equal(new Set(ids).size, 1);
+    assert.equal(count(), 1);
+  } finally {
+    await cleanupBarrierWorkers(barrier, workers, timer);
+  }
+});
+
+test("03a partial barrier cleanup settles a waiting worker", async () => {
+  const barrier = await createEightWayBarrier();
+  const workers = [spawnBarrierWorker(`await fetch(${JSON.stringify(barrier.readyUrl)});`, [])];
   let timer;
   try {
     await Promise.race([
-      Promise.all(workers.map(({ complete }) => complete)),
-      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("eight-way barrier did not release")), 10_000); }),
+      barrier.whenReady(1),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("partial worker did not reach barrier")), 2_000); }),
     ]);
+    assert.equal(barrier.pendingCount(), 1);
   } finally {
-    clearTimeout(timer);
+    await cleanupBarrierWorkers(barrier, workers, timer);
   }
-  assert.equal(barrier.readyCount(), 8, "all workers must wait before any production call is released");
-  assert.deepEqual(events.slice(0, 8), Array(8).fill("START"), "every worker must enter the production call before any worker completes");
-  const ids = events.filter((event) => event.startsWith("DONE ")).map((event) => event.slice("DONE ".length));
-  assert.equal(ids.length, 8);
-  assert.equal(new Set(ids).size, 1);
-  assert.equal(count(), 1);
+  assert.equal(barrier.pendingCount(), 0);
+  assert.equal(barrier.isClosed(), true);
 });
 
-test("04 SQL failure exposes only the stable bootstrap error", () => {
+test("04 SQL rollback failure recovers within the same scenario", () => {
   reset();
   expectCode(() => loadOrCreateLocalOperator({
     sqlExecutor: (statement) => sql(statement.replace("COMMIT;", "SELECT 1 / 0;\nCOMMIT;")),
   }), LOCAL_OPERATOR_ERRORS.BOOTSTRAP_FAILED);
   assert.equal(count(), 0);
+  assert.match(loadOrCreateLocalOperator().local_operator_id, /^operator:/);
+  assert.equal(count(), 1);
 });
 
-test("05 SQL failure recovers on a later real call", () => {
+test("05 executor failure recovers within the same scenario", () => {
+  reset();
   expectCode(() => loadOrCreateLocalOperator({ sqlExecutor: () => { throw new Error("failed"); } }), LOCAL_OPERATOR_ERRORS.BOOTSTRAP_FAILED);
+  assert.equal(count(), 0);
   assert.match(loadOrCreateLocalOperator().local_operator_id, /^operator:/);
   assert.equal(count(), 1);
 });
@@ -146,10 +209,15 @@ test("06 UUID generation failure writes nothing and later recovers", () => {
 });
 
 test("07 updates are rejected by the database", () => {
+  reset();
+  loadOrCreateLocalOperator();
   assert.throws(() => sql(`UPDATE ${databaseSchema}.local_operators SET local_operator_id = '${OPERATOR}'`), /local operator is immutable/);
+  assert.equal(count(), 1);
 });
 
 test("08 deletes are rejected by the database", () => {
+  reset();
+  loadOrCreateLocalOperator();
   assert.throws(() => sql(`DELETE FROM ${databaseSchema}.local_operators`), /local operator is immutable/);
   assert.equal(count(), 1);
 });
