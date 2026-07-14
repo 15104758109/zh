@@ -96,7 +96,7 @@ test("only five production APIs are exported and invalid extra arguments fail cl
 });
 
 test("all five contracts are closed and match production request and response shapes", async () => {
-  const { pgRuntimeGuardContracts, pgRuntimeGuardErrorSchema } = await import("../../../packages/contracts/dist/src/pg-runtime-guards/index.js");
+  const { pgRuntimeGuardContracts, pgRuntimeGuardErrorSchema } = await import("../../../packages/contracts/dist/src/index.js");
   const ajv = new Ajv2020({ strict: true });
   const lockRequest = { local_operator_id: operator, book_id: "book-contract", ttl_seconds: 30 };
   const lockResponse = { fence_version: 1, holder_token: "a".repeat(64) };

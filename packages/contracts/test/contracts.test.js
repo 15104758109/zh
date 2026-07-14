@@ -15,7 +15,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import * as contracts from "../dist/src/index.js";
+import * as contracts from "@zh/contracts";
 
 const {
   CONTRACT_ERROR_CODES,
@@ -674,6 +674,7 @@ test("MCV1-T13 public exports and schemas contain no superseded governance surfa
     "ContractValidator",
     "DRAFT_2020_12",
     "OWNER_KEY_PATTERN",
+    "PG_RUNTIME_GUARD_ERROR_CODES",
     "STABLE_ID_PATTERN",
     "SchemaRegistry",
     "compareSchemaDescriptors",
@@ -681,6 +682,8 @@ test("MCV1-T13 public exports and schemas contain no superseded governance surfa
     "createSchemaRegistry",
     "isFactStateTransitionAllowed",
     "loadBuiltinSchemaDescriptors",
+    "pgRuntimeGuardContracts",
+    "pgRuntimeGuardErrorSchema",
   ]);
 
   const sourceFiles = [];
@@ -711,6 +714,33 @@ test("MCV1-T13 public exports and schemas contain no superseded governance surfa
   const registry = builtinRegistry();
   for (const field of ["specversion", "detail", "extensions", "delivery", "dedup_key", "registry"] ) {
     expectFailure(registry.validateEnvelope({ ...envelope(), [field]: "forbidden" }), "CONTRACT_UNKNOWN_FIELD");
+  }
+});
+
+test("MCV1-T15 package self-reference exports closed PostgreSQL runtime guard contracts", async () => {
+  assert.deepEqual(Object.keys(contracts.pgRuntimeGuardContracts).sort(), [
+    "acquire",
+    "guardedWrite",
+    "release",
+    "renew",
+    "validate",
+  ]);
+  assert.deepEqual(contracts.PG_RUNTIME_GUARD_ERROR_CODES, [
+    "INPUT_INVALID",
+    "LOCK_CONFLICT",
+    "IDEMPOTENCY_CONFLICT",
+    "STALE_VERSION",
+    "INTERNAL_ERROR",
+  ]);
+  assert.equal(contracts.pgRuntimeGuardErrorSchema.additionalProperties, false);
+  assert.deepEqual(contracts.pgRuntimeGuardErrorSchema.required, ["code", "message"]);
+  for (const contract of Object.values(contracts.pgRuntimeGuardContracts)) {
+    assert.equal(contract.request.additionalProperties, false);
+    assert.ok(contract.response);
+  }
+  const declarations = await readFile(path.join(PACKAGE_ROOT, "dist", "src", "index.d.ts"), "utf8");
+  for (const typeName of ["PgRuntimeGuardError", "PgRuntimeGuardErrorCode", "PgRuntimeGuardOperation"]) {
+    assert.match(declarations, new RegExp(`\\b${typeName}\\b`));
   }
 });
 
