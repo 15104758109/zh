@@ -1,5 +1,6 @@
 import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { types } from 'node:util';
 import { DEFAULT_BASELINE, DEFAULT_PRODUCTION_DIR, DEFAULT_REFERENCE_DIR, lintLegacyN8nInternal, lintProductionN8nInternal } from './internal-scanner.mjs';
 
 function rejectParentTraversal(value, label) {
@@ -12,6 +13,7 @@ const PRODUCTION_OPTION_NAMES = new Set(['productionDir', 'cwd']);
 
 function publicOptions(options, allowed) {
   try {
+    if (types.isProxy(options)) throw new Error(PUBLIC_OPTIONS_ERROR);
     if (options === null || typeof options !== 'object' || Array.isArray(options) || Object.getPrototypeOf(options) !== Object.prototype) throw new Error(PUBLIC_OPTIONS_ERROR);
     if (Object.getOwnPropertySymbols(options).length !== 0) throw new Error(PUBLIC_OPTIONS_ERROR);
     const values = {};

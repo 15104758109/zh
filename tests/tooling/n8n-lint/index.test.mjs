@@ -261,6 +261,27 @@ test('public APIs synchronously reject non-allowlisted, symbol, accessor, and pr
   assert.deepEqual((await lintProductionN8n({ cwd: fixture.cwd, productionDir: 'production' })).summary, { known: 0, new: 0, total: 0 });
 }));
 
+test('public APIs reject transparent, nested, and revoked Proxies without invoking traps', async () => withFixture(async (fixture) => {
+  const cases = [
+    [lintN8n, { cwd: fixture.cwd, referenceDir: 'references', baselinePath: 'baseline.json' }],
+    [lintProductionN8n, { cwd: fixture.cwd, productionDir: 'production' }],
+  ];
+  for (const [api, options] of cases) {
+    const calls = { getPrototypeOf: 0, ownKeys: 0, getOwnPropertyDescriptor: 0, get: 0 };
+    const transparent = new Proxy(options, {
+      getPrototypeOf(target) { calls.getPrototypeOf += 1; return Reflect.getPrototypeOf(target); },
+      ownKeys(target) { calls.ownKeys += 1; return Reflect.ownKeys(target); },
+      getOwnPropertyDescriptor(target, key) { calls.getOwnPropertyDescriptor += 1; return Reflect.getOwnPropertyDescriptor(target, key); },
+      get(target, key, receiver) { calls.get += 1; return Reflect.get(target, key, receiver); },
+    });
+    assert.throws(() => api(transparent), /Invalid n8n lint public options/);
+    assert.deepEqual(calls, { getPrototypeOf: 0, ownKeys: 0, getOwnPropertyDescriptor: 0, get: 0 });
+    assert.throws(() => api(new Proxy(transparent, {})), /Invalid n8n lint public options/);
+    const revocable = Proxy.revocable(options, {}); revocable.revoke();
+    assert.throws(() => api(revocable.proxy), /Invalid n8n lint public options/);
+  }
+}));
+
 test('production scan blocks invalid JSON and every valid non-object JSON value as structure-only findings', async () => withFixture(async (fixture) => {
   await writeProduction(fixture, 'invalid.json', '{');
   for (const [index, value] of ['null', 'false', '0', '[]', '"string"'].entries()) await writeProduction(fixture, `non-object-${index}.json`, value);
