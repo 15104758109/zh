@@ -23,11 +23,7 @@ window.NEW_BOOK_WIZARD_DATA = {
     stage_code: "world_settings",
     run_status: "active"
   },
-  chat: [
-    { role: "assistant", text: "已读取新书创建上下文。当前阶段建议先锁定创作原点，再逐步补齐世界设定、冲突和角色。" },
-    { role: "user", text: "主角要在资源枯竭世界里靠剑修体系破局。" },
-    { role: "assistant", text: "可以围绕资源代价、宗门存亡和规则反制组织卖点，后续设定会绑定到冲突升级。" }
-  ],
+  chat: [],
   prompts: ["补全核心卖点", "检查设定绑定", "生成风险提示"],
   worldBindings: [],
   stages: [
@@ -182,7 +178,7 @@ window.NEW_BOOK_WIZARD_DATA = {
         ["绑定关系", "检查角色、世界设定、冲突之间是否互相支撑。"],
         ["风险与缺失", "标记缺失字段、逻辑断点和商业爽点不足。"]
       ],
-      risks: [
+      prototypeRisks: [
         "世界设定中仍有备用卡片未绑定到角色或冲突。",
         "反派哲学立场需要进一步与资源规则对齐。",
         "开篇三章需要明确第一个可兑现爽点。"

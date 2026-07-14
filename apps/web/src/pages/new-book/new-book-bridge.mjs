@@ -229,8 +229,8 @@ function collectPayload() {
 function clientGate(payload) {
   if (!payload.title || !payload.intent.summary || !payload.selling_points.length || !payload.forbid.lines.length || !payload.target_words || !payload.chapter_words) return { state: "returned", message: "请先补齐创作原点中的必填信息。" };
   const missingCharacterData = payload.characters.some((character) => !character.client_ref || !character.name || !character.char_type || !character.gender || !["L0", "L1", "L2", "L3"].every((layer) => character.five_layers?.[layer] && Object.keys(character.five_layers[layer]).length) || !["knows", "unknown", "false_belief", "reasonable_suspect"].every((field) => Array.isArray(character.knowledge_boundary?.[field]) && character.knowledge_boundary[field].length));
-  if (missingCharacterData) return { state: "blocked", message: "角色 L0-L3 或知识边界四象限不完整，未提交创建请求。" };
-  if (payload.world_assets.some((asset) => !asset.board_type || !asset.atom_type || !asset.item_name || !asset.item_content || typeof asset.item_content !== "object" || Array.isArray(asset.item_content) || !Array.isArray(asset.item_content.affordance_dims) || !asset.item_content.affordance_dims.length)) return { state: "blocked", message: "世界设定条目缺少可用戏剧维度，未提交创建请求。" };
+  if (missingCharacterData) return { state: "returned", message: "角色 L0-L3 或知识边界四象限不完整，请补全后再提交。" };
+  if (payload.world_assets.some((asset) => !asset.board_type || !asset.atom_type || !asset.item_name || !asset.item_content || typeof asset.item_content !== "object" || Array.isArray(asset.item_content) || !Array.isArray(asset.item_content.affordance_dims) || !asset.item_content.affordance_dims.length)) return { state: "returned", message: "世界设定条目缺少可用戏剧维度，请补全后再提交。" };
   return null;
 }
 
@@ -289,4 +289,4 @@ blockFabricatedAi();
 bindCreation();
 renderRuntime();
 
-export { canonicalGenre, collectPayload, createBook };
+export { canonicalGenre, clientGate, collectPayload, createBook };

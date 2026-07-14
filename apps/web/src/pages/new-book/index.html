@@ -1316,11 +1316,12 @@
     .sidebar-menu a { color: inherit; text-decoration: none; display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 7px; font-size: 13px; }
     .sidebar-menu a:hover, .sidebar-menu a.menu-active { background: rgba(255,255,255,.13); }
     .sidebar-footer { margin-top: auto; border-top: 1px solid rgba(255,255,255,.14); padding-top: 12px; }
-    .sidebar-toggle { position: fixed; left: calc(var(--sidebar-w) - 16px); top: 18px; z-index: 35; border: 0; width: 32px; height: 32px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
-    .sidebar-collapsed { --sidebar-w: 62px; } .sidebar-collapsed .sidebar-text { display: none; } .sidebar-collapsed .sidebar-glass { padding-inline: 8px; }
-    .material-symbols-outlined { font-family: Arial, sans-serif; font-size: 16px; vertical-align: middle; }
+    .sidebar-toggle { position: fixed; left: calc(var(--sidebar-w) - 16px); top: 24px; z-index: 45; border: 0; width: 32px; height: 32px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+    :root.sidebar-collapsed { --sidebar-w: 62px; } :root.sidebar-collapsed .sidebar-text { display: none; } :root.sidebar-collapsed .sidebar-glass { padding-inline: 8px; }
+    .review-ai-empty { margin: 0; color: rgba(0,0,0,.58); font-size: 13px; }
+    .material-symbols-outlined { display: inline-block; min-width: 1em; font-family: Arial, sans-serif; font-size: 16px; font-weight: 700; line-height: 1; text-align: center; vertical-align: middle; }
     .badge { display: inline-flex; align-items: center; border: 1px solid currentColor; border-radius: 999px; padding: 2px 6px; } .badge-outline { background: transparent; }
-    .chat { display: grid; gap: 4px; } .chat-end { justify-items: end; } .chat-bubble { padding: 10px 12px; border-radius: 10px; background: #fff; } .chat-bubble-primary { background: #dcece0; }
+    .chat { display: grid; gap: 4px; } .chat-end { justify-items: end; } .chat-bubble { padding: 10px 12px; border-radius: 10px; background: #fff; } .chat-bubble-primary { background: #dcece0; } .chat-empty { padding: 12px; color: rgba(0,0,0,.58); font-size: 12px; }
     .modal-backdrop { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; background: rgba(16,15,15,.35); padding: 18px; } .modal-backdrop.open { display: grid; }
     .stage-modal-panel { width: min(1100px, 96vw); max-height: 92vh; display: flex; flex-direction: column; background: #e9e7e7; border-radius: 10px; box-shadow: 0 22px 60px rgba(0,0,0,.3); overflow: hidden; }
     .modal-head, .modal-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; background: #fff; } .modal-body { overflow: auto; padding: 16px; }
@@ -1353,7 +1354,7 @@
     </footer>
   </nav>
 
-  <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+  <button class="sidebar-toggle" type="button" aria-label="折叠侧栏" title="折叠侧栏">
     <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
   </button>
 
@@ -1377,7 +1378,7 @@
             <div>AI 开书助手</div>
           </div>
           <button class="btn-icon" id="chatMinimize" type="button" onclick="toggleChatDrawer()" aria-label="最小化聊天面板">
-            <span class="material-symbols-outlined" id="chatMinimizeIcon"></span>
+            <span class="material-symbols-outlined" id="chatMinimizeIcon">chevron_right</span>
           </button>
         </div>
         <div class="chat-history scrollbar" id="chatHistory"></div>
@@ -1486,6 +1487,30 @@
         return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
       }
 
+      const localIconMap = Object.freeze({
+        deployed_code: ["<>", "应用标识"], dashboard: ["▦", "总控设置"], architecture: ["⌘", "设计阶段"], precision_manufacturing: ["⚙", "生产阶段"], fact_check: ["✓", "审核阶段"], history: ["↶", "迭代管理"], public: ["◎", "世界设定"], group: ["≋", "角色设定"], gavel: ["!", "冲突种子"],
+        chevron_left: ["‹", "折叠侧栏"], chevron_right: ["›", "展开侧栏"], psychology: ["i", "创作向导"], send: ["→", "发送"], close: ["×", "关闭"], lock_open: ["⌑", "解锁"], analytics: ["↗", "完整性分析"], verified: ["✓", "确认"], edit: ["✎", "编辑"], auto_awesome: ["+", "添加"], link: ["↔", "关联"], description: ["≡", "详情"], rocket_launch: ["↑", "开始创作"], south_west: ["↙", "入站关联"], north_east: ["↗", "出站关联"], delete: ["×", "删除"], swipe_down: ["↓", "拖放到此处"]
+      });
+
+      function localizeMaterialIcons(scope = document) {
+        scope.querySelectorAll?.(".material-symbols-outlined").forEach((icon) => {
+          const token = icon.textContent.trim();
+          if (icon.dataset.localIcon === "true" && !localIconMap[token]) return;
+          const mapped = localIconMap[token] || ["•", "操作"];
+          icon.textContent = mapped[0];
+          icon.dataset.localIcon = "true";
+          icon.setAttribute("aria-hidden", "true");
+          const button = icon.closest("button");
+          if (button && !button.textContent.replace(mapped[0], "").trim() && !button.hasAttribute("aria-label")) {
+            button.setAttribute("aria-label", mapped[1]);
+            button.setAttribute("title", mapped[1]);
+          }
+        });
+      }
+
+      const iconObserver = new MutationObserver(() => localizeMaterialIcons());
+      iconObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+
       function worldCategoryName(value) {
         const map = {
           "职业": "职业/超能",
@@ -1587,7 +1612,7 @@
         const history = uiGet("chatHistory");
         if (!history) return;
         const chat = data.chat || [];
-        history.innerHTML = chat.map((item) => {
+        history.innerHTML = chat.length ? chat.map((item) => {
           const isUser = item.role === "user";
           return `
             <div class="chat ${isUser ? "chat-end" : "chat-start"}">
@@ -1595,7 +1620,7 @@
               <div class="chat-bubble ${isUser ? "chat-bubble-primary" : ""}">${escapeHtml(item.text)}</div>
             </div>
           `;
-        }).join("");
+        }).join("") : '<div class="chat-empty" role="status">尚无对话记录。</div>';
         history.scrollTop = history.scrollHeight;
 
         const prompts = uiGet("quickPrompts");
@@ -2068,10 +2093,8 @@
               ${item.modules.map(([title, desc]) => `<div class="review-module"><b>${title}</b><small>${desc}</small></div>`).join("")}
             </div>
             <div class="form-section">
-              <h4>AI分析结果</h4>
-              <ul class="missing-list">
-                ${item.risks.map((risk) => `<li>${risk}</li>`).join("")}
-              </ul>
+              <h4>AI综合分析</h4>
+              <p class="review-ai-empty">尚未执行 AI 综合分析，暂无分析结果。</p>
               <div class="row">
                 <button class="btn" type="button">详细配置</button>
                 <button class="btn btn-rose" type="button">开始创作</button>
@@ -2112,14 +2135,22 @@
         if (!workspace || !workPane || !workBody) return;
         workTitle.innerHTML = `${item.step} ${item.title}<small>${item.guide || ""}</small>`;
         if (workSubtitle) workSubtitle.remove();
-        if (workIcon) workIcon.textContent = item.icon || "fact_check";
+        if (workIcon) {
+          workIcon.textContent = item.icon || "fact_check";
+          delete workIcon.dataset.localIcon;
+          localizeMaterialIcons(document);
+        }
         workBody.innerHTML = finalReviewBodyTemplate(item);
         workspace.classList.add("drawer-mode");
         workPane.classList.remove("hidden");
         void workPane.offsetHeight;
         workPane.classList.add("slide-in");
         const minimizeIcon = uiGet("chatMinimizeIcon");
-        if (minimizeIcon) minimizeIcon.textContent = "";
+        if (minimizeIcon) {
+          minimizeIcon.textContent = "chevron_right";
+          delete minimizeIcon.dataset.localIcon;
+          localizeMaterialIcons(document);
+        }
       }
 
       function reviewFieldValue(field) {
@@ -2282,10 +2313,8 @@
           <div class="review-board">
             ${stageBlocks}
             <section class="form-section">
-              <h4>AI分析结果</h4>
-              <ul class="missing-list">
-                ${item.risks.map((risk) => `<li>${escapeHtml(risk)}</li>`).join("")}
-              </ul>
+              <h4>AI综合分析</h4>
+              <p class="review-ai-empty">尚未执行 AI 综合分析，暂无分析结果。</p>
             </section>
             <div class="review-actions">
               <button class="btn" type="button" onclick="window.runIntegrityAnalysis()"><span class="material-symbols-outlined">analytics</span>AI综合分析</button>
@@ -2306,7 +2335,11 @@
         const chatPane = uiGet("chatPane");
         if (chatPane) { chatPane.style.padding = ""; chatPane.style.alignItems = ""; }
         const minimizeIcon = uiGet("chatMinimizeIcon");
-        if (minimizeIcon) minimizeIcon.textContent = "";
+        if (minimizeIcon) {
+          minimizeIcon.textContent = "chevron_right";
+          delete minimizeIcon.dataset.localIcon;
+          localizeMaterialIcons(document);
+        }
       }
 
       function toggleChatDrawer() {
@@ -2402,11 +2435,6 @@
         };
         window.closeWorkPane = closeWorkPane;
         window.toggleChatDrawer = toggleChatDrawer;
-        window.toggleSidebar = () => {
-          document.body.classList.toggle("sidebar-collapsed");
-          const icon = uiGet("sidebarIcon");
-          if (icon) icon.textContent = document.body.classList.contains("sidebar-collapsed") ? "chevron_right" : "chevron_left";
-        };
         window.lockCurrentStep = () => {
           // 仅当确认的是进行中步骤时推进进度指针;回看已完成步骤后锁定不重复推进
           if (viewing === current && current < steps.length - 1) current += 1;
@@ -2832,6 +2860,7 @@
         document.querySelectorAll('.char-rel-dropdown,.char-bind-dropdown').forEach(function(d) { d.removeAttribute('open'); });
       });
 
+      localizeMaterialIcons();
       renderSidebar();
       renderBookMeta();
       renderSteps();
@@ -2857,6 +2886,26 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount); else mount();
 })();
 </script>
-  <script type="module" src="./new-book-bridge.mjs"></script>
+<script>
+  // Keep the shell control independent from the deferred bridge module.
+  (function bindSidebarToggle() {
+    const toggle = document.querySelector(".sidebar-toggle");
+    if (!toggle || toggle.dataset.newBookSidebarBound === "true") return;
+    const update = function updateSidebar() {
+      const collapsed = document.documentElement.classList.toggle("sidebar-collapsed");
+      const label = collapsed ? "展开侧栏" : "折叠侧栏";
+      const icon = toggle.querySelector(".material-symbols-outlined");
+      if (icon) {
+        icon.textContent = collapsed ? "›" : "‹";
+        icon.setAttribute("aria-hidden", "true");
+      }
+      toggle.setAttribute("aria-label", label);
+      toggle.setAttribute("title", label);
+    };
+    toggle.addEventListener("click", update);
+    toggle.dataset.newBookSidebarBound = "true";
+  })();
+</script>
+  <script type="module" src="./new-book-bridge.mjs?v=sidebar-truthful-1"></script>
 </body>
 </html>
