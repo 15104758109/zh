@@ -14,7 +14,10 @@
     "Use minimal Web + n8n + PostgreSQL stitching, with PostgreSQL owning transactions and truth.",
     "Keep apps/api as optional thin security glue; FP008-02 is the only high-code exception.",
     "Move features outside the V7 MVP and non-blocking code optimization into a later candidate register.",
-    "Audit only contracted interface business behavior for ordinary Tasks; add a Reviewer only for critical SQL, FP008-02, or control-contract changes."
+    "Audit only contracted interface business behavior for ordinary Tasks; add a Reviewer only for critical SQL, FP008-02, or control-contract changes.",
+    "R3 Round 1 restores FP005-01 scene_condition_package materialization and lineage inside S3-PRODUCTION-START rather than creating another platform Task.",
+    "R3 Round 1 requires FP013-01 fact-preserving enhancement, non-empty formal_summary, and change_limit before released.",
+    "R3 Round 1 defers complete Trace and unified model usage/cost attribution to CAND-OUTSIDE-ADVANCED-OBSERVABILITY."
   ],
   "plan_facts": {
     "revision": 3,
@@ -23,7 +26,7 @@
     "planned_count": 19,
     "selected_task": null,
     "historical_task_mapping_count": 85,
-    "feature_candidate_count": 21,
+    "feature_candidate_count": 22,
     "high_code_exception": "S4-DEDUCTION-RUNTIME",
     "product_surface": "WEB_ONLY",
     "architecture": "n8n + PostgreSQL + minimal Web interface"
@@ -44,11 +47,11 @@
   },
   "content_hash_domain": "SHA256_OF_UTF8_CONTENT_WITH_CRLF_AND_CR_NORMALIZED_TO_LF",
   "content_sha256": {
-    "docs/MVP_IMPLEMENTATION_PLAN_R3.md": "a48b7eae937ac6198184f461b8e16d4628f82759d9a7676bc4c729a1eff14515",
-    "docs/MVP_TASK_INDEX_R3.json": "24e51592c57ddae390c78af725edb5a5f0883baa6dc6b8d9699993b6ce4c66de",
-    "docs/FEATURE_CANDIDATES.md": "65059f33d9dc976632bd0d70daed474b74148bd6571def46523253b9624e1908",
-    "tools/mvp-plan.mjs": "d87f1b1422befab04e28a0e918d6525aeb94fa7f9b42c8d3e63842fcfd697984",
-    "tests/tooling/mvp-plan/mvp-plan.test.mjs": "96df0a95fec2656bbe3b3252a57b46f6258c56aa5bd22372218a42f560302efd",
+    "docs/MVP_IMPLEMENTATION_PLAN_R3.md": "05611254f7317a5d830c73567cd90385ff51f522526d2066ec81568bb295dc4e",
+    "docs/MVP_TASK_INDEX_R3.json": "e7864999daa85b2c85b0fc7100acce2eb67ee1caf5c4ed945148928df97cc0e8",
+    "docs/FEATURE_CANDIDATES.md": "b6668934ea7e535987b2cf0c9f026a1a144bf910e10c82e87ba40b326df909a5",
+    "tools/mvp-plan.mjs": "5e4ba3fe89ee9cd014ecc21256f8ddfc1fa415bbf8e6b33197e6f71129b860e0",
+    "tests/tooling/mvp-plan/mvp-plan.test.mjs": "a90a81b05071e7725197e8e1dd5c8f2fd7e94d81c79671e7119475ef7b7d1d3c",
     "README.md": "66459f93d401b7919425067686ebb5e83b141997a561108096af1e7b14bcb4b8",
     "DEV_HARNESS.md": "061649829255a97a616b97eaee4cac1fee37c6bc0b3c257954ea2fa0a23d83a8",
     "package.json": "171d9980296b98bf177a83df6cf0115e6b0694c8922eb572ff2f863c631e5188"
@@ -77,12 +80,12 @@
     {
       "command": "node tools/mvp-plan.mjs --self-test",
       "result": "PASS",
-      "detail": "Rejected READY, duplicate mapping, missing n8n scope, second high-code Task, native scope, and unknown dependency mutations."
+      "detail": "Rejected 11 mutations, including FP005-01 source/rejection/consumer drift, FP013-01 release-order drift, and old F0-06 mapping drift."
     },
     {
       "command": "node --test tests/tooling/mvp-plan/mvp-plan.test.mjs",
       "result": "PASS",
-      "detail": "5/5 tests."
+      "detail": "6/6 tests."
     },
     {
       "command": "pnpm lint",

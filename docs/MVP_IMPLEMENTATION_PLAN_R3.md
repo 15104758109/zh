@@ -25,6 +25,7 @@ The production path is deliberately small:
 4. apps/api is optional thin security glue only when a browser cannot safely hold a secret, CORS cannot be handled by the deployed edge, or streaming requires a server hop. It may not contain a business state machine.
 5. Internal workflow payloads remain simple JSON. Generic gateways, event platforms, orchestration DSLs, broad recovery frameworks, and general-purpose governance are not prerequisites for MVP.
 6. FP008-02 deduction runtime is the only high-code exception. Every other vertical is a minimal Web + n8n + PostgreSQL stitch.
+7. The n8n production base keeps only correlation_id and redacted errors. Complete Trace dimensions and unified model usage/cost attribution are post-MVP observability candidates.
 
 The MVP proves the V7 single-chapter business journey through the operating interface. Code optimization, generalized frameworks, unreachable edge hardening, and features not required by V7 are not release blockers; they are recorded in FEATURE_CANDIDATES.md.
 
@@ -70,10 +71,12 @@ The MVP must not create physical world_binding or world_knowledge_entry tables. 
 
 - S1-OPEN-BOOK excludes FP001-05 commercial scoring.
 - S2-L1A excludes FP004-05 variants and health recommendations.
+- S3-PRODUCTION-START includes FP005-01: at start, n8n materializes one versioned scene_condition_package from formal world, character, relationship, valid memory, locked L1A, and effective configuration versions. Future-state leakage, unavailable resources, character-knowledge overreach, missing scenes, or unresolved data debt reject the start.
+- S3-CHAPTER-PLAN and every downstream artifact consume or preserve the same scene_condition_package_version. The package is part of the vertical contract, not a separate platform Task.
 - S4-INFO-PACKAGE emits only lightweight whole-chapter grains. It does not pre-build char_tasks.
 - S4-DEDUCTION-RUNTIME implements FP008-02 F1 by generating char_tasks per grain at runtime.
 - S5 excludes FP011 reader-experience and commercial advice.
-- S5-EDITOR-REVISION follows V7 directly: the third N ends as abandoned_by_user. There is no manual_required state and no human-recovery feature in MVP.
+- S5-EDITOR-REVISION follows V7 directly: after Y it first performs the minimal FP013-01 fact-preserving style enhancement, requires a non-empty formal_summary, and enforces change_limit. An over-limit enhancement, invented fact, or empty summary is discarded and cannot become released. The third N still ends as abandoned_by_user; there is no manual_required state or human-recovery feature in MVP.
 - S5-FORMAL-WRITEBACK is the only formal chapter writeback path and preserves PostgreSQL atomicity.
 
 ## 7. Concurrency and integration

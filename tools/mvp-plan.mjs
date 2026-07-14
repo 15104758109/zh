@@ -32,6 +32,43 @@ const EXPECTED_TASKS = [
   "MVP-GATE"
 ];
 
+const SCENE_PACKAGE_SOURCES = [
+  "formal_world_version",
+  "formal_character_versions",
+  "formal_relationship_versions",
+  "valid_formal_memory_versions",
+  "locked_l1a_version",
+  "effective_config_version"
+];
+
+const SCENE_PACKAGE_REJECTIONS = [
+  "future_state_leakage",
+  "unavailable_resource",
+  "character_knowledge_overreach",
+  "missing_scene",
+  "unresolved_data_debt"
+];
+
+const SCENE_PACKAGE_CONSUMERS = [
+  "S3-CHAPTER-PLAN",
+  "S3-EXECUTION-PLAN",
+  "S4-INFO-PACKAGE",
+  "S4-DEDUCTION-RUNTIME",
+  "S4-DEDUCTION-REVIEW",
+  "S5-PROSE",
+  "S5-OBJECTIVE-AUDIT",
+  "S5-EDITOR-REVISION",
+  "S5-FORMAL-WRITEBACK",
+  "MVP-GATE"
+];
+
+const EDITOR_Y_RELEASE_SEQUENCE = [
+  "FP013-01_FACT_PRESERVING_STYLE_ENHANCEMENT",
+  "REQUIRE_NONEMPTY_FORMAL_SUMMARY",
+  "ENFORCE_CHANGE_LIMIT",
+  "MARK_RELEASED"
+];
+
 const REQUIRED_TASK_FIELDS = [
   "id",
   "layer",
@@ -186,6 +223,9 @@ export function validatePlan(index, candidatesMarkdown, historicalControl) {
   const taskById = new Map((index.tasks ?? []).map((task) => [task.id, task]));
   const openBook = taskById.get("S1-OPEN-BOOK");
   const l1a = taskById.get("S2-L1A");
+  const productionBase = taskById.get("F0-06-N8N-PRODUCTION-BASE");
+  const productionStart = taskById.get("S3-PRODUCTION-START");
+  const chapterPlan = taskById.get("S3-CHAPTER-PLAN");
   const info = taskById.get("S4-INFO-PACKAGE");
   const runtime = taskById.get("S4-DEDUCTION-RUNTIME");
   const editor = taskById.get("S5-EDITOR-REVISION");
@@ -196,12 +236,61 @@ export function validatePlan(index, candidatesMarkdown, historicalControl) {
   if (!editor?.acceptance.join(" ").includes("abandoned_by_user")) errors.push("third N must end as abandoned_by_user");
   if (editor?.v7_anchors.includes("V7::FP012-03")) errors.push("FP012-03 enhancement must be post-MVP");
   if (!sameSet(taskById.get("S5-OBJECTIVE-AUDIT")?.depends_on ?? [], ["S5-PROSE"])) errors.push("S5 objective audit must not wait for FP011");
+  if (!sameSet(productionBase?.business_contract?.minimum_observability ?? [], ["correlation_id", "redacted_error"])) {
+    errors.push("F0-06 production base must keep only minimum correlation_id and redacted_error observability");
+  }
+  if (productionBase?.business_contract?.advanced_observability_candidate !== "CAND-OUTSIDE-ADVANCED-OBSERVABILITY") {
+    errors.push("F0-06 production base must defer advanced observability");
+  }
+  if (productionStart?.business_contract?.output !== "scene_condition_package_version") {
+    errors.push("S3 production start must output scene_condition_package_version");
+  }
+  if (!sameSet(productionStart?.business_contract?.materializes_on_start_from ?? [], SCENE_PACKAGE_SOURCES)) {
+    errors.push("S3 production start must materialize the exact FP005-01 formal sources");
+  }
+  if (!sameSet(productionStart?.business_contract?.rejects ?? [], SCENE_PACKAGE_REJECTIONS)) {
+    errors.push("S3 production start must reject the exact FP005-01 unsafe inputs");
+  }
+  if (index.architecture?.scene_condition_package_lineage?.producer !== "S3-PRODUCTION-START"
+    || index.architecture?.scene_condition_package_lineage?.version_reference !== "scene_condition_package_version"
+    || !sameSet(index.architecture?.scene_condition_package_lineage?.required_consumers ?? [], SCENE_PACKAGE_CONSUMERS)) {
+    errors.push("scene_condition_package lineage must cover chapter planning and every downstream MVP Task");
+  }
+  if (!sameSet(chapterPlan?.business_contract?.consumes ?? [], ["scene_condition_package_version"])
+    || chapterPlan?.business_contract?.preserve_lineage_downstream !== true) {
+    errors.push("S3 chapter plan must consume and preserve scene_condition_package_version");
+  }
+  for (const taskId of SCENE_PACKAGE_CONSUMERS) {
+    if (!taskById.get(taskId)?.acceptance.join(" ").includes("scene_condition_package_version")) {
+      errors.push(taskId + " must explicitly preserve scene_condition_package_version");
+    }
+  }
+  if (JSON.stringify(editor?.business_contract?.y_release_sequence) !== JSON.stringify(EDITOR_Y_RELEASE_SEQUENCE)) {
+    errors.push("S5 editor Y path must enhance, require formal_summary, enforce change_limit, then release");
+  }
+  if (editor?.business_contract?.invalid_enhancement !== "DISCARD_AND_DO_NOT_RELEASE") {
+    errors.push("invalid FP013-01 enhancement must be discarded without released");
+  }
+  if (editor?.business_contract?.n3_terminal !== "abandoned_by_user") {
+    errors.push("S5 editor third N contract must remain abandoned_by_user");
+  }
+  const editorAcceptance = editor?.acceptance.join(" ") ?? "";
+  if (!editorAcceptance.includes("formal_summary") || !editorAcceptance.includes("change_limit") || !editorAcceptance.includes("不得进入released")) {
+    errors.push("S5 editor acceptance must reject empty summary, change-limit failure, or invented facts before released");
+  }
+  const writebackAcceptance = taskById.get("S5-FORMAL-WRITEBACK")?.acceptance.join(" ") ?? "";
+  if (!writebackAcceptance.includes("formal_summary") || !writebackAcceptance.includes("change_limit")) {
+    errors.push("S5 formal writeback must consume the validated FP013-01 released candidate");
+  }
 
   if (index.resources?.max_disjoint_coders !== 2 || index.resources?.integration_merge !== "SERIAL" || index.resources?.DB_WRITE !== 1 || index.resources?.N8N_RUNTIME_WRITE !== 1) {
     errors.push("resource policy must be 2 disjoint Coders, serial merge, DB_WRITE=1, N8N_RUNTIME_WRITE=1");
   }
 
   if (!unique(candidateIds)) errors.push("feature candidate IDs must be unique");
+  if (candidateIds.length !== 22 || !candidateIds.includes("CAND-OUTSIDE-ADVANCED-OBSERVABILITY")) {
+    errors.push("feature candidate catalog must contain the 22-entry R3 Round 1 set");
+  }
   for (const candidate of index.feature_candidates ?? []) {
     if (!["V7_POST_MVP", "OUTSIDE_V7"].includes(candidate.category)) errors.push(`${candidate.id} has invalid category`);
     if (!candidatesMarkdown.includes(`### ${candidate.id}`)) errors.push(`${candidate.id} missing from FEATURE_CANDIDATES.md`);
@@ -218,6 +307,10 @@ export function validatePlan(index, candidatesMarkdown, historicalControl) {
     if (!validTargets[mapping.target_type]?.has(mapping.target_id)) {
       errors.push(`${mapping.old_task_id} has invalid ${mapping.target_type} target ${mapping.target_id}`);
     }
+  }
+  const oldF006 = mappings.find((mapping) => mapping.old_task_id === "F0-06-OBSERVABILITY");
+  if (oldF006?.target_type !== "FEATURE_CANDIDATE" || oldF006?.target_id !== "CAND-OUTSIDE-ADVANCED-OBSERVABILITY") {
+    errors.push("historical F0-06 observability must map to the advanced observability candidate");
   }
 
   return {
@@ -271,6 +364,24 @@ function runSelfTest(inputs) {
   });
   rejected("native-client-scope", (copy) => { copy.tasks[0].write_scope.push("apps/native-desktop/**"); });
   rejected("unknown-dependency", (copy) => { copy.tasks[0].depends_on.push("UNKNOWN-TASK"); });
+  rejected("scene-package-source", (copy) => {
+    copy.tasks.find((item) => item.id === "S3-PRODUCTION-START").business_contract.materializes_on_start_from.pop();
+  });
+  rejected("scene-package-rejection", (copy) => {
+    copy.tasks.find((item) => item.id === "S3-PRODUCTION-START").business_contract.rejects.pop();
+  });
+  rejected("scene-package-consumer", (copy) => {
+    copy.tasks.find((item) => item.id === "S3-CHAPTER-PLAN").business_contract.consumes = [];
+  });
+  rejected("editor-release-order", (copy) => {
+    const sequence = copy.tasks.find((item) => item.id === "S5-EDITOR-REVISION").business_contract.y_release_sequence;
+    [sequence[1], sequence[3]] = [sequence[3], sequence[1]];
+  });
+  rejected("observability-mapping", (copy) => {
+    const mapping = copy.old85_to_r3.find((item) => item.old_task_id === "F0-06-OBSERVABILITY");
+    mapping.target_type = "TASK";
+    mapping.target_id = "F0-06-N8N-PRODUCTION-BASE";
+  });
 
   const before = snapshot(inputs);
   const afterInputs = loadInputs();

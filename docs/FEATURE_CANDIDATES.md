@@ -70,6 +70,10 @@ A general sensitive-action or token inspection platform. MVP keeps secrets out o
 
 Shared reservation accounting, advanced token budgets, cost analytics, and long-run cost governance. MVP retains only the V7 runtime limit needed to stop one deduction safely.
 
+### CAND-OUTSIDE-ADVANCED-OBSERVABILITY
+
+Complete Trace dimensions, cross-workflow telemetry, and unified attribution of model usage and cost. The MVP n8n production base retains only correlation_id and redacted errors needed to operate a single vertical safely.
+
 ### CAND-OUTSIDE-GENERIC-VECTOR-RECONCILER
 
 A general vector lifecycle contract, reconciler, and global asset indexing service. FP008-02 may build only its minimum pgvector memory lookup with PostgreSQL is_valid recheck.
