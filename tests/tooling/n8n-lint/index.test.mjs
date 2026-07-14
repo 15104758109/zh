@@ -29,7 +29,8 @@ async function makeFixture() {
   const cwd = await mkdtemp(join(tmpdir(), 'n8n-lint-'));
   const references = join(cwd, 'references');
   const files = new Map();
-  for (let index = 0; index < 17; index += 1) files.set(`workflow-${index}.json`, workflow(index));
+  for (let index = 0; index < 18; index += 1) files.set(`workflow-${index}.json`, workflow(index));
+  files.set('workflow-17.json', { ...workflow(17), active: true });
   files.set('workflow-0.json', workflow(0, { id: 'experimental', type: 'n8n-nodes-base.code', parameters: { text: 'rpc_acquire_run_lock' } }));
   for (let index = 1; index < 6; index += 1) files.set(`workflow-${index}.json`, workflow(index, { id: `write-${index}`, type: 'n8n-nodes-base.postgres', parameters: { operation: 'update' } }));
   const fixture = { cwd, references, files, baseline: { schema_version: 'n8n-reference-baseline/v2', workflows: [], known_semantic_findings: [] } };
@@ -37,6 +38,7 @@ async function makeFixture() {
   fixture.baseline.known_semantic_findings = [
     known('EXPERIMENTAL_RPC', 0, 'experimental', { rpc: 'rpc_acquire_run_lock' }),
     ...[1, 2, 3, 4, 5].map((index) => known('BARE_DATABASE_WRITE', index, `write-${index}`, { location: 'nodes.0.parameters.operation' })),
+    known('ACTIVE_STATUS_ANOMALY', 17),
   ];
   await syncFixture(fixture);
   return fixture;
@@ -92,9 +94,9 @@ async function makeFileLink(target, link) {
   try { await symlink(target, link, 'file'); return true; } catch { return false; }
 }
 
-test('accepts the exact 17-workflow manifest with six bound known findings deterministically', async () => withFixture(async (fixture) => {
+test('accepts the exact 18-workflow manifest with seven bound known findings deterministically', async () => withFixture(async (fixture) => {
   const first = await lint(fixture); const second = await lint(fixture);
-  assert.equal(first.workflow_count, 17); assert.deepEqual(first.summary, { known: 6, new: 0, total: 6 });
+  assert.equal(first.workflow_count, 18); assert.deepEqual(first.summary, { known: 7, new: 0, total: 7 }); assert.ok(codes(first).includes('ACTIVE_STATUS_ANOMALY'));
   assert.equal(hash(JSON.stringify(first)), hash(JSON.stringify(second)));
 }));
 
@@ -111,7 +113,7 @@ test('canonicalizes LF, CRLF, and CR workflow content without ignoring non-newli
     return lint(fixture);
   };
   const lf = await rewrite('\n'); const crlf = await rewrite('\r\n'); const cr = await rewrite('\r');
-  assert.deepEqual(lf.summary, { known: 6, new: 0, total: 6 }); assert.deepEqual(crlf.summary, lf.summary); assert.deepEqual(cr.summary, lf.summary);
+  assert.deepEqual(lf.summary, { known: 7, new: 0, total: 7 }); assert.deepEqual(crlf.summary, lf.summary); assert.deepEqual(cr.summary, lf.summary);
   await writeFile(join(fixture.references, 'workflow-10.json'), `${JSON.stringify(fixture.files.get('workflow-10.json'), null, 2)} `);
   assert.ok(codes(await lint(fixture)).includes('CONTENT_DRIFT'));
 }));
@@ -225,7 +227,7 @@ test('production scan treats a missing directory as an empty deterministic colle
 test('public lintN8n retains the exact legacy top-level report contract', async () => withFixture(async (fixture) => {
   const report = await lint(fixture);
   assert.deepEqual(Object.keys(report), ['schema_version', 'reference_dir', 'baseline', 'workflow_count', 'registered_workflow_count', 'findings', 'summary']);
-  assert.deepEqual(report, { schema_version: 'n8n-lint-report/v2', reference_dir: 'references', baseline: 'baseline.json', workflow_count: 17, registered_workflow_count: 17, findings: report.findings, summary: { known: 6, new: 0, total: 6 } });
+  assert.deepEqual(report, { schema_version: 'n8n-lint-report/v2', reference_dir: 'references', baseline: 'baseline.json', workflow_count: 18, registered_workflow_count: 18, findings: report.findings, summary: { known: 7, new: 0, total: 7 } });
 }));
 
 test('production scan recursively reports only new findings and does not echo secrets', async () => withFixture(async (fixture) => {
@@ -257,7 +259,7 @@ test('public APIs synchronously reject non-allowlisted, symbol, accessor, and pr
   assert.throws(() => lintN8n({ productionDir: 'production' }), /Invalid n8n lint public options/);
   assert.throws(() => lintProductionN8n({ referenceDir: 'references' }), /Invalid n8n lint public options/);
   assert.equal(accessed, false);
-  assert.deepEqual((await lintN8n({ cwd: fixture.cwd, referenceDir: 'references', baselinePath: 'baseline.json' })).summary, { known: 6, new: 0, total: 6 });
+  assert.deepEqual((await lintN8n({ cwd: fixture.cwd, referenceDir: 'references', baselinePath: 'baseline.json' })).summary, { known: 7, new: 0, total: 7 });
   assert.deepEqual((await lintProductionN8n({ cwd: fixture.cwd, productionDir: 'production' })).summary, { known: 0, new: 0, total: 0 });
 }));
 

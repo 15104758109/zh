@@ -5,11 +5,11 @@ import { isAbsolute, relative, resolve } from 'node:path';
 export const DEFAULT_REFERENCE_DIR = 'docs/后端/n8n';
 export const DEFAULT_BASELINE = 'orchestration/reference-baseline/n8n-workflows.json';
 export const DEFAULT_PRODUCTION_DIR = 'orchestration/workflows';
-const WORKFLOW_COUNT = 17;
+const WORKFLOW_COUNT = 18;
 const SHA256 = /^[a-f0-9]{64}$/;
 const DEPRECATED_RPCS = new Set(['rpc_writeback_commit', 'rpc_create_chapter_target', 'rpc_persist_deduction_draft']);
 const EXPERIMENTAL_RPCS = new Set(['rpc_acquire_run_lock']);
-const REGISTERED_RPCS = new Set(['rpc_archive_shadow_version', 'rpc_commit_chapter', 'rpc_commit_character_settings', 'rpc_commit_world_settings', 'rpc_confirm_audit_result', 'rpc_create_book_project', 'rpc_enhance_prose', 'rpc_execute_audit', 'rpc_finalize_deduction_snapshot', 'rpc_finalize_l1a', 'rpc_generate_l1a_conflicts', 'rpc_persist_candidate_text', 'rpc_persist_chapter_execution_plan', 'rpc_promote_prompt_config']);
+const REGISTERED_RPCS = new Set(['rpc_archive_shadow_version', 'rpc_commit_chapter', 'rpc_commit_character_settings', 'rpc_commit_world_settings', 'rpc_confirm_audit_result', 'rpc_create_book_project', 'rpc_enhance_prose', 'rpc_execute_audit', 'rpc_finalize_deduction_snapshot', 'rpc_finalize_l1a', 'rpc_generate_l1a_conflicts', 'rpc_persist_candidate_text', 'rpc_persist_chapter_execution_plan', 'rpc_promote_prompt_config', 'rpc_workbench']);
 const SECRET_KEYS = new Set(['apikey', 'authorization', 'password', 'clientsecret', 'accesstoken', 'refreshtoken', 'privatekey', 'databaseurl']);
 const WRITE_OPERATIONS = new Set(['insert', 'update', 'delete', 'upsert', 'merge', 'create', 'alter', 'drop', 'truncate', 'grant', 'revoke']);
 const INTEGRITY_CODES = new Set(['INVALID_JSON', 'MISSING_WORKFLOW', 'UNREGISTERED_WORKFLOW', 'CONTENT_DRIFT', 'WORKFLOW_IDENTITY_DRIFT', 'DUPLICATE_WORKFLOW_IDENTITY', 'INVALID_WORKFLOW_STRUCTURE']);
@@ -172,7 +172,7 @@ function assertStableCollection(initial, current, label) {
 
 async function validateBaseline(baseline, { cwd, referenceDir }) {
   if (!isPlainObject(baseline) || baseline.schema_version !== 'n8n-reference-baseline/v2') fail('schema_version must be n8n-reference-baseline/v2');
-  if (!Array.isArray(baseline.workflows) || baseline.workflows.length !== WORKFLOW_COUNT || !Array.isArray(baseline.known_semantic_findings) || baseline.known_semantic_findings.length !== 6 || 'known_issue_fingerprints' in baseline) fail('baseline collection shape is invalid');
+  if (!Array.isArray(baseline.workflows) || baseline.workflows.length !== WORKFLOW_COUNT || !Array.isArray(baseline.known_semantic_findings) || baseline.known_semantic_findings.length !== 7 || 'known_issue_fingerprints' in baseline) fail('baseline collection shape is invalid');
   const absoluteReferenceDir = resolve(cwd, referenceDir); const referencePath = normalizedPath(pathInside(cwd, absoluteReferenceDir, 'reference directory')); const paths = new Set(); const ids = new Set(); const names = new Set(); const entries = new Map();
   for (const entry of baseline.workflows) {
     if (!isPlainObject(entry) || typeof entry.path !== 'string' || typeof entry.id !== 'string' || !entry.id || typeof entry.name !== 'string' || !entry.name || typeof entry.sha256 !== 'string' || !SHA256.test(entry.sha256)) fail('workflow entry shape is invalid');
@@ -182,7 +182,7 @@ async function validateBaseline(baseline, { cwd, referenceDir }) {
   }
   const known = new Map();
   for (const item of baseline.known_semantic_findings) {
-    if (!isPlainObject(item) || !['EXPERIMENTAL_RPC', 'BARE_DATABASE_WRITE'].includes(item.code) || typeof item.path !== 'string' || typeof item.workflow_id !== 'string' || typeof item.workflow_sha256 !== 'string') fail('known semantic entry shape is invalid');
+    if (!isPlainObject(item) || !['ACTIVE_STATUS_ANOMALY', 'EXPERIMENTAL_RPC', 'BARE_DATABASE_WRITE'].includes(item.code) || typeof item.path !== 'string' || typeof item.workflow_id !== 'string' || typeof item.workflow_sha256 !== 'string') fail('known semantic entry shape is invalid');
     const entry = entries.get(item.path); const key = findingKey(item); if (!entry || item.workflow_id !== entry.id || item.workflow_sha256 !== entry.sha256 || known.has(key)) fail('known semantic entry is not bound to manifest'); known.set(key, item);
   }
   return { entries, known, absoluteReferenceDir, referencePath };
