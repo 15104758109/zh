@@ -2,5 +2,6 @@
   "name": "@zhreplan/web",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": { "dev": "node src/app/server.mjs" }
 }

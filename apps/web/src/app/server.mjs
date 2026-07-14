@@ -1,0 +1,12 @@
+import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+const HOST="127.0.0.1",PORT=Number(process.env.PORT||4176),N8N=process.env.N8N_BASE_URL||"http://127.0.0.1:5678";
+const root=fileURLToPath(new URL("..",import.meta.url));
+const files=new Map([["/workbench",["pages/workbench/index.html","text/html; charset=utf-8"]],["/workbench/",["pages/workbench/index.html","text/html; charset=utf-8"]],["/books/new/",["pages/new-book/index.html","text/html; charset=utf-8"]]]);
+const assets=new Map([["/workbench/workbench.mjs","pages/workbench/workbench.mjs"],["/workbench/workbench.css","pages/workbench/workbench.css"],["/books/new/new-book-bridge.mjs","pages/new-book/new-book-bridge.mjs"],["/books/new/new_book_wizard_data.js","pages/new-book/new_book_wizard_data.js"]]);
+function send(res,status,body,type="application/json; charset=utf-8"){res.writeHead(status,{"content-type":type,"cache-control":"no-store"});res.end(body)}
+async function read(req){const chunks=[];for await(const part of req)chunks.push(part);return Buffer.concat(chunks)}
+const app=createServer(async(req,res)=>{const path=new URL(req.url||"/",`http://${req.headers.host||HOST}`).pathname;if(req.method==="POST"&&["/webhook/workbench","/webhook/create_book"].includes(path)){try{const up=await fetch(new URL(path,N8N),{method:"POST",headers:{"content-type":req.headers["content-type"]||"application/json",accept:"application/json"},body:await read(req)});send(res,up.status,Buffer.from(await up.arrayBuffer()),up.headers.get("content-type")||undefined)}catch{send(res,502,JSON.stringify({ok:false,error:{code:"UPSTREAM_UNAVAILABLE",message:"The workflow service is unavailable."}}))}return}if(req.method==="GET"&&["/books/new","/books/new/workbench.html","/books/workbench.html"].includes(path)){res.writeHead(308,{location:path==="/books/new"?"/books/new/":"/workbench","cache-control":"no-store"});res.end();return}if(req.method==="GET"&&files.has(path)){const [file,type]=files.get(path);send(res,200,await readFile(join(root,file)),type);return}if(req.method==="GET"&&assets.has(path)){const file=assets.get(path),type=file.endsWith(".css")?"text/css; charset=utf-8":"application/javascript; charset=utf-8";send(res,200,await readFile(join(root,file)),type);return}send(res,404,JSON.stringify({error:{code:"NOT_FOUND",message:"Not found."}}))});
+app.listen(PORT,HOST,()=>process.stdout.write(`web server listening on http://${HOST}:${PORT}/workbench\n`));

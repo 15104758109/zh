@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import test from "node:test";
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"../../..");
+const operator="11111111-1111-1111-1111-111111111111";
+function sql(statement){return execFileSync("docker",["exec","-i","n8n-pgvector","sh","-lc","exec psql -X -q -v ON_ERROR_STOP=1 -U \"$POSTGRES_USER\" -d zh_narrative_test -At -f -"],{cwd:root,input:statement,encoding:"utf8"}).trim()}
+function rpc(input){return JSON.parse(sql(`SELECT public.rpc_workbench($$${JSON.stringify(input)}$$::jsonb)::text;`))}
+function items(overrides={}){const values={prompt:{text:"Test prompt"},model:{provider:"openai",model:"gpt-test",connection_tested:true},budget:{max_tokens:512},automation:{production:false,audit:false,iteration:false},presentation:{emotion:.5,pacing:.5},...overrides};return Object.entries(values).map(([kind,effective_value])=>({kind,scope:"operator",effective_value}))}
+test("workbench installer and projection are closed and secret-free",()=>{const install=readFileSync(path.join(root,"db/functions/workbench/install.sql"),"utf8");sql(install);sql(install);const empty=rpc({action:"load",local_operator_id:operator});assert.equal(empty.ok,true);assert.equal(empty.config.length,5);assert.equal(JSON.stringify(empty).includes("api_key"),false);});
+test("five-item save is atomic, versions, and FP001-03 projection sync",()=>{const before=Number(sql(`SELECT count(*) FROM public.t_workbench_config_versions WHERE local_operator_id='${operator}';`));const bad=rpc({action:"save",local_operator_id:operator,items:items({budget:{max_tokens:0}})});assert.equal(bad.ok,false);assert.equal(Number(sql(`SELECT count(*) FROM public.t_workbench_config_versions WHERE local_operator_id='${operator}';`)),before);const saved=rpc({action:"save",local_operator_id:operator,items:items()});assert.equal(saved.ok,true);assert.equal(Number(sql(`SELECT count(*) FROM public.t_workbench_config_versions WHERE local_operator_id='${operator}' AND status='active';`)),5);assert.equal(sql("SELECT model_name || ':' || max_tokens FROM public.t_prompt_configs WHERE node_code='FP001-03' AND status='active' ORDER BY updated_at DESC LIMIT 1;"),"gpt-test:512");const next=rpc({action:"save",local_operator_id:operator,items:items({automation:{production:true,audit:false,iteration:false}})});assert.equal(next.error.code,"AUTOMATION_NOT_READY");const connection=rpc({action:"save",local_operator_id:operator,items:items({model:{provider:"openai",model:"gpt-test",connection_tested:false}})});assert.equal(connection.error.code,"CONNECTION_TEST_REQUIRED");});
