@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zhreplan.local/contracts/new-book/create-book-success/1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "status", "book_id", "idempotent", "current_book"],
+  "properties": { "ok": { "const": true }, "status": { "const": "success" }, "book_id": { "type": "string", "format": "uuid" }, "idempotent": { "type": "boolean" }, "current_book": { "type": "object", "additionalProperties": false, "required": ["book_id", "local_operator_id", "title"], "properties": { "book_id": { "type": "string", "format": "uuid" }, "local_operator_id": { "type": "string" }, "title": { "type": "string" } } } }
+}

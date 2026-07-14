@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zhreplan.local/contracts/new-book/create-book-request/1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["local_operator_id", "title", "idempotency_key", "intent", "forbid", "selling_points", "target_words", "chapter_words", "characters", "world_assets", "relations", "segment_promises"],
+  "properties": {
+    "local_operator_id": { "type": "string", "format": "uuid", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "idempotency_key": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$" },
+    "intent": { "type": "object", "additionalProperties": false, "properties": { "genre_main": { "type": "string" }, "summary": { "type": "string" } }, "required": ["genre_main", "summary"] },
+    "forbid": { "type": "object", "additionalProperties": false, "properties": { "lines": { "type": "array", "items": { "type": "string" } }, "notes": { "type": "string" } }, "required": ["lines"] },
+    "selling_points": { "type": "array", "items": { "type": "string" } },
+    "target_words": { "type": "integer", "minimum": 1 },
+    "chapter_words": { "type": "integer", "minimum": 500, "maximum": 10000 },
+    "characters": { "type": "array", "items": { "$ref": "#/$defs/character" } },
+    "world_assets": { "type": "array", "items": { "$ref": "#/$defs/worldAsset" } },
+    "relations": { "type": "array", "items": { "$ref": "#/$defs/relation" } },
+    "segment_promises": { "type": "array", "items": { "$ref": "#/$defs/segmentPromise" } }
+  },
+  "$defs": {
+    "character": { "type": "object", "additionalProperties": false, "required": ["client_ref", "name", "five_layers", "knowledge_boundary"], "properties": { "client_ref": { "type": "string", "minLength": 1 }, "name": { "type": "string", "minLength": 1 }, "char_type": { "enum": ["protagonist", "supporting", "ensemble", "antagonist"] }, "gender": { "type": "string" }, "five_layers": { "type": "object", "additionalProperties": false, "required": ["L0", "L1", "L2", "L3"], "properties": { "L0": {}, "L1": {}, "L2": {}, "L3": {} } }, "knowledge_boundary": { "type": "object", "additionalProperties": false, "required": ["knows", "unknown", "false_belief", "reasonable_suspect"], "properties": { "knows": {}, "unknown": {}, "false_belief": {}, "reasonable_suspect": {} } }, "decide_init": {}, "origin_memory": {}, "conflict_seed": {}, "char_arc": { "type": "string" } } },
+    "worldAsset": { "type": "object", "additionalProperties": false, "required": ["board_type", "atom_type", "item_name", "item_content"], "properties": { "board_type": { "enum": ["rule", "geography", "resource", "faction", "profession", "monster", "chronicle"] }, "atom_type": { "enum": ["rule", "fact", "resource", "conflict_seed"] }, "source_type": { "enum": ["manual", "imported", "ai_generated"] }, "item_name": { "type": "string", "minLength": 1 }, "item_content": {} } },
+    "relation": { "type": "object", "additionalProperties": false, "required": ["from_ref", "to_ref", "intimacy", "trust", "dependence", "support_level", "emotional_bond"], "properties": { "from_ref": { "type": "string", "minLength": 1 }, "to_ref": { "type": "string", "minLength": 1 }, "intimacy": { "type": "number", "minimum": -10, "maximum": 10 }, "trust": { "type": "number", "minimum": -10, "maximum": 10 }, "dependence": { "type": "number", "minimum": 0, "maximum": 10 }, "support_level": { "type": "number", "minimum": 0, "maximum": 10 }, "emotional_bond": { "type": "number", "minimum": 0, "maximum": 10 }, "relation_type": { "type": "string" }, "relation_hierarchy": { "type": "string" }, "role_assign": { "type": "string" } } },
+    "segmentPromise": { "type": "object", "additionalProperties": false, "required": ["l1a_seq", "l1a_name", "conflict_background", "stakes", "irreversible_consequences", "escalation_path", "plot_promise", "emotion_promise", "role_arc", "world_progress"], "properties": { "l1a_seq": { "type": "integer", "minimum": 1 }, "l1a_name": { "type": "string", "minLength": 1 }, "conflict_background": {}, "stakes": {}, "irreversible_consequences": {}, "escalation_path": {}, "plot_promise": {}, "emotion_promise": {}, "role_arc": {}, "world_progress": {} } }
+  }
+}

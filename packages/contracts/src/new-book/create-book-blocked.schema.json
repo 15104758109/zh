@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zhreplan.local/contracts/new-book/create-book-blocked/1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "code", "message"],
+  "properties": {
+    "status": { "const": "BLOCKED" },
+    "code": { "enum": ["ACTIVE_SKILL_UNAVAILABLE", "ACTIVE_CONFIG_UNAVAILABLE", "ACTIVE_BUDGET_UNAVAILABLE", "PREVIEW_OUTPUT_INVALID"] },
+    "message": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

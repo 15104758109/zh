@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zhreplan.local/contracts/new-book/create-book-preview/1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "missing_fields"],
+  "properties": { "status": { "const": "preview" }, "missing_fields": { "type": "array", "items": { "type": "string" } } }
+}
