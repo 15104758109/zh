@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { lintN8n, lintProductionN8n } from '../../../scripts/n8n-lint/index.mjs';
+import { lintProductionN8nInternal } from '../../../scripts/n8n-lint/internal-scanner.mjs';
 
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 const workflowHash = (value) => hash(value.replace(/\r\n|\r/g, '\n'));
@@ -68,7 +69,8 @@ async function withFixture(run) {
 }
 
 function lint(fixture) { return lintN8n({ cwd: fixture.cwd, referenceDir: 'references', baselinePath: 'baseline.json' }); }
-function lintProduction(fixture, productionDir = 'production', hooks) { return lintProductionN8n({ cwd: fixture.cwd, productionDir, hooks }); }
+function lintProduction(fixture, productionDir = 'production') { return lintProductionN8n({ cwd: fixture.cwd, productionDir }); }
+function lintProductionInternal(fixture, productionDir = 'production', hooks) { return lintProductionN8nInternal({ cwd: fixture.cwd, productionDir, hooks }); }
 function codes(report) { return report.findings.map((finding) => finding.code); }
 
 async function writeProduction(fixture, name, value, productionDir = 'production') {
@@ -220,12 +222,24 @@ test('production scan treats a missing directory as an empty deterministic colle
   assert.deepEqual(second, first);
 }));
 
+test('public lintN8n retains the exact legacy top-level report contract', async () => withFixture(async (fixture) => {
+  const report = await lint(fixture);
+  assert.deepEqual(Object.keys(report), ['schema_version', 'reference_dir', 'baseline', 'workflow_count', 'registered_workflow_count', 'findings', 'summary']);
+  assert.deepEqual(report, { schema_version: 'n8n-lint-report/v2', reference_dir: 'references', baseline: 'baseline.json', workflow_count: 17, registered_workflow_count: 17, findings: report.findings, summary: { known: 6, new: 0, total: 6 } });
+}));
+
 test('production scan recursively reports only new findings and does not echo secrets', async () => withFixture(async (fixture) => {
   const secret = 'production-secret-value';
   await writeProduction(fixture, 'nested/sensitive.JSON', { ...workflow('production'), active: true, nodes: [validNode('production', { parameters: { password: secret, jsCode: 'rpc_create_chapter_target(); db.query("UPDATE chapter SET title = 1")' } })] });
   const report = await lintProduction(fixture);
   assert.equal(report.workflow_count, 1); assert.deepEqual(codes(report).sort(), ['ACTIVE_STATUS_ANOMALY', 'BARE_DATABASE_WRITE', 'DEPRECATED_RPC', 'SECRET_LITERAL']);
   assert.ok(report.findings.every((finding) => finding.baseline === 'new')); assert.ok(!JSON.stringify(report).includes(secret));
+}));
+
+test('public production options reject hooks and cannot suppress an unsafe workflow', async () => withFixture(async (fixture) => {
+  await writeProduction(fixture, 'active.json', { ...workflow('active'), active: true }); let invoked = false;
+  await assert.rejects(lintProductionN8n({ cwd: fixture.cwd, productionDir: 'production', hooks: { afterCollectionEnumeratedBeforeCapture() { invoked = true; } } }), /internal-only/);
+  assert.equal(invoked, false); assert.ok(codes(await lintProduction(fixture)).includes('ACTIVE_STATUS_ANOMALY'));
 }));
 
 test('production scan blocks invalid JSON and every valid non-object JSON value as structure-only findings', async () => withFixture(async (fixture) => {
@@ -292,7 +306,7 @@ test('production file links fail closed when file symlinks are available', async
 test('TOCTOU replacement of the verified root directory fails closed', async () => withFixture(async (fixture) => withOutsideFixture(async (outside) => {
   const secret = 'root-race-secret'; await writeFile(join(outside, 'outside.json'), JSON.stringify({ ...workflow('outside'), nodes: [validNode('outside', { parameters: { password: secret } })] }));
   await writeProduction(fixture, 'inside.json', workflow('inside')); const root = join(fixture.cwd, 'production'); let swapped = false;
-  const error = await assert.rejects(lintProduction(fixture, 'production', { afterDirectoryVerifiedBeforeRead: async ({ path }) => {
+  const error = await assert.rejects(lintProductionInternal(fixture, 'production', { afterDirectoryVerifiedBeforeRead: async ({ path }) => {
     if (!swapped && path === root) { swapped = true; await rm(root, { recursive: true, force: true }); await makeDirectoryLink(outside, root); }
   } }), /symbolic link|junction/);
   assert.ok(swapped); assert.ok(!String(error).includes(secret));
@@ -301,7 +315,7 @@ test('TOCTOU replacement of the verified root directory fails closed', async () 
 test('TOCTOU replacement of a verified child directory fails closed', async () => withFixture(async (fixture) => withOutsideFixture(async (outside) => {
   await writeFile(join(outside, 'outside.json'), JSON.stringify(workflow('outside'))); await writeProduction(fixture, 'nested/inside.json', workflow('inside'));
   const child = join(fixture.cwd, 'production', 'nested'); let swapped = false;
-  await assert.rejects(lintProduction(fixture, 'production', { afterDirectoryVerifiedBeforeRead: async ({ path }) => {
+  await assert.rejects(lintProductionInternal(fixture, 'production', { afterDirectoryVerifiedBeforeRead: async ({ path }) => {
     if (!swapped && path === child) { swapped = true; await rm(child, { recursive: true, force: true }); await makeDirectoryLink(outside, child); }
   } }), /symbolic link|junction/);
   assert.ok(swapped);
@@ -309,8 +323,42 @@ test('TOCTOU replacement of a verified child directory fails closed', async () =
 
 test('TOCTOU replacement of a verified file with another inode fails closed', async () => withFixture(async (fixture) => {
   await writeProduction(fixture, 'inside.json', workflow('inside')); const inside = join(fixture.cwd, 'production', 'inside.json'); let swapped = false;
-  const error = await assert.rejects(lintProduction(fixture, 'production', { afterFileVerifiedBeforeOpen: async ({ path }) => {
+  const error = await assert.rejects(lintProductionInternal(fixture, 'production', { afterFileVerifiedBeforeOpen: async ({ path }) => {
     if (!swapped && path === inside) { swapped = true; await rm(inside, { force: true }); await writeFile(inside, JSON.stringify(workflow('replacement'))); }
   } }), /changed before it could be opened/);
   assert.ok(swapped); assert.ok(!String(error).includes('replacement'));
 }));
+
+test('collection snapshot rejects a file replaced after enumeration before its first capture', async () => withFixture(async (fixture) => {
+  await writeProduction(fixture, 'early.json', workflow('early')); await writeProduction(fixture, 'late.json', workflow('late'));
+  const late = join(fixture.cwd, 'production', 'late.json'); let replaced = false;
+  await assert.rejects(lintProductionInternal(fixture, 'production', { afterCollectionEnumeratedBeforeCapture: async () => {
+    if (!replaced) { replaced = true; await rm(late, { force: true }); await writeFile(late, JSON.stringify(workflow('replacement'))); }
+  } }), /collection changed/);
+  assert.ok(replaced);
+}));
+
+test('collection snapshot rejects an already-read workflow modified before final acceptance', async () => withFixture(async (fixture) => {
+  await writeProduction(fixture, 'inside.json', workflow('inside')); const inside = join(fixture.cwd, 'production', 'inside.json'); let changed = false;
+  await assert.rejects(lintProductionInternal(fixture, 'production', { afterCollectionScannedBeforeVerify: async () => {
+    if (!changed) { changed = true; await writeFile(inside, JSON.stringify({ ...workflow('inside'), active: true })); }
+  } }), /collection changed/);
+  assert.ok(changed);
+}));
+
+test('collection snapshot rejects JSON additions and deletions after scanning', async () => {
+  await withFixture(async (fixture) => {
+    await writeProduction(fixture, 'inside.json', workflow('inside')); let added = false;
+    await assert.rejects(lintProductionInternal(fixture, 'production', { afterCollectionScannedBeforeVerify: async () => {
+      if (!added) { added = true; await writeProduction(fixture, 'added.json', workflow('added')); }
+    } }), /collection changed/);
+    assert.ok(added);
+  });
+  await withFixture(async (fixture) => {
+    await writeProduction(fixture, 'inside.json', workflow('inside')); const inside = join(fixture.cwd, 'production', 'inside.json'); let deleted = false;
+    await assert.rejects(lintProductionInternal(fixture, 'production', { afterCollectionScannedBeforeVerify: async () => {
+      if (!deleted) { deleted = true; await rm(inside, { force: true }); }
+    } }), /collection changed/);
+    assert.ok(deleted);
+  });
+});
