@@ -40,6 +40,22 @@ const EXPECTED_PAGE_TASKS = {
   "S5-AUDIT-STAGE-PAGE": ["audit-stage", "/books/:bookId/audit", "docs/前端原型_v2/pages/audit_stage.html"]
 };
 
+const MIGRATION_SCOPE_PATTERN = /^db\/migrations\/\*__([a-z0-9_]+)__\*\.sql$/u;
+const MIGRATION_LOADER_FILENAME = /^\d{4}__[a-z0-9_]+\.sql$/u;
+const EXPECTED_MIGRATION_SLUG_BY_TASK = {
+  "F0-05-PG-RUNTIME-GUARDS": "pg_runtime_guards",
+  "F0-07-RUNTIME-SEEDS": "runtime_seeds",
+  "S1-WORKBENCH-PAGE": "workbench",
+  "S1-NEW-BOOK-PAGE": "new_book",
+  "S2-WORLD-PAGE": "world",
+  "S2-CHARACTERS-PAGE": "characters",
+  "S2-L1A-PAGE": "l1a",
+  "S3-PRODUCTION-STAGE-PAGE": "production_stage",
+  "S4-MULTI-AGENT-DEDUCTION-PAGE": "multi_agent_deduction",
+  "S4-AUDIT-REVIEW-PAGE": "audit_review",
+  "S5-AUDIT-STAGE-PAGE": "audit_stage"
+};
+
 const HIGH_REASONING_TASKS = [
   "F0-05-PG-RUNTIME-GUARDS",
   "S2-L1A-PAGE",
@@ -156,6 +172,7 @@ function hasCycle(tasks) {
 export function validatePlan(index, candidatesMarkdown, historicalControl, handoffMarkdown) {
   const errors = [];
   const taskIds = index.tasks?.map((task) => task.id) ?? [];
+  const taskById = new Map((index.tasks ?? []).map((task) => [task.id, task]));
   const baselineIds = index.baseline_capabilities?.map((item) => item.id) ?? [];
   const candidateIds = index.feature_candidates?.map((item) => item.id) ?? [];
   const validDependencyIds = new Set([...taskIds, ...baselineIds]);
@@ -223,10 +240,11 @@ export function validatePlan(index, candidatesMarkdown, historicalControl, hando
     if (task.page_contract.prototype_sha256 !== normalizedFileSha256(prototype)) {
       errors.push(`${task.id} prototype hash mismatch`);
     }
+    const migrationSlug = EXPECTED_MIGRATION_SLUG_BY_TASK[task.id];
     const requiredScopes = [
       `apps/web/src/pages/${pageId}/**`,
       `orchestration/workflows/${pageId}/**`,
-      `db/migrations/*__${pageId}__*.sql`,
+      `db/migrations/*__${migrationSlug}__*.sql`,
       `db/functions/${pageId}/**`,
       `packages/contracts/src/${pageId}/**`,
       `tests/pages/${pageId}/**`
@@ -242,6 +260,24 @@ export function validatePlan(index, candidatesMarkdown, historicalControl, hando
     const acceptanceText = task.acceptance.join(" ");
     if (!acceptanceText.includes("系统继承") || !acceptanceText.includes("真实浏览器") || !acceptanceText.includes("无重叠")) {
       errors.push(`${task.id} lacks required visual and interaction audit acceptance`);
+    }
+  }
+
+  const migrationScopeTasks = (index.tasks ?? []).filter((task) =>
+    task.write_scope.some((scope) => scope.startsWith("db/migrations/"))
+  );
+  if (!sameSet(migrationScopeTasks.map((task) => task.id), Object.keys(EXPECTED_MIGRATION_SLUG_BY_TASK))) {
+    errors.push("migration scope mapping must contain exactly the registered Tasks");
+  }
+  for (const [taskId, expectedSlug] of Object.entries(EXPECTED_MIGRATION_SLUG_BY_TASK)) {
+    const task = taskById.get(taskId);
+    const migrationScopes = task?.write_scope.filter((scope) => scope.startsWith("db/migrations/")) ?? [];
+    const actualSlug = migrationScopes.length === 1 ? MIGRATION_SCOPE_PATTERN.exec(migrationScopes[0])?.[1] : null;
+    if (actualSlug !== expectedSlug) {
+      errors.push(`${taskId} migration scope must match its registered slug`);
+    }
+    if (!MIGRATION_LOADER_FILENAME.test(`0001__${expectedSlug}.sql`)) {
+      errors.push(`${taskId} migration slug is not accepted by the SQL migration loader`);
     }
   }
 
@@ -320,7 +356,6 @@ export function validatePlan(index, candidatesMarkdown, historicalControl, hando
     errors.push("MVP forbidden physical table list must name world_binding and world_knowledge_entry");
   }
 
-  const taskById = new Map((index.tasks ?? []).map((task) => [task.id, task]));
   const openBook = taskById.get("S1-NEW-BOOK-PAGE");
   const l1a = taskById.get("S2-L1A-PAGE");
   const productionBase = taskById.get("F0-06-N8N-PRODUCTION-BASE");
@@ -481,6 +516,15 @@ function runSelfTest(inputs) {
   rejected("missing-n8n-scope", (copy) => {
     const task = copy.tasks.find((item) => item.id === "S1-NEW-BOOK-PAGE");
     task.write_scope = task.write_scope.filter((scope) => !scope.startsWith("orchestration/workflows/"));
+  });
+  rejected("migration-scope-format", (copy) => {
+    const task = copy.tasks.find((item) => item.id === "S1-NEW-BOOK-PAGE");
+    task.write_scope = task.write_scope.map((scope) => scope === "db/migrations/*__new_book__*.sql"
+      ? "db/migrations/*__new-book__*.sql"
+      : scope);
+  });
+  rejected("migration-scope-mapping", (copy) => {
+    copy.tasks.find((item) => item.id === "F0-06-N8N-PRODUCTION-BASE").write_scope.push("db/migrations/*__unknown_scope__*.sql");
   });
   rejected("second-high-code-task", (copy) => {
     copy.tasks.find((item) => item.id === "S1-WORKBENCH-PAGE").model.profile = "MODEL::CODE_HIGH";
