@@ -116,17 +116,28 @@ export function validatePlan(inputs) {
     errors.push("subagent, repair, contract, screenshot, lint, audit, and review work cannot be top-level Tasks");
   }
 
-  const ready = tasks.filter((task) => task.status === "READY").map((task) => task.id);
-  const planned = tasks.filter((task) => task.status === "PLANNED").map((task) => task.id);
-  if (!sameSet(ready, ["WEB-STATIC-RESTORE"]) || planned.length !== 9) errors.push("initial R4 state must be 1 READY / 9 PLANNED");
-  if (index.counts?.ready !== 1 || index.counts?.planned !== 9 || index.counts?.total !== 10 || index.counts?.business_tasks !== 9 || index.counts?.gate_tasks !== 1) {
-    errors.push("R4 declared counts must be 1 READY / 9 PLANNED / 10 total");
+  const allowedStatuses = new Set(["READY", "IN_PROGRESS", "PLANNED", "COMPLETE", "BLOCKED"]);
+  const statusCounts = Object.fromEntries([...allowedStatuses].map((status) => [status, tasks.filter((task) => task.status === status).length]));
+  if (tasks.some((task) => !allowedStatuses.has(task.status))) errors.push("R4 contains an invalid top-level Task status");
+  if (statusCounts.IN_PROGRESS > index.execution_policy?.max_concurrent_business_tasks) errors.push("too many business Tasks are IN_PROGRESS");
+  if (index.counts?.ready !== statusCounts.READY
+    || index.counts?.in_progress !== statusCounts.IN_PROGRESS
+    || index.counts?.planned !== statusCounts.PLANNED
+    || index.counts?.total !== tasks.length
+    || index.counts?.business_tasks !== 9
+    || index.counts?.gate_tasks !== 1) {
+    errors.push("R4 declared counts must match top-level Task statuses");
   }
 
   for (const task of tasks) {
     for (const field of REQUIRED_TASK_FIELDS) if (!(field in task)) errors.push(`${task.id ?? "unknown"} missing ${field}`);
     if (!task.outcome || !task.main_journey || !task.write_scope?.length || !task.acceptance?.length) errors.push(`${task.id} must describe one demonstrable result`);
     for (const dependency of task.depends_on ?? []) if (!byId.has(dependency)) errors.push(`${task.id} has unknown dependency ${dependency}`);
+    if (["IN_PROGRESS", "COMPLETE"].includes(task.status)) {
+      for (const dependency of task.depends_on ?? []) {
+        if (byId.get(dependency)?.status !== "COMPLETE") errors.push(`${task.id} cannot ${task.status.toLowerCase()} before ${dependency} is COMPLETE`);
+      }
+    }
     const effort = HIGH_TASKS.has(task.id) ? "high" : "medium";
     if (task.model?.requested_model !== "gpt-5.6-terra" || task.model?.reasoning_effort !== effort || task.model?.actual_model !== null) {
       errors.push(`${task.id} must remain unresolved on terra/${effort} until platform dispatch`);
@@ -214,6 +225,7 @@ export function validatePlan(inputs) {
 
 function summarize(index, command) {
   const ready = index.tasks.filter((task) => task.status === "READY").map((task) => task.id);
+  const inProgress = index.tasks.filter((task) => task.status === "IN_PROGRESS").map((task) => task.id);
   return {
     ok: true,
     command,
@@ -223,8 +235,10 @@ function summarize(index, command) {
     task_count: index.tasks.length,
     business_task_count: index.tasks.filter((task) => task.kind === "BUSINESS_TASK").length,
     ready_count: ready.length,
+    in_progress_count: inProgress.length,
     planned_count: index.tasks.filter((task) => task.status === "PLANNED").length,
     ready_tasks: ready,
+    in_progress_tasks: inProgress,
     requested_model: index.model_policy.requested_model,
     high_reasoning_tasks: index.model_policy.high_reasoning_tasks,
     side_effects: false
@@ -267,10 +281,16 @@ function main() {
   }
 
   if (command === "status" || command === "dry-run") {
+    const inProgress = inputs.index.tasks.filter((task) => task.status === "IN_PROGRESS").map((task) => task.id);
+    const ready = inputs.index.tasks.filter((task) => task.status === "READY").map((task) => task.id);
     console.log(JSON.stringify({
       ...summarize(inputs.index, command),
-      selected_task: "WEB-STATIC-RESTORE",
-      message: "Dispatch one WEB-STATIC-RESTORE parent Task; internal page work packages are not product Tasks."
+      selected_task: inProgress[0] ?? ready[0] ?? null,
+      message: inProgress.length
+        ? `ACTIVE: ${inProgress.join(", ")}; internal work packages are not product Tasks.`
+        : ready.length
+          ? `READY: ${ready.join(", ")}`
+          : "No top-level Task is READY or IN_PROGRESS."
     }, null, 2));
     return;
   }

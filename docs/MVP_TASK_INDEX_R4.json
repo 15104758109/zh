@@ -7,7 +7,8 @@
   "base_branch": "autonomy/integration",
   "required_baseline_ancestor": "7cf17e17666c1c82fb3e5ae6ea9560b5b282884c",
   "counts": {
-    "ready": 1,
+    "ready": 0,
+    "in_progress": 1,
     "planned": 9,
     "total": 10,
     "business_tasks": 9,
@@ -171,7 +172,7 @@
       "acceptance_ref": "static_page_acceptance",
       "acceptance": ["all nine routes refresh directly", "defined static interactions work", "one integrated browser review passes at both fixed viewports"],
       "review_policy": "ONE_INTEGRATED_VISUAL_ACCEPTANCE_INSIDE_PARENT_TASK",
-      "status": "READY"
+      "status": "IN_PROGRESS"
     },
     {
       "id": "B1-CREATE-DRAFT-BOOK",
