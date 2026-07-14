@@ -9,6 +9,7 @@
     "pnpm": ">=9 <10"
   },
   "scripts": {
+    "mvp:plan": "node tools/mvp-plan.mjs check",
     "n8n:lint": "node scripts/n8n-lint/index.mjs",
     "lint": "eslint apps/api/src/bootstrap apps/web/src/bootstrap --max-warnings 0",
     "typecheck": "tsc --project tsconfig.base.json --noEmit",

@@ -262,3 +262,26 @@ node tools/project-orchestrator.mjs report --run-id <run-id> [--slice-id <slice>
 - 当前 `G07_GATE=PENDING`，因此即使路由器确认 `F0-01-REPO` 为唯一 READY，G07-A dry-run 也必须拒绝产品执行。测试、dry-run、G07-A/G07-B 或 Architect 均不得自行写 `G07_GATE=APPROVED`。
 - `tools/g07-control-evidence.mjs --all` 是独立复现入口：从 Git 对象运行旧 G06 58 项，运行当前 G06/G07 自测，并从 `G07_A_BASE_COMMIT` 动态扫描到调用时 `HEAD`，所以证据登记 commit 也在 scope 和原始 blob 秘密检查内。
 - 活动实现、证据路径/哈希、policy/report/秘密扫描版本只取第 1 节机器块，并由 `tools/g07-control-evidence.mjs --all` 与 IMPLEMENTATION_CONTROL 逐项比较；任一语义漂移直接 FAIL。`G07_A_STATUS=IMPLEMENTED` 只表示等待新的独立 G07-B。审计必须在最终 HEAD 运行完整证据命令，不得据此启动产品 Task。
+
+## 11. R3 最小 MVP 候选暂停入口
+
+R3 候选以 `docs/MVP_IMPLEMENTATION_PLAN_R3.md` 和 `docs/MVP_TASK_INDEX_R3.json` 为唯一新入口；旧 G04 revision 2、G07 R2/V11 与 85 项索引仅用于历史映射。R3 当前不是正式批准的活动控制面：
+
+```text
+R3_PLAN_STATUS=CANDIDATE_PAUSED
+R3_EXECUTION_STATUS=PAUSED_BY_CREATOR
+R3_READY=0
+R3_PLANNED=19
+R3_SELECTED_TASK=null
+```
+
+只允许运行以下只读命令：
+
+```text
+pnpm mvp:plan
+node tools/mvp-plan.mjs status
+node tools/mvp-plan.mjs dry-run
+node tools/mvp-plan.mjs --self-test
+```
+
+`tools/mvp-plan.mjs` 不实现 start、lease、transition 或任何状态写入。新的创作者治理 Gate 激活 R3 前，不得依据该候选启动 F0、W0 或 S1-S5 产品 Task。

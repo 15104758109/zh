@@ -1,0 +1,1132 @@
+{
+  "schema_version": "mvp-task-index-r3/v1",
+  "plan_revision": 3,
+  "base_commit": "5e7e4caa2d4bf20d098bc44f80c9678cf1715a89",
+  "plan_status": "CANDIDATE_PAUSED",
+  "execution_status": "PAUSED_BY_CREATOR",
+  "selected_task": null,
+  "counts": {
+    "ready": 0,
+    "planned": 19,
+    "total": 19
+  },
+  "authority": {
+    "formal_gate_approved": false,
+    "may_start_product_task": false,
+    "historical_only": [
+      "G04 revision 2",
+      "G07 R2/V11",
+      "docs/IMPLEMENTATION_CONTROL.md 85-task index"
+    ],
+    "activation_requirement": "A new creator-approved governance gate must activate R3 before any Task can become READY."
+  },
+  "architecture": {
+    "product_surface": "WEB_ONLY",
+    "orchestration_owner": "n8n",
+    "truth_and_transaction_owner": "PostgreSQL",
+    "internal_payload": "SIMPLE_JSON",
+    "api_policy": "THIN_SECURITY_GLUE_ONLY_FOR_SECRET_CORS_OR_STREAMING",
+    "api_business_state_machine_allowed": false,
+    "high_code_exception_task": "S4-DEDUCTION-RUNTIME",
+    "scene_condition_package_lineage": {
+      "producer": "S3-PRODUCTION-START",
+      "version_reference": "scene_condition_package_version",
+      "required_consumers": [
+        "S3-CHAPTER-PLAN",
+        "S3-EXECUTION-PLAN",
+        "S4-INFO-PACKAGE",
+        "S4-DEDUCTION-RUNTIME",
+        "S4-DEDUCTION-REVIEW",
+        "S5-PROSE",
+        "S5-OBJECTIVE-AUDIT",
+        "S5-EDITOR-REVISION",
+        "S5-FORMAL-WRITEBACK",
+        "MVP-GATE"
+      ]
+    },
+    "forbidden_mvp_physical_tables": [
+      "world_binding",
+      "world_knowledge_entry"
+    ],
+    "native_mobile_in_scope": false,
+    "native_desktop_in_scope": false
+  },
+  "planning_model_record": {
+    "profile": "MODEL::REASON_HIGH",
+    "actual_model": "INHERITED_ROOT_MODEL_UNVERIFIED",
+    "reasoning_effort": "high",
+    "fallback_authority": "ORCHESTRATOR_ONLY",
+    "task_budget": "UNCONFIGURED"
+  },
+  "resources": {
+    "max_disjoint_coders": 2,
+    "integration_merge": "SERIAL",
+    "DB_WRITE": 1,
+    "N8N_RUNTIME_WRITE": 1,
+    "ordinary_acceptance": "ONE_FRESH_INDEPENDENT_BUSINESS_AUDITOR",
+    "reviewer_required_for": [
+      "CRITICAL_SQL",
+      "FP008-02",
+      "CONTROL_CONTRACT_CHANGE"
+    ],
+    "optimization_policy": "NON_BUSINESS_CODE_OPTIMIZATION_IS_POST_MVP_CANDIDATE"
+  },
+  "baseline_capabilities": [
+    {
+      "id": "BASELINE::REPOSITORY",
+      "status": "INTEGRATED_LOCAL_CANDIDATE",
+      "not_an_r3_task": true,
+      "capability": "Repository install, lint, typecheck, and build substrate"
+    },
+    {
+      "id": "BASELINE::CONTRACTS",
+      "status": "INTEGRATED_LOCAL_CANDIDATE",
+      "not_an_r3_task": true,
+      "capability": "Shared contract registry substrate"
+    },
+    {
+      "id": "BASELINE::PG_FOUNDATION",
+      "status": "INTEGRATED_LOCAL_CANDIDATE",
+      "not_an_r3_task": true,
+      "capability": "PostgreSQL migration and transaction substrate"
+    },
+    {
+      "id": "BASELINE::LOCAL_OPERATOR",
+      "status": "INTEGRATED_LOCAL_CANDIDATE",
+      "not_an_r3_task": true,
+      "capability": "Local operator and book-scope substrate"
+    },
+    {
+      "id": "BASELINE::N8N_LINT",
+      "status": "INTEGRATED_LOCAL_CANDIDATE",
+      "not_an_r3_task": true,
+      "capability": "n8n workflow lint substrate"
+    },
+    {
+      "id": "BASELINE::WEB_SHELL",
+      "status": "INTEGRATED_LOCAL_CANDIDATE",
+      "not_an_r3_task": true,
+      "capability": "Browser operational shell and visible system states"
+    },
+    {
+      "id": "BASELINE::INTERACTION_CONTRACTS",
+      "status": "INTEGRATED_LOCAL_CANDIDATE",
+      "not_an_r3_task": true,
+      "capability": "Lightweight interaction contract checks"
+    }
+  ],
+  "vertical_scope_template": {
+    "web": "apps/web/src/features/<name>/**",
+    "n8n": "orchestration/workflows/<name>/**",
+    "database": [
+      "db/migrations/*__<name>__*.sql",
+      "db/functions/<name>/**"
+    ],
+    "contracts": "packages/contracts/src/<name>/**",
+    "tests": "tests/vertical/<name>/**"
+  },
+  "tasks": [
+    {
+      "id": "F0-05-PG-RUNTIME-GUARDS",
+      "layer": "F0",
+      "business_outcome": "为MVP工作流提供最小的作品范围锁、幂等键、事务失败回滚和状态CAS，PostgreSQL仍是唯一真值。",
+      "depends_on": [
+        "BASELINE::PG_FOUNDATION",
+        "BASELINE::LOCAL_OPERATOR",
+        "BASELINE::CONTRACTS"
+      ],
+      "risk": {
+        "level": "CRITICAL",
+        "reason": "CRITICAL_SQL"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP005-00",
+        "V7::FP008-04",
+        "V7::FP013-02"
+      ],
+      "write_scope": [
+        "db/migrations/*__pg-runtime-guards__*.sql",
+        "db/functions/pg-runtime-guards/**",
+        "packages/db/src/runtime-guards/**",
+        "packages/contracts/src/pg-runtime-guards/**",
+        "tests/vertical/pg-runtime-guards/**"
+      ],
+      "acceptance": [
+        "同一本书的冲突运行只能有一个获得写权，其他请求得到可展示的冲突结果。",
+        "重复幂等键不重复产生业务写入；陈旧版本CAS被拒绝。",
+        "任一事务步骤失败时不留下半条正式状态或半条账本。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_PLUS_REVIEWER_CRITICAL_SQL",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "F0-06-N8N-PRODUCTION-BASE",
+      "layer": "F0",
+      "business_outcome": "建立可导入现有本地n8n的最薄生产工作流骨架，使Web纵向任务用简单JSON调用，并仅保留correlation_id和脱敏错误。",
+      "depends_on": [
+        "BASELINE::REPOSITORY",
+        "BASELINE::CONTRACTS",
+        "BASELINE::N8N_LINT"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "N8N_RUNTIME_BASE"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP001-01",
+        "V7::FP005-00",
+        "V7::FP009-00"
+      ],
+      "write_scope": [
+        "orchestration/workflows/production-base/**",
+        "packages/contracts/src/production-base/**",
+        "tests/orchestration/production-base/**"
+      ],
+      "acceptance": [
+        "工作流可导入当前n8n且lint通过，不创建新容器。",
+        "简单JSON请求只返回业务结果、correlation_id或可展示的脱敏错误。",
+        "工作流骨架不持有业务真值，不建设完整Trace、统一模型用量/成本归因、通用网关或通用恢复平台。"
+      ],
+      "business_contract": {
+        "minimum_observability": [
+          "correlation_id",
+          "redacted_error"
+        ],
+        "advanced_observability_candidate": "CAND-OUTSIDE-ADVANCED-OBSERVABILITY"
+      },
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "F0-07-RUNTIME-SEEDS",
+      "layer": "F0",
+      "business_outcome": "为首次开书准备最小可用的内置技能和本地运行默认值，缺失时明确阻断而不是由模型补造。",
+      "depends_on": [
+        "F0-05-PG-RUNTIME-GUARDS",
+        "F0-06-N8N-PRODUCTION-BASE"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "AUTHORITATIVE_SEEDS"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP001-01",
+        "V7::FP001-03",
+        "V7::FP004-01"
+      ],
+      "write_scope": [
+        "orchestration/workflows/runtime-seeds/**",
+        "db/migrations/*__runtime-seeds__*.sql",
+        "db/functions/runtime-seeds/**",
+        "packages/contracts/src/runtime-seeds/**",
+        "tests/vertical/runtime-seeds/**"
+      ],
+      "acceptance": [
+        "空MVP数据库可重复装入同一组内置技能和运行默认值。",
+        "重复执行不产生重复active版本。",
+        "必要种子缺失时Web后续入口得到明确阻断状态。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S1-CONFIG",
+      "layer": "S1",
+      "business_outcome": "用户可在Web中查看和保存本地MVP所需的模型连接与运行参数，并看到实际生效版本。",
+      "depends_on": [
+        "F0-07-RUNTIME-SEEDS",
+        "BASELINE::WEB_SHELL"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "LOCAL_RUNTIME_CONFIGURATION"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP016-01"
+      ],
+      "write_scope": [
+        "apps/web/src/features/config/**",
+        "orchestration/workflows/config/**",
+        "db/migrations/*__config__*.sql",
+        "db/functions/config/**",
+        "packages/contracts/src/config/**",
+        "tests/vertical/config/**"
+      ],
+      "acceptance": [
+        "Web可保存最小连接和运行参数并回显当前生效版本。",
+        "密钥不返回浏览器明文，连接失败显示可操作错误。",
+        "配置版本与后续运行绑定；不建设通用模型网关或Prompt治理平台。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S1-OPEN-BOOK",
+      "layer": "S1",
+      "business_outcome": "用户从Web开书界面录入V7基础内容，经n8n整理后在PostgreSQL原子创建一本可继续生产的新书。",
+      "depends_on": [
+        "S1-CONFIG"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "FIRST_BUSINESS_VERTICAL"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP001-01",
+        "V7::FP001-02",
+        "V7::FP001-03",
+        "V7::FP001-06",
+        "V7::FP001-07"
+      ],
+      "write_scope": [
+        "apps/web/src/features/open-book/**",
+        "orchestration/workflows/open-book/**",
+        "db/migrations/*__open-book__*.sql",
+        "db/functions/open-book/**",
+        "packages/contracts/src/open-book/**",
+        "tests/vertical/open-book/**"
+      ],
+      "acceptance": [
+        "Web完成基础录入、生成预览、确认创建并进入新书。",
+        "同一操作者规范化同名书被拒绝，重复确认不重复建书。",
+        "创建失败不留下半本书；FP001-05商业评分不出现也不阻塞开书。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S2-WORLD",
+      "layer": "S2",
+      "business_outcome": "用户可在Web生成、编辑、确认并版本化当前书的世界设定。",
+      "depends_on": [
+        "S1-OPEN-BOOK"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "WORLD_VERSIONING"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP002-01",
+        "V7::FP002-02",
+        "V7::FP002-03",
+        "V7::FP002-04"
+      ],
+      "write_scope": [
+        "apps/web/src/features/world/**",
+        "orchestration/workflows/world/**",
+        "db/migrations/*__world__*.sql",
+        "db/functions/world/**",
+        "packages/contracts/src/world/**",
+        "tests/vertical/world/**"
+      ],
+      "acceptance": [
+        "Web能生成候选、编辑并确认一个当前世界版本。",
+        "退回保留上一版本，跨书请求被拒绝。",
+        "MVP不创建world_binding或world_knowledge_entry物理表。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S2-CHARACTERS",
+      "layer": "S2",
+      "business_outcome": "用户可在Web生成、编辑、确认当前书的角色、关系和初始记忆。",
+      "depends_on": [
+        "S1-OPEN-BOOK"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "CHARACTER_VERSIONING"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP003-01",
+        "V7::FP003-02",
+        "V7::FP003-03",
+        "V7::FP003-04"
+      ],
+      "write_scope": [
+        "apps/web/src/features/characters/**",
+        "orchestration/workflows/characters/**",
+        "db/migrations/*__characters__*.sql",
+        "db/functions/characters/**",
+        "packages/contracts/src/characters/**",
+        "tests/vertical/characters/**"
+      ],
+      "acceptance": [
+        "Web能生成候选并编辑角色、关系和初始记忆后确认版本。",
+        "关系端点必须属于同一本书，错误对象范围被拒绝。",
+        "退回不覆盖已确认版本，重复确认幂等。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S2-L1A",
+      "layer": "S2",
+      "business_outcome": "用户基于已确认世界和角色在Web生成、逐条审核并锁定一个可生产的L1A合同。",
+      "depends_on": [
+        "S2-WORLD",
+        "S2-CHARACTERS"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "UPSTREAM_FREEZE"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP004-00",
+        "V7::FP004-01",
+        "V7::FP004-02",
+        "V7::FP004-04"
+      ],
+      "write_scope": [
+        "apps/web/src/features/l1a/**",
+        "orchestration/workflows/l1a/**",
+        "db/migrations/*__l1a__*.sql",
+        "db/functions/l1a/**",
+        "packages/contracts/src/l1a/**",
+        "tests/vertical/l1a/**"
+      ],
+      "acceptance": [
+        "Web展示必须发生、不得发生和留白条目，用户可逐条通过或退回。",
+        "全部必要条目通过后一次锁定L1A并冻结其上游版本引用。",
+        "FP004-05变体和健康建议不出现也不阻塞锁定。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S3-PRODUCTION-START",
+      "layer": "S3",
+      "business_outcome": "用户从Web对已锁定L1A启动一次章节生产；n8n按FP005-01从正式世界、角色、关系、记忆、L1A和生效配置物化版本化scene_condition_package，PostgreSQL创建唯一运行并锁定其版本。",
+      "depends_on": [
+        "S2-L1A"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "PRODUCTION_START"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP005-00",
+        "V7::FP005-01"
+      ],
+      "write_scope": [
+        "apps/web/src/features/production-start/**",
+        "orchestration/workflows/production-start/**",
+        "db/migrations/*__production-start__*.sql",
+        "db/functions/production-start/**",
+        "packages/contracts/src/production-start/**",
+        "tests/vertical/production-start/**"
+      ],
+      "acceptance": [
+        "锁定L1A可启动一次章节运行；n8n同时物化并显示绑定的scene_condition_package_version。",
+        "未锁定、跨书和重复点击被安全拒绝或幂等复用。",
+        "scene_condition_package只取正式世界、正式角色、正式关系、有效正式记忆、锁定L1A和生效配置的明确版本。",
+        "检测到未来态泄露、不可用资源、角色知识越权、场景缺失或未解决数据债时拒绝启动，不产生可供下游消费的package版本。"
+      ],
+      "business_contract": {
+        "output": "scene_condition_package_version",
+        "materializes_on_start_from": [
+          "formal_world_version",
+          "formal_character_versions",
+          "formal_relationship_versions",
+          "valid_formal_memory_versions",
+          "locked_l1a_version",
+          "effective_config_version"
+        ],
+        "rejects": [
+          "future_state_leakage",
+          "unavailable_resource",
+          "character_knowledge_overreach",
+          "missing_scene",
+          "unresolved_data_debt"
+        ]
+      },
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S3-CHAPTER-PLAN",
+      "layer": "S3",
+      "business_outcome": "n8n只消费当前运行绑定的scene_condition_package_version生成章节方案，用户在Web确认或退回一个方案。",
+      "depends_on": [
+        "S3-PRODUCTION-START"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "CHAPTER_PLAN"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP006-01",
+        "V7::FP006-02"
+      ],
+      "write_scope": [
+        "apps/web/src/features/chapter-plan/**",
+        "orchestration/workflows/chapter-plan/**",
+        "db/migrations/*__chapter-plan__*.sql",
+        "db/functions/chapter-plan/**",
+        "packages/contracts/src/chapter-plan/**",
+        "tests/vertical/chapter-plan/**"
+      ],
+      "acceptance": [
+        "Web展示与运行及scene_condition_package_version绑定的章节方案并支持确认或退回。",
+        "确认只产生一个current方案和章节序号，重复确认幂等。",
+        "缺失、陈旧或不属于当前运行的package版本被拒绝；退回保留历史候选且不会启动下一纵向。"
+      ],
+      "business_contract": {
+        "consumes": [
+          "scene_condition_package_version"
+        ],
+        "preserve_lineage_downstream": true
+      },
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S3-EXECUTION-PLAN",
+      "layer": "S3",
+      "business_outcome": "n8n沿用章节方案绑定的scene_condition_package_version，把方案拆成可供推演的执行计划，Web显示完成摘要而不增加新确认门。",
+      "depends_on": [
+        "S3-CHAPTER-PLAN"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "EXECUTION_PLAN"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP007-01"
+      ],
+      "write_scope": [
+        "apps/web/src/features/execution-plan/**",
+        "orchestration/workflows/execution-plan/**",
+        "db/migrations/*__execution-plan__*.sql",
+        "db/functions/execution-plan/**",
+        "packages/contracts/src/execution-plan/**",
+        "tests/vertical/execution-plan/**"
+      ],
+      "acceptance": [
+        "已确认方案生成一次结构化执行计划并在Web显示摘要，产物保留scene_condition_package_version。",
+        "失败不产生完成状态，重复事件不重复拆解。",
+        "页面不增加V7之外的人工确认门或业务状态。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S4-INFO-PACKAGE",
+      "layer": "S4",
+      "business_outcome": "消费执行计划绑定的scene_condition_package_version，为整章生成轻量信息颗粒包，供后续FP008-02逐颗粒推演。",
+      "depends_on": [
+        "S3-EXECUTION-PLAN"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "LIGHTWEIGHT_INFO_GRAINS"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP008-01"
+      ],
+      "write_scope": [
+        "apps/web/src/features/info-package/**",
+        "orchestration/workflows/info-package/**",
+        "db/migrations/*__info-package__*.sql",
+        "db/functions/info-package/**",
+        "packages/contracts/src/info-package/**",
+        "tests/vertical/info-package/**"
+      ],
+      "acceptance": [
+        "Web显示整章颗粒数量和准备状态，n8n产出顺序稳定的轻量颗粒。",
+        "颗粒同时绑定执行计划版本和scene_condition_package_version，陈旧输入被拒绝。",
+        "本任务不预生成char_tasks；char_tasks由FP008-02 F1逐颗粒实时生成。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S4-DEDUCTION-RUNTIME",
+      "layer": "S4",
+      "business_outcome": "按颗粒运行FP008-02角色推演，实时生成char_tasks，使用最小有效记忆检索，并在预算或错误边界安全暂停。",
+      "depends_on": [
+        "S4-INFO-PACKAGE"
+      ],
+      "risk": {
+        "level": "CRITICAL",
+        "reason": "FP008-02"
+      },
+      "model": {
+        "profile": "MODEL::CODE_HIGH",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "high",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY_NO_DOWNGRADE",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP008-02"
+      ],
+      "write_scope": [
+        "apps/web/src/features/deduction-runtime/**",
+        "apps/api/src/glue/deduction-runtime/**",
+        "orchestration/workflows/deduction-runtime/**",
+        "db/migrations/*__deduction-runtime__*.sql",
+        "db/functions/deduction-runtime/**",
+        "packages/contracts/src/deduction-runtime/**",
+        "tests/vertical/deduction-runtime/**"
+      ],
+      "acceptance": [
+        "FP008-02 F1对每个颗粒实时生成char_tasks，角色只看到其合法信息包。",
+        "每个推演输入继续绑定并消费同一scene_condition_package_version。",
+        "最小pgvector记忆召回后逐条用PostgreSQL is_valid回查，失效或跨书记忆不进入模型输入。",
+        "Web显示运行、暂停、失败和恢复位置；预算到顶不伪装完成。",
+        "可选API目录只承载密钥、CORS或流式传输，不拥有业务状态机。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_PLUS_REVIEWER_FP008_02",
+      "implementation_mode": "HIGH_CODE_EXCEPTION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S4-DEDUCTION-REVIEW",
+      "layer": "S4",
+      "business_outcome": "对推演结果执行V7审查并把通过结果原子锁定为唯一可供正文使用的deduction_locked快照。",
+      "depends_on": [
+        "S4-DEDUCTION-RUNTIME"
+      ],
+      "risk": {
+        "level": "CRITICAL",
+        "reason": "CRITICAL_SQL"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP008-03",
+        "V7::FP008-04"
+      ],
+      "write_scope": [
+        "apps/web/src/features/deduction-review/**",
+        "orchestration/workflows/deduction-review/**",
+        "db/migrations/*__deduction-review__*.sql",
+        "db/functions/deduction-review/**",
+        "packages/contracts/src/deduction-review/**",
+        "tests/vertical/deduction-review/**"
+      ],
+      "acceptance": [
+        "Web展示审查结论、P0阻断和可恢复失败状态。",
+        "审查结果与同一scene_condition_package_version保持可追溯绑定。",
+        "只有完整通过结果可原子转为deduction_locked，partial不得冒充locked。",
+        "重复、并发、陈旧运行或写入中途失败不产生多个锁定快照。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_PLUS_REVIEWER_CRITICAL_SQL",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S5-PROSE",
+      "layer": "S5",
+      "business_outcome": "用户从Web对deduction_locked章节生成忠实于推演事实的候选正文。",
+      "depends_on": [
+        "S4-DEDUCTION-REVIEW"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "PROSE_CANDIDATE"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP009-00",
+        "V7::FP009-01"
+      ],
+      "write_scope": [
+        "apps/web/src/features/prose/**",
+        "orchestration/workflows/prose/**",
+        "db/migrations/*__prose__*.sql",
+        "db/functions/prose/**",
+        "packages/contracts/src/prose/**",
+        "tests/vertical/prose/**"
+      ],
+      "acceptance": [
+        "Web可从一个locked章节触发并查看候选正文。",
+        "候选正文消费并保留locked快照绑定的scene_condition_package_version。",
+        "正文只改表达不改推演事实，事实不足明确退回上游。",
+        "候选正文不成为正式章节；重复触发不覆盖历史。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S5-OBJECTIVE-AUDIT",
+      "layer": "S5",
+      "business_outcome": "对候选正文执行客观审计并原子保存不可篡改的P0与证据结果。",
+      "depends_on": [
+        "S5-PROSE"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "OBJECTIVE_P0_AUDIT"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP010-01",
+        "V7::FP010-02"
+      ],
+      "write_scope": [
+        "apps/web/src/features/objective-audit/**",
+        "orchestration/workflows/objective-audit/**",
+        "db/migrations/*__objective-audit__*.sql",
+        "db/functions/objective-audit/**",
+        "packages/contracts/src/objective-audit/**",
+        "tests/vertical/objective-audit/**"
+      ],
+      "acceptance": [
+        "Web显示与同一候选版本绑定的客观审计维度、证据和P0结论。",
+        "客观审计证据保留同一scene_condition_package_version谱系。",
+        "坏DTO、版本错配或无结论时安全阻断。",
+        "审计保存失败不出现completed，已存证据不可普通修改或删除。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S5-EDITOR-REVISION",
+      "layer": "S5",
+      "business_outcome": "主编依据客观审计在Web给出Y/N；Y后按FP013-01先做事实不变的最小文风增强、生成formal_summary并执行change_limit，通过后才released；N按V7完成最多三次修订路由。",
+      "depends_on": [
+        "S5-OBJECTIVE-AUDIT"
+      ],
+      "risk": {
+        "level": "MEDIUM",
+        "reason": "EDITOR_RETRY_ROUTING"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP012-01",
+        "V7::FP012-02",
+        "V7::FP012-04",
+        "V7::FP013-01"
+      ],
+      "write_scope": [
+        "apps/web/src/features/editor-revision/**",
+        "orchestration/workflows/editor-revision/**",
+        "db/migrations/*__editor-revision__*.sql",
+        "db/functions/editor-revision/**",
+        "packages/contracts/src/editor-revision/**",
+        "tests/vertical/editor-revision/**"
+      ],
+      "acceptance": [
+        "P0强制N；Y后先执行FP013-01事实不变的最小文风增强，且保留scene_condition_package_version谱系。",
+        "只有增强未发明事实、formal_summary非空且change_limit通过时，才产生可正式写回的released候选。",
+        "增强超限、发明事实或formal_summary为空时丢弃增强结果，候选不得进入released。",
+        "N保留旧影子历史并生成下一候选；第一次和第二次N可继续，第三次N按V7直接终止为abandoned_by_user。",
+        "MVP不存在manual_required状态或人工恢复功能；FP011和FP012-03不作为前置。"
+      ],
+      "business_contract": {
+        "y_release_sequence": [
+          "FP013-01_FACT_PRESERVING_STYLE_ENHANCEMENT",
+          "REQUIRE_NONEMPTY_FORMAL_SUMMARY",
+          "ENFORCE_CHANGE_LIMIT",
+          "MARK_RELEASED"
+        ],
+        "invalid_enhancement": "DISCARD_AND_DO_NOT_RELEASE",
+        "n3_terminal": "abandoned_by_user"
+      },
+      "audit_policy": "BUSINESS_AUDITOR_ONLY",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "S5-FORMAL-WRITEBACK",
+      "layer": "S5",
+      "business_outcome": "把已完成FP013-01增强校验、formal_summary非空且保留scene_condition_package_version的released候选，通过PostgreSQL唯一事务正式写回章节、账本和实际触达真值。",
+      "depends_on": [
+        "S5-EDITOR-REVISION"
+      ],
+      "risk": {
+        "level": "CRITICAL",
+        "reason": "CRITICAL_SQL"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP013-02"
+      ],
+      "write_scope": [
+        "apps/web/src/features/formal-writeback/**",
+        "orchestration/workflows/formal-writeback/**",
+        "db/migrations/*__formal-writeback__*.sql",
+        "db/functions/formal-writeback/**",
+        "packages/contracts/src/formal-writeback/**",
+        "tests/vertical/formal-writeback/**"
+      ],
+      "acceptance": [
+        "Web只允许released、无P0、formal_summary非空且change_limit已通过的候选发起正式写回。",
+        "正式写回保留scene_condition_package_version谱系。",
+        "正文、摘要、账本、实际触达和章节进度在一个PostgreSQL事务中一致成功。",
+        "逐阶段失败全部回滚；重复或并发提交只产生一个正式章节结果。"
+      ],
+      "audit_policy": "BUSINESS_AUDITOR_PLUS_REVIEWER_CRITICAL_SQL",
+      "implementation_mode": "MINIMAL_STITCH",
+      "status": "PLANNED"
+    },
+    {
+      "id": "MVP-GATE",
+      "layer": "GATE",
+      "business_outcome": "从真实Web入口完成一本书的一章正式入库，证明最小V7业务闭环可在本地运行。",
+      "depends_on": [
+        "S5-FORMAL-WRITEBACK"
+      ],
+      "risk": {
+        "level": "HIGH",
+        "reason": "END_TO_END_BUSINESS_GATE"
+      },
+      "model": {
+        "profile": "MODEL::CODE_MEDIUM",
+        "preferred_family": "terra",
+        "actual_model": null,
+        "reasoning_effort": "medium",
+        "fallback": "ORCHESTRATOR_SAME_OR_HIGHER_ONLY",
+        "task_budget": "UNCONFIGURED"
+      },
+      "v7_anchors": [
+        "V7::FP001-01",
+        "V7::FP004-04",
+        "V7::FP008-02",
+        "V7::FP013-02"
+      ],
+      "write_scope": [
+        "tests/mvp-gate/**",
+        "reports/mvp-gate/**"
+      ],
+      "acceptance": [
+        "从Web配置、开书、设定、L1A、生产、推演、审计、修订到正式写回完成一章。",
+        "端到端证据从scene_condition_package_version持续追溯到正式章节。",
+        "失败、退回、第三次N终止、事务回滚、对象范围和可见状态从Web可验证。",
+        "证据绑定integration候选提交和当前本地n8n/PostgreSQL结果。",
+        "PASS只形成本地MVP候选；main、push、cloud、production和R0仍为CREATOR_REQUIRED。"
+      ],
+      "audit_policy": "FRESH_INDEPENDENT_MVP_GATE_RUNNER",
+      "implementation_mode": "READ_ONLY_BUSINESS_GATE",
+      "status": "PLANNED"
+    }
+  ],
+  "feature_candidates": [
+    {
+      "id": "CAND-V7-FP001-05",
+      "category": "V7_POST_MVP"
+    },
+    {
+      "id": "CAND-V7-FP004-05",
+      "category": "V7_POST_MVP"
+    },
+    {
+      "id": "CAND-V7-FP011",
+      "category": "V7_POST_MVP"
+    },
+    {
+      "id": "CAND-V7-FP012-03",
+      "category": "V7_POST_MVP"
+    },
+    {
+      "id": "CAND-V7-FP014",
+      "category": "V7_POST_MVP"
+    },
+    {
+      "id": "CAND-V7-FP015",
+      "category": "V7_POST_MVP"
+    },
+    {
+      "id": "CAND-V7-S6-CONTINUITY",
+      "category": "V7_POST_MVP"
+    },
+    {
+      "id": "CAND-V7-S6-EXPORT",
+      "category": "V7_POST_MVP"
+    },
+    {
+      "id": "CAND-V7-S7-FULL-BOOK-GOVERNANCE",
+      "category": "V7_POST_MVP"
+    },
+    {
+      "id": "CAND-OUTSIDE-GENERIC-MODEL-GATEWAY",
+      "category": "OUTSIDE_V7"
+    },
+    {
+      "id": "CAND-OUTSIDE-PROMPT-GOVERNANCE",
+      "category": "OUTSIDE_V7"
+    },
+    {
+      "id": "CAND-OUTSIDE-GLOBAL-RECOVERY",
+      "category": "OUTSIDE_V7"
+    },
+    {
+      "id": "CAND-OUTSIDE-INTERACTION-DSL",
+      "category": "OUTSIDE_V7"
+    },
+    {
+      "id": "CAND-OUTSIDE-TEST-PLATFORM",
+      "category": "OUTSIDE_V7"
+    },
+    {
+      "id": "CAND-OUTSIDE-GENERIC-SENSITIVE-TOKEN-AUDIT",
+      "category": "OUTSIDE_V7"
+    },
+    {
+      "id": "CAND-OUTSIDE-ADVANCED-BUDGET-COST",
+      "category": "OUTSIDE_V7"
+    },
+    {
+      "id": "CAND-OUTSIDE-ADVANCED-OBSERVABILITY",
+      "category": "OUTSIDE_V7"
+    },
+    {
+      "id": "CAND-OUTSIDE-GENERIC-VECTOR-RECONCILER",
+      "category": "OUTSIDE_V7"
+    },
+    {
+      "id": "CAND-OUTSIDE-EXTERNAL-AUTONOMY-TRUST",
+      "category": "OUTSIDE_V7"
+    },
+    {
+      "id": "CAND-OUTSIDE-NATIVE-CLIENTS",
+      "category": "OUTSIDE_V7",
+      "disposition": "NOT_PRODUCT_SCOPE"
+    },
+    {
+      "id": "CAND-CODE-F0-11-SAME-SEED-CONCURRENCY",
+      "category": "OUTSIDE_V7",
+      "disposition": "POST_MVP_CODE_CANDIDATE"
+    },
+    {
+      "id": "CAND-CODE-WEB-COMPOSITE-KEY-HARDENING",
+      "category": "OUTSIDE_V7",
+      "disposition": "POST_MVP_CODE_CANDIDATE"
+    }
+  ],
+  "old85_to_r3": [
+    { "old_task_id": "F0-01-REPO", "target_type": "BASELINE_CAPABILITY", "target_id": "BASELINE::REPOSITORY" },
+    { "old_task_id": "F0-02-CONTRACTS", "target_type": "BASELINE_CAPABILITY", "target_id": "BASELINE::CONTRACTS" },
+    { "old_task_id": "F0-03-MIGRATIONS", "target_type": "BASELINE_CAPABILITY", "target_id": "BASELINE::PG_FOUNDATION" },
+    { "old_task_id": "F0-04-LOCAL-OPERATOR", "target_type": "BASELINE_CAPABILITY", "target_id": "BASELINE::LOCAL_OPERATOR" },
+    { "old_task_id": "F0-05-RUN-LOCK", "target_type": "TASK", "target_id": "F0-05-PG-RUNTIME-GUARDS" },
+    { "old_task_id": "F0-06-OBSERVABILITY", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-ADVANCED-OBSERVABILITY" },
+    { "old_task_id": "F0-07-MODEL-GATEWAY", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-GENERIC-MODEL-GATEWAY" },
+    { "old_task_id": "F0-08-PROMPT-REGISTRY", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-PROMPT-GOVERNANCE" },
+    { "old_task_id": "F0-09-N8N-LINT", "target_type": "BASELINE_CAPABILITY", "target_id": "BASELINE::N8N_LINT" },
+    { "old_task_id": "F0-10-WEB-SHELL", "target_type": "BASELINE_CAPABILITY", "target_id": "BASELINE::WEB_SHELL" },
+    { "old_task_id": "F0-11-TESTKIT", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-TEST-PLATFORM" },
+    { "old_task_id": "F0-12-ORCHESTRATION-PORT", "target_type": "TASK", "target_id": "F0-06-N8N-PRODUCTION-BASE" },
+    { "old_task_id": "F0-13-SENSITIVE-ACTION-AUDIT", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-GENERIC-SENSITIVE-TOKEN-AUDIT" },
+    { "old_task_id": "F0-14-BUDGET-RUNTIME", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-ADVANCED-BUDGET-COST" },
+    { "old_task_id": "F0-15-PROMPT-RELEASE", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-PROMPT-GOVERNANCE" },
+    { "old_task_id": "F0-16-RECOVERY-COORDINATOR", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-GLOBAL-RECOVERY" },
+    { "old_task_id": "F0-17-INTERACTION-CONTRACTS", "target_type": "BASELINE_CAPABILITY", "target_id": "BASELINE::INTERACTION_CONTRACTS" },
+    { "old_task_id": "W0-01-WALKING-SKELETON", "target_type": "TASK", "target_id": "MVP-GATE" },
+    { "old_task_id": "S1-BUILTIN-SKILLS", "target_type": "TASK", "target_id": "F0-07-RUNTIME-SEEDS" },
+    { "old_task_id": "S1-EFFECTIVE-CONFIG", "target_type": "TASK", "target_id": "S1-CONFIG" },
+    { "old_task_id": "S1-FP016-01", "target_type": "TASK", "target_id": "S1-CONFIG" },
+    { "old_task_id": "S1-FP001-01", "target_type": "TASK", "target_id": "S1-OPEN-BOOK" },
+    { "old_task_id": "S1-FP001-03", "target_type": "TASK", "target_id": "S1-OPEN-BOOK" },
+    { "old_task_id": "S1-FP001-05", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP001-05" },
+    { "old_task_id": "S1-FP001-02", "target_type": "TASK", "target_id": "S1-OPEN-BOOK" },
+    { "old_task_id": "S1-FP001-07", "target_type": "TASK", "target_id": "S1-OPEN-BOOK" },
+    { "old_task_id": "S1-FP001-06", "target_type": "TASK", "target_id": "S1-OPEN-BOOK" },
+    { "old_task_id": "S2-FP002-04", "target_type": "TASK", "target_id": "S2-WORLD" },
+    { "old_task_id": "S2-FP002-02", "target_type": "TASK", "target_id": "S2-WORLD" },
+    { "old_task_id": "S2-FP002-01", "target_type": "TASK", "target_id": "S2-WORLD" },
+    { "old_task_id": "S2-FP003-04", "target_type": "TASK", "target_id": "S2-CHARACTERS" },
+    { "old_task_id": "S2-FP003-02", "target_type": "TASK", "target_id": "S2-CHARACTERS" },
+    { "old_task_id": "S2-FP003-01", "target_type": "TASK", "target_id": "S2-CHARACTERS" },
+    { "old_task_id": "S2-FP004-00", "target_type": "TASK", "target_id": "S2-L1A" },
+    { "old_task_id": "S2-FP004-01", "target_type": "TASK", "target_id": "S2-L1A" },
+    { "old_task_id": "S2-FP004-05", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP004-05" },
+    { "old_task_id": "S2-FP004-02", "target_type": "TASK", "target_id": "S2-L1A" },
+    { "old_task_id": "S2-FP004-04", "target_type": "TASK", "target_id": "S2-L1A" },
+    { "old_task_id": "S2-FP002-03", "target_type": "TASK", "target_id": "S2-WORLD" },
+    { "old_task_id": "S2-FP003-03", "target_type": "TASK", "target_id": "S2-CHARACTERS" },
+    { "old_task_id": "S3-SKILL-LIFECYCLE-CONTRACT", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP015" },
+    { "old_task_id": "S3-SKILL-PREFERENCE", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP015" },
+    { "old_task_id": "S3-SKILL-REFERENCE-CLEANUP", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP015" },
+    { "old_task_id": "S3-FP015-01", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP015" },
+    { "old_task_id": "S3-FP005-00", "target_type": "TASK", "target_id": "S3-PRODUCTION-START" },
+    { "old_task_id": "S3-FP005-01", "target_type": "TASK", "target_id": "S3-PRODUCTION-START" },
+    { "old_task_id": "S3-FP006-01", "target_type": "TASK", "target_id": "S3-CHAPTER-PLAN" },
+    { "old_task_id": "S3-FP006-02", "target_type": "TASK", "target_id": "S3-CHAPTER-PLAN" },
+    { "old_task_id": "S3-FP007-01", "target_type": "TASK", "target_id": "S3-EXECUTION-PLAN" },
+    { "old_task_id": "S4-FP008-01", "target_type": "TASK", "target_id": "S4-INFO-PACKAGE" },
+    { "old_task_id": "S4-RUN-BUDGET-OVERRIDE", "target_type": "TASK", "target_id": "S4-DEDUCTION-RUNTIME" },
+    { "old_task_id": "S4-DEDUCTION-SESSION-RUNTIME", "target_type": "TASK", "target_id": "S4-DEDUCTION-RUNTIME" },
+    { "old_task_id": "S4-DEDUCTION-FAILURE-RECOVERY", "target_type": "TASK", "target_id": "S4-DEDUCTION-RUNTIME" },
+    { "old_task_id": "S4-FP008-02", "target_type": "TASK", "target_id": "S4-DEDUCTION-RUNTIME" },
+    { "old_task_id": "S4-FP008-03", "target_type": "TASK", "target_id": "S4-DEDUCTION-REVIEW" },
+    { "old_task_id": "S4-FP008-04", "target_type": "TASK", "target_id": "S4-DEDUCTION-REVIEW" },
+    { "old_task_id": "S5-FP009-00", "target_type": "TASK", "target_id": "S5-PROSE" },
+    { "old_task_id": "S5-FP009-01", "target_type": "TASK", "target_id": "S5-PROSE" },
+    { "old_task_id": "S5-FP010-01", "target_type": "TASK", "target_id": "S5-OBJECTIVE-AUDIT" },
+    { "old_task_id": "S5-FP010-02", "target_type": "TASK", "target_id": "S5-OBJECTIVE-AUDIT" },
+    { "old_task_id": "S5-FP011-01", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP011" },
+    { "old_task_id": "S5-FP011-02", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP011" },
+    { "old_task_id": "S5-FP012-01", "target_type": "TASK", "target_id": "S5-EDITOR-REVISION" },
+    { "old_task_id": "S5-FP012-02", "target_type": "TASK", "target_id": "S5-EDITOR-REVISION" },
+    { "old_task_id": "S5-FP012-04", "target_type": "TASK", "target_id": "S5-EDITOR-REVISION" },
+    { "old_task_id": "S5-FP012-03", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP012-03" },
+    { "old_task_id": "S5-FP013-01", "target_type": "TASK", "target_id": "S5-EDITOR-REVISION" },
+    { "old_task_id": "S5-WRITEBACK-CONTRACT", "target_type": "TASK", "target_id": "S5-FORMAL-WRITEBACK" },
+    { "old_task_id": "S5-WRITEBACK-FAULT-INJECTION", "target_type": "TASK", "target_id": "S5-FORMAL-WRITEBACK" },
+    { "old_task_id": "S5-FP013-02", "target_type": "TASK", "target_id": "S5-FORMAL-WRITEBACK" },
+    { "old_task_id": "S6-CONTINUITY", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-S6-CONTINUITY" },
+    { "old_task_id": "S6-COST", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-ADVANCED-BUDGET-COST" },
+    { "old_task_id": "S6-EXPORT", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-S6-EXPORT" },
+    { "old_task_id": "S7-FP014-00", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP014" },
+    { "old_task_id": "S7-FP014-01", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP014" },
+    { "old_task_id": "S7-FP014-02", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP014" },
+    { "old_task_id": "S7-FP014-03", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP014" },
+    { "old_task_id": "S7-FP014-04", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP014" },
+    { "old_task_id": "S7-FP015-02", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-FP015" },
+    { "old_task_id": "S7-VECTOR-LIFECYCLE-CONTRACT", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-GENERIC-VECTOR-RECONCILER" },
+    { "old_task_id": "S7-VECTOR-RECONCILER", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-GENERIC-VECTOR-RECONCILER" },
+    { "old_task_id": "S7-FP017-01", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-OUTSIDE-GENERIC-VECTOR-RECONCILER" },
+    { "old_task_id": "S7-MULTI-L1A-RUNNER", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-S7-FULL-BOOK-GOVERNANCE" },
+    { "old_task_id": "S7-FULL-BOOK-FAULT-CAMPAIGN", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-S7-FULL-BOOK-GOVERNANCE" },
+    { "old_task_id": "S7-FULL-BOOK-CONTINUITY", "target_type": "FEATURE_CANDIDATE", "target_id": "CAND-V7-S7-FULL-BOOK-GOVERNANCE" }
+  ]
+}
