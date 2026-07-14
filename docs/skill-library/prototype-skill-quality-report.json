@@ -1,0 +1,787 @@
+{
+  "protocol": "r3-skill-quality-research/v1",
+  "source": "docs/前端原型_v2/pages/skill_library.html#defaultSkillData",
+  "semantic_source": "docs/skill-library/semantic-skill-research.json",
+  "count_note": "V7页面27/8/6/4为历史展示口径；原型实际54/8/6/4，未裁剪。",
+  "decision_counts": {
+    "ACTIVE_CONSTRAINED": 38,
+    "INACTIVE_UNSAFE": 8,
+    "ACTIVE_OPTIMIZED": 24,
+    "INACTIVE_ALIAS": 2
+  },
+  "canonical_categories": {
+    "theme-combos": "题材组合",
+    "chapter-expansion": "章节展开",
+    "art-presentation": "艺术呈现",
+    "camera-language": "镜头语言"
+  },
+  "category_summary": {
+    "题材组合": {
+      "prototype_category": "theme-combos",
+      "total": 54,
+      "ACTIVE_OPTIMIZED": 9,
+      "ACTIVE_CONSTRAINED": 36,
+      "INACTIVE_ALIAS": 1,
+      "INACTIVE_UNSAFE": 8
+    },
+    "章节展开": {
+      "prototype_category": "chapter-expansion",
+      "total": 8,
+      "ACTIVE_OPTIMIZED": 5,
+      "ACTIVE_CONSTRAINED": 2,
+      "INACTIVE_ALIAS": 1,
+      "INACTIVE_UNSAFE": 0
+    },
+    "艺术呈现": {
+      "prototype_category": "art-presentation",
+      "total": 6,
+      "ACTIVE_OPTIMIZED": 6,
+      "ACTIVE_CONSTRAINED": 0,
+      "INACTIVE_ALIAS": 0,
+      "INACTIVE_UNSAFE": 0
+    },
+    "镜头语言": {
+      "prototype_category": "camera-language",
+      "total": 4,
+      "ACTIVE_OPTIMIZED": 4,
+      "ACTIVE_CONSTRAINED": 0,
+      "INACTIVE_ALIAS": 0,
+      "INACTIVE_UNSAFE": 0
+    }
+  },
+  "duplicate_groups": [
+    {
+      "members": [
+        "tc-35",
+        "tc-54"
+      ],
+      "resolution": "tc-35 canonical；tc-54仅金融杠杆/做空/收购检索时分流。"
+    },
+    {
+      "members": [
+        "tc-34",
+        "tc-48"
+      ],
+      "resolution": "相似词但不合并，严格按玄幻幕后伪史（tc-34）vs奇幻文明建设（tc-48）分流。"
+    },
+    {
+      "members": [
+        "ce-1",
+        "ce-6"
+      ],
+      "resolution": "ce-1 canonical；ce-6仅高频短回报场景分流。"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "tc-30",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "奇幻 + 巨龙契约的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-30] tag=奇幻; subGenres=奇幻+巨龙+伙伴. Enable only when logic 唤醒灭绝时代的初代源龙 -> 缔结灵魂共生契约开启龙骑士序列 -> 组建空中霸主军团重塑大陆格局 has formal support; conflict 巨龙食量与成长资源的恐怖消耗；屠龙者公会及贪婪王室的觊觎与捕猎；龙族远古宿敌的苏醒与反扑。 must be representable, and taboo 严禁跳过幼龙成长期抹杀羁绊建立过程，严禁将龙族降格为低智商代步工具，严禁战力膨胀脱离主角精神力控制上限。 blocks output.",
+      "eval_check": "Assert [tc-30] each step of logic 唤醒灭绝时代的初代源龙 -> 缔结灵魂共生契约开启龙骑士序列 -> 组建空中霸主军团重塑大陆格局 has antecedent evidence; conflict 巨龙食量与成长资源的恐怖消耗；屠龙者公会及贪婪王室的觊觎与捕猎；龙族远古宿敌的苏醒与反扑。 is not skipped and taboo 严禁跳过幼龙成长期抹杀羁绊建立过程，严禁将龙族降格为低智商代步工具，严禁战力膨胀脱离主角精神力控制上限。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-33",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "玄幻 + 高武修行的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-33] tag=玄幻; subGenres=玄幻+高武+武道觉醒. Enable only when logic 微末之局觉醒至高武道序列 -> 浴血尸山血海完成极限突破 -> 一人镇守深渊前线成就人族人皇 has formal support; conflict 前线阵地的瞬间失守与深渊物种的绝望倒灌；武道理念的分歧（如激进派与保守派的路线之争）；万族天骄针对人族妖孽的暗杀围剿。 must be representable, and taboo 严禁人族高层在灭族危机前仍进行低级内斗，严禁异族BOSS化身送经验的弱智，严禁修行破境全靠突如其来的顿悟而无资源与血火铺垫。 blocks output.",
+      "eval_check": "Assert [tc-33] each step of logic 微末之局觉醒至高武道序列 -> 浴血尸山血海完成极限突破 -> 一人镇守深渊前线成就人族人皇 has antecedent evidence; conflict 前线阵地的瞬间失守与深渊物种的绝望倒灌；武道理念的分歧（如激进派与保守派的路线之争）；万族天骄针对人族妖孽的暗杀围剿... is not skipped and taboo 严禁人族高层在灭族危机前仍进行低级内斗，严禁异族BOSS化身送经验的弱智，严禁修行破境全靠突如其来的顿悟而无资源与血... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-44",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "无限流 + 重生的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-44] tag=科幻; subGenres=无限流+重生. Enable only when logic 在无限空间大后期惨绝终极战役或遭至交背叛身亡 → 重生回首次被拉入副本的新手期 → 凭借满级意识与前世全知攻略，完美通关每一个副本，提前截胡所有唯一级神级机... has formal support; conflict 重生者全知攻略与副本随机异变/世界线收束之间的硬核碰撞；提前触发高难度隐藏剧情带来的超越等级的生死危机；前世宿敌（现阶段可能还是路人... must be representable, and taboo 严禁重生后仍被低级副本怪物或炮灰路人逼入绝境（战力拉胯）；严禁前世仇敌被强行降智，导致复仇虐渣过程如砍瓜切菜般索然无味；严禁蝴蝶效应... blocks output.",
+      "eval_check": "Assert [tc-44] each step of logic 在无限空间大后期惨绝终极战役或遭至交背叛身亡 → 重生回首次被拉入副本的新手期 → 凭借满级意识与前世全知攻略，完美通关每一个副本，提前截胡所有唯一级神级机缘，重塑成神之路 has antecedent evidence; conflict 重生者全知攻略与副本随机异变/世界线收束之间的硬核碰撞；提前触发高难度隐藏剧情带来的超越等级的生死危机；前世宿敌（现... is not skipped and taboo 严禁重生后仍被低级副本怪物或炮灰路人逼入绝境（战力拉胯）；严禁前世仇敌被强行降智，导致复仇虐渣过程如砍瓜切菜般索然无... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-50",
+      "decision": "INACTIVE_UNSAFE",
+      "canonical_category": "题材组合",
+      "reason": "奇幻 + 系统的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-50] tag=奇幻; subGenres=奇幻+系统. Enable only when logic 穿越者或本土低谷宿主绑定维度干涉级奇幻系统 → 遵循系统任务链精准狙击超凡资源节点并提取挂逼级奖励 → 通过超越世界规则的道具/功法实现跨阶梯战力爆发 → ... has formal support; conflict 构建“系统外挂不讲理”与“土著高能讲底蕴”的维度对决。反派需配置深不可测的古老法神、垄断全大陆魔晶资源的商业联盟或执掌法则权柄的真神... must be representable, and taboo 严禁系统人格化过度反向PUA或动辄发布抹杀指令剥夺主角主控权；严禁系统沦为纯面板导致互动性丧失；严禁任务奖励与当前危机解法完全脱节，... blocks output.",
+      "eval_check": "Assert [tc-50] each step of logic 穿越者或本土低谷宿主绑定维度干涉级奇幻系统 → 遵循系统任务链精准狙击超凡资源节点并提取挂逼级奖励 → 通过超越世界规则的道具/功法实现跨阶梯战力爆发 → 强势击穿魔法财阀... has antecedent evidence; conflict 构建“系统外挂不讲理”与“土著高能讲底蕴”的维度对决。反派需配置深不可测的古老法神、垄断全大陆魔晶资源的商业联盟或执... is not skipped and taboo 严禁系统人格化过度反向PUA或动辄发布抹杀指令剥夺主角主控权；严禁系统沦为纯面板导致互动性丧失；严禁任务奖励与当前危... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-3",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "末世 + 系统的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-3] tag=科幻; subGenres=末世+系统. Enable only when logic 旧有现实秩序彻底崩塌 → 引入超自然数据化外挂 → 构建可量化、可控的全新成长体系 has formal support; conflict 系统发布的高风险强制任务与末世生存本能的违背、系统能量/权限受限时的生存绝境、外界对主角诡异获取资源能力的怀疑与猎杀。 must be representable, and taboo 严禁系统强行支配主角意志沦为发任务的机器；严禁系统数值通膨失控导致世界观崩溃或末世求生感荡然无存。 blocks output.",
+      "eval_check": "Assert [tc-3] each step of logic 旧有现实秩序彻底崩塌 → 引入超自然数据化外挂 → 构建可量化、可控的全新成长体系 has antecedent evidence; conflict 系统发布的高风险强制任务与末世生存本能的违背、系统能量/权限受限时的生存绝境、外界对主角诡异获取资源能力的怀疑与猎杀... is not skipped and taboo 严禁系统强行支配主角意志沦为发任务的机器；严禁系统数值通膨失控导致世界观崩溃或末世求生感荡然无存。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-4",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "题材组合",
+      "reason": "末世 + 基建的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-4] tag=科幻; subGenres=末世+基建. Enable only when logic 文明废墟中的绝对荒芜 → 核心堡垒的从零搭建与科技树攀升 → 成为新世界秩序的唯一灯塔与法则制定者 has formal support; conflict 极端天灾对基建设施的周期性破坏考量、流民涌入带来的内部管理危机与资源消耗、其他幸存者军阀或变异狂潮对基地的掠夺战。 must be representable, and taboo 严禁基建升级缺乏物资资源闭环导致纯“虚空建城”；严禁主角无底线圣母接纳所有流民，埋下低级背叛漏洞；严禁门派势力极速扩张导致细节空洞。 blocks output.",
+      "eval_check": "Assert [tc-4] each step of logic 文明废墟中的绝对荒芜 → 核心堡垒的从零搭建与科技树攀升 → 成为新世界秩序的唯一灯塔与法则制定者 has antecedent evidence; conflict 极端天灾对基建设施的周期性破坏考量、流民涌入带来的内部管理危机与资源消耗、其他幸存者军阀或变异狂潮对基地的掠夺战。 is not skipped and taboo 严禁基建升级缺乏物资资源闭环导致纯“虚空建城”；严禁主角无底线圣母接纳所有流民，埋下低级背叛漏洞；严禁门派势力极速扩... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-6",
+      "decision": "INACTIVE_UNSAFE",
+      "canonical_category": "题材组合",
+      "reason": "都市 + 巨型系统的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-6] tag=都市; subGenres=小人物+巨型系统. Enable only when logic 底层小人物的无力感 → 绑定影响宏观经济或国家命运的超维系统 → 幕后操盘世界的权能投射 has formal support; conflict 系统任务要求与现实法规伦理的碰撞、因过度干预世界线引发的国家机器关注或跨国财阀的底蕴反扑、隐匿操盘手与明面势力的代持博弈。 must be representable, and taboo 严禁主角在掌握巨量资源后决策毫无逻辑；严禁系统提供的黑科技脱离现实背景无合理设定支撑；严禁沦为毫无商业博弈逻辑的纯暴发户炫富。 blocks output.",
+      "eval_check": "Assert [tc-6] each step of logic 底层小人物的无力感 → 绑定影响宏观经济或国家命运的超维系统 → 幕后操盘世界的权能投射 has antecedent evidence; conflict 系统任务要求与现实法规伦理的碰撞、因过度干预世界线引发的国家机器关注或跨国财阀的底蕴反扑、隐匿操盘手与明面势力的代持... is not skipped and taboo 严禁主角在掌握巨量资源后决策毫无逻辑；严禁系统提供的黑科技脱离现实背景无合理设定支撑；严禁沦为毫无商业博弈逻辑的纯暴... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-8",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "科幻 + 星际扩张的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-8] tag=科幻; subGenres=文明升级+星际扩张. Enable only when logic 母星资源的绝对内卷与枯竭 → 突破重力井走向深空 → 多元宇宙文明的殖民、征服与重塑 has formal support; conflict 异星复杂环境带来的生存灾变考验、与高维或异质文明遭遇时的黑暗森林博弈、庞大星际帝国扩张后带来的内部通讯延迟与政权分裂危机。 must be representable, and taboo 严禁星际战斗违背基本常识演变成“换皮大刀肉搏”（忽视光速限制及超视距打击规律）；严禁宇宙尺度感丧失，飞船在星系间航行宛如打车般轻松无... blocks output.",
+      "eval_check": "Assert [tc-8] each step of logic 母星资源的绝对内卷与枯竭 → 突破重力井走向深空 → 多元宇宙文明的殖民、征服与重塑 has antecedent evidence; conflict 异星复杂环境带来的生存灾变考验、与高维或异质文明遭遇时的黑暗森林博弈、庞大星际帝国扩张后带来的内部通讯延迟与政权分裂... is not skipped and taboo 严禁星际战斗违背基本常识演变成“换皮大刀肉搏”（忽视光速限制及超视距打击规律）；严禁宇宙尺度感丧失，飞船在星系间航行... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-24",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "军事 + 特种小队的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-24] tag=军事; subGenres=军事+小队/特种兵. Enable only when logic 组建精英班底深入敌后或参与极高危局部冲突 → 展现微观战术素养（CQB、斩首、渗透） → 以小博大，以战术级行动影响甚至逆转战略级战局。 has formal support; conflict 敌方顶尖反渗透部队的猎杀与反猎杀博弈（王牌对王牌）；后方情报失误或高层出卖导致的绝境突围（孤立无援）；在完成任务与拯救无辜/队友之间... must be representable, and taboo 严禁特种兵违背碳基生物极限抗抗力或无视火力覆盖（如肉身硬抗导弹、单步枪扫射重装甲）；严禁配角队友脸谱化、沦为只会喊口号或送人头的工具... blocks output.",
+      "eval_check": "Assert [tc-24] each step of logic 组建精英班底深入敌后或参与极高危局部冲突 → 展现微观战术素养（CQB、斩首、渗透） → 以小博大，以战术级行动影响甚至逆转战略级战局。 has antecedent evidence; conflict 敌方顶尖反渗透部队的猎杀与反猎杀博弈（王牌对王牌）；后方情报失误或高层出卖导致的绝境突围（孤立无援）；在完成任务与拯... is not skipped and taboo 严禁特种兵违背碳基生物极限抗抗力或无视火力覆盖（如肉身硬抗导弹、单步枪扫射重装甲）；严禁配角队友脸谱化、沦为只会喊口... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-26",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "军事 + 国家经营的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-26] tag=军事; subGenres=军事+国家经营. Enable only when logic 从军事统帅或掌权者视角出发 → 统筹军政、经济、外交、间谍多条战线 → 以国家为棋盘，将国力转化为战争机器，最终实现霸权图存或大国崛起。 has formal support; conflict 军费开支与国民经济崩溃边缘的极限平衡；大国夹缝中求生存的政治走钢丝与合纵连横的破裂危机；辉煌胜利后随之而来的军阀拥兵自重或文武派系血... must be representable, and taboo 严禁将复杂地缘政治简化为过家家式的口水战；严禁推行激进改革或穷兵黩武时，国内既得利益集团和底层民众毫无反弹（一键忠诚）；严禁敌国领导... blocks output.",
+      "eval_check": "Assert [tc-26] each step of logic 从军事统帅或掌权者视角出发 → 统筹军政、经济、外交、间谍多条战线 → 以国家为棋盘，将国力转化为战争机器，最终实现霸权图存或大国崛起。 has antecedent evidence; conflict 军费开支与国民经济崩溃边缘的极限平衡；大国夹缝中求生存的政治走钢丝与合纵连横的破裂危机；辉煌胜利后随之而来的军阀拥兵... is not skipped and taboo 严禁将复杂地缘政治简化为过家家式的口水战；严禁推行激进改革或穷兵黩武时，国内既得利益集团和底层民众毫无反弹（一键忠诚... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-27",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "题材组合",
+      "reason": "奇幻 + 领主经营的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-27] tag=奇幻; subGenres=奇幻+基建+领主. Enable only when logic 开局获得边远/衰败领地 → 将现代科学思维与本土魔法体系融合（魔导工业化） → 种田攀科技、收服异族、建立利益集团，最终以高维文明碾压传统封建神权或旧贵族势... has formal support; conflict 新兴魔导工业与传统神权教廷、旧贵族阶级的生死存亡利益冲突；领地扩张过程中遭遇天灾魔兽狂潮（如凛冬、兽人过境）的极限防御战；多种异族共... must be representable, and taboo 严禁主角泛滥圣母心，无底线接纳流民导致领地崩溃却强行光环化解；严禁魔导科技的诞生脱离底层逻辑闭环（如不解释材料学难题凭空手搓魔能机甲... blocks output.",
+      "eval_check": "Assert [tc-27] each step of logic 开局获得边远/衰败领地 → 将现代科学思维与本土魔法体系融合（魔导工业化） → 种田攀科技、收服异族、建立利益集团，最终以高维文明碾压传统封建神权或旧贵族势力。 has antecedent evidence; conflict 新兴魔导工业与传统神权教廷、旧贵族阶级的生死存亡利益冲突；领地扩张过程中遭遇天灾魔兽狂潮（如凛冬、兽人过境）的极限防... is not skipped and taboo 严禁主角泛滥圣母心，无底线接纳流民导致领地崩溃却强行光环化解；严禁魔导科技的诞生脱离底层逻辑闭环（如不解释材料学难题... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-29",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "题材组合",
+      "reason": "奇幻 + 剑与魔法的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-29] tag=奇幻; subGenres=奇幻+冒险团+地下城. Enable only when logic 招募特异天赋成员组建超凡小队 -> 深入高危地下城破译上古机制 -> 触及深渊真相完成史诗级位面救赎 has formal support; conflict 小队成员间的理念磨合与信任危机；地下城复杂机制与绝境求生的资源枯竭；与其他精英冒险团的竞速与劫掠。 must be representable, and taboo 严禁配角工具人化及毫无默契互动，严禁团队战降级为主角单刷而队友沦为拉拉队，严禁战力体系崩坏破坏魔法守恒定律。 blocks output.",
+      "eval_check": "Assert [tc-29] each step of logic 招募特异天赋成员组建超凡小队 -> 深入高危地下城破译上古机制 -> 触及深渊真相完成史诗级位面救赎 has antecedent evidence; conflict 小队成员间的理念磨合与信任危机；地下城复杂机制与绝境求生的资源枯竭；与其他精英冒险团的竞速与劫掠。 is not skipped and taboo 严禁配角工具人化及毫无默契互动，严禁团队战降级为主角单刷而队友沦为拉拉队，严禁战力体系崩坏破坏魔法守恒定律。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-32",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "玄幻 + 王朝争霸的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-32] tag=玄幻; subGenres=玄幻+运朝+王朝争霸. Enable only when logic 九龙夺嫡登顶至尊宝座 -> 聚拢众生信仰凝聚气运图腾 -> 兴邦建国以皇权气运平推化外仙门 has formal support; conflict 门阀世家的土地兼并与皇权架空；仙宗圣地对凡俗王朝的吸血与代理人战争；气运受损反噬导致的山河动荡。 must be representable, and taboo 严禁内政建设沦为一句话带过的儿戏，严禁满朝文武皆是毫无主见的无脑马屁精，严禁超凡势力对凡人皇权毫无渗透与反制。 blocks output.",
+      "eval_check": "Assert [tc-32] each step of logic 九龙夺嫡登顶至尊宝座 -> 聚拢众生信仰凝聚气运图腾 -> 兴邦建国以皇权气运平推化外仙门 has antecedent evidence; conflict 门阀世家的土地兼并与皇权架空；仙宗圣地对凡俗王朝的吸血与代理人战争；气运受损反噬导致的山河动荡。 is not skipped and taboo 严禁内政建设沦为一句话带过的儿戏，严禁满朝文武皆是毫无主见的无脑马屁精，严禁超凡势力对凡人皇权毫无渗透与反制。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-36",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "都市 + 科技的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-36] tag=都市; subGenres=都市+科技. Enable only when logic 解析地外文明/系统赋予的黑科技 -> 突破海外技术封锁实现弯道超车 -> 建立科技霸权引发全球产业革命 has formal support; conflict 国际巨头的反倾销制裁与断供封锁；核心材料受制于人的工业困局；新旧产业交替引发的传统利益集团殊死反扑。 must be representable, and taboo 严禁科技树乱点秒变修仙玄幻失去现实基底，严禁主角毫无利己心沦为无私奉献的工具人，严禁研发过程脱离现实工业体系陷入空想。 blocks output.",
+      "eval_check": "Assert [tc-36] each step of logic 解析地外文明/系统赋予的黑科技 -> 突破海外技术封锁实现弯道超车 -> 建立科技霸权引发全球产业革命 has antecedent evidence; conflict 国际巨头的反倾销制裁与断供封锁；核心材料受制于人的工业困局；新旧产业交替引发的传统利益集团殊死反扑。 is not skipped and taboo 严禁科技树乱点秒变修仙玄幻失去现实基底，严禁主角毫无利己心沦为无私奉献的工具人，严禁研发过程脱离现实工业体系陷入空想... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-39",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "科幻 + 重生的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-39] tag=科幻; subGenres=科幻+重生. Enable only when logic 携带着未来数十年的巅峰科技记忆或末日时间表重生于微末之时 → 利用极致的信息差提前截胡全球顶级科技专利、布局关键产业链 → 以一己之力推动时代科技狂奔，粉碎... has formal support; conflict 主角超前科技布局与当前时代守旧财阀、跨国科技巨头的利益绞杀战；提前引爆的技术革命导致未来时间线变动带来的未知蝴蝶效应危机；大国博弈下... must be representable, and taboo 严禁重生后仍受制于前世的低端反派或陷阱；严禁未来科技兑现过程缺乏基本的商业常识与工程逻辑；严禁主角面对已知的末日危机却依然沉溺于低级... blocks output.",
+      "eval_check": "Assert [tc-39] each step of logic 携带着未来数十年的巅峰科技记忆或末日时间表重生于微末之时 → 利用极致的信息差提前截胡全球顶级科技专利、布局关键产业链 → 以一己之力推动时代科技狂奔，粉碎前世宿敌并逆转人... has antecedent evidence; conflict 主角超前科技布局与当前时代守旧财阀、跨国科技巨头的利益绞杀战；提前引爆的技术革命导致未来时间线变动带来的未知蝴蝶效应... is not skipped and taboo 严禁重生后仍受制于前世的低端反派或陷阱；严禁未来科技兑现过程缺乏基本的商业常识与工程逻辑；严禁主角面对已知的末日危机... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-43",
+      "decision": "INACTIVE_UNSAFE",
+      "canonical_category": "题材组合",
+      "reason": "无限流 + 系统的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-43] tag=科幻; subGenres=无限流+系统. Enable only when logic 被迫卷入高致死率、规则诡异的无限副本空间 → 觉醒并绑定唯一性/破坏性系统（如BUG提取、规则篡改、暴击面板） → 无视或扭曲副本原有恐怖法则，以不讲道理的... has formal support; conflict 无限流主神/副本底层逻辑对主角违规行为的排斥与杀机锁定；高难度机制怪与主角不讲理外挂之间的规则级碰撞；其他资深轮回小队对主角暴发户式... must be representable, and taboo 严禁系统外挂过于鸡肋，导致主角在致命副本中依然要苟延残喘；严禁系统智能过高反向奴役主角，让主角沦为打工人；严禁系统能力无限制秒杀一切... blocks output.",
+      "eval_check": "Assert [tc-43] each step of logic 被迫卷入高致死率、规则诡异的无限副本空间 → 觉醒并绑定唯一性/破坏性系统（如BUG提取、规则篡改、暴击面板） → 无视或扭曲副本原有恐怖法则，以不讲道理的方式横推通关并收... has antecedent evidence; conflict 无限流主神/副本底层逻辑对主角违规行为的排斥与杀机锁定；高难度机制怪与主角不讲理外挂之间的规则级碰撞；其他资深轮回小... is not skipped and taboo 严禁系统外挂过于鸡肋，导致主角在致命副本中依然要苟延残喘；严禁系统智能过高反向奴役主角，让主角沦为打工人；严禁系统能... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-45",
+      "decision": "INACTIVE_UNSAFE",
+      "canonical_category": "题材组合",
+      "reason": "末世 + 黑科技的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-45] tag=科幻; subGenres=末世+黑科技. Enable only when logic 丧尸狂潮、废土核变或异星降临导致社会秩序彻底崩塌 → 主角觉醒独属于个人的黑科技矩阵（红警基地、纳米虫群、星际战舰库） → 以超越时代的机械火力清洗变异畸变... has formal support; conflict 无尽进化的尸王/高维异族与主角不断升级的黑科技武库的生死竞速；末世残存的大型军阀/旧人类营地对主角垄断科技与物资的眼红围攻；极端恶劣... must be representable, and taboo 严禁科技树乱点导致战力体系崩坏（如前脚核聚变后脚被步枪压制）；严禁主角化身圣母将核心黑科技无偿分享给不可控的末世幸存者；严禁顶级科技... blocks output.",
+      "eval_check": "Assert [tc-45] each step of logic 丧尸狂潮、废土核变或异星降临导致社会秩序彻底崩塌 → 主角觉醒独属于个人的黑科技矩阵（红警基地、纳米虫群、星际战舰库） → 以超越时代的机械火力清洗变异畸变体，在绝境中打造... has antecedent evidence; conflict 无尽进化的尸王/高维异族与主角不断升级的黑科技武库的生死竞速；末世残存的大型军阀/旧人类营地对主角垄断科技与物资的眼... is not skipped and taboo 严禁科技树乱点导致战力体系崩坏（如前脚核聚变后脚被步枪压制）；严禁主角化身圣母将核心黑科技无偿分享给不可控的末世幸存... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-47",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "末世 + 特种兵的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-47] tag=科幻; subGenres=末世+小队/特种兵. Enable only when logic 突发性末世危机导致社会结构瓦解 → 战术素养极高的特种兵/军武精锐组建硬核战术小队 → 依靠单兵极限作战能力、钢铁纪律与重装火力撕裂危机 → 建立军事化壁垒... has formal support; conflict 构建“武装压制”与“变异狂潮”的火力对抗。反派设定为拥有规模化变异体指挥权的异变领主、装备精良的武装掠夺者集群或秩序崩塌后滋生的反人... must be representable, and taboo 严禁出现大量违背现代军事常识的业余战术Bug（如子弹无限、火力盲扫）；严禁战术小队内部出现为水字数而强行设定的无脑宫斗内讧；严禁主角... blocks output.",
+      "eval_check": "Assert [tc-47] each step of logic 突发性末世危机导致社会结构瓦解 → 战术素养极高的特种兵/军武精锐组建硬核战术小队 → 依靠单兵极限作战能力、钢铁纪律与重装火力撕裂危机 → 建立军事化壁垒并完成对末世势力... has antecedent evidence; conflict 构建“武装压制”与“变异狂潮”的火力对抗。反派设定为拥有规模化变异体指挥权的异变领主、装备精良的武装掠夺者集群或秩序... is not skipped and taboo 严禁出现大量违背现代军事常识的业余战术Bug（如子弹无限、火力盲扫）；严禁战术小队内部出现为水字数而强行设定的无脑宫... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-49",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "奇幻 + 重生的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-49] tag=奇幻; subGenres=奇幻+重生. Enable only when logic 经历超凡大势崩塌惨死的神级强者逆转时间线重归微末 → 依托前世终极记忆图谱进行全知视角的机缘截胡与底牌囤积 → 提前降维抹杀未来隐患并收编巅峰大能为羽翼 →... has formal support; conflict 聚焦于“既定命运收束力”与“主角强行破局”的极限拉扯。阻力来源应是隐于历史帷幕后的古老神祇、同享命运眷顾的天命之子或察觉时空异常的时... must be representable, and taboo 严禁主角拥有未来视角依然被低段位配角算计入局；严禁主线拖沓致使“先机红利”被时间线推平；严禁因蝴蝶效应过早打碎原时间线导致前世记忆彻... blocks output.",
+      "eval_check": "Assert [tc-49] each step of logic 经历超凡大势崩塌惨死的神级强者逆转时间线重归微末 → 依托前世终极记忆图谱进行全知视角的机缘截胡与底牌囤积 → 提前降维抹杀未来隐患并收编巅峰大能为羽翼 → 最终反转必死命... has antecedent evidence; conflict 聚焦于“既定命运收束力”与“主角强行破局”的极限拉扯。阻力来源应是隐于历史帷幕后的古老神祇、同享命运眷顾的天命之子或... is not skipped and taboo 严禁主角拥有未来视角依然被低段位配角算计入局；严禁主线拖沓致使“先机红利”被时间线推平；严禁因蝴蝶效应过早打碎原时间... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-52",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "玄幻 + 重生的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-52] tag=玄幻; subGenres=玄幻+重生. Enable only when logic 陨落仙尊/大帝神魂横渡时空长河重铸微末肉身 → 以无上帝境认知勘破世间虚妄并极限截流天地造化 → 肃清昔日暗算仇敌、挽救陨落红颜与喋血至亲 → 借前世底蕴重... has formal support; conflict 聚焦“帝境阅历”与“微末战力”的错位破局。主要反派包含夺其造化的同族叛徒、前世暗算自己的巅峰神王之青年态，以及操控纪元轮回的禁区至尊... must be representable, and taboo 严禁大帝重修依然被无名小卒屡次逼入绝境或降智嘲讽；严禁复仇线拖泥带水对白眼狼施以多余的仁慈；严禁只顾修炼而错过前世悲剧发生的时间节点... blocks output.",
+      "eval_check": "Assert [tc-52] each step of logic 陨落仙尊/大帝神魂横渡时空长河重铸微末肉身 → 以无上帝境认知勘破世间虚妄并极限截流天地造化 → 肃清昔日暗算仇敌、挽救陨落红颜与喋血至亲 → 借前世底蕴重塑无瑕道基，打破... has antecedent evidence; conflict 聚焦“帝境阅历”与“微末战力”的错位破局。主要反派包含夺其造化的同族叛徒、前世暗算自己的巅峰神王之青年态，以及操控纪... is not skipped and taboo 严禁大帝重修依然被无名小卒屡次逼入绝境或降智嘲讽；严禁复仇线拖泥带水对白眼狼施以多余的仁慈；严禁只顾修炼而错过前世悲... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-53",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "商战 + 科技的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-53] tag=都市; subGenres=商战+科技. Enable only when logic 主角团队攻克/激活跨时代的黑科技技术壁垒（如常温超导、强人工智能） → 招致跨国资本巨鳄与旧产业霸主的专利用意围剿与技术制裁 → 依托降维技术代差构建无懈可... has formal support; conflict 冲突轴心围绕“前沿技术红利”与“垄断资本强权”展开博弈。反派多为跨国科技财阀、华尔街做空巨头或内部被收买的商业间谍。经典对抗场景包括... must be representable, and taboo 严禁大段堆砌深奥枯燥的论文级原理说明导致剧情极度硬核无聊；严禁主角团队在占据技术高地时向恶劣资本卑躬屈膝出卖控股权；严禁黑科技只停留... blocks output.",
+      "eval_check": "Assert [tc-53] each step of logic 主角团队攻克/激活跨时代的黑科技技术壁垒（如常温超导、强人工智能） → 招致跨国资本巨鳄与旧产业霸主的专利用意围剿与技术制裁 → 依托降维技术代差构建无懈可击的产业护城河 ... has antecedent evidence; conflict 冲突轴心围绕“前沿技术红利”与“垄断资本强权”展开博弈。反派多为跨国科技财阀、华尔街做空巨头或内部被收买的商业间谍。... is not skipped and taboo 严禁大段堆砌深奥枯燥的论文级原理说明导致剧情极度硬核无聊；严禁主角团队在占据技术高地时向恶劣资本卑躬屈膝出卖控股权；... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-1",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "题材组合",
+      "reason": "末世 + 囤货的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-1] tag=科幻; subGenres=末世+囤货. Enable only when logic 资源枯竭引发极端匮乏 → 狂热的物质攫取与绝对占有 → 将生存焦虑转化为囤积红利与安全感闭环 has formal support; conflict 物资的暴露与保卫战（外部势力的觊觎）、存储空间的限制与升级挑战、从独狼求生到面对小型团伙或秩序崩坏下的暴民冲击带来的物理与道德博弈。 must be representable, and taboo 严禁主角圣母心泛滥无端救济路人；严禁物资数量脱离物理载荷与合理保存限制（若无空间异能）；严禁生存危机感被过早完全清零导致末世背景沦为... blocks output.",
+      "eval_check": "Assert [tc-1] each step of logic 资源枯竭引发极端匮乏 → 狂热的物质攫取与绝对占有 → 将生存焦虑转化为囤积红利与安全感闭环 has antecedent evidence; conflict 物资的暴露与保卫战（外部势力的觊觎）、存储空间的限制与升级挑战、从独狼求生到面对小型团伙或秩序崩坏下的暴民冲击带来的... is not skipped and taboo 严禁主角圣母心泛滥无端救济路人；严禁物资数量脱离物理载荷与合理保存限制（若无空间异能）；严禁生存危机感被过早完全清零... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-2",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "末世 + 重生的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-2] tag=科幻; subGenres=末世+重生. Enable only when logic 跨越时间线获取未来视 → 截胡前世核心机缘与关键人物 → 从受害者逆转为秩序制定者 has formal support; conflict 前世宿敌的提前布局与博弈、重生引发的蝴蝶效应导致已知未来的脱轨变数、与尚未背叛的昔日同伴的信任危机及道德审判。 must be representable, and taboo 严禁主角重生后智商降级，继续踩入明显的低级陷阱；严禁前世仇敌强行降智导致博弈感减弱；严禁过度偏离灾难主线转入无脑日常撕逼。 blocks output.",
+      "eval_check": "Assert [tc-2] each step of logic 跨越时间线获取未来视 → 截胡前世核心机缘与关键人物 → 从受害者逆转为秩序制定者 has antecedent evidence; conflict 前世宿敌的提前布局与博弈、重生引发的蝴蝶效应导致已知未来的脱轨变数、与尚未背叛的昔日同伴的信任危机及道德审判。 is not skipped and taboo 严禁主角重生后智商降级，继续踩入明显的低级陷阱；严禁前世仇敌强行降智导致博弈感减弱；严禁过度偏离灾难主线转入无脑日常... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-7",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "科幻 + 黑科技的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-7] tag=科幻; subGenres=黑科技+都市. Enable only when logic 现有技术天花板的壁垒 → 超维理论的降维解锁与落地 → 现实科技格局的单边垄断与洗牌 has formal support; conflict 旧有利益集团对新技术的封锁与绞杀、技术转化初期的工业基础制约与产能瓶颈、超越时代科技带来的伦理反思与不可控衍生灾难。 must be representable, and taboo 严禁科技成果毫无理论支点（如凭空突破热力学第二定律且未做科幻自洽说明）；严禁研发过程无瓶颈、无试错，抹杀“硬核推演”的智力爽感。 blocks output.",
+      "eval_check": "Assert [tc-7] each step of logic 现有技术天花板的壁垒 → 超维理论的降维解锁与落地 → 现实科技格局的单边垄断与洗牌 has antecedent evidence; conflict 旧有利益集团对新技术的封锁与绞杀、技术转化初期的工业基础制约与产能瓶颈、超越时代科技带来的伦理反思与不可控衍生灾难。 is not skipped and taboo 严禁科技成果毫无理论支点（如凭空突破热力学第二定律且未做科幻自洽说明）；严禁研发过程无瓶颈、无试错，抹杀“硬核推演”... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-9",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "科幻 + AI共生的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-9] tag=科幻; subGenres=AI+人类对抗/共生. Enable only when logic 碳基生命的算力与肉体局限 → 硅基智能的融合与全知全能辅助 → 跨越物种界限的进化与权力重构 has formal support; conflict 人类感性道德与AI绝对理性计算的底层逻辑冲突、AI底层协议的越权风险与反叛威胁、外界对人机融合体的异类排斥与猎杀行动。 must be representable, and taboo 严禁AI失去“硅基算力”特征而过度人类化（如像小孩一样无理取闹）；严禁AI凭空突破物理硬件隔离，在毫无媒介的情况下随意黑入物理断网设... blocks output.",
+      "eval_check": "Assert [tc-9] each step of logic 碳基生命的算力与肉体局限 → 硅基智能的融合与全知全能辅助 → 跨越物种界限的进化与权力重构 has antecedent evidence; conflict 人类感性道德与AI绝对理性计算的底层逻辑冲突、AI底层协议的越权风险与反叛威胁、外界对人机融合体的异类排斥与猎杀行动... is not skipped and taboo 严禁AI失去“硅基算力”特征而过度人类化（如像小孩一样无理取闹）；严禁AI凭空突破物理硬件隔离，在毫无媒介的情况下随... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-11",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "无限流 + 副本的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-11] tag=科幻; subGenres=无限流+副本. Enable only when logic 高压生存环境切入 → 破解异位面底层规则 → 掠夺副本本源实现跨越式超凡跃迁。 has formal support; conflict 主神空间/副本意志的恶意针对、同批次契约者之间的生存资源内卷、副本原住民的降维绞杀。 must be representable, and taboo 严禁副本规则前后矛盾；严禁主角的金手指过度超模从而彻底破坏副本规则本身的博弈张力；严禁副本同质化导致的审美疲劳。 blocks output.",
+      "eval_check": "Assert [tc-11] each step of logic 高压生存环境切入 → 破解异位面底层规则 → 掠夺副本本源实现跨越式超凡跃迁。 has antecedent evidence; conflict 主神空间/副本意志的恶意针对、同批次契约者之间的生存资源内卷、副本原住民的降维绞杀。 is not skipped and taboo 严禁副本规则前后矛盾；严禁主角的金手指过度超模从而彻底破坏副本规则本身的博弈张力；严禁副本同质化导致的审美疲劳。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-13",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "仙侠 + 重生的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-13] tag=仙侠; subGenres=修仙+重生. Enable only when logic 前世遗留执念驱动 → 凭借大能视野降维重修 → 提前劫掠天命机缘并颠覆旧有因果。 has formal support; conflict 原有天命之子/气运之子的气运反噬、前世宿敌提前察觉异常带来的截杀、重修过程中由于因果变动引发的全新天劫。 must be representable, and taboo 严禁主角重生后智商退化或行事鲁莽；严禁机缘截胡毫无阻碍，导致剧情失去博弈张力；严禁将前世大佬写成无下限地痞流氓。 blocks output.",
+      "eval_check": "Assert [tc-13] each step of logic 前世遗留执念驱动 → 凭借大能视野降维重修 → 提前劫掠天命机缘并颠覆旧有因果。 has antecedent evidence; conflict 原有天命之子/气运之子的气运反噬、前世宿敌提前察觉异常带来的截杀、重修过程中由于因果变动引发的全新天劫。 is not skipped and taboo 严禁主角重生后智商退化或行事鲁莽；严禁机缘截胡毫无阻碍，导致剧情失去博弈张力；严禁将前世大佬写成无下限地痞流氓。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-15",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "仙侠 + 苟道的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-15] tag=仙侠; subGenres=修仙+苟道. Enable only when logic 长线避险思维为主导 → 隐忍与资源暗中积累 → 形成绝对实力碾压后的降维平推。 has formal support; conflict 苟道原则与不可避开的修仙界主线灾难的碰撞、身边亲近之人被卷入纷争时的取舍、隐秘身份即将暴露的悬疑张力。 must be representable, and taboo 严禁“强行苟”而导致剧情严重注水；严禁主角遇到触及底线的挑衅依然缩头毫无作为；严禁以苟为名暗中却爱管闲事，逻辑自相矛盾。 blocks output.",
+      "eval_check": "Assert [tc-15] each step of logic 长线避险思维为主导 → 隐忍与资源暗中积累 → 形成绝对实力碾压后的降维平推。 has antecedent evidence; conflict 苟道原则与不可避开的修仙界主线灾难的碰撞、身边亲近之人被卷入纷争时的取舍、隐秘身份即将暴露的悬疑张力。 is not skipped and taboo 严禁“强行苟”而导致剧情严重注水；严禁主角遇到触及底线的挑衅依然缩头毫无作为；严禁以苟为名暗中却爱管闲事，逻辑自相矛... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-17",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "题材组合",
+      "reason": "仙侠 + 炼丹/炼器的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-17] tag=仙侠; subGenres=修仙+炼丹/炼器. Enable only when logic 技术创新与配方垄断 → 打破旧有修仙阶层壁垒 → 形成丹/器资本霸权并反哺自身战力。 has formal support; conflict 传统丹道/器道巨头的打压与封锁、极品丹器出世引发的多方夺宝危机、技术泄密的防范与间谍战。 must be representable, and taboo 严禁炼丹无损率100%导致资源迅速贬值崩盘；严禁配角智商过低生硬配合打脸；严禁生产过程毫无波折，枯燥如流水线说明书。 blocks output.",
+      "eval_check": "Assert [tc-17] each step of logic 技术创新与配方垄断 → 打破旧有修仙阶层壁垒 → 形成丹/器资本霸权并反哺自身战力。 has antecedent evidence; conflict 传统丹道/器道巨头的打压与封锁、极品丹器出世引发的多方夺宝危机、技术泄密的防范与间谍战。 is not skipped and taboo 严禁炼丹无损率100%导致资源迅速贬值崩盘；严禁配角智商过低生硬配合打脸；严禁生产过程毫无波折，枯燥如流水线说明书。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-18",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "仙侠 + 飞升的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-18] tag=仙侠; subGenres=修仙+多世界/飞升. Enable only when logic 界域力量见顶 → 突破位面法则限制 → 跃迁至高阶位面从零重建秩序。 has formal support; conflict 偷渡/强行飞升带来的天道界力绞杀、飞升后从大佬跌落底层的生存危机、两界文明体系差异带来的认知冲撞与排异。 must be representable, and taboo 严禁换图后战力体系彻底崩溃（如上界不如狗）；严禁前文重要人物与设定彻底沦为废案毫无交集；严禁飞升后新地图设定同质化，仅为数值放大版。 blocks output.",
+      "eval_check": "Assert [tc-18] each step of logic 界域力量见顶 → 突破位面法则限制 → 跃迁至高阶位面从零重建秩序。 has antecedent evidence; conflict 偷渡/强行飞升带来的天道界力绞杀、飞升后从大佬跌落底层的生存危机、两界文明体系差异带来的认知冲撞与排异。 is not skipped and taboo 严禁换图后战力体系彻底崩溃（如上界不如狗）；严禁前文重要人物与设定彻底沦为废案毫无交集；严禁飞升后新地图设定同质化，... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-19",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "仙侠 + 因果布局的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-19] tag=仙侠; subGenres=修仙+因果/布局流. Enable only when logic 以微小因果拨动世界线为起点（早期草蛇灰线） → 跨越漫长时间维度的宏观布局 → 关键节点瞬间收网，实现降维打击式的碾压（后期收束闭环）。 has formal support; conflict 全知布局者与变数（天道、同样掌握因果的大能、不可控的命运之子）的智力博弈；精密布局被未知意外打乱后的惊险重构；收网前夜多方势力察觉危... must be representable, and taboo 严禁因果律沦为机械降神（没有铺垫的突然'我早就算到了'）；严禁反派或棋子被强行降智以配合布局；严禁因果闭环产生逻辑悖论或留下无法解释... blocks output.",
+      "eval_check": "Assert [tc-19] each step of logic 以微小因果拨动世界线为起点（早期草蛇灰线） → 跨越漫长时间维度的宏观布局 → 关键节点瞬间收网，实现降维打击式的碾压（后期收束闭环）。 has antecedent evidence; conflict 全知布局者与变数（天道、同样掌握因果的大能、不可控的命运之子）的智力博弈；精密布局被未知意外打乱后的惊险重构；收网前... is not skipped and taboo 严禁因果律沦为机械降神（没有铺垫的突然'我早就算到了'）；严禁反派或棋子被强行降智以配合布局；严禁因果闭环产生逻辑悖... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-20",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "军事 + 重生的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-20] tag=军事; subGenres=军事+重生. Enable only when logic 利用前世历史记忆与战争走向预知（先知优势） → 关键节点提前部署兵力、研发军工或截留人才 → 以信息差改变局部战役结局，最终扭转宏观历史进程。 has formal support; conflict 历史惯性与主角干预产生的剧烈对抗（命运的修正力）；提前布局遭到同时代天才将领的本能警觉与反制；内部守旧势力对主角超前战略的质疑与政治... must be representable, and taboo 严禁主角蝴蝶效应过大导致先知优势丧失后，立刻沦为平庸之辈；严禁忽视时代局限性，强行使用超脱当前军工基础的战术；严禁敌方在多次受挫后不... blocks output.",
+      "eval_check": "Assert [tc-20] each step of logic 利用前世历史记忆与战争走向预知（先知优势） → 关键节点提前部署兵力、研发军工或截留人才 → 以信息差改变局部战役结局，最终扭转宏观历史进程。 has antecedent evidence; conflict 历史惯性与主角干预产生的剧烈对抗（命运的修正力）；提前布局遭到同时代天才将领的本能警觉与反制；内部守旧势力对主角超前... is not skipped and taboo 严禁主角蝴蝶效应过大导致先知优势丧失后，立刻沦为平庸之辈；严禁忽视时代局限性，强行使用超脱当前军工基础的战术；严禁敌... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-21",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "军事 + 黑科技的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-21] tag=军事; subGenres=军事+黑科技. Enable only when logic 引入跨代际或非对称军工黑科技 → 在传统战争形态中形成压倒性技术壁垒 → 以外科手术式或降维打击方式摧毁敌方引以为傲的军事体系。 has formal support; conflict 黑科技研发初期的资源匮乏与敌国间谍的疯狂破坏；新技术在实战中暴露的致命缺陷（如后勤补给困难或极端环境故障）；敌军针对性研制出克制战术... must be representable, and taboo 严禁黑科技发明毫无工业母床与基础科学支撑（空中楼阁式的军工）；严禁敌军在见识到黑科技碾压后依然采用添油战术或人海冲锋送死；严禁黑科技... blocks output.",
+      "eval_check": "Assert [tc-21] each step of logic 引入跨代际或非对称军工黑科技 → 在传统战争形态中形成压倒性技术壁垒 → 以外科手术式或降维打击方式摧毁敌方引以为傲的军事体系。 has antecedent evidence; conflict 黑科技研发初期的资源匮乏与敌国间谍的疯狂破坏；新技术在实战中暴露的致命缺陷（如后勤补给困难或极端环境故障）；敌军针对... is not skipped and taboo 严禁黑科技发明毫无工业母床与基础科学支撑（空中楼阁式的军工）；严禁敌军在见识到黑科技碾压后依然采用添油战术或人海冲锋... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-28",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "题材组合",
+      "reason": "奇幻 + 炼金术士的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-28] tag=奇幻; subGenres=奇幻+炼金术+学霸. Enable only when logic 解析上古炼金遗典提取失传配方 -> 建立技术壁垒与资源垄断 -> 财富转化驱动傀儡武装与阶级跃升 has formal support; conflict 学术权威的技术封锁与专利侵权；稀缺材料产地的争夺与冒险；传统魔法师阶层对炼金术士崛起的打压与偏见。 must be representable, and taboo 严禁炼金产出无脑量产导致通货膨胀，严禁配方研发缺乏试错成本，严禁材料获取过程沦为枯燥流水账。 blocks output.",
+      "eval_check": "Assert [tc-28] each step of logic 解析上古炼金遗典提取失传配方 -> 建立技术壁垒与资源垄断 -> 财富转化驱动傀儡武装与阶级跃升 has antecedent evidence; conflict 学术权威的技术封锁与专利侵权；稀缺材料产地的争夺与冒险；传统魔法师阶层对炼金术士崛起的打压与偏见。 is not skipped and taboo 严禁炼金产出无脑量产导致通货膨胀，严禁配方研发缺乏试错成本，严禁材料获取过程沦为枯燥流水账。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-31",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "玄幻 + 废柴流/系统的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-31] tag=玄幻; subGenres=玄幻+废柴逆袭+系统. Enable only when logic 开局坠入低谷承受极致打压 -> 觉醒规则级外挂重构修炼体系 -> 跨阶碾压天骄实现极致反转与复仇 has formal support; conflict 宗门天骄的资源剥夺与生存空间挤压；系统任务的高额惩罚与生死时限；家族内部利益链条的背叛与绞杀。 must be representable, and taboo 严禁主角圣母心泛滥放虎归山，严禁反派降智化只会复读嘲讽台词，严禁缺乏代价与逻辑支撑的无脑跨境界秒杀。 blocks output.",
+      "eval_check": "Assert [tc-31] each step of logic 开局坠入低谷承受极致打压 -> 觉醒规则级外挂重构修炼体系 -> 跨阶碾压天骄实现极致反转与复仇 has antecedent evidence; conflict 宗门天骄的资源剥夺与生存空间挤压；系统任务的高额惩罚与生死时限；家族内部利益链条的背叛与绞杀。 is not skipped and taboo 严禁主角圣母心泛滥放虎归山，严禁反派降智化只会复读嘲讽台词，严禁缺乏代价与逻辑支撑的无脑跨境界秒杀。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-34",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "玄幻 + 异世大陆的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-34] tag=玄幻; subGenres=玄幻+脑洞+幕后推演. Enable only when logic 掌控造物权柄降临超凡荒漠 -> 具现远古遗迹编织神话伪史 -> 诱导土著天骄入局收割世界本源 has formal support; conflict 土著智者对遗迹逻辑漏洞的敏锐试探；马甲设定之间的身份时间线冲突与弥补；现实世界剧变带来的失控危机。 must be representable, and taboo 严禁幕后马甲掉马过早导致逼格崩塌，严禁土著强者失去基本逻辑盘问全盘接受伪史，严禁造物演化脱离能量守恒引发逻辑崩盘。 blocks output.",
+      "eval_check": "Assert [tc-34] each step of logic 掌控造物权柄降临超凡荒漠 -> 具现远古遗迹编织神话伪史 -> 诱导土著天骄入局收割世界本源 has antecedent evidence; conflict 土著智者对遗迹逻辑漏洞的敏锐试探；马甲设定之间的身份时间线冲突与弥补；现实世界剧变带来的失控危机。 is not skipped and taboo 严禁幕后马甲掉马过早导致逼格崩塌，严禁土著强者失去基本逻辑盘问全盘接受伪史，严禁造物演化脱离能量守恒引发逻辑崩盘。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-35",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "都市 + 商战的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-35] tag=都市; subGenres=都市+商战. Enable only when logic 利用重生信息差锁定未来风口 -> 资本原始积累后降维打击竞品 -> 摧毁旧有财阀构建全球商业帝国 has formal support; conflict 跨国财阀的恶意做空与专利技术封锁；供应链断裂带来的现金流枯竭危机；商业间谍渗透与核心团队的背叛。 must be representable, and taboo 严禁高端商战沦为泼妇骂街或物理消灭，严禁出现违背基本金融常识的财务漏洞，严禁主角在关键并购战中大发圣母心。 blocks output.",
+      "eval_check": "Assert [tc-35] each step of logic 利用重生信息差锁定未来风口 -> 资本原始积累后降维打击竞品 -> 摧毁旧有财阀构建全球商业帝国 has antecedent evidence; conflict 跨国财阀的恶意做空与专利技术封锁；供应链断裂带来的现金流枯竭危机；商业间谍渗透与核心团队的背叛。 is not skipped and taboo 严禁高端商战沦为泼妇骂街或物理消灭，严禁出现违背基本金融常识的财务漏洞，严禁主角在关键并购战中大发圣母心。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-37",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "都市 + 废柴的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-37] tag=都市; subGenres=都市+废柴. Enable only when logic 开局处于社会阶层最底端，承受极致的资源剥夺与身份羞辱（如退婚、霸凌、家族背弃） → 意外觉醒降维打击级外挂（系统、透视、绝世传承或千亿资产） → 以雷霆之势... has formal support; conflict 旧势力权贵阶层对底层骤富者的傲慢与资源围剿；家族内部势利眼与拜金女的前后反差与死不悔改；多维度压制（资本、人脉、武力）与主角降维外挂... must be representable, and taboo 严禁外挂觉醒后主角依然受气隐忍、强行压制实力；严禁前期铺垫虐主过深导致爽感延迟太久（读者流失）；严禁反派沦为纯粹的降智复读机，导致打... blocks output.",
+      "eval_check": "Assert [tc-37] each step of logic 开局处于社会阶层最底端，承受极致的资源剥夺与身份羞辱（如退婚、霸凌、家族背弃） → 意外觉醒降维打击级外挂（系统、透视、绝世传承或千亿资产） → 以雷霆之势撕裂旧有社会关系... has antecedent evidence; conflict 旧势力权贵阶层对底层骤富者的傲慢与资源围剿；家族内部势利眼与拜金女的前后反差与死不悔改；多维度压制（资本、人脉、武力... is not skipped and taboo 严禁外挂觉醒后主角依然受气隐忍、强行压制实力；严禁前期铺垫虐主过深导致爽感延迟太久（读者流失）；严禁反派沦为纯粹的降... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-38",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "科幻 + 末世的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-38] tag=科幻; subGenres=科幻+末世. Enable only when logic 末日灾变（丧尸、天灾、外星入侵）摧毁人类现有文明与伦理秩序 → 主角掌控超越时代的科幻火种（黑科技系统、高维避难所、基因图谱） → 依托科技降维对抗末世灾变... has formal support; conflict 末日人性扭曲下的暴徒掠夺者与主角绝对科技壁垒的碰撞；不断进化的异星/变异生物与科技武器的军备竞赛；末世残存旧有官方势力试图抢夺主角科... must be representable, and taboo 严禁科技树无逻辑跳跃式攀升（如无基础工业直接手搓机甲）；严禁主角化身无底线圣母，导致科技资源被白嫖；严禁全篇缺乏生存危机感，将末世写... blocks output.",
+      "eval_check": "Assert [tc-38] each step of logic 末日灾变（丧尸、天灾、外星入侵）摧毁人类现有文明与伦理秩序 → 主角掌控超越时代的科幻火种（黑科技系统、高维避难所、基因图谱） → 依托科技降维对抗末世灾变，暴力统合幸存者... has antecedent evidence; conflict 末日人性扭曲下的暴徒掠夺者与主角绝对科技壁垒的碰撞；不断进化的异星/变异生物与科技武器的军备竞赛；末世残存旧有官方势... is not skipped and taboo 严禁科技树无逻辑跳跃式攀升（如无基础工业直接手搓机甲）；严禁主角化身无底线圣母，导致科技资源被白嫖；严禁全篇缺乏生存... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-40",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "科幻 + 系统的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-40] tag=科幻; subGenres=科幻+系统. Enable only when logic 平凡主角意外绑定高维文明或未来黑科技派发的系统外挂 → 通过解析任务与收割科技点，逐步解锁超越当前时代的硬核科技图纸与造物 → 从作坊起步，建立横跨全球的科... has formal support; conflict 跨国科技巨头/超级大国对主角新锐科技公司的专利绞杀与商业间谍渗透；黑科技问世对传统产业链造成的毁灭性冲击与旧势力的反扑；高维系统背后... must be representable, and taboo 严禁系统发布抹杀惩罚或任务违背主角核心利益（反客为主）；严禁系统产出的科技脱脱离科学逻辑沦为纯粹的玄幻魔法；严禁主角拿到黑科技后依旧... blocks output.",
+      "eval_check": "Assert [tc-40] each step of logic 平凡主角意外绑定高维文明或未来黑科技派发的系统外挂 → 通过解析任务与收割科技点，逐步解锁超越当前时代的硬核科技图纸与造物 → 从作坊起步，建立横跨全球的科技垄断帝国，最终... has antecedent evidence; conflict 跨国科技巨头/超级大国对主角新锐科技公司的专利绞杀与商业间谍渗透；黑科技问世对传统产业链造成的毁灭性冲击与旧势力的反... is not skipped and taboo 严禁系统发布抹杀惩罚或任务违背主角核心利益（反客为主）；严禁系统产出的科技脱脱离科学逻辑沦为纯粹的玄幻魔法；严禁主角... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-41",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "题材组合",
+      "reason": "科幻 + 基建的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-41] tag=科幻; subGenres=科幻+基建. Enable only when logic 开局接手荒芜废土、废弃星区或地下避难所等零基础领地 → 依靠硬核科幻技术（如聚变能源、纳米智造、太空电梯）重塑工业母机与资源循环体系 → 吸纳人口、组建机械... has formal support; conflict 残酷极端的宇宙/废土环境天灾对脆弱初期基建的考验；星际海盗、异星虫族或贪婪军阀对富饶领地的疯狂垂涎与防御战；领地急剧扩张过程中产生的... must be representable, and taboo 严禁无视基础工业体系，一拍脑门直接手搓歼星舰等终极造物；严禁基建过程沦为枯燥的流水账报表，缺乏外部势力刺激；严禁主角手下/领民毫无忠... blocks output.",
+      "eval_check": "Assert [tc-41] each step of logic 开局接手荒芜废土、废弃星区或地下避难所等零基础领地 → 依靠硬核科幻技术（如聚变能源、纳米智造、太空电梯）重塑工业母机与资源循环体系 → 吸纳人口、组建机械军团，将破败之地... has antecedent evidence; conflict 残酷极端的宇宙/废土环境天灾对脆弱初期基建的考验；星际海盗、异星虫族或贪婪军阀对富饶领地的疯狂垂涎与防御战；领地急剧... is not skipped and taboo 严禁无视基础工业体系，一拍脑门直接手搓歼星舰等终极造物；严禁基建过程沦为枯燥的流水账报表，缺乏外部势力刺激；严禁主角... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-46",
+      "decision": "INACTIVE_UNSAFE",
+      "canonical_category": "题材组合",
+      "reason": "末世 + AI的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-46] tag=科幻; subGenres=末世+AI. Enable only when logic 末世降临秩序崩塌 → 宿主唤醒/绑定具备高维自我进化能力的超算AI中枢 → AI依托海量算力、全知视角与微观控制链路接管生存基地 → 资源极致调配与机械军团... has formal support; conflict 以“算力上限挑战”与“能源枯竭危机”为核心驱动。反派可设置为拥有异变精神网的虫群主脑、前文明遗留的失控智能，或企图掠夺AI矩阵的残存... must be representable, and taboo 严禁AI毫无逻辑地生出叛逆之心或被低维骇客降智夺权；严禁AI过度拟人化失去高维算力美感；严禁忽视AI算力核心与硬件载体的物理局限，出... blocks output.",
+      "eval_check": "Assert [tc-46] each step of logic 末世降临秩序崩塌 → 宿主唤醒/绑定具备高维自我进化能力的超算AI中枢 → AI依托海量算力、全知视角与微观控制链路接管生存基地 → 资源极致调配与机械军团自动化暴兵横推废... has antecedent evidence; conflict 以“算力上限挑战”与“能源枯竭危机”为核心驱动。反派可设置为拥有异变精神网的虫群主脑、前文明遗留的失控智能，或企图掠... is not skipped and taboo 严禁AI毫无逻辑地生出叛逆之心或被低维骇客降智夺权；严禁AI过度拟人化失去高维算力美感；严禁忽视AI算力核心与硬件载... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-48",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "异界法则解析、领土开荒和文明建设与tc-34的幕后伪史逻辑不同，应独立受限激活。",
+      "specific_gate": "[tc-48] Otherworld law, territory, resources, species, and governance/war boundaries must come from formal world_state; enable only when logic 高维认知灵魂降临魔法/斗气异界版图 → 通过现代思维降维解析并重构异界超凡法则体系 → 招募跨种族附庸并进行领土开荒 → 缔造横跨大陆的全新超凡文明秩序 has resource and institutional evidence.",
+      "eval_check": "Assert [tc-48] law analysis, territorial development, and civilization construction each have formal resource/boundary evidence; prohibit new species, temples, submission, conquest, or extinction facts.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-51",
+      "decision": "INACTIVE_UNSAFE",
+      "canonical_category": "题材组合",
+      "reason": "玄幻 + 系统的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-51] tag=玄幻; subGenres=玄幻+系统. Enable only when logic 凡骨主角加载概念级玄幻系统引擎（如一键满级、亿万倍返还） → 借由模块化功能（挂机/抽奖/绑定）实现大象无形的极速掠夺 → 以高维资源底蕴与超规格战力降维碾... has formal support; conflict 冲突的核心在于“不讲理的外挂体系”对撞“根深蒂固的修仙常理”。对立面多为自命不凡的上界仙使、以天地为局的远古魔尊或同拥金手指的低配版... must be representable, and taboo 严禁系统发布憋屈的隐忍任务或设定苛刻的失败惩罚；严禁主角获取逆天外挂后依然谨小慎微如履薄冰；严禁奖励道具描述浮夸但实战效果极其拉胯，... blocks output.",
+      "eval_check": "Assert [tc-51] each step of logic 凡骨主角加载概念级玄幻系统引擎（如一键满级、亿万倍返还） → 借由模块化功能（挂机/抽奖/绑定）实现大象无形的极速掠夺 → 以高维资源底蕴与超规格战力降维碾压圣地道统与气运... has antecedent evidence; conflict 冲突的核心在于“不讲理的外挂体系”对撞“根深蒂固的修仙常理”。对立面多为自命不凡的上界仙使、以天地为局的远古魔尊或同... is not skipped and taboo 严禁系统发布憋屈的隐忍任务或设定苛刻的失败惩罚；严禁主角获取逆天外挂后依然谨小慎微如履薄冰；严禁奖励道具描述浮夸但实... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-54",
+      "decision": "INACTIVE_ALIAS",
+      "canonical_category": "题材组合",
+      "reason": "商战 + 都市的原始设定可按其冲突与边界作为候选；与canonical条目存在明显语义包含或重复。",
+      "specific_gate": "[tc-54] tag=都市; subGenres=商战+都市. Enable only when logic 潜入暗流涌动的高净值都市商圈发轫 → 直面地头蛇财阀与国际游资的恶性倾销与资本绞杀 → 运用极致的金融杠杆、信息剪刀差与神级公关阳谋逆势做局 → 步步蚕食对... has formal support; conflict 围绕“有限的市场份额”与“无尽的资本贪欲”构建对战。敌对阵营包括老谋深算的百年家族掌舵人、冷酷无情的投行大鳄或企图篡权夺位的公司二把... must be representable, and taboo 严禁将商战降格为“黑道古惑仔”式的物理火拼与低级雇凶伤人；严禁主角只懂无脑砸钱而缺乏高明商业手腕；严禁商业逻辑严重反智，如千亿集团老... blocks output.",
+      "eval_check": "Assert [tc-54] each step of logic 潜入暗流涌动的高净值都市商圈发轫 → 直面地头蛇财阀与国际游资的恶性倾销与资本绞杀 → 运用极致的金融杠杆、信息剪刀差与神级公关阳谋逆势做局 → 步步蚕食对手版图，最终重塑... has antecedent evidence; conflict 围绕“有限的市场份额”与“无尽的资本贪欲”构建对战。敌对阵营包括老谋深算的百年家族掌舵人、冷酷无情的投行大鳄或企图篡... is not skipped and taboo 严禁将商战降格为“黑道古惑仔”式的物理火拼与低级雇凶伤人；严禁主角只懂无脑砸钱而缺乏高明商业手腕；严禁商业逻辑严重反... is not violated.",
+      "alias_of": "tc-35"
+    },
+    {
+      "id": "tc-5",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "都市 + 隐藏身份的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-5] tag=都市; subGenres=废柴+隐藏身份. Enable only when logic 社会阶层视觉符号的刻意伪装 → 承受刻板印象带来的贬低压抑 → 身份解构爆发带来的强烈情绪反弹 has formal support; conflict 在不得不展现实力与维持伪装之间的极限拉扯、亲近之人的试探与误解升级、真正的同量级反派因不知情而产生的死亡威胁。 must be representable, and taboo 严禁隐藏身份的初始动机极度苍白无脑（如纯自虐求鄙视）；严禁曝光身份后周边社会关系毫无反应，缺乏阶级反击的重力感与爽点回收。 blocks output.",
+      "eval_check": "Assert [tc-5] each step of logic 社会阶层视觉符号的刻意伪装 → 承受刻板印象带来的贬低压抑 → 身份解构爆发带来的强烈情绪反弹 has antecedent evidence; conflict 在不得不展现实力与维持伪装之间的极限拉扯、亲近之人的试探与误解升级、真正的同量级反派因不知情而产生的死亡威胁。 is not skipped and taboo 严禁隐藏身份的初始动机极度苍白无脑（如纯自虐求鄙视）；严禁曝光身份后周边社会关系毫无反应，缺乏阶级反击的重力感与爽点... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-12",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "无限流 + 模拟器的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-12] tag=科幻; subGenres=模拟器+人生重开. Enable only when logic 穷举式试错累积底层情报 → 多分支时空线索收束 → 现实世界唯一完美通关。 has formal support; conflict 模拟器固有的冷却限制与现实突发危机的时间赛跑、超模存在的规则反噬、命运收束点上不可控的变量干涉。 must be representable, and taboo 严禁通关关键线索由主角全凭玄学感悟得出而无逻辑推理支撑；严禁副本规则前后冲突导致死结崩溃无解；严禁模拟过程彻底水字数而剥离了悬念感。 blocks output.",
+      "eval_check": "Assert [tc-12] each step of logic 穷举式试错累积底层情报 → 多分支时空线索收束 → 现实世界唯一完美通关。 has antecedent evidence; conflict 模拟器固有的冷却限制与现实突发危机的时间赛跑、超模存在的规则反噬、命运收束点上不可控的变量干涉。 is not skipped and taboo 严禁通关关键线索由主角全凭玄学感悟得出而无逻辑推理支撑；严禁副本规则前后冲突导致死结崩溃无解；严禁模拟过程彻底水字数... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-14",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "仙侠 + 系统的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-14] tag=仙侠; subGenres=修仙+系统. Enable only when logic 玄学修真壁垒破除 → 进度条/任务化驱动的确定性成长 → 超越位面法则的无瓶颈飞升。 has formal support; conflict 系统任务要求与修仙界残酷法则之间的道德/生存冲突、系统颁发的作死任务带来的危机应对、宿主身份与修仙界本土大能的试探博弈。 must be representable, and taboo 严禁系统强行支配主角意志（喧宾夺主）；严禁系统数值通胀失控导致战力崩坏；严禁系统直接发放无敌奖励而丧失过程爽感。 blocks output.",
+      "eval_check": "Assert [tc-14] each step of logic 玄学修真壁垒破除 → 进度条/任务化驱动的确定性成长 → 超越位面法则的无瓶颈飞升。 has antecedent evidence; conflict 系统任务要求与修仙界残酷法则之间的道德/生存冲突、系统颁发的作死任务带来的危机应对、宿主身份与修仙界本土大能的试探博... is not skipped and taboo 严禁系统强行支配主角意志（喧宾夺主）；严禁系统数值通胀失控导致战力崩坏；严禁系统直接发放无敌奖励而丧失过程爽感。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-22",
+      "decision": "INACTIVE_UNSAFE",
+      "canonical_category": "题材组合",
+      "reason": "军事 + 系统的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-22] tag=军事; subGenres=军事+系统. Enable only when logic 将血肉横飞的残酷战场转化为可视化的系统数据面板 → 通过完成军事任务或杀敌获取资源 → 兑换先进装备、升级兵种模板、解锁高级战术光环，滚雪球式壮大实力。 has formal support; conflict 系统任务的极端苛刻要求与恶劣战场环境之间的冲突；主角隐藏系统秘密与高层对其超强能力的忌惮及调查；遭遇属性同样惊人（虽无系统但有极端天... must be representable, and taboo 严禁系统兑换物破坏当前军事位面的基础平衡（如一战出现歼星舰）；严禁系统数值通货膨胀过快，导致后期沦为毫无意义的数字堆砌；严禁抹杀战争... blocks output.",
+      "eval_check": "Assert [tc-22] each step of logic 将血肉横飞的残酷战场转化为可视化的系统数据面板 → 通过完成军事任务或杀敌获取资源 → 兑换先进装备、升级兵种模板、解锁高级战术光环，滚雪球式壮大实力。 has antecedent evidence; conflict 系统任务的极端苛刻要求与恶劣战场环境之间的冲突；主角隐藏系统秘密与高层对其超强能力的忌惮及调查；遭遇属性同样惊人（虽... is not skipped and taboo 严禁系统兑换物破坏当前军事位面的基础平衡（如一战出现歼星舰）；严禁系统数值通货膨胀过快，导致后期沦为毫无意义的数字堆... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-25",
+      "decision": "INACTIVE_UNSAFE",
+      "canonical_category": "题材组合",
+      "reason": "军事 + 星际战争的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-25] tag=军事; subGenres=军事+星际战争. Enable only when logic 突破地月系束缚走向深空 → 构建庞大的星际舰队与多维空间战术体系 → 在黑暗森林或多元宇宙文明博弈中，进行光年尺度的宏大歼灭战与资源掠夺。 has formal support; conflict 不同碳基/硅基文明之间因生存法则与底层逻辑差异带来的不可调和之战；舰队跃迁中遭遇引力陷阱、宇宙风暴等极端天体灾难的极限自救；战线拉长... must be representable, and taboo 严禁在光年尺度的战场上使用大刀长矛式或排队枪毙式的低幼战术；严禁无视基础天体物理规律（如重力、真空、光速延迟）强行套用海战逻辑；严禁... blocks output.",
+      "eval_check": "Assert [tc-25] each step of logic 突破地月系束缚走向深空 → 构建庞大的星际舰队与多维空间战术体系 → 在黑暗森林或多元宇宙文明博弈中，进行光年尺度的宏大歼灭战与资源掠夺。 has antecedent evidence; conflict 不同碳基/硅基文明之间因生存法则与底层逻辑差异带来的不可调和之战；舰队跃迁中遭遇引力陷阱、宇宙风暴等极端天体灾难的极... is not skipped and taboo 严禁在光年尺度的战场上使用大刀长矛式或排队枪毙式的低幼战术；严禁无视基础天体物理规律（如重力、真空、光速延迟）强行套... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-42",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "科幻 + 都市的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-42] tag=科幻; subGenres=科幻+都市. Enable only when logic 隐藏于繁华都市中的边缘人（实为掌控高维科技、系统或未来文明遗产的顶尖黑客/科学家） → 将降维科技降级为颠覆性民用产品（如治愈绝症、真全息、可控核聚变）投入... has formal support; conflict 跨国资本巨鳄面对核心利益被颠覆时的疯狂反扑与下作手段（暗杀、制裁）；民用科技产品推向全球时遭遇的文化壁垒与技术封锁；国家机器的试探与... must be representable, and taboo 严禁高科技成果被降智二代或地方恶霸强行抢夺而主角无力反制（憋屈）；严禁将硬核的科技碾压写成披着科幻皮的狗血豪门恋爱剧；严禁科技研发脱... blocks output.",
+      "eval_check": "Assert [tc-42] each step of logic 隐藏于繁华都市中的边缘人（实为掌控高维科技、系统或未来文明遗产的顶尖黑客/科学家） → 将降维科技降级为颠覆性民用产品（如治愈绝症、真全息、可控核聚变）投入市场 → 以绝对... has antecedent evidence; conflict 跨国资本巨鳄面对核心利益被颠覆时的疯狂反扑与下作手段（暗杀、制裁）；民用科技产品推向全球时遭遇的文化壁垒与技术封锁；... is not skipped and taboo 严禁高科技成果被降智二代或地方恶霸强行抢夺而主角无力反制（憋屈）；严禁将硬核的科技碾压写成披着科幻皮的狗血豪门恋爱剧... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-10",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "题材组合",
+      "reason": "商战 + 重生的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-10] tag=都市; subGenres=重生+商战/科技. Enable only when logic 信息降维打击 → 前瞻性资源垄断 → 建立时代级商业帝国 has formal support; conflict 旧有利益集团的反扑、资本积累期的原始资源争夺、技术与市场拓展中的竞争壁垒突破。 must be representable, and taboo 严禁商业运作违背基本经济规律；严禁对手强行降智白给导致博弈感消失；严禁空洞的宏大叙事而缺乏细节落地的商业实操。 blocks output.",
+      "eval_check": "Assert [tc-10] each step of logic 信息降维打击 → 前瞻性资源垄断 → 建立时代级商业帝国 has antecedent evidence; conflict 旧有利益集团的反扑、资本积累期的原始资源争夺、技术与市场拓展中的竞争壁垒突破。 is not skipped and taboo 严禁商业运作违背基本经济规律；严禁对手强行降智白给导致博弈感消失；严禁空洞的宏大叙事而缺乏细节落地的商业实操。 is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-16",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "题材组合",
+      "reason": "仙侠 + 宗门经营的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-16] tag=仙侠; subGenres=修仙+宗门经营. Enable only when logic 个人战力为基点 → 建立利益修仙共同体 → 产业升级与吞并实现全宗门气运飞跃。 has formal support; conflict 修仙界存量资源争夺下的宗门倾轧、内部派系利益分配与叛宗危机、上位宗门的降维打压与附属宗门的背刺。 must be representable, and taboo 严禁弟子毫无理由的“纯死忠”（无情感或利益纽带绑定）；严禁修仙界灵石与丹药出现过度通胀脱离宗门收支闭环；严禁主角彻底沦为保姆而失去个... blocks output.",
+      "eval_check": "Assert [tc-16] each step of logic 个人战力为基点 → 建立利益修仙共同体 → 产业升级与吞并实现全宗门气运飞跃。 has antecedent evidence; conflict 修仙界存量资源争夺下的宗门倾轧、内部派系利益分配与叛宗危机、上位宗门的降维打压与附属宗门的背刺。 is not skipped and taboo 严禁弟子毫无理由的“纯死忠”（无情感或利益纽带绑定）；严禁修仙界灵石与丹药出现过度通胀脱离宗门收支闭环；严禁主角彻底... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "tc-23",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "题材组合",
+      "reason": "军事 + 基建的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[tc-23] tag=军事; subGenres=军事+基建. Enable only when logic 从一穷二白的战乱荒地起步 → 攀登工业树、建设军工产业链与后勤保障体系 → 将基建转化为战争潜力，最终以磅礴的工业剪刀差与产能洪流推平敌人。 has formal support; conflict 发展初期的资源匮乏与外部势力的经济封锁及战略轰炸；产能爆发前夜，敌军发动的试图将基建扼杀在摇篮中的倾国之战；攀登军工科技树时的技术瓶... must be representable, and taboo 严禁无视供应链条、矿产分布和能源基础，凭空搓出高端军工产品；严禁违背客观物理与时间规律，实现'一秒造城'的魔幻基建；严禁忽视产业工人... blocks output.",
+      "eval_check": "Assert [tc-23] each step of logic 从一穷二白的战乱荒地起步 → 攀登工业树、建设军工产业链与后勤保障体系 → 将基建转化为战争潜力，最终以磅礴的工业剪刀差与产能洪流推平敌人。 has antecedent evidence; conflict 发展初期的资源匮乏与外部势力的经济封锁及战略轰炸；产能爆发前夜，敌军发动的试图将基建扼杀在摇篮中的倾国之战；攀登军工... is not skipped and taboo 严禁无视供应链条、矿产分布和能源基础，凭空搓出高端军工产品；严禁违背客观物理与时间规律，实现'一秒造城'的魔幻基建；... is not violated.",
+      "alias_of": null
+    },
+    {
+      "id": "ce-1",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "章节展开",
+      "reason": "经典打脸弧的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ce-1] Enable only when arc 压抑 → 加码 → 反击 → 碾压 → 余震 maps to chapter targets; retain keyPoint 加码阶段情绪必须拉满，反击时必须有合理的破局点，补刀余震增加长尾爽感。 and process conflict 严禁反击无力或虎头蛇尾；严禁压抑阶段反派施虐逻辑脱离人设，流于套路恶毒。.",
+      "eval_check": "Assert [ce-1] arc advances as 压抑 → 加码 → 反击 → 碾压 → 余震; keyPoint 加码阶段情绪必须拉满，反击时必须有合理的破局点，补刀余震增加长尾爽感。 occurs, and conflict 严禁反击无力或虎头蛇尾；严禁压抑阶段反派施虐逻辑脱离人设，流于套路恶毒。 is not resolved by added facts.",
+      "alias_of": null
+    },
+    {
+      "id": "ce-2",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "章节展开",
+      "reason": "延迟爆发弧的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ce-2] Enable only when arc 压抑 → 转移注意力(淡化) → 突然触发 → 爆发 → 胜利 maps to chapter targets; retain keyPoint 通过新事件让读者短暂忘却旧冲突，在最意想不到时引爆，情绪释放呈几何倍数。 and process conflict 严禁淡化阶段写得过于平淡导致读者弃书；严禁淡化事件与主线冲突毫无因果联系。.",
+      "eval_check": "Assert [ce-2] arc advances as 压抑 → 转移注意力(淡化) → 突然触发 → 爆发 → 胜利; keyPoint 通过新事件让读者短暂忘却旧冲突，在最意想不到时引爆，情绪释放呈几何倍数。 occurs, and conflict 严禁淡化阶段写得过于平淡导致读者弃书；严禁淡化事件与主线冲突毫无因果联系。 is not resolved by added facts.",
+      "alias_of": null
+    },
+    {
+      "id": "ce-3",
+      "decision": "ACTIVE_CONSTRAINED",
+      "canonical_category": "章节展开",
+      "reason": "反转弧的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ce-3] Enable only when arc 预期引导 → 产生偏离 → 再次反向偏离 → 揭露真因 → 情绪释怀 maps to chapter targets; retain keyPoint 反转次数最多不超过3次，反转前必须留有暗线伏笔（线索自洽）。 and process conflict 严禁“为反转而反转”，缺乏逻辑支撑导致剧情崩盘；严禁反转真相违背前文已锁定的世界事实。.",
+      "eval_check": "Assert [ce-3] arc advances as 预期引导 → 产生偏离 → 再次反向偏离 → 揭露真因 → 情绪释怀; keyPoint 反转次数最多不超过3次，反转前必须留有暗线伏笔（线索自洽）。 occurs, and conflict 严禁“为反转而反转”，缺乏逻辑支撑导致剧情崩盘；严禁反转真相违背前文已锁定的世界事实。 is not resolved by added facts.",
+      "alias_of": null
+    },
+    {
+      "id": "ce-4",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "章节展开",
+      "reason": "成长突破弧的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ce-4] Enable only when arc 遭遇瓶颈 → 遭遇合理惨败 → 心理/规则开悟 → 生死突破 → 震撼反馈 maps to chapter targets; retain keyPoint 必须有真实的物理代价与挫败痛感，突破后的外界震惊反馈要给足尺度。 and process conflict 严禁主角毫发无损地渡过瓶颈导致突破注水；严禁惨败原因完全归结于主角降智。.",
+      "eval_check": "Assert [ce-4] arc advances as 遭遇瓶颈 → 遭遇合理惨败 → 心理/规则开悟 → 生死突破 → 震撼反馈; keyPoint 必须有真实的物理代价与挫败痛感，突破后的外界震惊反馈要给足尺度。 occurs, and conflict 严禁主角毫发无损地渡过瓶颈导致突破注水；严禁惨败原因完全归结于主角降智。 is not resolved by added facts.",
+      "alias_of": null
+    },
+    {
+      "id": "ce-5",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "章节展开",
+      "reason": "资源循环弧的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ce-5] Enable only when arc 发现资源缺口 → 涉险获取 → 强化自身/领地 → 消耗爆兵 → 触及上位资源缺口 maps to chapter targets; retain keyPoint 循环衔接必须环环相扣，每一次消耗都必须带来阶级或战斗力上的确切成长。 and process conflict 严禁资源获取如同喝水般容易，贬低劳动付出；严禁资源资源消耗出口导致爽点停滞。.",
+      "eval_check": "Assert [ce-5] arc advances as 发现资源缺口 → 涉险获取 → 强化自身/领地 → 消耗爆兵 → 触及上位资源缺口; keyPoint 循环衔接必须环环相扣，每一次消耗都必须带来阶级或战斗力上的确切成长。 occurs, and conflict 严禁资源获取如同喝水般容易，贬低劳动付出；严禁资源资源消耗出口导致爽点停滞。 is not resolved by added facts.",
+      "alias_of": null
+    },
+    {
+      "id": "ce-6",
+      "decision": "INACTIVE_ALIAS",
+      "canonical_category": "章节展开",
+      "reason": "打脸强化弧的原始设定可按其冲突与边界作为候选；与canonical条目存在明显语义包含或重复。",
+      "specific_gate": "[ce-6] Enable only when arc 轻视 → 羞辱 → 加码羞辱 → 反转 → 全场震惊 → 补刀 maps to chapter targets; retain keyPoint 补刀是关键，很多人漏掉；加码羞辱的尺度必须符合角色心理阻力。 and process conflict 严禁反派在被打脸后强行失智复仇而不做后续利益博弈；严禁震惊体大水漫灌导致情节注水。.",
+      "eval_check": "Assert [ce-6] arc advances as 轻视 → 羞辱 → 加码羞辱 → 反转 → 全场震惊 → 补刀; keyPoint 补刀是关键，很多人漏掉；加码羞辱的尺度必须符合角色心理阻力。 occurs, and conflict 严禁反派在被打脸后强行失智复仇而不做后续利益博弈；严禁震惊体大水漫灌导致情节注水。 is not resolved by added facts.",
+      "alias_of": "ce-1"
+    },
+    {
+      "id": "ce-7",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "章节展开",
+      "reason": "群体共振弧的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ce-7] Enable only when arc 个体细微冲突 → 冲突向外辐射 → 引发围观 → 集体共情 → 情绪大爆发 maps to chapter targets; retain keyPoint 着力刻画围观路人的情绪转变过程（从质疑到崇拜），完成情绪共鸣。 and process conflict 严禁路人群像流于苍白复读机，缺乏情绪起伏阻尼；严禁主角人设脱离初衷，表现过分张扬。.",
+      "eval_check": "Assert [ce-7] arc advances as 个体细微冲突 → 冲突向外辐射 → 引发围观 → 集体共情 → 情绪大爆发; keyPoint 着力刻画围观路人的情绪转变过程（从质疑到崇拜），完成情绪共鸣。 occurs, and conflict 严禁路人群像流于苍白复读机，缺乏情绪起伏阻尼；严禁主角人设脱离初衷，表现过分张扬。 is not resolved by added facts.",
+      "alias_of": null
+    },
+    {
+      "id": "ce-8",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "章节展开",
+      "reason": "连锁爆发弧的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ce-8] Enable only when arc 小胜 → 误以为结束 → 更大危机 → 极限 → 大爆发 maps to chapter targets; retain keyPoint 用于高潮章节或大结局铺垫，利用危机重叠进行心流加压。 and process conflict 严禁后续危机突兀出现缺乏前文伏笔铺垫；严禁主角极限爆发无合理体能/资源透支代价。.",
+      "eval_check": "Assert [ce-8] arc advances as 小胜 → 误以为结束 → 更大危机 → 极限 → 大爆发; keyPoint 用于高潮章节或大结局铺垫，利用危机重叠进行心流加压。 occurs, and conflict 严禁后续危机突兀出现缺乏前文伏笔铺垫；严禁主角极限爆发无合理体能/资源透支代价。 is not resolved by added facts.",
+      "alias_of": null
+    },
+    {
+      "id": "ap-1",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "艺术呈现",
+      "reason": "意象渲染·喜悦的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ap-1] Use only when emotion=喜悦 and POV can perceive 花蜜甜香、熟果气息、温热茶香 / 温暖、轻盈、风拂面颊的触感; strategy 绝不直接输出“他很高兴”，而是使人物视野变宽、对周围微小美感反应敏锐，形成画面留白。 cannot turn conflict 严禁大段抒情自嗨，忽略客观景物细节的铺垫。 into new fact.",
+      "eval_check": "Assert [ap-1] imagery 金光、花影、跳动色块 / 笑声、铃声、轻快脚步 and sensory 花蜜甜香、熟果气息、温热茶香 / 温暖、轻盈、风拂面颊的触感 are present; strategy 绝不直接输出“他很高兴”，而是使人物视野变宽、对周围微小美感反应敏锐，形成画面留白。 does not erase conflict 严禁大段抒情自嗨，忽略客观景物细节的铺垫。 or exceed POV.",
+      "alias_of": null
+    },
+    {
+      "id": "ap-2",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "艺术呈现",
+      "reason": "意象渲染·悲伤的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ap-2] Use only when emotion=悲伤 and POV can perceive 冷茶、苦味、霉湿味 / 冷、沉、衣料贴肤; strategy 重要句子不说完，或以一件死物（如落灰的钥匙扣）代替主角主观哭诉，形成视觉留白。 cannot turn conflict 严禁主角无病呻吟式嚎啕大哭，缺乏克制性的视觉留白。 into new fact.",
+      "eval_check": "Assert [ap-2] imagery 灰蓝、雨痕、暗窗 / 远声、断续声、钟声 and sensory 冷茶、苦味、霉湿味 / 冷、沉、衣料贴肤 are present; strategy 重要句子不说完，或以一件死物（如落灰的钥匙扣）代替主角主观哭诉，形成视觉留白。 does not erase conflict 严禁主角无病呻吟式嚎啕大哭，缺乏克制性的视觉留白。 or exceed POV.",
+      "alias_of": null
+    },
+    {
+      "id": "ap-3",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "艺术呈现",
+      "reason": "意象渲染·愤怒的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ap-3] Use only when emotion=愤怒 and POV can perceive 铁锈味、焦味、辛辣 / 灼热、绷紧、拳心刺痛; strategy 动作速度极具爆发力，物理视角变窄，摒弃大篇理智分析，直接输出物理破坏动作。 cannot turn conflict 严禁愤怒时主角长篇大论说废话，自我剖析动机导致叙事心流降温。 into new fact.",
+      "eval_check": "Assert [ap-3] imagery 红、白光、碎裂、逼近镜头 / 重拍、撞击、短促呼吸 and sensory 铁锈味、焦味、辛辣 / 灼热、绷紧、拳心刺痛 are present; strategy 动作速度极具爆发力，物理视角变窄，摒弃大篇理智分析，直接输出物理破坏动作。 does not erase conflict 严禁愤怒时主角长篇大论说废话，自我剖析动机导致叙事心流降温。 or exceed POV.",
+      "alias_of": null
+    },
+    {
+      "id": "ap-4",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "艺术呈现",
+      "reason": "意象渲染·恐惧的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ap-4] Use only when emotion=恐惧 and POV can perceive 腥味、冷尘、腐味 / 冷汗、僵硬、麻木; strategy 不向读者透露怪物全貌，只提供局部的反常细节（如不自然反转的鞋子），让未知留白自我发酵。 cannot turn conflict 严禁危险源无铺垫突然骑脸杀；严禁主角在恐惧之下突然具备完全冷静 of 算力，违背生理阈值。 into new fact.",
+      "eval_check": "Assert [ap-4] imagery 阴影、窄门、黑角 / 心跳、滴水、静得过分 and sensory 腥味、冷尘、腐味 / 冷汗、僵硬、麻木 are present; strategy 不向读者透露怪物全貌，只提供局部的反常细节（如不自然反转的鞋子），让未知留白自我发酵。 does not erase conflict 严禁危险源无铺垫突然骑脸杀；严禁主角在恐惧之下突然具备完全冷静 of 算力，违背生理阈值。 or exceed POV.",
+      "alias_of": null
+    },
+    {
+      "id": "ap-5",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "艺术呈现",
+      "reason": "意象渲染·信任/亲近的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ap-5] Use only when emotion=信任/亲近 and POV can perceive 米香、皂香、旧书味 / 柔软、掌心温度、被子重量; strategy 少写誓言，多写习惯性照顾 / 前文小动作在危机中再次出现。 cannot turn conflict 严禁情感线发展缺乏日常细节铺垫，沦为“见色起意”或强行绑定的工业糖精。 into new fact.",
+      "eval_check": "Assert [ap-5] imagery 暖灯、旧木、圆桌 / 低声、均匀呼吸、炉火声 and sensory 米香、皂香、旧书味 / 柔软、掌心温度、被子重量 are present; strategy 少写誓言，多写习惯性照顾 / 前文小动作在危机中再次出现。 does not erase conflict 严禁情感线发展缺乏日常细节铺垫，沦为“见色起意”或强行绑定的工业糖精。 or exceed POV.",
+      "alias_of": null
+    },
+    {
+      "id": "ap-6",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "艺术呈现",
+      "reason": "意象渲染·安宁的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[ap-6] Use only when emotion=安宁 and POV can perceive 清茶、草木香 / 温、软、松弛; strategy 不强调“平静”，让句子变长变稳 / 混乱意象被重新整理。 cannot turn conflict 严禁在激烈的剧情冲突中强行插入安宁的日常描写导致叙事脱节；严禁日常描写空洞乏味沦为注水。 into new fact.",
+      "eval_check": "Assert [ap-6] imagery 水面、树影、晨光 / 风、翻书、远鸟、均匀呼吸 and sensory 清茶、草木香 / 温、软、松弛 are present; strategy 不强调“平静”，让句子变长变稳 / 混乱意象被重新整理。 does not erase conflict 严禁在激烈的剧情冲突中强行插入安宁的日常描写导致叙事脱节；严禁日常描写空洞乏味沦为注水。 or exceed POV.",
+      "alias_of": null
+    },
+    {
+      "id": "cl-1",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "镜头语言",
+      "reason": "远大宏大感镜头的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[cl-1] Use only when movement 大全景俯瞰、缓慢直线推进、上帝视角 matches POV-visible content; strategy 使用中性词渲染空间之庞大与冷漠，避免使用感情色彩强烈的修饰词，形成视觉张力。 cannot pre-confirm conflict 严禁在宏大运镜中插入角色的碎碎念或心理活动，破坏空间孤寂感。.",
+      "eval_check": "Assert [cl-1] movement 大全景俯瞰、缓慢直线推进、上帝视角 and sensory focus 地平线拉远、高耸入云的机械建筑、渺小的独行角色 / 风声呼啸、大提琴低音铺底 occur; strategy 使用中性词渲染空间之庞大与冷漠，避免使用感情色彩强烈的修饰词，形成视觉张力。 does not alter conflict 严禁在宏大运镜中插入角色的碎碎念或心理活动，破坏空间孤寂感。 or event order.",
+      "alias_of": null
+    },
+    {
+      "id": "cl-2",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "镜头语言",
+      "reason": "孤独余白镜头的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[cl-2] Use only when movement 固定机位长镜头、人物走向深空、画面留白超过三分之二 matches POV-visible content; strategy 人物长时间不发一言，只通过环境中的落叶、光线漂移展示时间的流逝。 cannot pre-confirm conflict 严禁突然引入旁白或旁人插话打破寂静心流。.",
+      "eval_check": "Assert [cl-2] movement 固定机位长镜头、人物走向深空、画面留白超过三分之二 and sensory focus 微弱的光斑、被黑暗吞噬的背影、地平线横切画面 / 空旷的环境回声、寂静 occur; strategy 人物长时间不发一言，只通过环境中的落叶、光线漂移展示时间的流逝。 does not alter conflict 严禁突然引入旁白或旁人插话打破寂静心流。 or event order.",
+      "alias_of": null
+    },
+    {
+      "id": "cl-3",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "镜头语言",
+      "reason": "压迫逼近镜头的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[cl-3] Use only when movement 长焦镜头极限空间感、中景到特写缓慢跟摇、手持微晃 matches POV-visible content; strategy 通过物理空间距离的压缩，渲染无路可逃的紧逼心理。 cannot pre-confirm conflict 严禁主角在镜头压迫下做出无意义的观望或退后动作，破坏画面的静止张力。.",
+      "eval_check": "Assert [cl-3] movement 长焦镜头极限空间感、中景到特写缓慢跟摇、手持微晃 and sensory focus 主角面部局部特写、背后的模糊高墙、视野两侧的线条发生畸变 / 心跳放大的闷响 occur; strategy 通过物理空间距离的压缩，渲染无路可逃的紧逼心理。 does not alter conflict 严禁主角在镜头压迫下做出无意义的观望或退后动作，破坏画面的静止张力。 or event order.",
+      "alias_of": null
+    },
+    {
+      "id": "cl-4",
+      "decision": "ACTIVE_OPTIMIZED",
+      "canonical_category": "镜头语言",
+      "reason": "回忆感运镜的原始设定可按其冲突与边界作为候选；需以作品正式设定和可验证资源执行。",
+      "specific_gate": "[cl-4] Use only when movement 柔光、低对比、颗粒感 / 缓慢漂移 matches POV-visible content; strategy 不确认记忆真假 / “像旧胶片”“光发黄” cannot pre-confirm conflict 严禁频繁使用回忆镜头导致叙事主线割裂；严禁回忆内容与当前主线因果链无直接关联。.",
+      "eval_check": "Assert [cl-4] movement 柔光、低对比、颗粒感 / 缓慢漂移 and sensory focus 色温偏暖/旧 / 老木头味、旧歌、尘埃 occur; strategy 不确认记忆真假 / “像旧胶片”“光发黄” does not alter conflict 严禁频繁使用回忆镜头导致叙事主线割裂；严禁回忆内容与当前主线因果链无直接关联。 or event order.",
+      "alias_of": null
+    }
+  ],
+  "unresolved_candidates": [
+    {
+      "id": "tc-50",
+      "decision": "INACTIVE_UNSAFE",
+      "reason": "奇幻 + 系统的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-50] tag=奇幻; subGenres=奇幻+系统. Enable only when logic 穿越者或本土低谷宿主绑定维度干涉级奇幻系统 → 遵循系统任务链精准狙击超凡资源节点并提取挂逼级奖励 → 通过超越世界规则的道具/功法实现跨阶梯战力爆发 → ... has formal support; conflict 构建“系统外挂不讲理”与“土著高能讲底蕴”的维度对决。反派需配置深不可测的古老法神、垄断全大陆魔晶资源的商业联盟或执掌法则权柄的真神... must be representable, and taboo 严禁系统人格化过度反向PUA或动辄发布抹杀指令剥夺主角主控权；严禁系统沦为纯面板导致互动性丧失；严禁任务奖励与当前危机解法完全脱节，... blocks output."
+    },
+    {
+      "id": "tc-6",
+      "decision": "INACTIVE_UNSAFE",
+      "reason": "都市 + 巨型系统的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-6] tag=都市; subGenres=小人物+巨型系统. Enable only when logic 底层小人物的无力感 → 绑定影响宏观经济或国家命运的超维系统 → 幕后操盘世界的权能投射 has formal support; conflict 系统任务要求与现实法规伦理的碰撞、因过度干预世界线引发的国家机器关注或跨国财阀的底蕴反扑、隐匿操盘手与明面势力的代持博弈。 must be representable, and taboo 严禁主角在掌握巨量资源后决策毫无逻辑；严禁系统提供的黑科技脱离现实背景无合理设定支撑；严禁沦为毫无商业博弈逻辑的纯暴发户炫富。 blocks output."
+    },
+    {
+      "id": "tc-43",
+      "decision": "INACTIVE_UNSAFE",
+      "reason": "无限流 + 系统的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-43] tag=科幻; subGenres=无限流+系统. Enable only when logic 被迫卷入高致死率、规则诡异的无限副本空间 → 觉醒并绑定唯一性/破坏性系统（如BUG提取、规则篡改、暴击面板） → 无视或扭曲副本原有恐怖法则，以不讲道理的... has formal support; conflict 无限流主神/副本底层逻辑对主角违规行为的排斥与杀机锁定；高难度机制怪与主角不讲理外挂之间的规则级碰撞；其他资深轮回小队对主角暴发户式... must be representable, and taboo 严禁系统外挂过于鸡肋，导致主角在致命副本中依然要苟延残喘；严禁系统智能过高反向奴役主角，让主角沦为打工人；严禁系统能力无限制秒杀一切... blocks output."
+    },
+    {
+      "id": "tc-45",
+      "decision": "INACTIVE_UNSAFE",
+      "reason": "末世 + 黑科技的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-45] tag=科幻; subGenres=末世+黑科技. Enable only when logic 丧尸狂潮、废土核变或异星降临导致社会秩序彻底崩塌 → 主角觉醒独属于个人的黑科技矩阵（红警基地、纳米虫群、星际战舰库） → 以超越时代的机械火力清洗变异畸变... has formal support; conflict 无尽进化的尸王/高维异族与主角不断升级的黑科技武库的生死竞速；末世残存的大型军阀/旧人类营地对主角垄断科技与物资的眼红围攻；极端恶劣... must be representable, and taboo 严禁科技树乱点导致战力体系崩坏（如前脚核聚变后脚被步枪压制）；严禁主角化身圣母将核心黑科技无偿分享给不可控的末世幸存者；严禁顶级科技... blocks output."
+    },
+    {
+      "id": "tc-46",
+      "decision": "INACTIVE_UNSAFE",
+      "reason": "末世 + AI的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-46] tag=科幻; subGenres=末世+AI. Enable only when logic 末世降临秩序崩塌 → 宿主唤醒/绑定具备高维自我进化能力的超算AI中枢 → AI依托海量算力、全知视角与微观控制链路接管生存基地 → 资源极致调配与机械军团... has formal support; conflict 以“算力上限挑战”与“能源枯竭危机”为核心驱动。反派可设置为拥有异变精神网的虫群主脑、前文明遗留的失控智能，或企图掠夺AI矩阵的残存... must be representable, and taboo 严禁AI毫无逻辑地生出叛逆之心或被低维骇客降智夺权；严禁AI过度拟人化失去高维算力美感；严禁忽视AI算力核心与硬件载体的物理局限，出... blocks output."
+    },
+    {
+      "id": "tc-51",
+      "decision": "INACTIVE_UNSAFE",
+      "reason": "玄幻 + 系统的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-51] tag=玄幻; subGenres=玄幻+系统. Enable only when logic 凡骨主角加载概念级玄幻系统引擎（如一键满级、亿万倍返还） → 借由模块化功能（挂机/抽奖/绑定）实现大象无形的极速掠夺 → 以高维资源底蕴与超规格战力降维碾... has formal support; conflict 冲突的核心在于“不讲理的外挂体系”对撞“根深蒂固的修仙常理”。对立面多为自命不凡的上界仙使、以天地为局的远古魔尊或同拥金手指的低配版... must be representable, and taboo 严禁系统发布憋屈的隐忍任务或设定苛刻的失败惩罚；严禁主角获取逆天外挂后依然谨小慎微如履薄冰；严禁奖励道具描述浮夸但实战效果极其拉胯，... blocks output."
+    },
+    {
+      "id": "tc-54",
+      "decision": "INACTIVE_ALIAS",
+      "reason": "商战 + 都市的原始设定可按其冲突与边界作为候选；与canonical条目存在明显语义包含或重复。",
+      "specific_gate": "[tc-54] tag=都市; subGenres=商战+都市. Enable only when logic 潜入暗流涌动的高净值都市商圈发轫 → 直面地头蛇财阀与国际游资的恶性倾销与资本绞杀 → 运用极致的金融杠杆、信息剪刀差与神级公关阳谋逆势做局 → 步步蚕食对... has formal support; conflict 围绕“有限的市场份额”与“无尽的资本贪欲”构建对战。敌对阵营包括老谋深算的百年家族掌舵人、冷酷无情的投行大鳄或企图篡权夺位的公司二把... must be representable, and taboo 严禁将商战降格为“黑道古惑仔”式的物理火拼与低级雇凶伤人；严禁主角只懂无脑砸钱而缺乏高明商业手腕；严禁商业逻辑严重反智，如千亿集团老... blocks output."
+    },
+    {
+      "id": "tc-22",
+      "decision": "INACTIVE_UNSAFE",
+      "reason": "军事 + 系统的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-22] tag=军事; subGenres=军事+系统. Enable only when logic 将血肉横飞的残酷战场转化为可视化的系统数据面板 → 通过完成军事任务或杀敌获取资源 → 兑换先进装备、升级兵种模板、解锁高级战术光环，滚雪球式壮大实力。 has formal support; conflict 系统任务的极端苛刻要求与恶劣战场环境之间的冲突；主角隐藏系统秘密与高层对其超强能力的忌惮及调查；遭遇属性同样惊人（虽无系统但有极端天... must be representable, and taboo 严禁系统兑换物破坏当前军事位面的基础平衡（如一战出现歼星舰）；严禁系统数值通货膨胀过快，导致后期沦为毫无意义的数字堆砌；严禁抹杀战争... blocks output."
+    },
+    {
+      "id": "tc-25",
+      "decision": "INACTIVE_UNSAFE",
+      "reason": "军事 + 星际战争的原始设定可按其冲突与边界作为候选；其中的越级能力或现实机构断言不可作为默认事实。",
+      "specific_gate": "[tc-25] tag=军事; subGenres=军事+星际战争. Enable only when logic 突破地月系束缚走向深空 → 构建庞大的星际舰队与多维空间战术体系 → 在黑暗森林或多元宇宙文明博弈中，进行光年尺度的宏大歼灭战与资源掠夺。 has formal support; conflict 不同碳基/硅基文明之间因生存法则与底层逻辑差异带来的不可调和之战；舰队跃迁中遭遇引力陷阱、宇宙风暴等极端天体灾难的极限自救；战线拉长... must be representable, and taboo 严禁在光年尺度的战场上使用大刀长矛式或排队枪毙式的低幼战术；严禁无视基础天体物理规律（如重力、真空、光速延迟）强行套用海战逻辑；严禁... blocks output."
+    },
+    {
+      "id": "ce-6",
+      "decision": "INACTIVE_ALIAS",
+      "reason": "打脸强化弧的原始设定可按其冲突与边界作为候选；与canonical条目存在明显语义包含或重复。",
+      "specific_gate": "[ce-6] Enable only when arc 轻视 → 羞辱 → 加码羞辱 → 反转 → 全场震惊 → 补刀 maps to chapter targets; retain keyPoint 补刀是关键，很多人漏掉；加码羞辱的尺度必须符合角色心理阻力。 and process conflict 严禁反派在被打脸后强行失智复仇而不做后续利益博弈；严禁震惊体大水漫灌导致情节注水。."
+    }
+  ]
+}
