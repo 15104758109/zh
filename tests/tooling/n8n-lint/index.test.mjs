@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { access, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import test from 'node:test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { lintN8n } from '../../../scripts/n8n-lint/index.mjs';
+import { lintN8n, lintProductionN8n } from '../../../scripts/n8n-lint/index.mjs';
 
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 const workflowHash = (value) => hash(value.replace(/\r\n|\r/g, '\n'));
@@ -68,7 +68,27 @@ async function withFixture(run) {
 }
 
 function lint(fixture) { return lintN8n({ cwd: fixture.cwd, referenceDir: 'references', baselinePath: 'baseline.json' }); }
+function lintProduction(fixture, productionDir = 'production', hooks) { return lintProductionN8n({ cwd: fixture.cwd, productionDir, hooks }); }
 function codes(report) { return report.findings.map((finding) => finding.code); }
+
+async function writeProduction(fixture, name, value, productionDir = 'production') {
+  const target = join(fixture.cwd, productionDir, name);
+  await mkdir(join(target, '..'), { recursive: true });
+  await writeFile(target, typeof value === 'string' ? value : JSON.stringify(value));
+}
+
+async function withOutsideFixture(run) {
+  const outside = await mkdtemp(join(tmpdir(), 'n8n-lint-outside-'));
+  try { await run(outside); } finally { await rm(outside, { recursive: true, force: true }); }
+}
+
+async function makeDirectoryLink(target, link) {
+  await symlink(target, link, process.platform === 'win32' ? 'junction' : 'dir');
+}
+
+async function makeFileLink(target, link) {
+  try { await symlink(target, link, 'file'); return true; } catch { return false; }
+}
 
 test('accepts the exact 17-workflow manifest with six bound known findings deterministically', async () => withFixture(async (fixture) => {
   const first = await lint(fixture); const second = await lint(fixture);
@@ -171,7 +191,7 @@ test('continues semantic scanning after parseable content and identity drift and
   const report = await lint(fixture);
   for (const code of ['CONTENT_DRIFT', 'WORKFLOW_IDENTITY_DRIFT', 'ACTIVE_STATUS_ANOMALY', 'SECRET_LITERAL', 'EXPERIMENTAL_RPC', 'BARE_DATABASE_WRITE']) assert.ok(codes(report).includes(code));
   assert.equal(report.findings.find((finding) => finding.code === 'EXPERIMENTAL_RPC').baseline, 'new');
-  const cli = spawnSync(process.execPath, [source, '--reference-dir', fixture.references, '--baseline', join(fixture.cwd, 'baseline.json')], { cwd: fixture.cwd }); assert.equal(cli.status, 1);
+  const cli = spawnSync(process.execPath, [source, '--reference-dir', 'references', '--baseline', 'baseline.json'], { cwd: fixture.cwd }); assert.equal(cli.status, 1);
 }));
 
 test('continues safe semantic checks when connections has the wrong type', async () => withFixture(async (fixture) => {
@@ -185,7 +205,7 @@ test('integrity findings and CLI fatal errors cannot be waived', async () => wit
   await writeFile(join(fixture.references, 'unregistered.json'), '{');
   const report = await lint(fixture); assert.ok(codes(report).includes('INVALID_JSON')); assert.equal(report.findings.find((finding) => finding.code === 'INVALID_JSON').baseline, 'new');
   fixture.baseline.known_semantic_findings = fixture.baseline.known_semantic_findings.slice(0, 5); await syncFixture(fixture);
-  const cli = spawnSync(process.execPath, [source, '--reference-dir', fixture.references, '--baseline', join(fixture.cwd, 'baseline.json')]); assert.equal(cli.status, 2);
+  const cli = spawnSync(process.execPath, [source, '--reference-dir', 'references', '--baseline', 'baseline.json'], { cwd: fixture.cwd }); assert.equal(cli.status, 2);
 }));
 
 test('fixture directories are removed after every try/finally wrapper', async () => {
@@ -193,3 +213,104 @@ test('fixture directories are removed after every try/finally wrapper', async ()
   await withFixture(async (fixture) => { cwd = fixture.cwd; await lint(fixture); });
   await assert.rejects(access(cwd));
 });
+
+test('production scan treats a missing directory as an empty deterministic collection', async () => withFixture(async (fixture) => {
+  const first = await lintProduction(fixture); const second = await lintProduction(fixture);
+  assert.deepEqual(first, { production_dir: 'production', workflow_count: 0, findings: [], summary: { known: 0, new: 0, total: 0 } });
+  assert.deepEqual(second, first);
+}));
+
+test('production scan recursively reports only new findings and does not echo secrets', async () => withFixture(async (fixture) => {
+  const secret = 'production-secret-value';
+  await writeProduction(fixture, 'nested/sensitive.JSON', { ...workflow('production'), active: true, nodes: [validNode('production', { parameters: { password: secret, jsCode: 'rpc_create_chapter_target(); db.query("UPDATE chapter SET title = 1")' } })] });
+  const report = await lintProduction(fixture);
+  assert.equal(report.workflow_count, 1); assert.deepEqual(codes(report).sort(), ['ACTIVE_STATUS_ANOMALY', 'BARE_DATABASE_WRITE', 'DEPRECATED_RPC', 'SECRET_LITERAL']);
+  assert.ok(report.findings.every((finding) => finding.baseline === 'new')); assert.ok(!JSON.stringify(report).includes(secret));
+}));
+
+test('production scan blocks invalid JSON and every valid non-object JSON value as structure-only findings', async () => withFixture(async (fixture) => {
+  await writeProduction(fixture, 'invalid.json', '{');
+  for (const [index, value] of ['null', 'false', '0', '[]', '"string"'].entries()) await writeProduction(fixture, `non-object-${index}.json`, value);
+  const report = await lintProduction(fixture);
+  assert.equal(report.findings.filter((finding) => finding.code === 'INVALID_JSON').length, 1);
+  for (let index = 0; index < 5; index += 1) assert.deepEqual(report.findings.filter((finding) => finding.path === `production/non-object-${index}.json`).map((finding) => finding.code), ['INVALID_WORKFLOW_STRUCTURE']);
+  assert.ok(report.findings.every((finding) => finding.baseline === 'new'));
+}));
+
+test('production scan detects Postgres, Code, and Function writes', async () => withFixture(async (fixture) => {
+  await writeProduction(fixture, 'postgres.json', workflow('postgres', { type: 'n8n-nodes-base.postgres', parameters: { operation: 'update' } }));
+  await writeProduction(fixture, 'code.json', workflow('code', { type: 'n8n-nodes-base.code', parameters: { jsCode: 'db.query("DELETE FROM chapter")' } }));
+  await writeProduction(fixture, 'function.json', workflow('function', { type: 'n8n-nodes-base.function', parameters: { functionCode: "db.query('INSERT INTO chapter VALUES (1)')" } }));
+  const report = await lintProduction(fixture);
+  assert.equal(report.findings.filter((finding) => finding.code === 'BARE_DATABASE_WRITE').length, 3);
+}));
+
+test('production scan classifies deprecated, experimental, and unknown RPCs', async () => withFixture(async (fixture) => {
+  await writeProduction(fixture, 'rpcs.json', workflow('rpcs', { parameters: { jsCode: 'rpc_create_chapter_target(); rpc_acquire_run_lock(); rpc_unregistered_production();' } }));
+  assert.deepEqual(codes(await lintProduction(fixture)).sort(), ['DEPRECATED_RPC', 'EXPERIMENTAL_RPC', 'UNKNOWN_RPC']);
+}));
+
+test('combined CLI uses exit 1 for findings and exit 2 for arguments', async () => withFixture(async (fixture) => {
+  await writeProduction(fixture, 'active.json', { ...workflow('active'), active: true });
+  const finding = spawnSync(process.execPath, [source, '--reference-dir', 'references', '--baseline', 'baseline.json', '--production-dir', 'production'], { cwd: fixture.cwd, encoding: 'utf8' });
+  assert.equal(finding.status, 1); assert.equal(JSON.parse(finding.stdout).production.summary.new, 1);
+  const malformed = spawnSync(process.execPath, [source, '--production-dir'], { cwd: fixture.cwd, encoding: 'utf8' });
+  assert.equal(malformed.status, 2); assert.match(malformed.stderr, /Missing value/);
+}));
+
+test('every CLI path rejects absolute, parent traversal, and Windows foreign-drive values', async () => withFixture(async (fixture) => {
+  const absolute = join(fixture.cwd, 'references');
+  for (const flag of ['--reference-dir', '--baseline', '--production-dir']) {
+    const absoluteResult = spawnSync(process.execPath, [source, flag, absolute], { cwd: fixture.cwd, encoding: 'utf8' });
+    assert.equal(absoluteResult.status, 2); assert.match(absoluteResult.stderr, /relative to cwd/);
+    const traversal = spawnSync(process.execPath, [source, flag, 'nested/../target'], { cwd: fixture.cwd, encoding: 'utf8' });
+    assert.equal(traversal.status, 2); assert.match(traversal.stderr, /parent traversal/);
+  }
+  if (process.platform === 'win32') for (const flag of ['--reference-dir', '--baseline', '--production-dir']) {
+    const foreignDrive = `${process.cwd().slice(0, 1).toUpperCase() === 'Z' ? 'Y' : 'Z'}:\\outside`;
+    const result = spawnSync(process.execPath, [source, flag, foreignDrive], { cwd: fixture.cwd, encoding: 'utf8' });
+    assert.equal(result.status, 2); assert.match(result.stderr, /relative to cwd/);
+  }
+}));
+
+test('production root and recursive directory links fail closed without reading external content', async () => withFixture(async (fixture) => withOutsideFixture(async (outside) => {
+  const secret = 'external-directory-secret'; await writeFile(join(outside, 'workflow.json'), JSON.stringify({ ...workflow('outside'), nodes: [validNode('outside', { parameters: { password: secret } })] }));
+  await makeDirectoryLink(outside, join(fixture.cwd, 'linked-production'));
+  await assert.rejects(lintProduction(fixture, 'linked-production'), /symbolic link|junction/);
+  await mkdir(join(fixture.cwd, 'production'), { recursive: true }); await makeDirectoryLink(outside, join(fixture.cwd, 'production', 'nested'));
+  await assert.rejects(lintProduction(fixture), /symbolic links|junctions/);
+  const cli = spawnSync(process.execPath, [source, '--reference-dir', 'references', '--baseline', 'baseline.json', '--production-dir', 'linked-production'], { cwd: fixture.cwd, encoding: 'utf8' });
+  assert.equal(cli.status, 2); assert.ok(!`${cli.stdout}${cli.stderr}`.includes(secret));
+})));
+
+test('production file links fail closed when file symlinks are available', async (t) => withFixture(async (fixture) => withOutsideFixture(async (outside) => {
+  await writeFile(join(outside, 'workflow.json'), JSON.stringify(workflow('outside'))); await mkdir(join(fixture.cwd, 'production'), { recursive: true });
+  if (!await makeFileLink(join(outside, 'workflow.json'), join(fixture.cwd, 'production', 'linked.json'))) { t.skip('file symlinks are unavailable on this host'); return; }
+  await assert.rejects(lintProduction(fixture), /symbolic links|junctions/);
+})));
+
+test('TOCTOU replacement of the verified root directory fails closed', async () => withFixture(async (fixture) => withOutsideFixture(async (outside) => {
+  const secret = 'root-race-secret'; await writeFile(join(outside, 'outside.json'), JSON.stringify({ ...workflow('outside'), nodes: [validNode('outside', { parameters: { password: secret } })] }));
+  await writeProduction(fixture, 'inside.json', workflow('inside')); const root = join(fixture.cwd, 'production'); let swapped = false;
+  const error = await assert.rejects(lintProduction(fixture, 'production', { afterDirectoryVerifiedBeforeRead: async ({ path }) => {
+    if (!swapped && path === root) { swapped = true; await rm(root, { recursive: true, force: true }); await makeDirectoryLink(outside, root); }
+  } }), /symbolic link|junction/);
+  assert.ok(swapped); assert.ok(!String(error).includes(secret));
+})));
+
+test('TOCTOU replacement of a verified child directory fails closed', async () => withFixture(async (fixture) => withOutsideFixture(async (outside) => {
+  await writeFile(join(outside, 'outside.json'), JSON.stringify(workflow('outside'))); await writeProduction(fixture, 'nested/inside.json', workflow('inside'));
+  const child = join(fixture.cwd, 'production', 'nested'); let swapped = false;
+  await assert.rejects(lintProduction(fixture, 'production', { afterDirectoryVerifiedBeforeRead: async ({ path }) => {
+    if (!swapped && path === child) { swapped = true; await rm(child, { recursive: true, force: true }); await makeDirectoryLink(outside, child); }
+  } }), /symbolic link|junction/);
+  assert.ok(swapped);
+})));
+
+test('TOCTOU replacement of a verified file with another inode fails closed', async () => withFixture(async (fixture) => {
+  await writeProduction(fixture, 'inside.json', workflow('inside')); const inside = join(fixture.cwd, 'production', 'inside.json'); let swapped = false;
+  const error = await assert.rejects(lintProduction(fixture, 'production', { afterFileVerifiedBeforeOpen: async ({ path }) => {
+    if (!swapped && path === inside) { swapped = true; await rm(inside, { force: true }); await writeFile(inside, JSON.stringify(workflow('replacement'))); }
+  } }), /changed before it could be opened/);
+  assert.ok(swapped); assert.ok(!String(error).includes('replacement'));
+}));

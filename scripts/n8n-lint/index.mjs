@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
-import { relative, resolve } from 'node:path';
+import { lstat, open, readdir, realpath } from 'node:fs/promises';
+import { isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const DEFAULT_REFERENCE_DIR = 'docs/后端/n8n';
 const DEFAULT_BASELINE = 'orchestration/reference-baseline/n8n-workflows.json';
+const DEFAULT_PRODUCTION_DIR = 'orchestration/workflows';
 const WORKFLOW_COUNT = 17;
 const SHA256 = /^[a-f0-9]{64}$/;
 const DEPRECATED_RPCS = new Set(['rpc_writeback_commit', 'rpc_create_chapter_target', 'rpc_persist_deduction_draft']);
@@ -82,13 +83,104 @@ function scanWorkflow(workflow, path) {
   return findings;
 }
 
-async function readWorkflow(absolutePath) { const raw = await readFile(absolutePath, 'utf8'); try { return { raw, workflow: JSON.parse(raw) }; } catch { return { raw, workflow: null }; } }
+function pathInside(root, target, label) {
+  const local = normalizedPath(relative(root, target));
+  if (local === '..' || local.startsWith('../') || isAbsolute(local)) throw new Error(`${label} must be inside its allowed root`);
+  return local || '.';
+}
+
+function rejectParentTraversal(value, label) {
+  if (value.split(/[\\/]+/).includes('..')) throw new Error(`${label} must not contain parent traversal`);
+}
+
+function sameIdentity(left, right) { return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode; }
+function samePhysical(left, right) { return process.platform === 'win32' ? left.toLowerCase() === right.toLowerCase() : left === right; }
+
+async function directorySnapshot(absolutePath, { realCwd, realRoot, label }) {
+  const before = await lstat(absolutePath);
+  if (before.isSymbolicLink()) throw new Error(`${label} must not be a symbolic link or junction`);
+  if (!before.isDirectory()) throw new Error(`${label} must be a directory`);
+  const physical = await realpath(absolutePath);
+  pathInside(realCwd, physical, label);
+  if (realRoot) pathInside(realRoot, physical, label);
+  const after = await lstat(absolutePath);
+  if (!sameIdentity(before, after)) throw new Error(`${label} changed while being checked`);
+  return { identity: before, physical };
+}
+
+async function fileSnapshot(absolutePath, { realCwd, realRoot, label }) {
+  const before = await lstat(absolutePath);
+  if (before.isSymbolicLink()) throw new Error(`${label} must not be a symbolic link`);
+  if (!before.isFile()) throw new Error(`${label} must be a file`);
+  if (before.nlink > 1) throw new Error(`${label} must not be hard linked`);
+  const physical = await realpath(absolutePath);
+  pathInside(realCwd, physical, label);
+  if (realRoot) pathInside(realRoot, physical, label);
+  const after = await lstat(absolutePath);
+  if (!sameIdentity(before, after)) throw new Error(`${label} changed while being checked`);
+  return { identity: before, physical };
+}
+
+async function runHook(hooks, name, context) { if (typeof hooks?.[name] === 'function') await hooks[name](context); }
+
+async function listDirectory(absolutePath, options) {
+  const before = await directorySnapshot(absolutePath, options);
+  await runHook(options.hooks, 'afterDirectoryVerifiedBeforeRead', { path: absolutePath, label: options.label });
+  const entries = await readdir(absolutePath, { withFileTypes: true });
+  const after = await directorySnapshot(absolutePath, options);
+  if (!sameIdentity(before.identity, after.identity) || !samePhysical(before.physical, after.physical)) throw new Error(`${options.label} changed while being enumerated`);
+  return { entries, snapshot: before };
+}
+
+async function checkedReadFile(absolutePath, options) {
+  const before = await fileSnapshot(absolutePath, options);
+  await runHook(options.hooks, 'afterFileVerifiedBeforeOpen', { path: absolutePath, label: options.label });
+  const handle = await open(absolutePath, 'r');
+  try {
+    if (!sameIdentity(before.identity, await handle.stat())) throw new Error(`${options.label} changed before it could be opened`);
+    const opened = await fileSnapshot(absolutePath, options);
+    if (!sameIdentity(before.identity, opened.identity) || !samePhysical(before.physical, opened.physical)) throw new Error(`${options.label} changed before it could be read`);
+    const raw = await handle.readFile({ encoding: 'utf8' });
+    if (!sameIdentity(before.identity, await handle.stat())) throw new Error(`${options.label} changed while being read`);
+    const after = await fileSnapshot(absolutePath, options);
+    if (!sameIdentity(before.identity, after.identity) || !samePhysical(before.physical, after.physical)) throw new Error(`${options.label} changed while being read`);
+    return raw;
+  } finally { await handle.close(); }
+}
+
+async function jsonFiles(absoluteDir, { cwd, missingEmpty = false, label, hooks } = {}) {
+  const realCwd = await realpath(cwd);
+  let root;
+  try { root = await directorySnapshot(absoluteDir, { realCwd, label }); } catch (error) {
+    if (missingEmpty && error && typeof error === 'object' && error.code === 'ENOENT') return { files: [], realCwd, realRoot: null };
+    throw error;
+  }
+  const files = [];
+  async function visit(directory) {
+    const { entries } = await listDirectory(directory, { realCwd, realRoot: root.physical, label, hooks });
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
+      const child = resolve(directory, entry.name);
+      const childMetadata = await lstat(child);
+      if (childMetadata.isSymbolicLink()) throw new Error(`${label} must not contain symbolic links or junctions`);
+      if (childMetadata.isDirectory()) await visit(child);
+      else if (childMetadata.isFile() && /\.json$/i.test(entry.name)) files.push(normalizedPath(relative(absoluteDir, child)));
+    }
+  }
+  await visit(absoluteDir);
+  const after = await directorySnapshot(absoluteDir, { realCwd, label });
+  if (!sameIdentity(root.identity, after.identity) || !samePhysical(root.physical, after.physical)) throw new Error(`${label} changed while being scanned`);
+  return { files: files.sort((a, b) => a.localeCompare(b, 'en')), realCwd, realRoot: root.physical };
+}
+
+async function readWorkflow(absolutePath, options) {
+  const raw = await checkedReadFile(absolutePath, options);
+  try { return { raw, parsed: true, workflow: JSON.parse(raw) }; } catch { return { raw, parsed: false, workflow: null }; }
+}
 
 async function validateBaseline(baseline, { cwd, referenceDir }) {
   if (!isPlainObject(baseline) || baseline.schema_version !== 'n8n-reference-baseline/v2') fail('schema_version must be n8n-reference-baseline/v2');
   if (!Array.isArray(baseline.workflows) || baseline.workflows.length !== WORKFLOW_COUNT || !Array.isArray(baseline.known_semantic_findings) || baseline.known_semantic_findings.length !== 6 || 'known_issue_fingerprints' in baseline) fail('baseline collection shape is invalid');
-  const absoluteReferenceDir = resolve(cwd, referenceDir); const referencePath = normalizedPath(relative(cwd, absoluteReferenceDir));
-  if (referencePath.startsWith('..')) fail('reference directory must be inside cwd');
+  const absoluteReferenceDir = resolve(cwd, referenceDir); const referencePath = normalizedPath(pathInside(cwd, absoluteReferenceDir, 'reference directory'));
   const paths = new Set(); const ids = new Set(); const names = new Set(); const entries = new Map();
   for (const entry of baseline.workflows) {
     if (!isPlainObject(entry) || typeof entry.path !== 'string' || typeof entry.id !== 'string' || !entry.id || typeof entry.name !== 'string' || !entry.name || typeof entry.sha256 !== 'string' || !SHA256.test(entry.sha256)) fail('workflow entry shape is invalid');
@@ -107,15 +199,17 @@ async function validateBaseline(baseline, { cwd, referenceDir }) {
   return { entries, known, absoluteReferenceDir, referencePath };
 }
 
-export async function lintN8n({ referenceDir = DEFAULT_REFERENCE_DIR, baselinePath = DEFAULT_BASELINE, cwd = process.cwd() } = {}) {
-  let baseline; try { baseline = JSON.parse(await readFile(resolve(cwd, baselinePath), 'utf8')); } catch { fail('baseline JSON is unreadable'); }
+async function lintLegacyN8n({ referenceDir = DEFAULT_REFERENCE_DIR, baselinePath = DEFAULT_BASELINE, cwd = process.cwd(), hooks } = {}) {
+  const absoluteBaselinePath = resolve(cwd, baselinePath); pathInside(cwd, absoluteBaselinePath, 'baseline path');
+  const realCwd = await realpath(cwd);
+  let baseline; try { baseline = JSON.parse(await checkedReadFile(absoluteBaselinePath, { realCwd, label: 'baseline path', hooks })); } catch { fail('baseline JSON is unreadable'); }
   const validated = await validateBaseline(baseline, { cwd, referenceDir });
-  const files = (await readdir(validated.absoluteReferenceDir, { recursive: true, withFileTypes: true })).filter((entry) => entry.isFile() && /\.json$/i.test(entry.name)).map((entry) => normalizedPath(relative(validated.absoluteReferenceDir, resolve(entry.parentPath, entry.name)))).sort();
+  const listed = await jsonFiles(validated.absoluteReferenceDir, { cwd, label: 'reference directory', hooks });
   const findings = []; const seen = new Set(); const ids = new Map(); const names = new Map(); const actualHashes = new Map();
-  for (const file of files) {
+  for (const file of listed.files) {
     const path = `${validated.referencePath}/${file}`; const entry = validated.entries.get(path); seen.add(path);
-    const { raw, workflow } = await readWorkflow(resolve(validated.absoluteReferenceDir, file));
-    if (!workflow) { findings.push(issue('INVALID_JSON', path)); continue; }
+    const { raw, parsed, workflow } = await readWorkflow(resolve(validated.absoluteReferenceDir, file), { realCwd: listed.realCwd, realRoot: listed.realRoot, label: 'reference workflow', hooks });
+    if (!parsed) { findings.push(issue('INVALID_JSON', path)); continue; }
     const actualHash = workflowSha256(raw); actualHashes.set(path, actualHash);
     if (!entry) findings.push(issue('UNREGISTERED_WORKFLOW', path)); else { if (entry.sha256 !== actualHash) findings.push(issue('CONTENT_DRIFT', path)); if (!isPlainObject(workflow) || entry.id !== workflow.id || entry.name !== workflow.name) findings.push(issue('WORKFLOW_IDENTITY_DRIFT', path)); }
     if (!isPlainObject(workflow)) { findings.push(issue('INVALID_WORKFLOW_STRUCTURE', path)); continue; }
@@ -128,8 +222,52 @@ export async function lintN8n({ referenceDir = DEFAULT_REFERENCE_DIR, baselinePa
   const unique = new Map(); for (const finding of findings) unique.set(`${findingKey(finding)}\u0000${finding.fingerprint}`, finding);
   const ordered = [...unique.values()].map((finding) => ({ ...finding, baseline: !INTEGRITY_CODES.has(finding.code) && validated.known.has(findingKey(finding)) && validated.known.get(findingKey(finding)).workflow_sha256 === actualHashes.get(finding.path) ? 'known' : 'new' })).sort((a, b) => a.path.localeCompare(b.path, 'en') || a.code.localeCompare(b.code, 'en') || String(a.node ?? '').localeCompare(String(b.node ?? '')) || String(a.location ?? '').localeCompare(String(b.location ?? '')) || String(a.rpc ?? '').localeCompare(String(b.rpc ?? '')));
   const newCount = ordered.filter((finding) => finding.baseline === 'new').length;
-  return { schema_version: 'n8n-lint-report/v2', reference_dir: validated.referencePath, baseline: normalizedPath(baselinePath), workflow_count: files.length, registered_workflow_count: validated.entries.size, findings: ordered, summary: { known: ordered.length - newCount, new: newCount, total: ordered.length } };
+  return { schema_version: 'n8n-lint-report/v2', reference_dir: validated.referencePath, baseline: normalizedPath(baselinePath), workflow_count: listed.files.length, registered_workflow_count: validated.entries.size, findings: ordered, summary: { known: ordered.length - newCount, new: newCount, total: ordered.length } };
 }
 
-function parseArgs(args) { const options = {}; for (let index = 0; index < args.length; index += 2) { if (!args[index + 1] || !['--reference-dir', '--baseline'].includes(args[index])) throw new Error(`Unknown argument: ${args[index]}`); options[args[index] === '--reference-dir' ? 'referenceDir' : 'baselinePath'] = args[index + 1]; } return options; }
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) { try { const report = await lintN8n(parseArgs(process.argv.slice(2))); process.stdout.write(`${JSON.stringify(report, null, 2)}\n`); process.exitCode = report.summary.new === 0 ? 0 : 1; } catch (error) { process.stderr.write(`n8n lint failed: ${error instanceof Error ? error.message : String(error)}\n`); process.exitCode = 2; } }
+export async function lintProductionN8n({ productionDir = DEFAULT_PRODUCTION_DIR, cwd = process.cwd(), hooks } = {}) {
+  const absoluteProductionDir = resolve(cwd, productionDir); const productionPath = normalizedPath(pathInside(cwd, absoluteProductionDir, 'production directory'));
+  const listed = await jsonFiles(absoluteProductionDir, { cwd, missingEmpty: true, label: 'production directory', hooks });
+  const findings = [];
+  for (const file of listed.files) {
+    const path = normalizedPath(relative(cwd, resolve(absoluteProductionDir, file)));
+    const { parsed, workflow } = await readWorkflow(resolve(absoluteProductionDir, file), { realCwd: listed.realCwd, realRoot: listed.realRoot, label: 'production workflow', hooks });
+    if (!parsed) { findings.push(issue('INVALID_JSON', path)); continue; }
+    const structural = workflowStructure(workflow, path);
+    if (structural) findings.push(structural);
+    if (isPlainObject(workflow)) findings.push(...scanWorkflow(workflow, path));
+  }
+  const unique = new Map(); for (const finding of findings) unique.set(`${findingKey(finding)}\u0000${finding.fingerprint}`, finding);
+  const ordered = [...unique.values()].map((finding) => ({ ...finding, baseline: 'new' })).sort((a, b) => a.path.localeCompare(b.path, 'en') || a.code.localeCompare(b.code, 'en') || String(a.node ?? '').localeCompare(String(b.node ?? '')) || String(a.location ?? '').localeCompare(String(b.location ?? '')) || String(a.rpc ?? '').localeCompare(String(b.rpc ?? '')));
+  return { production_dir: productionPath, workflow_count: listed.files.length, findings: ordered, summary: { known: 0, new: ordered.length, total: ordered.length } };
+}
+
+export async function lintN8n({ referenceDir = DEFAULT_REFERENCE_DIR, baselinePath = DEFAULT_BASELINE, productionDir = DEFAULT_PRODUCTION_DIR, cwd = process.cwd(), hooks } = {}) {
+  const legacy = await lintLegacyN8n({ referenceDir, baselinePath, cwd, hooks });
+  const production = await lintProductionN8n({ productionDir, cwd, hooks });
+  return { ...legacy, production };
+}
+
+function parseArgs(args) {
+  const options = {}; const names = new Map([['--reference-dir', 'referenceDir'], ['--baseline', 'baselinePath'], ['--production-dir', 'productionDir']]);
+  for (let index = 0; index < args.length; index += 1) {
+    const name = args[index]; const key = names.get(name); const value = args[index + 1];
+    if (!key) throw new Error(`Unknown argument: ${name}`);
+    if (!value || value.startsWith('--')) throw new Error(`Missing value for argument: ${name}`);
+    if (isAbsolute(value)) throw new Error(`${name} path must be relative to cwd`);
+    rejectParentTraversal(value, `${name} path`); pathInside(process.cwd(), resolve(process.cwd(), value), `${name} path`);
+    options[key] = value; index += 1;
+  }
+  return options;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    const report = await lintN8n(parseArgs(process.argv.slice(2)));
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    process.exitCode = report.summary.new === 0 && report.production.summary.new === 0 ? 0 : 1;
+  } catch (error) {
+    process.stderr.write(`n8n lint failed: ${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 2;
+  }
+}
