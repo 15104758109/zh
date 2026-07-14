@@ -87,6 +87,15 @@ function originFields() {
   };
 }
 
+function canonicalGenre(value) {
+  const genre = String(value || "");
+  const mappings = [
+    ["玄幻", "玄幻"], ["仙侠", "仙侠"], ["奇幻", "奇幻"],
+    ["都市", "都市"], ["科幻", "科幻"], ["军事", "军事"],
+  ];
+  return mappings.find(([needle]) => genre.includes(needle))?.[1] || genre;
+}
+
 const WORLD_BOARD_TYPES = Object.freeze({
   "规则": "rule",
   "地理": "geography",
@@ -198,13 +207,14 @@ function collectPayload() {
   const characters = DATA?.stages?.find((step) => step.key === "characters");
   const conflicts = DATA?.stages?.find((step) => step.key === "conflict_seed");
   const title = String(DATA?.book?.bookName || DATA?.book?.title || "").trim();
-  const genreMain = DATA?.book?.intent_json?.genre || "";
+  const originalGenre = DATA?.book?.intent_json?.genre || "";
+  const genreMain = canonicalGenre(originalGenre);
   const subGenre = DATA?.book?.intent_json?.subGenre || "";
   return {
     local_operator_id: localOperatorId,
     title,
     idempotency_key: draftIdempotencyKey,
-    intent: { genre_main: genreMain, summary: [origin.creative_intent, subGenre].filter(Boolean).join("\n") },
+    intent: { genre_main: genreMain, summary: [origin.creative_intent, originalGenre, subGenre].filter(Boolean).join("\n") },
     forbid: { lines: origin.forbid ? [origin.forbid] : [] },
     selling_points: origin.selling_point ? [origin.selling_point] : [],
     target_words: numericValue(DATA?.book?.targetWords),
@@ -279,4 +289,4 @@ blockFabricatedAi();
 bindCreation();
 renderRuntime();
 
-export { collectPayload, createBook };
+export { canonicalGenre, collectPayload, createBook };
