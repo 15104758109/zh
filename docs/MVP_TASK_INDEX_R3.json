@@ -313,7 +313,7 @@
         "page_id": "workbench",
         "route": "/workbench",
         "prototype": "docs/前端原型_v2/pages/workbench.html",
-        "prototype_sha256": "b967c581290677a78b8297edf2726e7e784802975b5cd497f12de3551dcacc93",
+        "prototype_sha256": "161051b94568eca2f8605b710cbb08ddb06067326b358ca9ab4a94ac3c448353",
         "owns_page_exclusively": true,
         "merged_r3_tasks": [
           "S1-CONFIG"

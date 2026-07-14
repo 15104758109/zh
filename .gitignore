@@ -54,9 +54,6 @@ logs/
 *.seed
 *.trace
 
-# Local files flagged by pre-baseline secret scan
-docs/前端原型_v2/pages/workbench.html
-
 # OS and editor noise
 .DS_Store
 Thumbs.db
