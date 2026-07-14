@@ -146,8 +146,11 @@ export function validatePlan(inputs) {
   if (hasCycle(tasks)) errors.push("R4 Task dependency graph contains a cycle");
 
   const policy = index.execution_policy ?? {};
-  if (policy.max_concurrent_business_tasks !== 2 || policy.max_internal_subagents_per_task !== 3 || policy.max_total_concurrent_agents !== 10) {
-    errors.push("R4 concurrency must be 2 business Tasks, 3 internal subagents per Task, and 10 total agents");
+  if (policy.max_concurrent_business_tasks !== 2
+    || policy.max_internal_subagents_per_task !== 4
+    || policy.max_concurrent_internal_subagents_per_task !== 3
+    || policy.max_total_concurrent_agents !== 10) {
+    errors.push("R4 concurrency must be 2 business Tasks, 4 phased internal sessions, 3 concurrent internal subagents, and 10 total agents");
   }
   if (policy.main_task_owns_integration !== true || !policy.internal_subagent_rules?.some((rule) => rule.includes("not product tasks"))) {
     errors.push("internal subagents must remain work packages owned by the main business Task");
@@ -158,6 +161,14 @@ export function validatePlan(inputs) {
     "B8 P0 and formal chapter transaction",
     "MVP-GATE"
   ])) errors.push("deep review must be limited to B4, B6, B8, and MVP-GATE");
+
+  const moduleProtocol = index.business_task_internal_protocol ?? {};
+  const moduleRoles = moduleProtocol.distinct_internal_sessions?.map((session) => session.role) ?? [];
+  if (!sameSet(moduleProtocol.applies_to ?? [], EXPECTED_TASKS.filter((id) => /^B[1-8]-/.test(id)))
+    || !sameSet(moduleRoles, ["N8N_WORKFLOW_IMPLEMENTER", "DATA_INTEGRATION_IMPLEMENTER", "BUSINESS_ACCEPTANCE_AUDITOR", "USER_OPERATION_AUDITOR"])
+    || moduleProtocol.completion_rule !== "all implementation results integrated and both required acceptance sessions PASS") {
+    errors.push("B1-B8 must use distinct n8n, data, business-acceptance, and user-operation sessions inside each business Task");
+  }
 
   const pages = index.static_pages ?? [];
   if (pages.length !== 9 || !unique(pages.map((page) => page.page_id)) || !unique(pages.map((page) => page.target_route))) {
@@ -173,6 +184,10 @@ export function validatePlan(inputs) {
     || staticAcceptance.data_mode !== "static_mock"
     || !sameSet(staticAcceptance.out_of_scope ?? [], ["PostgreSQL", "n8n", "real model calls"])) {
     errors.push("static restore acceptance must use fixed viewports, four states, and static-only data scope");
+  }
+  if (staticAcceptance.visual_acceptance_protocol?.auditor_scope !== "READ_ONLY_NON_AUTHOR_INSIDE_PARENT_TASK"
+    || !staticAcceptance.required?.some((rule) => rule.includes("did not edit that page"))) {
+    errors.push("static visual acceptance must be fail-closed and come from a non-author internal subagent");
   }
 
   const web = byId.get("WEB-STATIC-RESTORE");
@@ -253,7 +268,9 @@ function selfTest(inputs) {
     ["missing-page", (x) => { x.index.static_pages.pop(); }],
     ["lowered-high-reasoning", (x) => { x.index.tasks.find((task) => task.id === "B6-DEDUCTION").model.reasoning_effort = "medium"; }],
     ["draft-formalization", (x) => { x.index.tasks.find((task) => task.id === "B1-CREATE-DRAFT-BOOK").transaction_boundary = "formalize everything"; }],
-    ["too-many-subagents", (x) => { x.index.execution_policy.max_internal_subagents_per_task = 4; }]
+    ["too-many-subagents", (x) => { x.index.execution_policy.max_internal_subagents_per_task = 5; }],
+    ["merged-acceptance-role", (x) => { x.index.business_task_internal_protocol.distinct_internal_sessions[3].role = "BUSINESS_ACCEPTANCE_AUDITOR"; }],
+    ["self-visual-acceptance", (x) => { x.index.static_page_acceptance.visual_acceptance_protocol.auditor_scope = "PARENT_SELF_REVIEW"; }]
   ];
   for (const [name, mutate] of cases) {
     const clone = structuredClone(inputs);
@@ -275,7 +292,7 @@ function main() {
 
   if (command === "--self-test") {
     const failures = selfTest(inputs);
-    console.log(JSON.stringify({ ok: failures.length === 0, command, rejected_mutations: failures.length ? [] : ["micro-task", "r3-reactivation", "missing-page", "lowered-high-reasoning", "draft-formalization", "too-many-subagents"], failures, side_effects: false }, null, 2));
+    console.log(JSON.stringify({ ok: failures.length === 0, command, rejected_mutations: failures.length ? [] : ["micro-task", "r3-reactivation", "missing-page", "lowered-high-reasoning", "draft-formalization", "too-many-subagents", "merged-acceptance-role", "self-visual-acceptance"], failures, side_effects: false }, null, 2));
     if (failures.length) process.exitCode = 1;
     return;
   }

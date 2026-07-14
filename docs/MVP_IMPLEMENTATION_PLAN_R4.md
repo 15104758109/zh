@@ -13,7 +13,7 @@ R4 replaces the R3 execution plan. R3, G07, G04 revision 2, and the 85-task inde
 
 ## Two-Level Execution
 
-The Orchestrator dispatches only the ten top-level records in the R4 index. A business Task owns one demonstrable user result and may create two or three internal work packages when their write scopes do not overlap.
+The Orchestrator dispatches only the ten top-level records in the R4 index. A business Task owns one demonstrable user result and may create scoped internal work packages when their write scopes do not overlap. No more than three internal subagents run concurrently; completed implementation work may be followed by separate acceptance sessions without creating product Tasks.
 
 Internal subagents:
 
@@ -21,9 +21,21 @@ Internal subagents:
 - cannot create Tasks, replan the product, or change formal database semantics;
 - modify only their assigned directories;
 - return changed files, tests, screenshots, and blockers to the main Task agent;
-- leave integration, runtime writes, acceptance, and the final result to the main Task agent.
+- leave integration, runtime writes, and the final result to the main Task agent;
+- when acceptance depends on a visual comparison, return each page verdict from a subagent that did not edit that page; the page author and the main Task agent cannot self-approve it.
 
 Ordinary bugs stay inside the original Task and allow at most one repair pass. Screenshot capture, contract updates, test additions, and ordinary acceptance are Task work, not standalone Tasks.
+
+## Complete Module Pipeline
+
+For `B1` through `B8`, one parent Task delivers the complete Web + n8n + PostgreSQL user result. Its prompt assigns four distinct internal sessions where the corresponding layer is in scope:
+
+- `N8N_WORKFLOW_IMPLEMENTER` modifies only the Task-owned workflow and its workflow tests.
+- `DATA_INTEGRATION_IMPLEMENTER` modifies only Task-owned PostgreSQL/RPC, JSON contracts, seeds, and data tests.
+- `BUSINESS_ACCEPTANCE_AUDITOR` is read-only and checks the observable result only against V7 anchors and Task acceptance; it cannot invent or improve requirements.
+- `USER_OPERATION_AUDITOR` is independent of the implementers, uses the real local Web, n8n, and PostgreSQL journey, and may write only Task evidence.
+
+The parent owns the page behavior/data binding, shared integration, and final result. During implementation the parent, n8n subagent, and data subagent may work concurrently on mutually exclusive files. Database application and n8n runtime import remain parent-serialized. After integration, the two auditors may run concurrently. They return `PASS|FAIL|BLOCKED`; any result other than complete `PASS` keeps the same Task open for its one integrated repair, followed by recheck in the same auditor sessions.
 
 ## Task Sequence
 
@@ -40,7 +52,7 @@ Ordinary bugs stay inside the original Task and allow at most one repair pass. S
 | `B8-AUDIT-AND-COMMIT` | Audit, decide, enhance, release, and atomically commit one formal chapter | B7 | P0 and critical SQL review |
 | `MVP-GATE` | Complete the full local browser journey | B8 | independent gate runner |
 
-`B2` and `B3` are the only initial cross-Task parallel pair. Within a large Task, the main agent may use up to three disjoint internal subagents. Database migration/application, n8n import/activation, and shared Web shell integration stay serial.
+`B2` and `B3` are the only initial cross-Task parallel pair. Within a large Task, at most three internal subagents are active at once even when four distinct implementation/acceptance sessions are used across phases. Database migration/application, n8n import/activation, and shared Web shell integration stay serial.
 
 ## Static Restore
 
@@ -48,9 +60,11 @@ Ordinary bugs stay inside the original Task and allow at most one repair pass. S
 
 1. The parent agent establishes runnable `dev`, `build`, and browser-test commands, then freezes ownership of shared files.
 2. At most three internal page subagents restore their assigned page groups without editing shared files.
-3. The parent integrates all pages, performs one browser traversal, fixes shared layout/navigation once, and captures `1440x900` and `1280x720` screenshots.
+3. The parent integrates all pages, performs one browser traversal, and captures `1440x900` and `1280x720` screenshots without declaring visual acceptance.
+4. One or more read-only internal subagents compare every page they did not edit directly against its source prototype at both fixed viewports. Together their verdict matrix must cover all nine pages; author self-review does not count.
+5. Any `FAIL`, `BLOCKED`, missing comparison, wrong screenshot dimensions, or unverified prototype keeps the Task `IN_PROGRESS`. The parent performs the one integrated repair pass inside this Task, then sends the affected pages back to the same non-author subagent for recheck.
 
-The prototype and fixed screenshots are the visual facts. The executable page entries in the R4 index define only regions, routes, states, and interactions that screenshots cannot express. Static restore uses `static_mock`; PostgreSQL, n8n, and real model calls are explicitly outside this Task.
+The auditor opens the prototype and target route directly and captures its own evidence; coder screenshots, route health, state coverage, and console health cannot substitute for visual comparison. The prototype and fixed screenshots are the visual facts. The executable page entries in the R4 index define only regions, routes, states, and interactions that screenshots cannot express. Static restore uses `static_mock`; PostgreSQL, n8n, and real model calls are explicitly outside this Task.
 
 ## Business Boundaries
 
@@ -66,6 +80,6 @@ The minimum FP016/FP017 support required by the chain is local operator identity
 
 ## Default Verification
 
-Ordinary business Tasks run only the tests needed to demonstrate their main browser journey, PostgreSQL rules, n8n path, and failure rollback. The default chain does not require generic migration tamper tests, generic contract-center checks, generic n8n security scans, or multi-round Coder/Auditor/Reviewer loops.
+Ordinary business Tasks run only the tests needed to demonstrate their main browser journey, PostgreSQL rules, n8n path, and failure rollback. Their business and user-operation acceptance are single-pass internal roles, not standalone Tasks or an open-ended Coder/Auditor/Reviewer chain. The default chain does not require generic migration tamper tests, generic contract-center checks, or generic n8n security scans.
 
 Deep independent review is reserved for B4, B6, B8, and the final Gate. No review may invent requirements outside the R4 acceptance or V7 anchors.

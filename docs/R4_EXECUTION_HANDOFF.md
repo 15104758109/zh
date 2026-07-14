@@ -10,14 +10,16 @@ In `D:\zhreplan` on `autonomy/integration`, complete the local Web single-chapte
 
 1. Dispatch only a `READY` top-level R4 Task.
 2. Create the business Task as an independent Codex task with `gpt-5.6-terra` and the indexed reasoning effort. Record `actual_model` only from platform metadata.
-3. The main Task agent may create up to three internal subagents with mutually exclusive write directories. They are work packages, not product Tasks.
-4. Internal subagents cannot create Tasks, replan, edit the Task Index, or change formal database semantics. The main Task agent integrates and accepts the result.
+3. The main Task agent may use up to four distinct internal subagent sessions across implementation and acceptance, with no more than three active concurrently. They are work packages, not product Tasks.
+4. Internal subagents cannot create Tasks, replan, edit the Task Index, or change formal database semantics. The main Task agent integrates the result, but it cannot override a required non-author acceptance verdict.
 5. Ordinary defects remain in the same business Task. Do not create repair, screenshot, contract, lint, or ordinary audit Tasks.
 6. Only B4, B6, B8, and MVP-GATE receive independent deep review.
 7. Database changes and n8n runtime imports are serialized by the Orchestrator.
+8. When a Task requires visual fidelity, every page must be reviewed inside that Task by an internal subagent that did not edit it. The auditor is read-only, opens source and target directly, and fails closed on missing or invalid evidence.
+9. For `B1` through `B8`, use distinct `N8N_WORKFLOW_IMPLEMENTER`, `DATA_INTEGRATION_IMPLEMENTER`, `BUSINESS_ACCEPTANCE_AUDITOR`, and `USER_OPERATION_AUDITOR` sessions. The parent owns Web integration; the two implementers may run beside it, then the two auditors run after integration. Do not let an implementer self-audit or promote these roles into top-level Tasks.
 
 ## First Task
 
-Start `WEB-STATIC-RESTORE` as one parent Task. The parent owns routes, App Shell, shared CSS/tokens/components, local assets, and integration. After foundation is stable it may create the three page-group work packages registered in the index. Complete one integrated browser review at `1440x900` and `1280x720`.
+Start `WEB-STATIC-RESTORE` as one parent Task. The parent owns routes, App Shell, shared CSS/tokens/components, local assets, and integration. After foundation is stable it may create the page-group work packages registered in the index. After integration, internal subagents must cross-review only pages they did not edit so that all nine pages receive a read-only prototype comparison at `1440x900` and `1280x720`. A route/state/console pass or the parent's own screenshot review is insufficient. Any non-`PASS` stays inside the same Task for the single integrated repair and same-auditor recheck.
 
 After static restore, execute `B1`, then `B2` and `B3` in parallel, then `B4` through `B8` by dependency, followed by `MVP-GATE`.

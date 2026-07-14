@@ -53,14 +53,18 @@
   },
   "execution_policy": {
     "max_concurrent_business_tasks": 2,
-    "max_internal_subagents_per_task": 3,
+    "max_internal_subagents_per_task": 4,
+    "max_concurrent_internal_subagents_per_task": 3,
     "max_total_concurrent_agents": 10,
     "main_task_owns_integration": true,
     "internal_subagent_rules": [
       "subagents are work packages, not product tasks",
       "write scopes must be mutually exclusive",
       "subagents cannot create product tasks, replan, or change formal database semantics",
-      "the main task agent merges, tests, and returns one structured business result"
+      "the main task agent merges, tests, and returns one structured business result",
+      "n8n implementation, data integration, business acceptance, and user-operation acceptance use distinct internal sessions when those layers are in scope",
+      "a visual verdict must come from an internal subagent that did not edit the page under review",
+      "acceptance subagents are read-only and fail closed; missing or invalid evidence is not PASS"
     ],
     "serial_resources": ["database migration/application", "n8n runtime import/activation", "shared web shell integration"],
     "ordinary_review": "IN_TASK_ACCEPTANCE_ONLY",
@@ -72,6 +76,52 @@
     "high_reasoning_tasks": ["B4-FINALIZE-BOOK-DESIGN", "B5-CHAPTER-PLAN", "B6-DEDUCTION", "B8-AUDIT-AND-COMMIT", "MVP-GATE"],
     "actual_model_source": "platform delegation/session metadata only",
     "fallback": "ENVIRONMENT_APPROVAL_REQUIRED"
+  },
+  "business_task_internal_protocol": {
+    "applies_to": [
+      "B1-CREATE-DRAFT-BOOK",
+      "B2-WORLD-SETTINGS",
+      "B3-CHARACTER-SETTINGS",
+      "B4-FINALIZE-BOOK-DESIGN",
+      "B5-CHAPTER-PLAN",
+      "B6-DEDUCTION",
+      "B7-LITERARY-PRESENTATION",
+      "B8-AUDIT-AND-COMMIT"
+    ],
+    "outcome": "one complete user-visible Web + n8n + PostgreSQL module inside one business Task",
+    "main_agent_owns": ["Web page behavior and data binding", "shared integration", "serialized runtime writes", "one integrated repair", "final structured result"],
+    "distinct_internal_sessions": [
+      {
+        "role": "N8N_WORKFLOW_IMPLEMENTER",
+        "write_scope_rule": "Task-owned n8n workflow and workflow tests only",
+        "result": "workflow files, tests, runtime-import instructions, blockers"
+      },
+      {
+        "role": "DATA_INTEGRATION_IMPLEMENTER",
+        "write_scope_rule": "Task-owned PostgreSQL/RPC, JSON contracts, seeds, and data tests only",
+        "result": "data files, tests, migration/application instructions, blockers"
+      },
+      {
+        "role": "BUSINESS_ACCEPTANCE_AUDITOR",
+        "write_scope_rule": "read-only",
+        "authority": ["V7 anchors", "Task acceptance"],
+        "result": "PASS|FAIL|BLOCKED with user-visible business evidence; no invented requirements"
+      },
+      {
+        "role": "USER_OPERATION_AUDITOR",
+        "write_scope_rule": "Task evidence only; no product code",
+        "authority": ["Task main journey", "Task acceptance"],
+        "result": "PASS|FAIL|BLOCKED from the real local Web -> n8n -> PostgreSQL journey, including applicable failure/recovery and cross-page context"
+      }
+    ],
+    "scheduling": [
+      "parent Web work, n8n implementation, and data integration may run concurrently with disjoint write scopes",
+      "database application and n8n runtime import are serialized by the parent",
+      "business acceptance and user-operation acceptance start only after integration and may run concurrently",
+      "auditors cannot accept code they authored",
+      "any non-PASS remains in the original Task for one integrated repair and same-session recheck"
+    ],
+    "completion_rule": "all implementation results integrated and both required acceptance sessions PASS"
   },
   "static_pages": [
     {
@@ -148,8 +198,24 @@
       "browser console has no errors",
       "defined navigation and static state controls work",
       "fixed viewport screenshots show no overlap, clipping, or incoherent layout shift",
+      "every page at both viewports has PASS from an internal subagent that did not edit that page",
+      "coder self-audit and route/state tests cannot satisfy visual acceptance",
       "one integrated visual review after all nine pages, not per-control audit tasks"
-    ]
+    ],
+    "visual_acceptance_protocol": {
+      "auditor_scope": "READ_ONLY_NON_AUTHOR_INSIDE_PARENT_TASK",
+      "direct_inputs": ["source_prototype", "target_route"],
+      "normal_state_comparison": [
+        "same fixed viewport and exact screenshot dimensions",
+        "major regions present in the same order with comparable geometry",
+        "prototype-specific layout, density, typography, colors, controls, and content hierarchy are retained",
+        "no whole-page horizontal overflow, clipping, overlap, or unintended layout shift"
+      ],
+      "non_normal_state_comparison": ["empty, loading, and error remain inside the accepted page geometry without overlap or clipping"],
+      "required_result": "per-page per-viewport PASS|FAIL|BLOCKED matrix with observed differences and document scrollWidth/innerWidth",
+      "fail_closed": "any FAIL, BLOCKED, missing pair, prototype load failure, wrong image size, or author self-review keeps WEB-STATIC-RESTORE IN_PROGRESS",
+      "repair_policy": "one integrated repair inside the same Task, followed by recheck from the same non-author auditor"
+    }
   },
   "tasks": [
     {
@@ -170,7 +236,7 @@
         "parent: integration, browser traversal, fixed viewport screenshots, shared layout repair"
       ],
       "acceptance_ref": "static_page_acceptance",
-      "acceptance": ["all nine routes refresh directly", "defined static interactions work", "one integrated browser review passes at both fixed viewports"],
+      "acceptance": ["all nine routes refresh directly", "defined static interactions work", "all eighteen prototype/target viewport pairs receive non-author PASS under static_page_acceptance.visual_acceptance_protocol"],
       "review_policy": "ONE_INTEGRATED_VISUAL_ACCEPTANCE_INSIDE_PARENT_TASK",
       "status": "IN_PROGRESS"
     },
