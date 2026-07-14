@@ -53,7 +53,9 @@
   "content_hash_domain": "SHA256_OF_UTF8_CONTENT_WITH_CRLF_AND_CR_NORMALIZED_TO_LF",
   "content_sha256": {
     "docs/MVP_IMPLEMENTATION_PLAN_R3.md": "5347ce9997bb756553066340e6074ef51db3940cc2067305289de5229e3d7758",
-    "docs/MVP_TASK_INDEX_R3.json": "1fc61181e2e553b37128c2111130e15b1f85632f0cba778e8025086a5e04009b",
+    "docs/MVP_TASK_INDEX_R3.json": "e6a550383c5ca72ff1da8da5bf82de03f5c683be0c3f7e1dfbfabb59ea262584",
+    ".gitignore": "7b1af8b286f36e10d917c1408fe3ef31aca1c7c3e82a5ec45165abc81653033b",
+    "docs/前端原型_v2/pages/workbench.html": "161051b94568eca2f8605b710cbb08ddb06067326b358ca9ab4a94ac3c448353",
     "docs/R3_EXECUTION_HANDOFF.md": "1dd0a52d365df9b512b1bf4e31eeeac85e3d4e3e856907557965b12bf0e61378",
     "docs/FEATURE_CANDIDATES.md": "b6668934ea7e535987b2cf0c9f026a1a144bf910e10c82e87ba40b326df909a5",
     "tools/mvp-plan.mjs": "b83db41fc00c828a83b56d8654c53f7ed058134c2072a5435a8e79ef4766835e",
@@ -61,6 +63,35 @@
     "README.md": "aa54b5d4ece9685b655b728de47f223f35410ae02a493d49cffe79479267aa6d",
     "DEV_HARNESS.md": "dc46e0d7319354b29b9250af4618ddc39550f3fc8c5bdef5b14c958cf67581db",
     "package.json": "171d9980296b98bf177a83df6cf0115e6b0694c8922eb572ff2f863c631e5188"
+  },
+  "prototype_source_repair": {
+    "task_id": "S1-WORKBENCH-PAGE",
+    "attempt_id": "R3-WORKBENCH-PROTOTYPE-SOURCE-REPAIR-a1",
+    "source_verification": {
+      "normalized_sha256": "b967c581290677a78b8297edf2726e7e784802975b5cd497f12de3551dcacc93",
+      "bytes": 91312,
+      "lines": 1491,
+      "secret_match_types": {
+        "OPENAI_KEY": 5
+      }
+    },
+    "sanitization": {
+      "replacement_count": 5,
+      "replacement_length": 24,
+      "changed_bytes": 120,
+      "non_replacement_bytes_identical": true,
+      "official_secret_scan_version": "G07_CANDIDATE_BLOBS_V2",
+      "official_secret_hit_types": []
+    },
+    "platform_model_evidence": {
+      "record_type": "turn_context",
+      "record_line": 8,
+      "record_sha256": "2462a293002cba0a293c61ee0f0c5001a10043a780ecb0bc4bc032586999ced3",
+      "actual_model": "gpt-5.6-terra",
+      "reasoning_effort": "high"
+    },
+    "candidate_commit": null,
+    "candidate_commit_note": "The candidate commit is recorded after this evidence file is committed; this object does not self-attest its containing commit."
   },
   "mechanical_results": [
     {
