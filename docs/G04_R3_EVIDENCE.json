@@ -1,0 +1,131 @@
+{
+  "schema_version": "g04-r3-candidate-evidence/v1",
+  "evidence_status": "CANDIDATE_PAUSED",
+  "execution_status": "PAUSED_BY_CREATOR",
+  "formal_approval_claimed": false,
+  "verification_claimed": false,
+  "base_commit": "5e7e4caa2d4bf20d098bc44f80c9678cf1715a89",
+  "base_parent_commit": "114203e38a5a0290fddd9de83da63b16d18efe14",
+  "candidate_commit": null,
+  "candidate_commit_note": "The Orchestrator records the Git candidate commit after this evidence file is committed; this file does not self-attest its containing commit.",
+  "creator_decision_summary": [
+    "Produce the fastest MVP and stop after the Task plan is changed.",
+    "The product is Web-only; native mobile and native desktop are outside scope and are not acceptance dependencies.",
+    "Use minimal Web + n8n + PostgreSQL stitching, with PostgreSQL owning transactions and truth.",
+    "Keep apps/api as optional thin security glue; FP008-02 is the only high-code exception.",
+    "Move features outside the V7 MVP and non-blocking code optimization into a later candidate register.",
+    "Audit only contracted interface business behavior for ordinary Tasks; add a Reviewer only for critical SQL, FP008-02, or control-contract changes."
+  ],
+  "plan_facts": {
+    "revision": 3,
+    "task_count": 19,
+    "ready_count": 0,
+    "planned_count": 19,
+    "selected_task": null,
+    "historical_task_mapping_count": 85,
+    "feature_candidate_count": 21,
+    "high_code_exception": "S4-DEDUCTION-RUNTIME",
+    "product_surface": "WEB_ONLY",
+    "architecture": "n8n + PostgreSQL + minimal Web interface"
+  },
+  "planning_model_record": {
+    "profile": "MODEL::REASON_HIGH",
+    "actual_model": "INHERITED_ROOT_MODEL_UNVERIFIED",
+    "reasoning_effort": "high",
+    "fallback": "ORCHESTRATOR_ONLY",
+    "task_budget": "UNCONFIGURED"
+  },
+  "historical_evidence_boundary": {
+    "g04_revision_2": "HISTORICAL_ONLY",
+    "g07_r2_v11": "HISTORICAL_ONLY",
+    "old_implementation_control_task_index": "HISTORICAL_MAPPING_SOURCE_ONLY",
+    "platform_trust_claim": "NONE",
+    "may_activate_product_task": false
+  },
+  "content_hash_domain": "SHA256_OF_UTF8_CONTENT_WITH_CRLF_AND_CR_NORMALIZED_TO_LF",
+  "content_sha256": {
+    "docs/MVP_IMPLEMENTATION_PLAN_R3.md": "a48b7eae937ac6198184f461b8e16d4628f82759d9a7676bc4c729a1eff14515",
+    "docs/MVP_TASK_INDEX_R3.json": "24e51592c57ddae390c78af725edb5a5f0883baa6dc6b8d9699993b6ce4c66de",
+    "docs/FEATURE_CANDIDATES.md": "65059f33d9dc976632bd0d70daed474b74148bd6571def46523253b9624e1908",
+    "tools/mvp-plan.mjs": "d87f1b1422befab04e28a0e918d6525aeb94fa7f9b42c8d3e63842fcfd697984",
+    "tests/tooling/mvp-plan/mvp-plan.test.mjs": "96df0a95fec2656bbe3b3252a57b46f6258c56aa5bd22372218a42f560302efd",
+    "README.md": "66459f93d401b7919425067686ebb5e83b141997a561108096af1e7b14bcb4b8",
+    "DEV_HARNESS.md": "061649829255a97a616b97eaee4cac1fee37c6bc0b3c257954ea2fa0a23d83a8",
+    "package.json": "171d9980296b98bf177a83df6cf0115e6b0694c8922eb572ff2f863c631e5188"
+  },
+  "mechanical_results": [
+    {
+      "command": "pnpm install --frozen-lockfile",
+      "result": "PASS",
+      "detail": "Lockfile up to date; 125 packages reused; no lockfile change."
+    },
+    {
+      "command": "pnpm mvp:plan",
+      "result": "PASS",
+      "detail": "19 Tasks, 0 READY, 19 PLANNED, 85 historical mappings, one high-code Task."
+    },
+    {
+      "command": "node tools/mvp-plan.mjs status",
+      "result": "PASS",
+      "detail": "PAUSED_BY_CREATOR; selected_task null; no execution authority."
+    },
+    {
+      "command": "node tools/mvp-plan.mjs dry-run",
+      "result": "PASS",
+      "detail": "PAUSED_BY_CREATOR; selected_task null; side_effects false."
+    },
+    {
+      "command": "node tools/mvp-plan.mjs --self-test",
+      "result": "PASS",
+      "detail": "Rejected READY, duplicate mapping, missing n8n scope, second high-code Task, native scope, and unknown dependency mutations."
+    },
+    {
+      "command": "node --test tests/tooling/mvp-plan/mvp-plan.test.mjs",
+      "result": "PASS",
+      "detail": "5/5 tests."
+    },
+    {
+      "command": "pnpm lint",
+      "result": "PASS"
+    },
+    {
+      "command": "pnpm typecheck",
+      "result": "PASS"
+    },
+    {
+      "command": "pnpm build",
+      "result": "PASS"
+    },
+    {
+      "command": "pnpm --filter @zh/contracts test",
+      "result": "PASS",
+      "detail": "14/14 tests."
+    },
+    {
+      "command": "pnpm test:interaction-contracts",
+      "result": "PASS",
+      "detail": "8/8 tests."
+    },
+    {
+      "command": "pnpm test:n8n-lint",
+      "result": "PASS",
+      "detail": "13/13 tests."
+    },
+    {
+      "command": "pnpm n8n:lint",
+      "result": "PASS",
+      "detail": "17 registered reference workflows; 6 known findings; 0 new findings."
+    }
+  ],
+  "prohibited_actions_confirmed_absent": [
+    "PRODUCT_TASK_START",
+    "READY_TRANSITION",
+    "LEASE",
+    "DATABASE_RUNTIME_WRITE",
+    "DOCKER_OR_CONTAINER_OPERATION",
+    "N8N_RUNTIME_WRITE",
+    "MAIN_MERGE",
+    "PUSH",
+    "DEPLOY"
+  ]
+}

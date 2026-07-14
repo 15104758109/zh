@@ -162,3 +162,20 @@ G02 治理控制面、G03-A~D 分组业务对齐及 G04 revision 2 已获创作�
 ## License
 
 MIT
+
+---
+
+## R3 最小 MVP 候选计划
+
+R3 入口为 [MVP 实施计划](./docs/MVP_IMPLEMENTATION_PLAN_R3.md)、[19 项 Task Index](./docs/MVP_TASK_INDEX_R3.json) 和 [MVP 后候选功能](./docs/FEATURE_CANDIDATES.md)。该候选只规划 Web + n8n + PostgreSQL 的单章最快闭环；原生移动端和原生桌面端不在产品范围，也不是验收依赖。
+
+当前状态固定为 CANDIDATE_PAUSED / PAUSED_BY_CREATOR：0 READY、19 PLANNED、selected_task=null。旧 G04 revision 2、G07 R2/V11 和 85 项 Task Index 仅作历史映射，不授权继续施工。
+
+```text
+pnpm mvp:plan
+node tools/mvp-plan.mjs status
+node tools/mvp-plan.mjs dry-run
+node tools/mvp-plan.mjs --self-test
+```
+
+以上入口只读，不提供启动、租约或状态写入命令。R3 经新的创作者治理 Gate 激活前，不得启动产品 Task。
