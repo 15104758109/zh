@@ -61,8 +61,8 @@ The parent owns the page behavior/data binding, shared integration, and final re
 1. The parent agent establishes runnable `dev`, `build`, and browser-test commands, then freezes ownership of shared files.
 2. At most three internal page subagents restore their assigned page groups without editing shared files.
 3. The parent integrates all pages, performs one browser traversal, and captures `1440x900` and `1280x720` screenshots without declaring visual acceptance.
-4. One or more read-only internal subagents compare every page they did not edit directly against its source prototype at both fixed viewports. Together their verdict matrix must cover all nine pages; author self-review does not count.
-5. Any `FAIL`, `BLOCKED`, missing comparison, wrong screenshot dimensions, or unverified prototype keeps the Task `IN_PROGRESS`. The parent performs the one integrated repair pass inside this Task, then sends the affected pages back to the same non-author subagent for recheck.
+4. After all page builders are idle, one dedicated read-only `VISUAL_ACCEPTANCE_AUDITOR` that edited none of the nine pages compares every target directly against its source prototype at both fixed viewports. This one auditor owns the complete eighteen-pair verdict matrix.
+5. Any `FAIL`, `BLOCKED`, missing comparison, wrong screenshot dimensions, or unverified prototype keeps the Task `IN_PROGRESS`. The parent performs the one integrated repair pass inside this Task, then sends the affected pages back to the same dedicated auditor for recheck.
 
 The auditor opens the prototype and target route directly and captures its own evidence; coder screenshots, route health, state coverage, and console health cannot substitute for visual comparison. The prototype and fixed screenshots are the visual facts. The executable page entries in the R4 index define only regions, routes, states, and interactions that screenshots cannot express. Static restore uses `static_mock`; PostgreSQL, n8n, and real model calls are explicitly outside this Task.
 

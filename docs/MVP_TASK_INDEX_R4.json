@@ -198,12 +198,12 @@
       "browser console has no errors",
       "defined navigation and static state controls work",
       "fixed viewport screenshots show no overlap, clipping, or incoherent layout shift",
-      "every page at both viewports has PASS from an internal subagent that did not edit that page",
+      "every page at both viewports has PASS from the one dedicated internal auditor that edited none of the nine pages",
       "coder self-audit and route/state tests cannot satisfy visual acceptance",
       "one integrated visual review after all nine pages, not per-control audit tasks"
     ],
     "visual_acceptance_protocol": {
-      "auditor_scope": "READ_ONLY_NON_AUTHOR_INSIDE_PARENT_TASK",
+      "auditor_scope": "READ_ONLY_DEDICATED_NON_AUTHOR_INSIDE_PARENT_TASK",
       "direct_inputs": ["source_prototype", "target_route"],
       "normal_state_comparison": [
         "same fixed viewport and exact screenshot dimensions",
@@ -233,7 +233,8 @@
         "subagent A: workbench and new-book page directories",
         "subagent B: world, characters, and L1A page directories",
         "subagent C: production, deduction, audit-review, and audit-stage page directories",
-        "parent: integration, browser traversal, fixed viewport screenshots, shared layout repair"
+        "parent: integration, browser traversal, fixed viewport screenshots, shared layout repair",
+        "VISUAL_ACCEPTANCE_AUDITOR: one read-only non-author session owns all nine pages and eighteen prototype/target comparisons"
       ],
       "acceptance_ref": "static_page_acceptance",
       "acceptance": ["all nine routes refresh directly", "defined static interactions work", "all eighteen prototype/target viewport pairs receive non-author PASS under static_page_acceptance.visual_acceptance_protocol"],

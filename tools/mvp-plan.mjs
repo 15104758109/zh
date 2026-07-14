@@ -185,14 +185,16 @@ export function validatePlan(inputs) {
     || !sameSet(staticAcceptance.out_of_scope ?? [], ["PostgreSQL", "n8n", "real model calls"])) {
     errors.push("static restore acceptance must use fixed viewports, four states, and static-only data scope");
   }
-  if (staticAcceptance.visual_acceptance_protocol?.auditor_scope !== "READ_ONLY_NON_AUTHOR_INSIDE_PARENT_TASK"
-    || !staticAcceptance.required?.some((rule) => rule.includes("did not edit that page"))) {
-    errors.push("static visual acceptance must be fail-closed and come from a non-author internal subagent");
+  if (staticAcceptance.visual_acceptance_protocol?.auditor_scope !== "READ_ONLY_DEDICATED_NON_AUTHOR_INSIDE_PARENT_TASK"
+    || !staticAcceptance.required?.some((rule) => rule.includes("one dedicated internal auditor"))) {
+    errors.push("static visual acceptance must be fail-closed and owned by one dedicated non-author internal subagent");
   }
 
   const web = byId.get("WEB-STATIC-RESTORE");
-  if ((web?.internal_work_packages?.length ?? 0) !== 5 || web?.review_policy !== "ONE_INTEGRATED_VISUAL_ACCEPTANCE_INSIDE_PARENT_TASK") {
-    errors.push("WEB-STATIC-RESTORE must use one parent, three page groups, and one integrated visual acceptance");
+  if ((web?.internal_work_packages?.length ?? 0) !== 6
+    || !web.internal_work_packages.some((item) => item.startsWith("VISUAL_ACCEPTANCE_AUDITOR:"))
+    || web?.review_policy !== "ONE_INTEGRATED_VISUAL_ACCEPTANCE_INSIDE_PARENT_TASK") {
+    errors.push("WEB-STATIC-RESTORE must use one parent, three page groups, and one dedicated integrated visual auditor");
   }
   const b1 = byId.get("B1-CREATE-DRAFT-BOOK");
   if (!b1?.transaction_boundary.includes("draft") || !b1.transaction_boundary.includes("no world/character/L1A formalization")) {
