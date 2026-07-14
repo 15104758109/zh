@@ -1,5 +1,7 @@
 # R3 新窗口执行交接提示词
 
+> **HISTORICAL / FROZEN:** Do not execute this handoff. Use `docs/R4_EXECUTION_HANDOFF.md` and `docs/MVP_TASK_INDEX_R4.json`.
+
 将下面整段作为新 Codex 窗口的首条提示词。它授权新窗口按当前 R3 Task Index 执行，但不授权本交接生成窗口启动产品 Task。
 
 ```text

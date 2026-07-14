@@ -1,7 +1,7 @@
 {
   "schema_version": "r3-activation-evidence/v1",
-  "evidence_status": "APPROVED",
-  "execution_status": "ACTIVE",
+  "evidence_status": "HISTORICAL_FROZEN",
+  "execution_status": "CANCELLED_BY_REBASE",
   "formal_approval_claimed": true,
   "verification_claimed": true,
   "base_commit": "7cf17e17666c1c82fb3e5ae6ea9560b5b282884c",

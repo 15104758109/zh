@@ -2,12 +2,14 @@
   "schema_version": "mvp-task-index-r3/v1",
   "plan_revision": 3,
   "base_commit": "5e7e4caa2d4bf20d098bc44f80c9678cf1715a89",
-  "plan_status": "APPROVED",
-  "execution_status": "ACTIVE",
+  "plan_status": "HISTORICAL_FROZEN",
+  "execution_status": "CANCELLED_BY_REBASE",
+  "superseded_by": "docs/MVP_TASK_INDEX_R4.json",
   "selected_task": null,
   "counts": {
-    "ready": 2,
-    "planned": 11,
+    "ready": 0,
+    "planned": 0,
+    "cancelled_by_rebase": 13,
     "total": 13
   },
   "authority": {
@@ -172,7 +174,7 @@
       ],
       "audit_policy": "BUSINESS_AUDITOR_PLUS_REVIEWER_CRITICAL_SQL",
       "implementation_mode": "MINIMAL_STITCH",
-      "status": "READY"
+      "status": "CANCELLED_BY_REBASE"
     },
     {
       "id": "F0-06-N8N-PRODUCTION-BASE",
@@ -228,7 +230,7 @@
       },
       "audit_policy": "BUSINESS_AUDITOR_ONLY",
       "implementation_mode": "MINIMAL_STITCH",
-      "status": "READY"
+      "status": "CANCELLED_BY_REBASE"
     },
     {
       "id": "F0-07-RUNTIME-SEEDS",
@@ -271,7 +273,7 @@
       ],
       "audit_policy": "BUSINESS_AUDITOR_ONLY",
       "implementation_mode": "MINIMAL_STITCH",
-      "status": "PLANNED"
+      "status": "CANCELLED_BY_REBASE"
     },
     {
       "id": "S1-WORKBENCH-PAGE",
@@ -331,7 +333,7 @@
       ],
       "audit_policy": "TERRA_BUSINESS_PAGE_AUDITOR",
       "implementation_mode": "PAGE_STITCH",
-      "status": "PLANNED"
+      "status": "CANCELLED_BY_REBASE"
     },
     {
       "id": "S1-NEW-BOOK-PAGE",
@@ -391,7 +393,7 @@
       ],
       "audit_policy": "TERRA_BUSINESS_PAGE_AUDITOR",
       "implementation_mode": "PAGE_STITCH",
-      "status": "PLANNED"
+      "status": "CANCELLED_BY_REBASE"
     },
     {
       "id": "S2-WORLD-PAGE",
@@ -450,7 +452,7 @@
       ],
       "audit_policy": "TERRA_BUSINESS_PAGE_AUDITOR",
       "implementation_mode": "PAGE_STITCH",
-      "status": "PLANNED"
+      "status": "CANCELLED_BY_REBASE"
     },
     {
       "id": "S2-CHARACTERS-PAGE",
@@ -509,7 +511,7 @@
       ],
       "audit_policy": "TERRA_BUSINESS_PAGE_AUDITOR",
       "implementation_mode": "PAGE_STITCH",
-      "status": "PLANNED"
+      "status": "CANCELLED_BY_REBASE"
     },
     {
       "id": "S2-L1A-PAGE",
@@ -569,7 +571,7 @@
       ],
       "audit_policy": "TERRA_BUSINESS_PAGE_AUDITOR",
       "implementation_mode": "PAGE_STITCH",
-      "status": "PLANNED"
+      "status": "CANCELLED_BY_REBASE"
     },
     {
       "id": "S3-PRODUCTION-STAGE-PAGE",
@@ -638,7 +640,7 @@
       ],
       "audit_policy": "TERRA_BUSINESS_PAGE_AUDITOR",
       "implementation_mode": "PAGE_STITCH",
-      "status": "PLANNED",
+      "status": "CANCELLED_BY_REBASE",
       "business_contracts": {
         "scene_condition_package": {
           "output": "scene_condition_package_version",
@@ -728,7 +730,7 @@
       ],
       "audit_policy": "TERRA_BUSINESS_PAGE_AUDITOR_PLUS_TERRA_REVIEWER_FP008_02",
       "implementation_mode": "HIGH_CODE_EXCEPTION",
-      "status": "PLANNED"
+      "status": "CANCELLED_BY_REBASE"
     },
     {
       "id": "S4-AUDIT-REVIEW-PAGE",
@@ -788,7 +790,7 @@
       ],
       "audit_policy": "TERRA_BUSINESS_PAGE_AUDITOR_PLUS_TERRA_REVIEWER_CRITICAL_SQL",
       "implementation_mode": "PAGE_STITCH",
-      "status": "PLANNED"
+      "status": "CANCELLED_BY_REBASE"
     },
     {
       "id": "S5-AUDIT-STAGE-PAGE",
@@ -868,7 +870,7 @@
       ],
       "audit_policy": "TERRA_BUSINESS_PAGE_AUDITOR_PLUS_TERRA_REVIEWER_CRITICAL_SQL",
       "implementation_mode": "PAGE_STITCH",
-      "status": "PLANNED",
+      "status": "CANCELLED_BY_REBASE",
       "business_contracts": {
         "editor_release": {
           "y_release_sequence": [
@@ -922,7 +924,7 @@
       ],
       "audit_policy": "FRESH_TERRA_INDEPENDENT_MVP_PAGE_JOURNEY_GATE_RUNNER",
       "implementation_mode": "READ_ONLY_BUSINESS_GATE",
-      "status": "PLANNED"
+      "status": "CANCELLED_BY_REBASE"
     }
   ],
   "feature_candidates": [

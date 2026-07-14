@@ -1,5 +1,7 @@
 # MVP Implementation Plan R3
 
+> **HISTORICAL / FROZEN:** R3 was superseded by `docs/MVP_TASK_INDEX_R4.json`. All unfinished R3 Tasks are `CANCELLED_BY_REBASE`; this document is mapping evidence only and must not dispatch work.
+
 ## 1. 当前状态
 
 - Plan revision: 3

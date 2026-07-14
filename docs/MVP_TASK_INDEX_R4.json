@@ -1,0 +1,329 @@
+{
+  "schema_version": "mvp-task-index-r4/v1",
+  "plan_revision": 4,
+  "plan_status": "APPROVED",
+  "execution_status": "ACTIVE",
+  "active_task_index": true,
+  "base_branch": "autonomy/integration",
+  "required_baseline_ancestor": "7cf17e17666c1c82fb3e5ae6ea9560b5b282884c",
+  "counts": {
+    "ready": 1,
+    "planned": 9,
+    "total": 10,
+    "business_tasks": 9,
+    "gate_tasks": 1
+  },
+  "historical_sources": [
+    {
+      "path": "docs/IMPLEMENTATION_CONTROL.md",
+      "status": "HISTORICAL_FROZEN",
+      "scope": "G04 revision 2, G07, and the 85-task index are mapping evidence only"
+    },
+    {
+      "path": "docs/MVP_TASK_INDEX_R3.json",
+      "status": "HISTORICAL_FROZEN",
+      "scope": "all unfinished R3 tasks are CANCELLED_BY_REBASE"
+    },
+    {
+      "path": "docs/MVP_IMPLEMENTATION_PLAN_R3.md",
+      "status": "HISTORICAL_FROZEN"
+    },
+    {
+      "path": "docs/R3_EXECUTION_HANDOFF.md",
+      "status": "HISTORICAL_FROZEN"
+    }
+  ],
+  "authority": {
+    "business_contract": "docs/v7设计文档_20260709_终版.md",
+    "visual_truth": "docs/前端原型_v2/",
+    "feature_scope": "Only V7 anchors and task acceptance; all other behavior is post-MVP candidate",
+    "ordinary_defect_policy": "REPAIR_INSIDE_ORIGINAL_BUSINESS_TASK",
+    "replan_policy": "DO_NOT_CREATE_PRODUCT_TASK_FOR_SUBAGENT_WORK_OR_ORDINARY_REPAIR"
+  },
+  "architecture": {
+    "surface": "WEB_ONLY",
+    "runtime": ["Web", "n8n", "PostgreSQL"],
+    "truth_owner": "PostgreSQL",
+    "orchestration_owner": "n8n",
+    "existing_services_only": true,
+    "new_containers": false,
+    "thin_api_exception": "B6-DEDUCTION / FP008-02 only for CORS, secrets, streaming, and long-task transport",
+    "forbidden_actions": ["merge_main", "push", "cloud", "production_deploy"]
+  },
+  "execution_policy": {
+    "max_concurrent_business_tasks": 2,
+    "max_internal_subagents_per_task": 3,
+    "max_total_concurrent_agents": 10,
+    "main_task_owns_integration": true,
+    "internal_subagent_rules": [
+      "subagents are work packages, not product tasks",
+      "write scopes must be mutually exclusive",
+      "subagents cannot create product tasks, replan, or change formal database semantics",
+      "the main task agent merges, tests, and returns one structured business result"
+    ],
+    "serial_resources": ["database migration/application", "n8n runtime import/activation", "shared web shell integration"],
+    "ordinary_review": "IN_TASK_ACCEPTANCE_ONLY",
+    "deep_review_only": ["B4 formal design transaction", "B6 FP008 information isolation", "B8 P0 and formal chapter transaction", "MVP-GATE"]
+  },
+  "model_policy": {
+    "requested_model": "gpt-5.6-terra",
+    "ordinary_reasoning": "medium",
+    "high_reasoning_tasks": ["B4-FINALIZE-BOOK-DESIGN", "B5-CHAPTER-PLAN", "B6-DEDUCTION", "B8-AUDIT-AND-COMMIT", "MVP-GATE"],
+    "actual_model_source": "platform delegation/session metadata only",
+    "fallback": "ENVIRONMENT_APPROVAL_REQUIRED"
+  },
+  "static_pages": [
+    {
+      "page_id": "WORKBENCH",
+      "source_prototype": "docs/前端原型_v2/pages/workbench.html",
+      "target_route": "/workbench",
+      "required_regions": ["sidebar", "topbar", "project_summary", "primary_actions", "recent_activity"],
+      "interactions": ["new_book_to_/books/new", "select_book_context", "collapse_sidebar_expands_content"]
+    },
+    {
+      "page_id": "NEW_BOOK",
+      "source_prototype": "docs/前端原型_v2/pages/new_book.html",
+      "target_route": "/books/new",
+      "required_regions": ["sidebar", "topbar", "book_form", "preview", "primary_actions"],
+      "interactions": ["form_state_switch", "back_to_workbench", "continue_to_book_context"]
+    },
+    {
+      "page_id": "WORLD",
+      "source_prototype": "docs/前端原型_v2/pages/world_creator.html",
+      "target_route": "/books/:bookId/world",
+      "required_regions": ["sidebar", "topbar", "world_boards", "item_editor", "version_actions"],
+      "interactions": ["switch_world_board", "toggle_editor", "navigate_with_book_context"]
+    },
+    {
+      "page_id": "CHARACTERS",
+      "source_prototype": "docs/前端原型_v2/pages/character_settings.html",
+      "target_route": "/books/:bookId/characters",
+      "required_regions": ["sidebar", "topbar", "character_list", "character_editor", "relation_panel", "version_actions"],
+      "interactions": ["select_character", "switch_relation_view", "navigate_with_book_context"]
+    },
+    {
+      "page_id": "L1A",
+      "source_prototype": "docs/前端原型_v2/pages/l1a_settings.html",
+      "target_route": "/books/:bookId/l1a",
+      "required_regions": ["sidebar", "topbar", "candidate_groups", "three_line_order", "review_actions", "lock_state"],
+      "interactions": ["switch_candidate_group", "reorder_preview", "toggle_locked_state"]
+    },
+    {
+      "page_id": "PRODUCTION",
+      "source_prototype": "docs/前端原型_v2/pages/production_stage.html",
+      "target_route": "/books/:bookId/production",
+      "required_regions": ["sidebar", "topbar", "run_summary", "scene_package", "presentation_plan", "approval_actions", "execution_plan"],
+      "interactions": ["switch_plan_state", "approve_or_return_preview", "navigate_with_book_context"]
+    },
+    {
+      "page_id": "DEDUCTION",
+      "source_prototype": "docs/前端原型_v2/pages/multi_agent_deduction.html",
+      "target_route": "/books/:bookId/deduction",
+      "required_regions": ["sidebar", "topbar", "progress", "particle_timeline", "agent_status", "run_controls"],
+      "interactions": ["pause_resume_preview", "select_particle", "navigate_to_review"]
+    },
+    {
+      "page_id": "AUDIT_REVIEW",
+      "source_prototype": "docs/前端原型_v2/pages/audit_review.html",
+      "target_route": "/books/:bookId/deduction-review",
+      "required_regions": ["sidebar", "topbar", "deduction_summary", "p0_review", "decision_actions"],
+      "interactions": ["approve_or_return_preview", "navigate_to_deduction", "navigate_to_audit"]
+    },
+    {
+      "page_id": "AUDIT_STAGE",
+      "source_prototype": "docs/前端原型_v2/pages/audit_stage.html",
+      "target_route": "/books/:bookId/audit",
+      "required_regions": ["sidebar", "topbar", "prose_view", "objective_audit", "editor_decision", "enhancement", "release_actions"],
+      "interactions": ["switch_audit_panel", "show_returned_state", "show_released_state"]
+    }
+  ],
+  "static_page_acceptance": {
+    "viewports": ["1440x900", "1280x720"],
+    "states": ["normal", "empty", "loading", "error"],
+    "data_mode": "static_mock",
+    "out_of_scope": ["PostgreSQL", "n8n", "real model calls"],
+    "required": [
+      "all routes can be refreshed directly",
+      "browser console has no errors",
+      "defined navigation and static state controls work",
+      "fixed viewport screenshots show no overlap, clipping, or incoherent layout shift",
+      "one integrated visual review after all nine pages, not per-control audit tasks"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "WEB-STATIC-RESTORE",
+      "kind": "BUSINESS_TASK",
+      "outcome": "九个产品页面可在真实开发服务器直接访问，视觉接近原型，路由和基础静态交互可操作。",
+      "depends_on": [],
+      "fp_scope": [],
+      "risk": "MEDIUM",
+      "model": {"requested_model": "gpt-5.6-terra", "reasoning_effort": "medium", "actual_model": null},
+      "main_journey": "从工作台遍历九个页面，保持作品上下文并完成规定的静态导航与状态切换。",
+      "write_scope": ["apps/web/**", "tests/web-static/**"],
+      "internal_work_packages": [
+        "parent: dev/build/test, local assets, App Shell, router, tokens, shared components, shared ownership freeze",
+        "subagent A: workbench and new-book page directories",
+        "subagent B: world, characters, and L1A page directories",
+        "subagent C: production, deduction, audit-review, and audit-stage page directories",
+        "parent: integration, browser traversal, fixed viewport screenshots, shared layout repair"
+      ],
+      "acceptance_ref": "static_page_acceptance",
+      "acceptance": ["all nine routes refresh directly", "defined static interactions work", "one integrated browser review passes at both fixed viewports"],
+      "review_policy": "ONE_INTEGRATED_VISUAL_ACCEPTANCE_INSIDE_PARENT_TASK",
+      "status": "READY"
+    },
+    {
+      "id": "B1-CREATE-DRAFT-BOOK",
+      "kind": "BUSINESS_TASK",
+      "outcome": "创作者可创建、查看并进入一本草稿书；创建失败不留下半个书壳。",
+      "depends_on": ["WEB-STATIC-RESTORE"],
+      "fp_scope": ["FP001-01", "FP001-02", "FP001-03", "FP001-06", "FP016/FP017_MINIMUM_SUPPORT"],
+      "risk": "MEDIUM",
+      "model": {"requested_model": "gpt-5.6-terra", "reasoning_effort": "medium", "actual_model": null},
+      "main_journey": "/workbench -> /books/new -> create draft -> enter /books/:bookId/world",
+      "write_scope": ["apps/web/src/pages/workbench/**", "apps/web/src/pages/new-book/**", "docs/后端/n8n/ZH01-新书创建.json", "db/functions/new-book/**", "packages/contracts/src/new-book/**", "tests/business/b1-create-draft-book/**"],
+      "transaction_boundary": "draft t_book_projects shell only; no world/character/L1A formalization",
+      "acceptance": ["stable local_operator_id scopes the draft", "normalized duplicate title is rejected", "idempotent replay creates one draft", "minimal model/budget support is available without a governance platform", "browser journey completes against real n8n and PostgreSQL"],
+      "review_policy": "IN_TASK_ACCEPTANCE_ONLY",
+      "status": "PLANNED"
+    },
+    {
+      "id": "B2-WORLD-SETTINGS",
+      "kind": "BUSINESS_TASK",
+      "outcome": "创作者可生成、编辑、保存和查看该草稿书的世界设定候选与版本。",
+      "depends_on": ["B1-CREATE-DRAFT-BOOK"],
+      "fp_scope": ["FP002-01", "FP002-02", "FP002-03", "FP002-04"],
+      "risk": "MEDIUM",
+      "model": {"requested_model": "gpt-5.6-terra", "reasoning_effort": "medium", "actual_model": null},
+      "main_journey": "open draft -> generate world candidate -> edit -> save -> switch version",
+      "write_scope": ["apps/web/src/pages/world/**", "docs/后端/n8n/世界设定生成助手.json", "db/migrations/*__world__*.sql", "db/functions/world/**", "packages/contracts/src/world/**", "tests/business/b2-world-settings/**"],
+      "transaction_boundary": "world candidate/version save; final promotion is owned by B4",
+      "acceptance": ["book/operator scope is enforced", "candidate edits and version reads work", "return preserves history", "no future state is treated as formal", "page completes the real workflow journey"],
+      "review_policy": "IN_TASK_ACCEPTANCE_ONLY",
+      "status": "PLANNED"
+    },
+    {
+      "id": "B3-CHARACTER-SETTINGS",
+      "kind": "BUSINESS_TASK",
+      "outcome": "创作者可生成、编辑、保存角色、关系和初始记忆候选，并查看版本。",
+      "depends_on": ["B1-CREATE-DRAFT-BOOK"],
+      "fp_scope": ["FP003-01", "FP003-02", "FP003-03", "FP003-04"],
+      "risk": "MEDIUM",
+      "model": {"requested_model": "gpt-5.6-terra", "reasoning_effort": "medium", "actual_model": null},
+      "main_journey": "open draft -> generate character candidate -> edit roles/relations/memory -> save -> switch version",
+      "write_scope": ["apps/web/src/pages/characters/**", "docs/后端/n8n/角色设定生成助手.json", "db/migrations/*__characters__*.sql", "db/functions/characters/**", "packages/contracts/src/characters/**", "tests/business/b3-character-settings/**"],
+      "transaction_boundary": "character candidate/version save; final promotion is owned by B4",
+      "acceptance": ["relationship endpoints are in the same book", "candidate save is atomic", "version history is preserved", "knowledge boundaries remain explicit", "page completes the real workflow journey"],
+      "review_policy": "IN_TASK_ACCEPTANCE_ONLY",
+      "status": "PLANNED"
+    },
+    {
+      "id": "B4-FINALIZE-BOOK-DESIGN",
+      "kind": "BUSINESS_TASK",
+      "outcome": "创作者可生成、排序、逐条确认并锁定 L1A；世界、角色、关系和 L1A 在一个关键事务中正式化并冻结版本谱系。",
+      "depends_on": ["B2-WORLD-SETTINGS", "B3-CHARACTER-SETTINGS"],
+      "fp_scope": ["FP001-07", "FP004-00", "FP004-01", "FP004-02", "FP004-04"],
+      "risk": "HIGH",
+      "model": {"requested_model": "gpt-5.6-terra", "reasoning_effort": "high", "actual_model": null},
+      "main_journey": "open L1A -> generate -> sort -> pass/return -> finalize book design",
+      "write_scope": ["apps/web/src/pages/l1a/**", "docs/后端/n8n/ZH02-L1A生成.json", "docs/后端/n8n/ZH03-三线排序.json", "db/migrations/*__l1a__*.sql", "db/functions/l1a/**", "db/functions/finalize-book-design/**", "packages/contracts/src/l1a/**", "tests/business/b4-finalize-book-design/**"],
+      "transaction_boundary": "one PostgreSQL transaction promotes selected world, character, relation, memory, and L1A versions and freezes their lineage",
+      "known_findings_from_historical_candidate": [
+        "lock response schema currently rejects nonempty config_lineage",
+        "generate and sort idempotency intent currently includes nondeterministic model output",
+        "0006 and L1A RPCs have not been compiled in the real test database",
+        "three-line payload must require timeline, story, and character",
+        "model invocation gate must require a verified connection"
+      ],
+      "acceptance": ["all required items pass before lock", "return preserves history and direction", "formalization is atomic and replay-safe", "cross-book and stale versions are rejected", "world/character/L1A become read-only after finalization", "FP004-05 is absent"],
+      "review_policy": "INDEPENDENT_TERRA_CRITICAL_SQL_REVIEW_INSIDE_BUSINESS_TASK",
+      "status": "PLANNED"
+    },
+    {
+      "id": "B5-CHAPTER-PLAN",
+      "kind": "BUSINESS_TASK",
+      "outcome": "创作者可启动一章，查看场景条件包与呈现方案，批准后得到一个可执行章节计划。",
+      "depends_on": ["B4-FINALIZE-BOOK-DESIGN"],
+      "fp_scope": ["FP005-00", "FP005-01", "FP006-01", "FP006-02", "FP007-01"],
+      "risk": "HIGH",
+      "model": {"requested_model": "gpt-5.6-terra", "reasoning_effort": "high", "actual_model": null},
+      "main_journey": "start chapter -> materialize scene package -> approve/return presentation -> save execution plan",
+      "write_scope": ["apps/web/src/pages/production-stage/**", "docs/后端/n8n/ZH04-生产拆解.json", "db/migrations/*__chapter_plan__*.sql", "db/functions/chapter-plan/**", "packages/contracts/src/chapter-plan/**", "tests/business/b5-chapter-plan/**"],
+      "transaction_boundary": "one current execution plan bound to one scene_condition_package_version",
+      "acceptance": ["locked design is required", "formal world/character/relation/memory/L1A/config lineage is materialized", "future state, unavailable resource, knowledge overreach, missing scene, and unresolved data debt are rejected", "one approval gate only", "replay does not duplicate the plan"],
+      "review_policy": "IN_TASK_ACCEPTANCE_ONLY",
+      "status": "PLANNED"
+    },
+    {
+      "id": "B6-DEDUCTION",
+      "kind": "BUSINESS_TASK",
+      "outcome": "创作者可启动、暂停、恢复并完成一次多角色推演，完整结果形成唯一锁定快照。",
+      "depends_on": ["B5-CHAPTER-PLAN"],
+      "fp_scope": ["FP008-01", "FP008-02", "FP008-03", "FP008-04"],
+      "risk": "CRITICAL",
+      "model": {"requested_model": "gpt-5.6-terra", "reasoning_effort": "high", "actual_model": null},
+      "main_journey": "start deduction -> observe particles -> pause -> resume -> complete -> approve or return",
+      "write_scope": ["apps/web/src/pages/multi-agent-deduction/**", "apps/web/src/pages/audit-review/**", "docs/后端/n8n/ZH05-正文推演.json", "docs/后端/n8n/主角工作器.json", "docs/后端/n8n/配角工作器.json", "docs/后端/n8n/群像工作器.json", "docs/后端/n8n/反派_环境压力工作器.json", "apps/api/src/glue/multi-agent-deduction/**", "db/migrations/*__deduction__*.sql", "db/functions/deduction/**", "packages/contracts/src/deduction/**", "tests/business/b6-deduction/**"],
+      "transaction_boundary": "runtime checkpoints are resumable; only a complete approved result becomes one deduction_locked snapshot",
+      "acceptance": ["particles bind execution plan and scene package versions", "char_tasks are generated per particle", "each role receives a physically isolated information package", "pgvector recall is rechecked in PostgreSQL for validity and book scope", "budget stop is not completion", "partial results cannot lock", "return carries direction without rewriting truth"],
+      "review_policy": "INDEPENDENT_TERRA_FP008_INFORMATION_ISOLATION_REVIEW_INSIDE_BUSINESS_TASK",
+      "status": "PLANNED"
+    },
+    {
+      "id": "B7-LITERARY-PRESENTATION",
+      "kind": "BUSINESS_TASK",
+      "outcome": "创作者可把唯一锁定的推演事实生成并查看一版候选正文。",
+      "depends_on": ["B6-DEDUCTION"],
+      "fp_scope": ["FP009-00", "FP009-01"],
+      "risk": "MEDIUM",
+      "model": {"requested_model": "gpt-5.6-terra", "reasoning_effort": "medium", "actual_model": null},
+      "main_journey": "approve locked deduction -> generate candidate prose -> open audit workspace",
+      "write_scope": ["apps/web/src/pages/audit-review/**", "apps/web/src/pages/audit-stage/**", "docs/后端/n8n/ZH06-审计阶段.json", "db/migrations/*__literary_presentation__*.sql", "db/functions/literary-presentation/**", "packages/contracts/src/literary-presentation/**", "tests/business/b7-literary-presentation/**"],
+      "transaction_boundary": "candidate prose version only; no formal chapter write",
+      "acceptance": ["deduction_locked is required", "candidate prose retains scene package and deduction lineage", "expression cannot invent or change deduction facts", "failure does not overwrite history", "the audit page opens the generated candidate"],
+      "review_policy": "IN_TASK_ACCEPTANCE_ONLY",
+      "status": "PLANNED"
+    },
+    {
+      "id": "B8-AUDIT-AND-COMMIT",
+      "kind": "BUSINESS_TASK",
+      "outcome": "创作者可审计候选正文、作出 Y/N 决定、完成事实不变增强，并把合格版本原子提交为正式章节。",
+      "depends_on": ["B7-LITERARY-PRESENTATION"],
+      "fp_scope": ["FP010-01", "FP010-02", "FP012-01", "FP012-02", "FP012-04", "FP013-01", "FP013-02"],
+      "risk": "CRITICAL",
+      "model": {"requested_model": "gpt-5.6-terra", "reasoning_effort": "high", "actual_model": null},
+      "main_journey": "audit candidate -> Y or N -> archive/rewrite or enhance -> release -> formal commit",
+      "write_scope": ["apps/web/src/pages/audit-stage/**", "docs/后端/n8n/ZH06-审计阶段.json", "db/migrations/*__audit_commit__*.sql", "db/functions/audit-commit/**", "packages/contracts/src/audit-commit/**", "tests/business/b8-audit-and-commit/**"],
+      "transaction_boundary": "formal text, summary, ledgers, actual touched facts, and chapter progress commit in one PostgreSQL transaction",
+      "acceptance": ["objective P0 evidence is immutable and blocks Y", "N preserves shadow history; third N becomes abandoned_by_user", "FP011 and FP012-03 are absent", "enhancement cannot change facts and must satisfy change_limit", "formal_summary is nonempty before released", "only released and P0-clear candidates commit", "failure rolls back all formal writes", "replay and concurrency produce one formal chapter"],
+      "review_policy": "INDEPENDENT_TERRA_P0_AND_CRITICAL_SQL_REVIEW_INSIDE_BUSINESS_TASK",
+      "status": "PLANNED"
+    },
+    {
+      "id": "MVP-GATE",
+      "kind": "GATE_TASK",
+      "outcome": "从草稿书到一章正式正文的本地 Web 旅程在现有 n8n 与 PostgreSQL 上通过。",
+      "depends_on": ["B8-AUDIT-AND-COMMIT"],
+      "fp_scope": ["FP001-01..FP013-02_MVP_SELECTION"],
+      "risk": "HIGH",
+      "model": {"requested_model": "gpt-5.6-terra", "reasoning_effort": "high", "actual_model": null},
+      "main_journey": "create draft -> design -> finalize -> chapter plan -> deduction -> prose -> audit -> formal commit",
+      "write_scope": ["tests/mvp-gate/**"],
+      "acceptance": ["real browser", "real local n8n", "real local PostgreSQL", "no mocked business truth", "one formal chapter and consistent lineage", "no push, cloud, or production deployment"],
+      "review_policy": "INDEPENDENT_TERRA_GATE_RUNNER",
+      "status": "PLANNED"
+    }
+  ],
+  "post_mvp": [
+    "FP004-05",
+    "FP011",
+    "FP012-03",
+    "FP014",
+    "FP015",
+    "FP016/FP017 capabilities beyond stable local operator, active model configuration, and budget",
+    "generic contract center",
+    "generic migration drift attack suite",
+    "generic n8n security scan in the default development chain"
+  ]
+}
