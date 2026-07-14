@@ -21,6 +21,16 @@ function install() {
   sql(source);
 }
 
+function fixtureInstall(schema) {
+  const source = readFileSync(path.join(root, "db/functions/new-book/install.sql"), "utf8");
+  return sql(source.replace("SET search_path TO public;", `SET search_path TO ${schema};`).replaceAll("public.", `${schema}.`));
+}
+
+function createProductionShapeFixture(schema, legacyRow = false) {
+  const tables = ["t_book_projects", "t_character_profiles", "t_world_assets", "t_relation_states", "t_segment_promises", "t_writeback_logs"];
+  sql(`CREATE SCHEMA ${schema};\n${tables.map((table) => `CREATE TABLE ${schema}.${table} AS TABLE public.${table} WITH NO DATA;`).join("\n")}\nALTER TABLE ${schema}.t_book_projects DROP COLUMN local_operator_id, DROP COLUMN normalized_title, DROP COLUMN idempotency_key;${legacyRow ? `\nINSERT INTO ${schema}.t_book_projects (book_name) VALUES ('legacy fixture');` : ""}`);
+}
+
 function query(functionInput) {
   const encoded = Buffer.from(JSON.stringify(functionInput), "utf8").toString("base64");
   return JSON.parse(sql(`SELECT public.rpc_create_book_project(convert_from(decode('${encoded}', 'base64'), 'UTF8')::jsonb)::text;`));
@@ -63,6 +73,23 @@ COMMIT;`);
 
 before(() => { install(); cleanup(); });
 after(() => { cleanup(); });
+
+test("installer upgrades an empty production-shape clone idempotently and rolls legacy rows back", () => {
+  const emptySchema = `new_book_empty_${process.pid}`;
+  const legacySchema = `new_book_legacy_${process.pid}`;
+  try {
+    createProductionShapeFixture(emptySchema);
+    fixtureInstall(emptySchema);
+    fixtureInstall(emptySchema);
+    assert.equal(sql(`SELECT count(*) FROM information_schema.columns WHERE table_schema='${emptySchema}' AND table_name='t_book_projects' AND column_name IN ('local_operator_id','normalized_title','idempotency_key');`), "3");
+
+    createProductionShapeFixture(legacySchema, true);
+    assert.throws(() => fixtureInstall(legacySchema), /NEW_BOOK_INSTALL_PRECONDITION_FAILED/);
+    assert.equal(sql(`SELECT count(*) FROM information_schema.columns WHERE table_schema='${legacySchema}' AND table_name='t_book_projects' AND column_name IN ('local_operator_id','normalized_title','idempotency_key');`), "0");
+  } finally {
+    sql(`DROP SCHEMA IF EXISTS ${emptySchema} CASCADE; DROP SCHEMA IF EXISTS ${legacySchema} CASCADE;`);
+  }
+});
 
 test("success creates all S1 records atomically", () => {
   const result = query(payload("success"));

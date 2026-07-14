@@ -1,4 +1,23 @@
+BEGIN;
 SET search_path TO public;
+
+ALTER TABLE public.t_book_projects ADD COLUMN IF NOT EXISTS local_operator_id text;
+ALTER TABLE public.t_book_projects ADD COLUMN IF NOT EXISTS normalized_title text;
+ALTER TABLE public.t_book_projects ADD COLUMN IF NOT EXISTS idempotency_key text;
+
+DO $precondition$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.t_book_projects
+    WHERE local_operator_id IS NULL OR normalized_title IS NULL OR idempotency_key IS NULL
+  ) THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'P0001',
+      MESSAGE = 'NEW_BOOK_INSTALL_PRECONDITION_FAILED',
+      DETAIL = 'Legacy book-project rows must be cleared by the controlled cleanup before installation.';
+  END IF;
+END;
+$precondition$;
 
 ALTER TABLE public.t_world_assets DROP CONSTRAINT IF EXISTS t_world_assets_board_type_check;
 ALTER TABLE public.t_world_assets DROP CONSTRAINT IF EXISTS t_world_assets_board_type_check_v7;
@@ -194,3 +213,4 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.rpc_create_book_project(jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.rpc_create_book_project(jsonb) TO CURRENT_USER;
+COMMIT;
