@@ -1,4 +1,3 @@
-const hiddenStyle=document.createElement("style");hiddenStyle.textContent="[hidden]{display:none!important}";document.head.append(hiddenStyle);
 const endpoint="/webhook/workbench", operatorKey="zhreplan.local_operator_id.v1", contextKey="current_book_context", $=(s)=>document.querySelector(s);
 const state={operator:"",bookId:null,books:[],config:[],tested:false};
 function stableOperator(){const value=localStorage.getItem(operatorKey);if(value)return value;const next=crypto.randomUUID();localStorage.setItem(operatorKey,next);return next}
