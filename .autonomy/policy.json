@@ -1,0 +1,140 @@
+{
+  "schema_version": "g07-autonomy-policy/v6",
+  "control_anchor": "G07::AUTONOMY",
+  "phase": "G07_A_CONTROL_PLANE_ONLY",
+  "g07_gate_required": "APPROVED",
+  "product_task_execution_allowed": false,
+  "integration_branch": "autonomy/integration",
+  "concurrency": {
+    "max_writers": 1,
+    "max_read_only_reviewers": 2,
+    "default_lease_seconds": 900,
+    "lock_stale_ms": 30000
+  },
+  "retry_policy": {
+    "max_rework": 3,
+    "max_replan": 2,
+    "critical_path_on_exhaustion": "CREATOR_REQUIRED",
+    "noncritical_on_exhaustion": "BLOCKED"
+  },
+  "budget": {
+    "notify_ratio": 0.8,
+    "hard_stop_ratio": 1.0,
+    "limits": {
+      "tokens": null,
+      "elapsed_ms": null,
+      "known_cost": null
+    },
+    "unknown_cost_is_zero": false,
+    "limits_source": "REGISTERED_POLICY",
+    "usage_source": "PLATFORM_METERING_RECEIPT",
+    "run_override_allowed": false
+  },
+  "models": {
+    "MODEL::CODE_HIGH": {
+      "requested_capability": "current strongest code reasoning model with high reasoning",
+      "fallback": "current strongest available model in an independent role session",
+      "must_record_actual_model_when_visible": true
+    },
+    "MODEL::CODE_MEDIUM": {
+      "requested_capability": "standard code reasoning model with medium reasoning",
+      "fallback": "current strongest available model in an independent role session",
+      "must_record_actual_model_when_visible": true
+    }
+  },
+  "event_integrity": {
+    "chain_algorithm": "SHA-256",
+    "authority": "ED25519_PLATFORM_RECEIPTS",
+    "local_symmetric_key_is_authority": false,
+    "semantic_replay_required": true,
+    "external_monotonic_head_required": true
+  },
+  "platform_trust": {
+    "provider": "UNAVAILABLE",
+    "provider_id": null,
+    "key_id": null,
+    "public_key_path": null,
+    "public_key_sha256": null,
+    "private_key_path": null,
+    "private_key_material_in_workspace": false,
+    "receipt_version": "g07-platform-receipt/v1",
+    "missing_provider_decision": "ENVIRONMENT_APPROVAL_REQUIRED",
+    "caller_declared_values_are_evidence": false
+  },
+  "monotonic_head": {
+    "provider": "UNAVAILABLE",
+    "stream_id": "zhreplan-g07-autonomy",
+    "command_path": null,
+    "command_sha256": null,
+    "command_outside_workspace_required": true,
+    "command_hash_rechecked_before_each_spawn": true,
+    "timeout_ms": 5000,
+    "missing_provider_decision": "ENVIRONMENT_APPROVAL_REQUIRED"
+  },
+  "receipt_inbox": {
+    "provider": "UNAVAILABLE",
+    "directory": null,
+    "max_file_bytes": 1048576,
+    "allow_subdirectories": false,
+    "missing_provider_decision": "ENVIRONMENT_APPROVAL_REQUIRED"
+  },
+  "workspace_capability": {
+    "required_for_writer": true,
+    "receipt_kind": "WORKSPACE_CAPABILITY",
+    "enforcement": "PLATFORM_SANDBOX",
+    "denied_patterns": [
+      ".git/**",
+      ".autonomy/**",
+      ".env",
+      ".env.*",
+      "**/.env",
+      "**/.env.*"
+    ],
+    "ignored_paths_must_be_unchanged": true
+  },
+  "role_lifecycle": {
+    "primary_task_writer_roles": [
+      "coder",
+      "prompt_editor",
+      "auditor"
+    ],
+    "auditor_owner_requires_independent_auditor_and_reviewer": true,
+    "slice_gate_requires_read_only_lease": true,
+    "slice_gate_report_must_enter_event_chain": true,
+    "slice_gate_execution_receipt_required": true,
+    "model_session_receipt_required": true,
+    "report_receipt_binds_lease_identity": true
+  },
+  "secret_scan": {
+    "version": "G07_CANDIDATE_BLOBS_V2",
+    "max_blob_bytes": 16777216,
+    "scan_binary_blobs": true,
+    "oversize_result": "BLOCKING"
+  },
+  "critical_path": {
+    "derivation": "DEPENDENCY_ANCESTRY_OF_REGISTERED_PATH_ENDPOINTS_AND_CRITICAL_TASKS",
+    "literal_task_id_match_only": false
+  },
+  "replan_categories": {
+    "A": "technical implementation change inside the same approved write scope",
+    "B": "technical steps or evidence redesign with business result, dependencies and owner unchanged",
+    "C": "business, global decision, G04 or Task meaning, dependency, owner or Gate change",
+    "D": "tool, platform or environment blockage"
+  },
+  "hard_stop_actions": [
+    "REAL_PROJECT_MODEL_CALL",
+    "PAID_TEST",
+    "PUSH",
+    "DEPLOY",
+    "PRODUCTION_WRITE",
+    "CREDENTIAL_ACCESS"
+  ],
+  "forbidden_automatic_actions": [
+    "MERGE_TO_MAIN",
+    "WRITE_G07_GATE_APPROVED",
+    "PUSH",
+    "DEPLOY",
+    "PRODUCTION_WRITE",
+    "CREDENTIAL_ACCESS"
+  ]
+}

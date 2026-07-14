@@ -1,0 +1,135 @@
+{
+  "schema_version": "g07-a-evidence/v8",
+  "evidence_status": "SUPERSEDED_IMPLEMENTATION_EVIDENCE",
+  "implementation": {
+    "branch": "autonomy/integration",
+    "g01_g06_base_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
+    "candidate_commit": "f55184c76a9941613cdfcf9d2e316941069afc2c",
+    "g07_gate": "PENDING",
+    "g07_a_status": "IMPLEMENTED",
+    "product_task_executed": false
+  },
+  "artifacts": {
+    "tools/project-context-loader.mjs": "10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47",
+    "tools/project-orchestrator.mjs": "c180fd2c05c63ca085673172db6ac734c93e8418d174d57eb0bb72dcd8ffe96f",
+    "tools/g07-control-evidence.mjs": "31185e004a523be895bf68f44a1069519cf3d11ba514ced0246beaac5e812b60",
+    ".autonomy/policy.json": "2eb39d5c0a33bb9419a005379fa00c88eb377711fc6b834825fe6250d7627fd5"
+  },
+  "mechanical_claims": {
+    "validation_version": "G07_EVIDENCE_SEMANTIC_V1",
+    "command": "node tools/g07-control-evidence.mjs --all",
+    "baseline_compatibility": {
+      "command": "node tools/g07-control-evidence.mjs --g06-baseline",
+      "source_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
+      "execution_mode": "REPOSITORY_EXECUTABLE_IN_MEMORY_GIT_OBJECTS",
+      "exit_code": 0,
+      "assertions": {
+        "passed": 58,
+        "failed": 0,
+        "total": 58
+      },
+      "business_acceptance_passed": true
+    },
+    "current_tests": {
+      "g06": {
+        "command": "node tools/project-context-loader.mjs --self-test",
+        "exit_code": 0,
+        "assertions": {
+          "passed": 78,
+          "failed": 0,
+          "total": 78
+        }
+      },
+      "g07": {
+        "command": "node tools/project-orchestrator.mjs --self-test",
+        "exit_code": 0,
+        "assertions": {
+          "passed": 119,
+          "failed": 0,
+          "total": 119
+        }
+      },
+      "evidence_tool": {
+        "command": "node tools/g07-control-evidence.mjs --self-test",
+        "exit_code": 0,
+        "assertions": {
+          "passed": 16,
+          "failed": 0,
+          "total": 16
+        }
+      },
+      "syntax": {
+        "command": "node --check tools/project-orchestrator.mjs",
+        "exit_code": 0
+      }
+    },
+    "dry_run": {
+      "command": "node tools/project-orchestrator.mjs dry-run --run-id g07-a-evidence-replay",
+      "exit_code": 0,
+      "selected_task_id": "F0-01-REPO",
+      "selected_role": "coder",
+      "selection_reason": "UNIQUE_READY_TASK",
+      "ready_candidates": [
+        "F0-01-REPO"
+      ],
+      "task_status": "READY",
+      "fp_ids": [],
+      "base_commit_is_invocation_head": true,
+      "context_hash_is_sha256": true,
+      "router_execution_authorized": true,
+      "policy_execution_allowed": false,
+      "policy_stop_reason": "G07_PHASE_PRODUCT_TASK_EXECUTION_DISABLED",
+      "event_log_unchanged": true,
+      "event_count": 0,
+      "product_files_written": false,
+      "task_status_changed": false,
+      "g07_gate": "PENDING"
+    },
+    "implementation_scope": {
+      "base_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
+      "candidate_commit": "f55184c76a9941613cdfcf9d2e316941069afc2c",
+      "changed_paths": [
+        ".autonomy/.gitignore",
+        ".autonomy/policy.json",
+        ".gitattributes",
+        "DEV_HARNESS.md",
+        "README.md",
+        "docs/G07_A_EVIDENCE.json",
+        "docs/G07_A_EVIDENCE_V3.json",
+        "docs/G07_A_EVIDENCE_V4.json",
+        "docs/G07_A_EVIDENCE_V5.json",
+        "docs/G07_A_EVIDENCE_V6.json",
+        "docs/G07_A_EVIDENCE_V7.json",
+        "docs/IMPLEMENTATION_CONTROL.md",
+        "tools/g07-control-evidence.mjs",
+        "tools/project-context-loader.mjs",
+        "tools/project-orchestrator.mjs"
+      ],
+      "unexpected_paths": [],
+      "scope_passed": true,
+      "candidate_diff_sha256": "f3d93b98b622e8dfe2d1c0aa190608b53b3bd33b0d11e86610688ad33497f1d0",
+      "secret_scan": {
+        "version": "G07_CANDIDATE_BLOBS_V1",
+        "passed": true,
+        "hit_types": [],
+        "scanned_blob_count": 15,
+        "binary_blob_count": 0
+      }
+    }
+  },
+  "annotations": {
+    "finding_closures": {
+      "P1_slice_gate_mechanical_pass": "PASS requires one platform-signed SLICE_GATE_EXECUTION receipt bound to the registered user entry, completion boundary, complete Task evidence, commit/context, exit code, stdout, regression artifact hash and a positive artifact byte count; replay verifies the same claims and receipt again.",
+      "P1_evidence_reproduction": "The registered --all command executes every current test, syntax check and Dry Run and requires exact structural equality with normalized mechanical_claims.",
+      "P1_registered_hash_drift": "The evidence self-test first requires a healthy all verdict, then injects drift into each of the seven active registered SHA-256 values and requires the specific mismatch and shared --all verdict rejection."
+    },
+    "hash_normalization": {
+      "version": "SEMANTIC_NORMALIZED_V1",
+      "rule": "Evidence fixes commands, exit codes, assertion counts, Dry Run semantics and implementation scope; invocation-HEAD-dependent stdout, base commit and context hash values are checked structurally at execution time and are not self-registered."
+    },
+    "known_limitations": [
+      "Production platform trust, external monotonic head and trusted receipt inbox providers remain UNAVAILABLE; activation still requires environment approval.",
+      "This evidence does not approve G07 or authorize any product Task."
+    ]
+  }
+}

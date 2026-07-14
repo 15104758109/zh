@@ -13,6 +13,24 @@ G04_ACTIVE_REVISION=2
 G04_GATE_REQUIRED=APPROVED
 CURRENT_G04_GATE=APPROVED
 CURRENT_MODE=G04_R2_APPROVED_F0_01_READY
+G05_GATE=APPROVED
+G06_GATE=APPROVED
+G07_GATE=PENDING
+G07_A_STATUS=IMPLEMENTED
+G07_A_BRANCH=autonomy/integration
+G07_A_COMMIT=24f5df65c2714dab58880f35a8207f0d8fc37131
+G07_A_ORCHESTRATOR_SHA256=b7740b350f6be74ee7359075354056002d27aee4e1d5cbec12bf1917237d86bd
+G07_A_ORCHESTRATOR_TEST_ASSERTIONS=161
+G07_A_POLICY_SHA256=e171d92c9e7092006bc7279c9b7a1553baa8f36fef2e58824e0de742a20eb370
+G07_A_EVIDENCE_TOOL_SHA256=b1cbce436601eb660b0cd33c4e0918101a5db62507baf4f4ebf24c9a197db8cd
+G07_A_EVIDENCE_TOOL_TEST_ASSERTIONS=24
+G07_A_SENSITIVE_PATTERNS_SHA256=6a565f3538a524d5c95b88f61ba5e59d9246d438ee67216cefba2c0f477dfba7
+G07_A_EVIDENCE_STATUS=ACTIVE_V11_IMPLEMENTATION_EVIDENCE
+G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V11.json
+G07_A_EVIDENCE_SHA256=d89a1253278ee41bce2a39e53ff093166cba4b3e986febf7bbd30306ffe91d3c
+G07_A_POLICY_SCHEMA=g07-autonomy-policy/v6
+G07_A_REPORT_SCHEMA=g07-role-report/v6
+G07_A_SECRET_SCAN_VERSION=G07_CANDIDATE_BLOBS_V2
 ```
 
 - G02、G03-A~D 与历史 G04 revision 1 已由创作者批准；历史证据只登记在 `G04_R1_GATE=APPROVED`。
@@ -207,4 +225,63 @@ required_updates: <responsible fact sources>
 - `G02_GATE=APPROVED`（2026-07-10，创作者明确批准）。
 - `G03-A_GATE`~`G03-D_GATE`、活动 `G04_GATE` 均已批准，当前 `G04_REVISION=2`。
 - 当前 85 个 Task 中仅 `F0-01-REPO` 为 `READY`，其余 84 个 `PLANNED`；Schema/迁移、机器交互合同、源码和测试证据仍缺失。
-- 因此当前可启动 F0-01 仓库底座实现，或继续治理/差距审计；不得启动其他 Task，也不得声称任何 FP 已实现或已验证。
+- 因此业务 Task Index 中唯一候选是 F0-01，但当前 `G07_GATE=PENDING` 且自治政策禁用产品执行；本阶段只能继续控制面返修/差距审计，不得启动任何产品 Task，也不得声称任何 FP 已实现或已验证。
+
+## 10. G07-A 自治控制面
+
+稳定政策锚点为 `G07::AUTONOMY`，机器政策位于 `.autonomy/policy.json`。`tools/project-orchestrator.mjs` 管理 v4 事件链上的当前控制面实现：工作区外单调 head、Ed25519 收据、平台写 capability、严格历史语义回放、Task/Slice 投影、租约、blob 证据、预算、恢复、简报和角色提示词；它不直接调用模型。Coder、Prompt Editor、Auditor、Reviewer、Architect 与 Slice Gate Runner 只返回 `g07-role-report/v6`；每份报告必须携带绑定 Task Index 推荐档位与实际模型的 `MODEL_SESSION`，且 `ROLE_REPORT` 必须绑定真实 lease/actor/role/对象/attempt 与报告哈希，不得直接写事件或 Task 状态。Task Index 中主责为 Auditor 的证据 Task 以单写入者 capability 执行，之后仍需独立 Auditor/Reviewer；Slice Gate Runner 使用专用只读 slice lease，且 PASS 必须携带绑定登记用户入口、Task evidence、commit/context、执行结果及大于零制品字节数的 `SLICE_GATE_EXECUTION` 平台收据。平台私钥、单调 head、head provider 命令和可信收据 inbox 都必须位于角色不可写域，head 命令每次执行前复核哈希；任一 provider 不可用时必须硬停为 `ENVIRONMENT_APPROVAL_REQUIRED`。
+
+```text
+node tools/project-context-loader.mjs --self-test
+node tools/project-orchestrator.mjs --self-test
+node tools/g07-control-evidence.mjs --self-test
+node tools/g07-control-evidence.mjs --all
+node tools/project-orchestrator.mjs status --run-id <run-id>
+node tools/project-orchestrator.mjs dry-run --run-id <run-id>
+node tools/project-orchestrator.mjs lease --run-id <run-id> --task-id <task-id> --role <role> --actor-id <actor> --attempt-id <attempt> --platform-receipt-file <signed-receipt.json> --workspace-capability-receipt-file <signed-capability.json>
+node tools/project-orchestrator.mjs lease --run-id <run-id> --slice-id <slice-id> --role slice_gate_runner --actor-id <actor> --attempt-id <attempt> --platform-receipt-file <signed-receipt.json>
+node tools/project-orchestrator.mjs record --run-id <run-id> --report-file <signed-role-report.json>
+node tools/project-orchestrator.mjs verify-evidence --run-id <run-id> --task-id <task-id> --candidate-commit <sha> --verification-receipt-file <signed-receipt.json>
+node tools/project-orchestrator.mjs transition --run-id <run-id> --task-id <task-id> --to-status <status> --platform-receipt-file <signed-receipt.json>
+node tools/project-orchestrator.mjs unlock --run-id <run-id> --receipts-file <signed-receipts-by-task.json>
+node tools/project-orchestrator.mjs record-usage --run-id <run-id> --meter-receipt-file <signed-receipt.json>
+node tools/project-orchestrator.mjs resume --run-id <run-id>
+node tools/project-orchestrator.mjs report --run-id <run-id> [--slice-id <slice>]
+```
+
+- `dry-run` 只能计算下一 Task、角色、FP 集、scope 和上下文哈希；它比较前后事件字节/哈希、Task 投影、精确 scope 产品树和 ignored 路径名称哈希，证明不写事件、不改状态、不创建产品文件。
+- 只有 Orchestrator 可执行状态命令；所有 JSON 输入只允许来自 policy 登记的工作区外可信 inbox，且拒绝越界、realpath 逃逸、非普通文件、符号链接/目录联接、硬链接和超限文件。平台公钥与单调 head 命令使用相同文件检查。
+- 写租约必须同时验证 `LEASE_GRANT` 和 `WORKSPACE_CAPABILITY`。后者由平台 sandbox 强制只开放精确 write scope，并拒绝 `.git/.autonomy/.env`、inbox 和所有 scope 外路径；Coder、Prompt Editor 或主责 Auditor 的平台主体/会话必须与 capability 一致。
+- `VERIFIED` 绑定同一 commit、历史/当前 control context、含删除 scope、原始文本/二进制 candidate blobs、超限阻断、平台命令制品和独立身份。合法升级后旧 `VERIFIED` 使用事件内历史 facts 回放，不要求当前 context hash 相等。
+- `tools/g07-control-evidence.mjs --all` 现场执行自测、语法与 Dry Run，并把归一化结果与活动 evidence 的完整 `mechanical_claims` 做结构相等比较；stdout、Dry Run base/context 等随登记 HEAD 漂移的值不得伪装为固定可复现证据。
+- 所有 run 合计最多一个写租约和两个只读审查租约；本地事件数/末哈希每次都与外部单调 head 核对，删尾或整日志删除立即阻断。任意恢复 run 可 CAS 对账合法本地领先、清理过期租约并 quarantine stale 损坏锁。
+- 验收、scope、秘密、stale commit/context 等 Gate 失败必须写 `EVIDENCE_REJECTED`。报告 selector 被改写时不得写拒绝事件或影响真实租约；缺字段只有在 `ROLE_REPORT` 收据绑定真实租约和该提交哈希时，才可写 `REPORT_REJECTED` 并只释放自身租约，保留 sibling lease。三次返修进入 Replan；Architect 只处理 A/B/C/D，C 必须转 `CREATOR_REQUIRED`；两次 Replan 耗尽时按依赖祖先闭包暂停关键路径。Orchestrator 不接受字符串解除 `CREATOR_REQUIRED`。
+- 候选秘密扫描由 `tools/g07-sensitive-patterns.mjs` 单一规则源驱动，两套扫描器必须使用同一登记哈希和 `G07_CANDIDATE_BLOBS_V2`，包括二进制 blob 与 `github_pat_` fine-grained PAT。
+- 预算上限只取已登记 policy，角色/run 不可覆盖；用量只取不可复用的平台计量收据。任一已配置维度达到 80% 通知；100% 时只允许纯控制面本地读取，Task/Slice 租约、只读审查、角色/模型、外部与付费动作全部硬停，未知费用不得假报为 0。
+- G07 阶段禁止真实项目模型调用、付费测试、push、部署、生产写入、凭据访问和自动合并主分支。平台授权不可绕过；当前没有可信角色会话见证提供方时也必须返回 `ENVIRONMENT_APPROVAL_REQUIRED`，不得把不同 actor/session 字符串当机械独立性。
+- 当前 `G07_GATE=PENDING`，因此即使路由器确认 `F0-01-REPO` 为唯一 READY，G07-A dry-run 也必须拒绝产品执行。测试、dry-run、G07-A/G07-B 或 Architect 均不得自行写 `G07_GATE=APPROVED`。
+- `tools/g07-control-evidence.mjs --all` 是独立复现入口：从 Git 对象运行旧 G06 58 项，运行当前 G06/G07 自测，并从 `G07_A_BASE_COMMIT` 动态扫描到调用时 `HEAD`，所以证据登记 commit 也在 scope 和原始 blob 秘密检查内。
+- 活动实现、证据路径/哈希、policy/report/秘密扫描版本只取第 1 节机器块，并由 `tools/g07-control-evidence.mjs --all` 与 IMPLEMENTATION_CONTROL 逐项比较；任一语义漂移直接 FAIL。`G07_A_STATUS=IMPLEMENTED` 只表示等待新的独立 G07-B。审计必须在最终 HEAD 运行完整证据命令，不得据此启动产品 Task。
+
+## 11. R3 最小 MVP 活动入口
+
+R3 以 `docs/MVP_IMPLEMENTATION_PLAN_R3.md` 和 `docs/MVP_TASK_INDEX_R3.json` 为唯一新入口；旧 G04 revision 2、G07 R2/V11 与 85 项索引仅用于历史映射。创作者授权的最小激活已记录：
+
+```text
+R3_PLAN_STATUS=APPROVED
+R3_EXECUTION_STATUS=ACTIVE
+R3_READY=2
+R3_PLANNED=11
+R3_SELECTED_TASK=null
+```
+
+只允许运行以下只读命令：
+
+```text
+pnpm mvp:plan
+node tools/mvp-plan.mjs status
+node tools/mvp-plan.mjs dry-run
+node tools/mvp-plan.mjs --self-test
+```
+
+`tools/mvp-plan.mjs` 不实现 start、lease、transition 或任何状态写入。本源窗口不得启动产品 Task。`docs/R3_EXECUTION_HANDOFF.md` 已记录创作者要求新窗口执行当前 R3；新窗口只需完成一次最小激活，不得重做 Task 架构。13 项中包含 9 个页面唯一 owner；所有 Coder、Business Auditor、Reviewer 和 MVP Gate Runner 请求 `gpt-5.6-terra`，页面 Auditor 必须检查原型/CSS/外观/布局/交互继承及真实浏览器状态。

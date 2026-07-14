@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zhreplan:contract:fp017-00-local-operator:1",
+  "title": "FP017-00 local operator boundary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["local_operator_id"],
+  "properties": {
+    "local_operator_id": {
+      "type": "string",
+      "pattern": "^operator:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "book_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" }
+  },
+  "$defs": {
+    "errors": {
+      "enum": [
+        "LOCAL_OPERATOR_BOOTSTRAP_FAILED",
+        "LOCAL_OPERATOR_SCOPE_INVALID",
+        "LOCAL_OPERATOR_SCOPE_MISMATCH"
+      ]
+    }
+  }
+}

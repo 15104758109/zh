@@ -1,0 +1,32 @@
+{
+  "name": "zhreplan",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=9 <10"
+  },
+  "scripts": {
+    "mvp:plan": "node tools/mvp-plan.mjs check",
+    "n8n:lint": "node scripts/n8n-lint/index.mjs",
+    "lint": "eslint apps/api/src/bootstrap apps/web/src/bootstrap --max-warnings 0",
+    "typecheck": "tsc --project tsconfig.base.json --noEmit",
+    "build": "tsc --project tsconfig.base.json",
+    "db:migrate": "node packages/db/src/migrate.mjs",
+    "db:reset": "node packages/db/src/reset.mjs",
+    "db:migrate:check": "node packages/db/src/migrate.mjs --check",
+    "test:db": "node --test packages/db/test/migrations.test.mjs",
+    "verify:task": "node scripts/verify-task/index.mjs",
+    "interaction:lint": "pnpm --filter @zh/contracts run build && pnpm --filter @zh/interaction-contracts run lint",
+    "test:interaction-contracts": "pnpm --filter @zh/contracts run build && pnpm --filter @zh/interaction-contracts test",
+    "test:n8n-lint": "node --test tests/tooling/n8n-lint/index.test.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.36.0",
+    "eslint": "9.36.0",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.44.1"
+  }
+}

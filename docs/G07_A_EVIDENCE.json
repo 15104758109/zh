@@ -1,0 +1,135 @@
+{
+  "schema_version": "g07-a-evidence/v1",
+  "generated_at": "2026-07-12T01:31:52.563Z",
+  "evidence_basis": "G07-A implementation commit before the evidence-registration commit",
+  "base_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
+  "implementation_commit": "e68accecac93d60c533c63eddc4a18c1053667d6",
+  "tests": {
+    "g06": {
+      "command": "node tools/project-context-loader.mjs --self-test",
+      "passed": true,
+      "assertions": {
+        "passed": 78,
+        "failed": 0,
+        "total": 78
+      },
+      "stdout_sha256": "2ff971abc265fbc270db835e6288a45473775364d8046f7f20a69aa201e73874"
+    },
+    "g07": {
+      "command": "node tools/project-orchestrator.mjs --self-test",
+      "passed": true,
+      "assertions": {
+        "passed": 82,
+        "failed": 0,
+        "total": 82
+      },
+      "stdout_sha256": "87c1da13d0e27d0d410c1b15fb748e990b2eba66275a32194e9110cfe4ab4143"
+    }
+  },
+  "dry_run": {
+    "command": "node tools/project-orchestrator.mjs dry-run --run-id g07-a-evidence",
+    "evidence_sha256": "65a1fb62d90d3474bdfebc7782f097dacf9c729d52c3218b865a389b5edb2970",
+    "evidence": {
+      "selected_task_id": "F0-01-REPO",
+      "selected_role": "coder",
+      "selection_reason": "UNIQUE_READY_TASK",
+      "ready_candidates": [
+        "F0-01-REPO"
+      ],
+      "task_status": "READY",
+      "fp_ids": [],
+      "policy_execution_allowed": false,
+      "policy_stop_reason": "G07_PHASE_PRODUCT_TASK_EXECUTION_DISABLED",
+      "event_log_unchanged": true,
+      "product_files_written": false,
+      "task_status_changed": false,
+      "g07_gate": "PENDING",
+      "snapshots": {
+        "before": {
+          "event_log": {
+            "exists": false,
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "task_projection": {
+            "task_count": 85,
+            "sha256": "9e1d898f7fa2576bc2598e2ccc04e63e3829df08c622ef2db60b1ddecc10afa5"
+          },
+          "scoped_product_tree": {
+            "task_id": "F0-01-REPO",
+            "paths": [],
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        },
+        "after": {
+          "event_log": {
+            "exists": false,
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "task_projection": {
+            "task_count": 85,
+            "sha256": "9e1d898f7fa2576bc2598e2ccc04e63e3829df08c622ef2db60b1ddecc10afa5"
+          },
+          "scoped_product_tree": {
+            "task_id": "F0-01-REPO",
+            "paths": [],
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        }
+      }
+    }
+  },
+  "scope": {
+    "evidence_sha256": "6ff6456108ee479f9b0b3270595ec30fad64593db0168d63c239b044f4c51dba",
+    "evidence": {
+      "base_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
+      "candidate_commit": "e68accecac93d60c533c63eddc4a18c1053667d6",
+      "allowed_paths": [
+        ".autonomy/.gitignore",
+        ".autonomy/events.jsonl",
+        ".autonomy/policy.json",
+        ".gitattributes",
+        "DEV_HARNESS.md",
+        "README.md",
+        "docs/IMPLEMENTATION_CONTROL.md",
+        "tools/project-context-loader.mjs",
+        "tools/project-orchestrator.mjs"
+      ],
+      "changed_paths": [
+        ".autonomy/.gitignore",
+        ".autonomy/policy.json",
+        ".gitattributes",
+        "DEV_HARNESS.md",
+        "README.md",
+        "docs/IMPLEMENTATION_CONTROL.md",
+        "tools/project-context-loader.mjs",
+        "tools/project-orchestrator.mjs"
+      ],
+      "out_of_scope_paths": []
+    }
+  },
+  "secret_scan": {
+    "passed": true,
+    "evidence_sha256": "0022f02d976924b5d3a02354dbb64b6f4983d02a036ba40f0e261f6fbc45c72c",
+    "evidence": {
+      "candidate_commit": "e68accecac93d60c533c63eddc4a18c1053667d6",
+      "diff_sha256": "4b6d97a38efbb010fe4521d12b7c58fe048413ac181ca05a4322a2d7bde86201",
+      "rules": [
+        "AWS_ACCESS_KEY",
+        "OPENAI_KEY",
+        "GITHUB_TOKEN",
+        "ANTHROPIC_KEY",
+        "GOOGLE_API_KEY",
+        "SLACK_TOKEN",
+        "PRIVATE_KEY"
+      ],
+      "hit_types": []
+    }
+  },
+  "limitations": [
+    "G07_GATE remains PENDING and product Task execution remains disabled.",
+    "The current platform exposes no trusted role/session attestation provider; production verification must stop with ENVIRONMENT_APPROVAL_REQUIRED until one is registered.",
+    "No product Task, real project model call, paid test, push, deployment, production write, or credential access was performed."
+  ]
+}

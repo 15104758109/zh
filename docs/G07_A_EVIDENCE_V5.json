@@ -1,0 +1,141 @@
+{
+  "schema_version": "g07-a-evidence/v5",
+  "evidence_status": "ACTIVE_IMPLEMENTATION_EVIDENCE",
+  "implementation": {
+    "branch": "autonomy/integration",
+    "g01_g06_base_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
+    "candidate_commit": "7753c3f3c6f9acf088e25b37dc393aa5f58b8048",
+    "candidate_committed_at": "2026-07-12T00:07:45-07:00",
+    "worktree_clean_when_evidence_generated": true,
+    "g07_gate": "PENDING",
+    "g07_a_status_at_candidate": "IMPLEMENTED",
+    "product_task_executed": false
+  },
+  "artifacts": {
+    "tools/project-context-loader.mjs": "10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47",
+    "tools/project-orchestrator.mjs": "d0c6a89f88161f48ae5a17e1a140cdd2b91426e5fe19dfdd3f38be9985f38f43",
+    "tools/g07-control-evidence.mjs": "763c2e6f3c819da4b5a930a8fb4791740ab5bb8622bccd5b0c66d9b5a8db685a",
+    ".autonomy/policy.json": "f69a0625e0c73c853260469388f840907aa5c8c058bba1871a8b3a366edf49f3"
+  },
+  "reproducible_evidence": {
+    "command": "node tools/g07-control-evidence.mjs --all",
+    "evidence_tool_self_test_stdout_sha256": "DYNAMIC_NOT_SELF_REGISTERED",
+    "dynamic_stdout_not_self_registered": true,
+    "reason": "The dynamic report includes the active evidence and full candidate diff hashes; its stdout hash cannot be embedded in the same evidence without recursion.",
+    "final_registration_rule": "The command must pass at the final clean HEAD and mechanically verify this evidence hash, the implementation commit ancestry/artifacts, LF checkout equivalence, all self-tests, full baseline scope, and raw blob secret scan."
+  },
+  "tests": {
+    "g06_baseline_compatibility": {
+      "command": "node tools/g07-control-evidence.mjs --g06-baseline",
+      "exit_code": 0,
+      "command_stdout_sha256": "ac92ab317b8c0504ce8f2f29f437c3295ab111e3a9a878d1060d5cf7293c4121",
+      "baseline_loader_stdout_sha256": "ac16939896fc052c678fe198d684ea0acd149e75ae1b20938f5d1f74266d32d1",
+      "source_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
+      "execution_mode": "REPOSITORY_EXECUTABLE_IN_MEMORY_GIT_OBJECTS",
+      "assertions": {
+        "passed": 58,
+        "failed": 0,
+        "total": 58
+      },
+      "business_acceptance_passed": true
+    },
+    "g06_current": {
+      "command": "node tools/project-context-loader.mjs --self-test",
+      "exit_code": 0,
+      "stdout_sha256": "a23b93ddf7a7dbcb6c31b9a1df0029c094ed3f873141fd93a56bdd98812214aa",
+      "assertions": {
+        "passed": 78,
+        "failed": 0,
+        "total": 78
+      }
+    },
+    "g07_orchestrator": {
+      "command": "node tools/project-orchestrator.mjs --self-test",
+      "exit_code": 0,
+      "stdout_sha256": "a29ec5cc65634c7afbb69d2f56b5f5b720e84113f3f59f3e5c84f40894dd8277",
+      "assertions": {
+        "passed": 116,
+        "failed": 0,
+        "total": 116
+      }
+    },
+    "evidence_tool": {
+      "command": "node tools/g07-control-evidence.mjs --self-test",
+      "exit_code": 0,
+      "stdout_sha256": "DYNAMIC_NOT_SELF_REGISTERED",
+      "assertions": {
+        "passed": 7,
+        "failed": 0,
+        "total": 7
+      },
+      "status": "PASSED_ON_CLEAN_REGISTRATION_COMMIT"
+    },
+    "syntax": {
+      "command": "node --check tools/project-orchestrator.mjs",
+      "exit_code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "implementation_full_baseline_scope": {
+    "base_commit": "7faa8c132de6a2e66829d3d4b89364b56181e022",
+    "candidate_commit": "7753c3f3c6f9acf088e25b37dc393aa5f58b8048",
+    "worktree_clean": true,
+    "changed_path_count": 12,
+    "unexpected_paths": [],
+    "scope_passed": true,
+    "candidate_diff_sha256": "201dc40aa868b8358baabf3eacc4f89c02588f685ebdd532ac41c65986514be9",
+    "registered_artifacts_match": true,
+    "secret_scan": {
+      "version": "G07_CANDIDATE_BLOBS_V1",
+      "passed": true,
+      "hit_types": [],
+      "scanned_blob_count": 12,
+      "binary_blob_count": 0
+    },
+    "lf_reproducibility_passed": true
+  },
+  "dry_run": {
+    "command": "node tools/project-orchestrator.mjs dry-run --run-id g07-a-v5-evidence",
+    "exit_code": 0,
+    "stdout_sha256": "e83559f7918fd1dee218df7c2d3af9518062a45edf19b2ebad693eea0fdb1ac0",
+    "selected_task_id": "F0-01-REPO",
+    "fp_ids": [],
+    "context_hash": "d3f76ddfa6da1c1f734cd1d83754aabadb5cea0274111177a3e6b3d1ab6ae4c4",
+    "base_commit": "7753c3f3c6f9acf088e25b37dc393aa5f58b8048",
+    "policy_execution_allowed": false,
+    "policy_stop_reason": "G07_PHASE_PRODUCT_TASK_EXECUTION_DISABLED",
+    "event_log_unchanged": true,
+    "product_files_written": false,
+    "task_status_changed": false,
+    "snapshots": {
+      "event_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "task_projection_sha256": "9e1d898f7fa2576bc2598e2ccc04e63e3829df08c622ef2db60b1ddecc10afa5",
+      "scoped_product_tree_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "ignored_path_names_sha256": "fe0a83ce2e8f60ca1b2c6180feabed2d695e188bf7ab6097791e768d07466286"
+    }
+  },
+  "audit_finding_closures": {
+    "P1_architect_candidate_binding": "Architect lease/report/replay all bind the projected REPLAN candidate, active lease, real Git commit, HEAD, base and context; detached candidates and reused producer identities are rejected.",
+    "P1_combined_tail_head_recovery": "Tail normalization accepts only a semantically valid local-ahead prefix of the external head, then resume performs CAS reconciliation; the combined no-newline/local-ahead interruption is injected.",
+    "P1_auditor_owned_task_lifecycle": "A VIEW::AUDITOR Task in READY obtains the single writer capability for its exact fixture/evidence scope, produces IMPLEMENTED evidence, then requires independent Auditor and Reviewer identities before VERIFIED.",
+    "P1_slice_gate_lifecycle": "Slice Gate Runner has a dedicated read-only slice lease, immutable complete Task evidence context, trusted PASS/FAIL event, expiration recovery and no Task/Gate mutation.",
+    "P1_lf_reproducibility": "G07 hashed text artifacts are fixed to LF in .gitattributes and the evidence command compares worktree bytes with committed Git blobs under core.autocrlf=true.",
+    "P1_active_evidence_and_implementation_commit": "The evidence command validates the active evidence path/hash/payload, G07_A_COMMIT existence and ancestry, and every registered artifact byte hash at that implementation commit.",
+    "P1_external_head_provider_boundary": "The external head executable must be outside the role-writable workspace and is revalidated for path, type, links and SHA-256 immediately before every spawn."
+  },
+  "hard_boundaries": {
+    "real_project_model_calls": 0,
+    "paid_tests": 0,
+    "product_tasks_executed": 0,
+    "pushes": 0,
+    "deployments": 0,
+    "production_writes": 0,
+    "credential_reads": 0,
+    "g07_gate_written_approved": false
+  },
+  "known_limitations": [
+    "The production platform trust, external monotonic head and trusted receipt inbox providers remain UNAVAILABLE in G07-A. Non-empty event use and product execution therefore hard-stop until the environment registers all providers.",
+    "Self-tests use ephemeral in-memory platform/head authorities only under internal test authority; no private signing key or monotonic head is stored in the workspace.",
+    "This evidence proves the control-plane implementation only. It does not approve G07 or authorize any product Task."
+  ]
+}

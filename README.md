@@ -105,6 +105,20 @@
 | 入口 | 职责 |
 |---|---|
 | [实施控制面](./docs/IMPLEMENTATION_CONTROL.md) | Gate、事实源职责、成熟度、术语/RPC、全局裁决、FP/Task 骨架和角色窗口 |
+| [项目上下文路由器](./tools/project-context-loader.mjs) | 按 Task、角色与精确 FP 范围生成带哈希的只读上下文路由 |
+| [自治状态编排器](./tools/project-orchestrator.mjs) | G07-A 当前实现的外部单调事件 head、Ed25519 收据、平台写 capability、模型会话见证、lease-bound 报告拒绝恢复、主责 Auditor/Slice Gate 机械执行证据、历史回放、原始 blob 秘密证据、预算和恢复控制面；不调用模型 |
+| [自治证据复现器](./tools/g07-control-evidence.mjs) | 从 G01-G06 基线 Git 对象复现旧 58 项，复用登记秘密规则，并现场执行自测、语法、执行视图、治理叙述语义一致性和 Dry Run，与活动 evidence 的完整机械声明逐项比对 |
+| [自治机器政策](./.autonomy/policy.json) | `G07::AUTONOMY` 的阶段/Gate/制品哈希、平台信任根、外部 head、可信 inbox、写 capability、预算和硬停止规则 |
+| [当前 G07-A v11 机械证据](./docs/G07_A_EVIDENCE_V11.json) | 锁定 v11 实现、58/78/161/24 项测试、治理叙述语义一致性、签名租约拒绝绑定、畸形报告恢复、跨租约隔离、执行视图一致性、Dry Run 语义、实现 commit 制品和全基线扫描 |
+| [历史 G07-A v10 机械证据](./docs/G07_A_EVIDENCE_V10.json) | 已被 v11 的 Gate Register、README 活动登记镜像与当前状态语义校验取代，仅保留审计追溯 |
+| [历史 G07-A v9 机械证据](./docs/G07_A_EVIDENCE_V9.json) | 已被 v10 的 selector 防伪和 lease-bound 畸形报告恢复条件取代，仅保留审计追溯 |
+| [历史 G07-A v8 机械证据](./docs/G07_A_EVIDENCE_V8.json) | 已被 v9 的 fine-grained PAT、模型见证、报告拒绝和执行视图一致性条件取代，仅保留审计追溯 |
+| [历史 G07-A v7 机械证据](./docs/G07_A_EVIDENCE_V7.json) | 已被 v8 的非零 Slice 验收制品条件取代，仅保留审计追溯，不代表当前返修通过 |
+| [历史 G07-A v6 机械证据](./docs/G07_A_EVIDENCE_V6.json) | 已被 v7 的登记哈希逐项负向测试取代，仅保留审计追溯，不代表当前返修通过 |
+| [历史 G07-A v5 机械证据](./docs/G07_A_EVIDENCE_V5.json) | 已被后续活动证据与审计发现取代，仅保留审计追溯，不代表当前返修通过 |
+| [历史 G07-A v4 机械证据](./docs/G07_A_EVIDENCE_V4.json) | 已被后续活动证据与审计发现取代，仅保留审计追溯，不代表当前返修通过 |
+| [历史 G07-A v3 机械证据](./docs/G07_A_EVIDENCE_V3.json) | 已被第三轮 G07-B 判为失效，仅保留审计追溯，不代表当前返修通过 |
+| [历史 G07-A 机械证据](./docs/G07_A_EVIDENCE.json) | 已被第二轮 G07-B 判为失效的上一版证据，仅保留审计追溯，不代表当前返修通过 |
 | [V7 设计文档](./docs/v7设计文档_20260709_终版.md) | 业务意图、节点职责和上下游语义 |
 | [对齐版提示词](./docs/后端/对齐版提示词.md) | FP001-FP014 中 LLM 节点的模型行为设计 |
 | [开发窗口线束](./DEV_HARNESS.md) | 按实施控制面的角色/窗口协议执行和交接 |
@@ -113,6 +127,19 @@
 ---
 ## 当前状态
 
+```text
+G07_GATE=PENDING
+G07_A_STATUS=IMPLEMENTED
+G07_A_COMMIT=24f5df65c2714dab58880f35a8207f0d8fc37131
+G07_A_EVIDENCE_STATUS=ACTIVE_V11_IMPLEMENTATION_EVIDENCE
+G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V11.json
+G07_A_EVIDENCE_SHA256=d89a1253278ee41bce2a39e53ff093166cba4b3e986febf7bbd30306ffe91d3c
+G07_LATEST_AUDIT_P0=0
+G07_LATEST_AUDIT_P1=1
+G07_LATEST_AUDIT_P2=0
+G07_LATEST_AUDIT_DISPOSITION=REMEDIATED_AWAITING_INDEPENDENT_REAUDIT
+```
+
 | 项目 | 状态 |
 |---|---|
 | `G01_GATE` | `APPROVED` |
@@ -120,11 +147,13 @@
 | `G03-A_GATE` ~ `G03-D_GATE` | `APPROVED`（分组业务对齐；D 组于 2026-07-11 修订） |
 | `G04_R1_GATE` | `APPROVED`（历史 66-Task 蓝图；当前控制面不再提供其可执行 Task Index） |
 | `G04_GATE` / `G04_REVISION` | `APPROVED` / `2`（85 个 Task；仅 `F0-01-REPO` 为 `READY`，其余 84 个 `PLANNED`） |
+| `G05_GATE` / `G06_GATE` | `APPROVED` / `APPROVED`（G06 当前路由器扩展自测 78/78） |
+| `G07_GATE` / `G07_A_STATUS` | `PENDING` / `IMPLEMENTED`；最新独立审计记录 P0=0、P1=1、P2=0；该 P1 已在当前活动候选完成返修，等待新的独立 G07-B Audit/Review，不得执行产品 Task |
 | MVP 身份/配置边界 | 本地单人、免登录、不跨设备；稳定 `local_operator_id`；第一次模型调用前安全默认预算可见可改；统一配置面显示五类生效值/版本 |
 | 业务意图 | V7 已基线化，仍有登记的对齐债 |
 | Prompt 源 | FP001-FP014 已识别 LLM 节点的源文本已基线化；未证明已部署或已验证 |
 | Schema / 迁移 | 当前仓库不存在 |
-| 源码 / 自动化测试 | 当前仓库不存在，不能宣称已实现或已验证 |
+| 产品源码 / 产品自动化测试 | 当前仓库不存在，不能宣称产品已实现或已验证；G06/G07 治理工具及其内建自测不属于产品 Task 证据 |
 | 原型 / n8n | 参考与实验部署材料，不是数据契约或行为证据 |
 
 G02 治理控制面、G03-A~D 分组业务对齐及 G04 revision 2 已获创作者批准。当前 Task Index 共 85 个 Task，仅 `F0-01-REPO` 为 `READY`；其余 84 个等待依赖。Schema/迁移、源码和测试证据尚不存在，因此任何 FP 都不能宣称已实现或已验证。
@@ -133,3 +162,20 @@ G02 治理控制面、G03-A~D 分组业务对齐及 G04 revision 2 已获创作�
 ## License
 
 MIT
+
+---
+
+## R3 最小 MVP 候选计划
+
+R3 入口为 [MVP 实施计划](./docs/MVP_IMPLEMENTATION_PLAN_R3.md)、[13 项页面化 Task Index](./docs/MVP_TASK_INDEX_R3.json)、[新窗口执行交接](./docs/R3_EXECUTION_HANDOFF.md) 和 [MVP 后候选功能](./docs/FEATURE_CANDIDATES.md)。该候选只规划 Web + n8n + PostgreSQL 的单章最快闭环；9 个 MVP 页面各由一个 Task 唯一交付，原生移动端和原生桌面端不在产品范围，也不是验收依赖。
+
+当前 R3 状态为 APPROVED / ACTIVE：F0-05 与 F0-06 是首批两个 READY Task，其余 11 个 PLANNED，selected_task=null。施工、业务 Auditor、Reviewer 和 MVP Gate Runner 全部请求 `gpt-5.6-terra`，并按 Task 风险使用 medium/high 推理。旧 G04 revision 2、G07 R2/V11 和 85 项 Task Index 仅作历史映射。
+
+```text
+pnpm mvp:plan
+node tools/mvp-plan.mjs status
+node tools/mvp-plan.mjs dry-run
+node tools/mvp-plan.mjs --self-test
+```
+
+以上入口只读，不提供启动、租约或状态写入命令。创作者授权的最小激活已经记录；产品 Task 只能由 Orchestrator 通过独立 terra 委派任务启动。

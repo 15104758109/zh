@@ -36,8 +36,80 @@ G06_GATE=APPROVED
 G06_APPROVED_AT=2026-07-11
 G06_APPROVAL_EVIDENCE=CREATOR_EXPLICIT_APPROVAL_IN_TASK
 G06_ARTIFACT_PATH=tools/project-context-loader.mjs
-G06_ARTIFACT_SHA256=08fe1899682793906002b453c6019f268079142f25f69a8392dfd7b903978b61
-G06_TEST_ASSERTIONS=58
+G06_BASELINE_ARTIFACT_SHA256=08fe1899682793906002b453c6019f268079142f25f69a8392dfd7b903978b61
+G06_BASELINE_TEST_ASSERTIONS=58
+G06_UPGRADE_AUTHORITY=G07_A_CREATOR_EXPLICIT_IMPLEMENTATION_REQUEST
+G06_ARTIFACT_SHA256=10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47
+G06_TEST_ASSERTIONS=78
+F0_02_CONTRACT_GATE=APPROVED
+F0_02_CONTRACT_APPROVED_AT=2026-07-13
+F0_02_CONTRACT_APPROVAL_EVIDENCE=CREATOR_EXPLICIT_APPROVAL_IN_TASK
+F0_02_CONTRACT_DECISION_ID=GD-026-MINIMAL-CONTRACTS
+F0_02_CONTRACT_PROFILE=MINIMAL_JSON_V1
+G07_GATE=PENDING
+G07_A_STATUS=IMPLEMENTED
+G07_B_STATUS=PENDING
+G07_APPROVAL_EVIDENCE=NONE
+G07_LATEST_AUDIT_P0=0
+G07_LATEST_AUDIT_P1=1
+G07_LATEST_AUDIT_P2=0
+G07_LATEST_AUDIT_DISPOSITION=REMEDIATED_AWAITING_INDEPENDENT_REAUDIT
+G07_POLICY_ANCHOR=G07::AUTONOMY
+G07_A_BASE_COMMIT=7faa8c132de6a2e66829d3d4b89364b56181e022
+G07_A_BRANCH=autonomy/integration
+G07_A_ROUTER_PATH=tools/project-context-loader.mjs
+G07_A_ROUTER_SHA256=10c9599d763dce24f2e3e6b1d4498f657f5bd24576aaf37b015e33384bc4be47
+G07_A_ROUTER_TEST_ASSERTIONS=78
+G07_A_ORCHESTRATOR_PATH=tools/project-orchestrator.mjs
+G07_A_ORCHESTRATOR_SHA256=b7740b350f6be74ee7359075354056002d27aee4e1d5cbec12bf1917237d86bd
+G07_A_ORCHESTRATOR_TEST_ASSERTIONS=161
+G07_A_POLICY_PATH=.autonomy/policy.json
+G07_A_POLICY_SHA256=e171d92c9e7092006bc7279c9b7a1553baa8f36fef2e58824e0de742a20eb370
+G07_A_EVIDENCE_TOOL_PATH=tools/g07-control-evidence.mjs
+G07_A_EVIDENCE_TOOL_SHA256=b1cbce436601eb660b0cd33c4e0918101a5db62507baf4f4ebf24c9a197db8cd
+G07_A_EVIDENCE_TOOL_TEST_ASSERTIONS=24
+G07_A_SENSITIVE_PATTERNS_PATH=tools/g07-sensitive-patterns.mjs
+G07_A_SENSITIVE_PATTERNS_SHA256=6a565f3538a524d5c95b88f61ba5e59d9246d438ee67216cefba2c0f477dfba7
+G07_A_FULL_EVIDENCE_COMMAND=node tools/g07-control-evidence.mjs --all
+G07_A_COMMIT=24f5df65c2714dab58880f35a8207f0d8fc37131
+G07_A_SUPERSEDED_V10_COMMIT=c5c5e9460e875a3c66e748c514ebd23cd3d1aabe
+G07_A_SUPERSEDED_V9_COMMIT=2d1cbfc1d005c466dd1b1d61832f5d62b9d395d3
+G07_A_SUPERSEDED_V8_COMMIT=f55184c76a9941613cdfcf9d2e316941069afc2c
+G07_A_SUPERSEDED_V7_COMMIT=0b0ff85ce460dcadc5364fcd75fc60e6860abeb3
+G07_A_SUPERSEDED_V7_DRAFT_COMMIT=6f6a9e99a4a987fa15f7e20b4e43f548ad6bf239
+G07_A_SUPERSEDED_V6_COMMIT=71a7555aef319d2a00cfec559fd8d094f460f661
+G07_A_SUPERSEDED_V5_COMMIT=7753c3f3c6f9acf088e25b37dc393aa5f58b8048
+G07_A_SUPERSEDED_V4_COMMIT=4466caa862673d7aa168a851ba1dfaa52c2098c6
+G07_A_SUPERSEDED_V3_COMMIT=f6a18f74d1dab1ba0856cd3b9ba00224dad77358
+G07_A_SUPERSEDED_COMMIT=e68accecac93d60c533c63eddc4a18c1053667d6
+G07_A_EVIDENCE_STATUS=ACTIVE_V11_IMPLEMENTATION_EVIDENCE
+G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V11.json
+G07_A_EVIDENCE_SHA256=d89a1253278ee41bce2a39e53ff093166cba4b3e986febf7bbd30306ffe91d3c
+G07_A_SUPERSEDED_V10_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V10.json
+G07_A_SUPERSEDED_V10_EVIDENCE_SHA256=f9dfeab9bfc19e72ae7b863f96f623baf1aa6c5be3375126e3494b9d4468ecda
+G07_A_SUPERSEDED_V9_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V9.json
+G07_A_SUPERSEDED_V9_EVIDENCE_SHA256=e10b3d71d50a44d4017a568fdd3effb9141ef27633f1f811c9abef76c9495a6d
+G07_A_SUPERSEDED_V8_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V8.json
+G07_A_SUPERSEDED_V8_EVIDENCE_SHA256=9529fda2be57894fb63b611e57236ac69808b1d0d6373a530bcb4b11b87b48b8
+G07_A_SUPERSEDED_V7_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V7.json
+G07_A_SUPERSEDED_V7_EVIDENCE_SHA256=dfb8a2f74b92d6f366d57e695fc9fa7577f3b18880b213cffc65aef3f7da34fc
+G07_A_SUPERSEDED_V6_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V6.json
+G07_A_SUPERSEDED_V6_EVIDENCE_SHA256=2eeb86a7d475ef799fb0e1561a3a74d6b35ddd81bad05fbc787ad4772ee90eab
+G07_A_SUPERSEDED_V5_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V5.json
+G07_A_SUPERSEDED_V5_EVIDENCE_SHA256=5c674d42c6193b922fd4b9700dc7a38af17db322b47694ca6332d15c0bba2891
+G07_A_SUPERSEDED_V4_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V4.json
+G07_A_SUPERSEDED_V4_EVIDENCE_SHA256=0f01ae1c5302a027ddab248d4dd6a9b9eab96b0dc722e22b8c42e1e803979409
+G07_A_SUPERSEDED_V3_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V3.json
+G07_A_SUPERSEDED_V3_EVIDENCE_SHA256=0675b28c2e31a010f84b5ffb329ac22fe01df8a4c0ad7f96224e6f6b545c26db
+G07_A_SUPERSEDED_EVIDENCE_PATH=docs/G07_A_EVIDENCE.json
+G07_A_SUPERSEDED_EVIDENCE_SHA256=7928d9194bb823dc3a2378879d33e31e1acf78f98bb78b33649d086c3fefd601
+G07_A_EVIDENCE_HASH_MODE=SEMANTIC_NORMALIZED_V1
+G07_A_SUPERSEDED_V5_G06_BASELINE_TEST_STDOUT_SHA256=ac92ab317b8c0504ce8f2f29f437c3295ab111e3a9a878d1060d5cf7293c4121
+G07_A_SUPERSEDED_V5_G06_TEST_STDOUT_SHA256=a23b93ddf7a7dbcb6c31b9a1df0029c094ed3f873141fd93a56bdd98812214aa
+G07_A_SUPERSEDED_V5_ORCHESTRATOR_TEST_STDOUT_SHA256=a29ec5cc65634c7afbb69d2f56b5f5b720e84113f3f59f3e5c84f40894dd8277
+G07_A_SUPERSEDED_V5_DRY_RUN_EVIDENCE_SHA256=e83559f7918fd1dee218df7c2d3af9518062a45edf19b2ebad693eea0fdb1ac0
+G07_A_SUPERSEDED_V5_SCOPE_EVIDENCE_SHA256=201dc40aa868b8358baabf3eacc4f89c02588f685ebdd532ac41c65986514be9
+G07_A_SUPERSEDED_V5_SECRET_SCAN_EVIDENCE_SHA256=55245e2f7b1c3888ac3ce1a078e8c495e45837533f10e462c795235d58c69cea
 
 | Gate | 状态 | 批准主体 | 证据/进入条件 | 后续动作 |
 |---|---|---|---|---|
@@ -51,9 +123,58 @@ G06_TEST_ASSERTIONS=58
 | G04-r1 | APPROVED | 创作者 | 2026-07-11，创作者明确批准原 G04 蓝图；历史证据已隔离为 `G04_R1_GATE=APPROVED`、`G04_R1_TASK_COUNT=66` | 原 66-Task 计划曾获批准；当前控制面不再提供 r1 Task Index，不能据此启动任务 |
 | G04-r2 | APPROVED | 创作者 | 2026-07-11，创作者先要求依据四组回写重做，审阅修订后的 85-Task 蓝图后在本任务明确回复“批准”；`G04_REVISION_APPROVAL_EVIDENCE=CREATOR_EXPLICIT_APPROVAL_IN_TASK` | revision 2 依赖图、切片和 Task Index 生效；当前只把无依赖的 `F0-01-REPO` 置为 `READY`，不代表任何实现完成 |
 | G05 | APPROVED | 创作者 | 2026-07-11，创作者明确批准独立 G04 审计结果：P0=0、P1=0、P2=2、`NEXT_GATE=YES` | G05 审计 Gate 生效；两个 P2 保留，不提升任何实现成熟度，Task 状态仍为 1 READY、84 PLANNED |
-| G06 | APPROVED | 创作者 | 2026-07-11，创作者审阅单一项目上下文加载器的四域样例、58/58 自测和 `G05-CTX-BA-01~08` 后明确回复“批准 G06”；制品由 `G06_ARTIFACT_SHA256` 锁定 | G06 上下文路由 Gate 生效；加载器只按角色、Task 与 FP 稳定键路由，不提升任何 Task、Schema、代码或行为证据成熟度，状态仍为 1 READY、84 PLANNED |
+| G06 | APPROVED | 创作者 | 2026-07-11，创作者审阅单一项目上下文加载器的四域样例、58/58 自测和 `G05-CTX-BA-01~08` 后明确回复“批准 G06”；旧制品哈希和断言数保留在 `G06_BASELINE_*`。本轮创作者明确要求在 G07-A 扩展路由，当前制品由 `G06_ARTIFACT_SHA256` 与 78 项自测锁定，但不因此批准 G07 | G06 上下文路由职责继续生效；加载器按角色、Task 与精确 FP 范围路由，不提升任何 Task、Schema、代码或行为证据成熟度，状态仍为 1 READY、84 PLANNED |
+| G07 | PENDING | 创作者 | 最新独立审计记录 P0=0、P1=1、P2=0；该 P1 已在当前活动候选完成返修，处置为 `REMEDIATED_AWAITING_INDEPENDENT_REAUDIT` | 等待新的独立 G07-B Audit/Review；不得自动批准 Gate 或执行产品 Task |
 
 > Gate 规则：精确键值是自动检查入口，表格是人类可读解释。`G04_R1_GATE` 只保存历史；当前 Task Index 绑定 `G04_REVISION=2`，唯一活动执行键是 `G04_GATE`。其现值不是 APPROVED 时一律阻断。任何 Gate 不得由模型、开发代理、测试结果或 n8n 运行结果代替创作者批准。
+
+## G07 自治控制面
+
+> 稳定锚点：`G07::AUTONOMY`。本节只登记本轮明确授权的自治执行边界，不改变 `G04_REVISION=2`、85 个 Task 的业务结果、`depends_on`、FP 主归属、全局业务裁决或 FP008 生命周期。旧聊天不是事实源；若历史聊天与当前已批准控制面不同，以当前控制面为准，除非创作者另行裁决。
+
+### 授权与决策等级
+
+| 决策等级 | 机器含义 | 可执行边界 | 必须停止/上送 |
+|---|---|---|---|
+| `CREATOR_REQUIRED` | 需要创作者作新的产品、版本、Gate 或业务取舍 | 只保存事实、失败指纹、候选方案和已完成证据；不得替创作者选择 | 改变业务结果、全局业务决策、`depends_on`、FP 主归属、G04 revision、FP008 基线、发布承诺或 Gate |
+| `TASK_AUTONOMOUS` | 已批准 Task 内的确定性技术执行 | 只在该 Task 精确 `write_scope`、禁止项、验收命令和现有机器合同内实现、返修、验证 | 需要扩 scope、改业务含义、依赖未 `VERIFIED`、证据或候选 commit 漂移 |
+| `ARCHITECT_AUTONOMOUS` | 不改变业务边界的技术 Replan 裁决 | 只处理 Replan A/B/D，并把结论写为结构化事件；不得改 Task Index 业务列或 Gate | Replan C 必须转 `CREATOR_REQUIRED`；任何跨越现有全局裁决的方案也必须上送 |
+| `P2_TECH_DEBT` | 已有证据证明不阻断当前正确性与关键路径的技术债 | 可登记 owner、影响、关闭条件和最迟 Gate；不能冒充已修复 | 影响合同、秘密、对象范围、P0、锁、原子性、恢复、预算、关键路径或验收覆盖时升级为阻断 |
+| `BLOCKED_TECHNICAL` | 已批准边界内的技术前置、工具或环境事实缺失 | 保留现场、失败指纹、重试/Replan 计数和恢复入口 | 不得用猜测、报告文字或缩小验收面制造 PASS |
+| `ENVIRONMENT_APPROVAL_REQUIRED` | 平台权限、联网、外部服务或本机受限动作需要显式环境批准 | 只输出所需动作、最小权限与原因；批准前不执行 | 不得绕过平台审批；G07 阶段不得发起真实项目模型调用或付费测试 |
+
+### 状态、证据与自动 Gate
+
+1. Task 机器状态固定为 `PLANNED -> READY -> LEASED -> IN_PROGRESS -> IMPLEMENTED -> VERIFYING -> VERIFIED`；失败可进入 `REWORK`、`REPLAN`、`BLOCKED` 或 `CREATOR_REQUIRED`。非法跃迁必须拒绝，`PLANNED -> READY` 只由 Orchestrator 在全部 `depends_on=VERIFIED` 后执行。
+2. Slice 状态由其必要 Task 的事件投影生成，不手工维护：全部必要 Task `VERIFIED` 才为 `VERIFIED`；存在租约/执行/验证时为 `IN_PROGRESS`；存在阻断或创作者裁决时分别为 `BLOCKED/CREATOR_REQUIRED`；否则按可解锁 Task 计算 `READY/PLANNED`。
+3. 只有 `tools/project-orchestrator.mjs` 持有进程内事件写 authority，可追加 ignored 的运行时 `.autonomy/events.jsonl` 并产生 Task/Slice 状态投影。SHA-256 链只记录本地顺序；每次追加后还必须对登记的工作区外单调 head 执行 compare-and-set，并在每次读取前核对事件数和末哈希。head provider 可执行文件必须位于角色可写工作区外，且每次 spawn 前重新检查普通文件、无链接、真实路径边界和登记哈希。本地日志少于外部 head（包括删尾或整文件删除）一律 `EVENT_LOG_ROLLBACK_DETECTED`；崩溃造成的本地领先只能由 `resume` 在确认外部 head 是合法前缀后对账，完整 JSON 尾事件缺换行不得阻断该对账。没有外部 head provider 时，非空日志和任何追加均 `ENVIRONMENT_APPROVAL_REQUIRED`。
+4. 所有可提升状态的租约、迁移、解锁、角色身份/报告、命令执行、审计、评审、Architect 边界、阻断解除、计量和最终 Gate 必须由登记平台 Ed25519 收据授权，并在投影前重新验签、验 claims、验 receipt 唯一性和状态机语义。每张 `ROLE_REPORT` 收据还必须绑定真实 `lease_id + actor_id + role + Task/Slice + attempt` 和所提交报告的规范化哈希；拒绝恢复不得从未验证的报告字段猜租约。私钥不得位于工作区或角色可读权限域；历史 `VERIFIED` 事件保存其不可变 control-context facts，回放使用历史验收命令、scope 和秘密扫描版本，不因后续合法 policy/tool/control 升级而失效。
+5. 写租约还必须取得 `WORKSPACE_CAPABILITY`：平台 sandbox 只开放该 Task 精确 write scope，并拒绝 `.git/**`、`.autonomy/**`、`.env*`、可信收据 inbox 和 scope 外路径；签名主体/会话必须与主责执行报告一致。Coder、Prompt Editor，以及 Task Index 明确登记为 `VIEW::AUDITOR` 的主责证据 Task 共用这一单写入者能力边界；后者不能借审计身份绕过 scope，也不能修改产品实现制造 PASS。普通 `git status` 或提示词不是能力隔离。CLI 只可读取登记在工作区外可信 inbox 内的普通单链接 JSON 文件，必须通过 lexical boundary、realpath、类型、大小、符号链接/目录联接和硬链接检查；平台公钥和外部 head 命令使用同等文件边界。
+6. 自动 Task Gate 的机械条件为：活动 G04 Gate/版本有效；直接依赖全部 `VERIFIED`；候选 commit 存在且未过期；工作树 tracked/untracked clean；平台 capability 有效；由稳定 control context 绑定 base/candidate commit、含删除路径的 diff/scope、验收命令和原始 candidate Git blobs。秘密扫描必须由登记且哈希锁定的单一规则源逐 blob 读取文本/二进制对象，覆盖 GitHub classic/fine-grained PAT（含 `github_pat_`）、已登记 provider key 和私钥头；超限或不可扫描对象直接阻断。登记平台还须签发精确命令、退出码、stdout 哈希与回归制品收据；主责执行者、独立 Auditor、Reviewer 必须针对同一 commit 且具有互异的平台主体和会话。调用方自报 actor/session、模型、exit code 或任意 64 位字符串不是证据。
+7. 新 candidate commit 自动使旧 Auditor/Reviewer 证据失效。Architect lease/report 必须绑定投影中的真实 REPLAN candidate、当前 base/context 和同一租约，detached 或不存在的 candidate 一律拒绝。Slice Gate Runner 只有在切片全部必要 Task `VERIFIED` 且每个 Task 有机械证据哈希后，才可取得专用只读 slice lease；PASS 还必须取得唯一 `SLICE_GATE_EXECUTION` 平台收据，绑定登记用户入口、完成边界、全部 Task evidence、同一 commit/context、退出码、stdout、回归制品哈希和大于零的制品字节数。空 acceptance、零字节制品、失败退出或任意自报哈希不得产生 PASS；报告与执行收据必须进入同一可信事件链，且不得修改产品实现、Task 状态或项目 Gate。
+8. `G07_GATE` 只能由创作者明确批准后登记。测试全绿、dry-run、Task/Slice `VERIFIED`、Architect 结论或独立 G07-B 都不得自动写 `G07_GATE=APPROVED`。
+
+### 并发、返修与 Replan
+
+1. 所有 run 合计最多一个有写权限的活跃租约；Auditor/Reviewer/Architect/Slice Gate Runner 等只读租约合计最多两个。平台 Task 租约收据必须绑定 run、Task、attempt、角色、actor、capability receipt、Orchestrator 推导的 base commit/control-context hash、branch/worktree、lease ID、取得时间和过期时间；Slice Gate 租约改为绑定 slice、全部 Task evidence、当前 commit 和 slice-context hash。过期租约可由任意恢复 run 原子登记；锁释放只有 nonce 仍属于当前持有者时才能删除。创建中断形成的 stale 损坏锁必须原子移入 quarantine 后恢复，不能永久阻断，也不能让旧持有者删除替代锁。
+2. Auditor `FAIL`、Reviewer `REQUEST_CHANGES`，以及活跃 lease 上的验收、commit、clean worktree、context、scope、秘密、角色身份或模型会话见证失败，都必须确定性处理。完整报告只有在 Task/role/actor/attempt/lease 全部匹配时才可登记；任一已提供 selector 被改写时必须零事件、零状态和零租约副作用。字段缺失的畸形报告只有在平台 `ROLE_REPORT` 收据同时绑定真实租约身份与该畸形报告哈希时，才可登记失败指纹并仅释放收据所属租约；存在同 Task sibling lease 时保持当前状态且不得跨租约取消，不存在 sibling 时进入对应 `REWORK/REPLAN/BLOCKED/CREATOR_REQUIRED`。同一 Task 最多三次返修；第三次失败进入 `REPLAN`，不得开启第四次无裁决返修。
+3. Replan 分为：A=同一 scope 内更换技术实现；B=在现有业务结果、依赖和 owner 不变时调整技术步骤/证据方案；C=需要改变业务、全局裁决、G04/Task 语义或 Gate；D=工具、平台或环境阻断。Architect 必须有可信平台身份/会话见证，并与当前 REPLAN state、lease、base/candidate commit、context 和既有角色身份机械绑定；A/B 还必须取得绑定 proposal、业务结果、依赖、owner、write scope 和 Gate 快照均未改变的边界收据，C 必须 `CREATOR_REQUIRED`，D 只能 `BLOCKED_TECHNICAL` 或 `ENVIRONMENT_APPROVAL_REQUIRED`。事件回放必须重新推导分类结果，不能用自报 detached candidate 隔离既有身份，也不能把已签 C/D 报告映射为 `READY`。
+4. 同一 Task 最多两次 Replan。关键 Task 由登记关键路径端点和 `CRITICAL` Task 的完整 `depends_on` 祖先闭包计算，不得只在叙述中按 Task ID 字面搜索。第二次仍失败时，若命中该闭包，暂停该关键路径及依赖其未完成结果的派发并转 `CREATOR_REQUIRED`；非关键路径任务转 `BLOCKED`，只有满足严格非阻断条件时才可另记 `P2_TECH_DEBT`。`CREATOR_REQUIRED` 不能由 Orchestrator 接受任意证据字符串后自行解除，必须等待另行登记的创作者控制面更新。
+
+### 分支、模型、预算与硬停止
+
+1. G01-G06 干净基线后，自治只在 `autonomy/integration` 工作；不得自动合并主分支、push、部署、写生产数据、读取/提交凭据或修改 `.env`。`tools/g07-control-evidence.mjs --all` 从 `G07_A_BASE_COMMIT` 动态扫描到调用时 `HEAD`，包含证据登记 commit，逐 candidate blob 执行 scope/秘密检查，并从 Git 对象直接复现旧 G06 58 项；它还必须验证活动 evidence 文件自身哈希、`G07_A_COMMIT` 存在且为当前候选祖先、该实现 commit 内制品哈希与登记一致、DEV_HARNESS 活动执行视图与本登记逐项一致、README 活动登记镜像/Gate Register/当前状态叙述语义一致，以及登记治理文件在 `core.autocrlf=true` 下仍由 `.gitattributes` 固定为 LF。活动 evidence 不登记随 HEAD 漂移的 stdout/base/context 常量，而登记完整 `mechanical_claims`；`--all` 必须现场执行 G06/G07/证据工具自测、语法检查和 Dry Run，并与声明对象做完整结构相等比较，任何遗漏或陈旧声明都使总结果失败。证据工具负向测试必须先证明未注入的健康判定可通过，再逐项漂移 8 个活动 SHA-256 登记并确认具体 mismatch 与 `--all` 拒绝，同时注入执行视图语义漂移，以及 README 活动 commit、Gate Register 审计计数、README 当前状态或陈旧审计叙述漂移并确认阻断；不得用 dirty 或其他失败条件冒充漂移覆盖。上述条件不能由角色报告、测试或 Architect 放行。
+2. `MODEL::CODE_HIGH` 映射为当前环境可用的最强代码推理能力，`MODEL::CODE_MEDIUM` 映射为当前环境的标准代码推理档。每份角色报告必须按 Task Index 的“推荐模型”列声明档位，并携带平台签名的 `MODEL_SESSION` 收据，绑定同一 principal/session、Task/Slice、attempt、base/candidate commit、context、档位与实际模型；事件回放必须重验。若平台不能按角色选择不同模型，可使用当前最强模型，但仍须保持独立会话、角色和证据隔离，不得伪造切换。平台不能提供可信模型/会话见证时只能转 `ENVIRONMENT_APPROVAL_REQUIRED`，不能用自报字符串补足独立性。
+3. 预算上限只取已登记 `.autonomy/policy.json`，run/角色报告不得覆盖；实际用量只累加登记平台签发且不可复用的计量收据。token、时间和已知费用任一已配置维度达到 80% 必须通知，达到 100% 时，除纯控制面本地读取外，下一次 Task/Slice 租约、只读审查、角色/模型、外部或付费动作全部硬停。未配置或环境不可见的费用必须明确记为 `unknown`，不得由报告方少报或假报为 0。
+4. G07-A 只实现控制面、状态机、证据校验、提示词生成和 dry-run；不得真实调用项目模型、运行付费测试、执行产品 Task、push、部署、写生产或访问凭据。平台审批无法自动绕过时输出 `ENVIRONMENT_APPROVAL_REQUIRED`。
+
+### G07 Gate 骨架
+
+| 检查点 | 当前状态 | 机械证据 | 批准边界 |
+|---|---|---|---|
+| G07-A 实现 | `IMPLEMENTED` | `G07_A_COMMIT` 锁定 v11 实现；`G07_A_EVIDENCE_PATH/SHA256` 锁定 58/78/161/24 项测试、治理叙述语义一致性、lease-bound 拒绝恢复、执行视图一致性、机械复现的 Dry Run 语义、实现 commit 制品和全基线证据；`G07_A_FULL_EVIDENCE_COMMAND` 动态覆盖到审计调用时 HEAD，包含登记提交 | 只证明控制面实现和内部机械验证，不能批准 Gate 或启动产品 Task |
+| G07-B 独立审查 | `PENDING` | 独立角色复核同一 G07-A commit 的政策、状态机、证据、失败和恢复 | Reviewer 不得自批 Gate |
+| `G07_GATE` | `PENDING` | 创作者明确批准证据 | 只有创作者可改为 `APPROVED` |
 
 ### G04 revision 2 范围快照
 
@@ -250,6 +371,261 @@ SCOPE_ALLOWED_WRITES=docs/IMPLEMENTATION_CONTROL.md;README.md;DEV_HARNESS.md
 | GD-023 | 全局恢复由 `F0-16-RECOVERY-COORDINATOR` 依据恢复描述符、锁、配置版本和预算路由到原垂直 FP；各垂直 FP 仍唯一拥有自己的 checkpoint、局部状态迁移和 resume adapter。协调器不得猜测领域状态或重放已完成副作用 | 长任务、FP008-FP013、跨章与全书运行 |
 | GD-024 | `F0-17-INTERACTION-CONTRACTS` 只拥有交互合同 Schema、lint 与覆盖检查；每个垂直 Task 在自己的 write_scope 内编写 `contracts/interactions/fpddd-dd.yaml`，用户可见 capability Task 编写 `cap-name.yaml`，独立 `VIEW::AUDITOR` 依据合同验收 | 所有用户可见垂直/能力 Task、交互矩阵、测试 |
 | GD-025 | Prompt 生命周期分责：F0-08 负责 revision intake、Schema/哈希校验和注册；仅按需实例化且经架构批准的 `TASKCLASS::PROMPT_REVISION(FPddd-dd)` 可修改 Prompt 源；独立 Reviewer 复核；F0-15 是 Prompt 源制品发布、运行绑定和技术回滚的唯一责任。FP014-04 只可在已发布制品集合内提升业务配置 candidate，普通垂直 Task 不得静默改源或发布 | Prompt 源、注册表、部署绑定、FP014、所有 LLM Task |
+| GD-026-MINIMAL-CONTRACTS | F0-02 采用 `MINIMAL_JSON_V1`：内部只建立最小闭合 JSON Schema、注册、SAME/CHANGED 比较、技术校验错误、现有记录包装、三态纯规则和四类引用。n8n 负责编排既有重试/退回/P0 阻断，FP008-02 保持既有内存例外；PostgreSQL 继续拥有真值、事务、锁、唯一约束、CAS、回滚、既有审计持久化和成本唯一性。前端与用户只能经受控 API/n8n 命令调整，不得直写数据库或直接改/删 formal；MVP 不新增留痕、事件投递或复杂治理功能 | `GLOBAL::CONTRACTS`、全部受控写入口、n8n、PostgreSQL、前端、测试 |
+
+### GD-026-MINIMAL-CONTRACTS
+
+> 决策 ID：`GD-026-MINIMAL-CONTRACTS`。批准配置：`MINIMAL_JSON_V1`。这是 F0-02 最小机器合同的完整事实源，不是摘要，也不是产品实现或验证证据。局部 `F0_02_CONTRACT_GATE=APPROVED` 只关闭此前公共字段未裁决的 `CREATOR_REQUIRED`；正式 `F0-02-CONTRACTS` Task 行、`depends_on`、owner、write scope、验收命令和 `PLANNED` 状态保持原样，且不提升 G04 或 G07。
+>
+> 创作者批准的业务边界是：事实版本保留 `candidate -> formal -> shadow` 历史，formal 不得直接修改或删除；临时故障可重试、输入问题定向退回、P0 继续硬阻断。MVP 不新增留痕功能，只保证本文件已经要求的记录/审计由原 owner 持久化；用户调整必须走系统受控路径。公共合同保持内部简单 JSON，n8n 负责编排，PostgreSQL 负责事务和真值，外部标准与复杂事件治理延后。
+
+#### 被取代草案与禁止实现
+
+此前为解决 F0-02 缺字段而讨论、但未获批准的下列方案统一标记为 `SUPERSEDED_DRAFT`、`NOT_APPROVED`、`MUST_NOT_IMPLEMENT`。后续实现不得导出、模拟或以扩展点保留这些治理层：
+
+| 被取代草案 | 状态 | 本版本规则 |
+|---|---|---|
+| RFC 9457 Problem Details 错误对象 | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 只实现本文 `TechnicalValidationError`；不得导出 Problem Details 字段或媒体类型 |
+| CloudEvents 事件信封 | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 只实现包装既有记录的 `MinimalRecordEnvelope`；不得导出 CloudEvents 字段或协议 |
+| 独立 `EventRegistry`、`ErrorRegistry` | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 只有 Schema registry；错误码是 `GLOBAL::CONTRACTS` 的固定六值，不建立第二注册表 |
+| extension、delivery、dedup 治理 | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 不定义 extension map、投递、重放、消费、去重、确认或 dead-letter 语义 |
+| 独立 exact-version URN 解析/协商治理 | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 只保留 `SchemaDescriptor.schema_uri` 的机械派生字符串，不提供解析、协商或发现层 |
+| 复杂 SemVer/结构兼容推断 | `SUPERSEDED_DRAFT / NOT_APPROVED / MUST_NOT_IMPLEMENT` | 版本仅为递增整数；比较结果仅 `SAME` 或 `CHANGED` |
+
+#### 公共词法与 JSON Schema 基线
+
+1. `StableId` 是长度 `1..128` 的 string，pattern 精确为 `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`。
+2. `OwnerKey` 只允许稳定 FP owner `FP::FPddd-dd` 或全局 owner `GLOBAL::UPPER`；机器 pattern 为 `^(?:FP::FP[0-9]{3}-[0-9]{2}|GLOBAL::[A-Z][A-Z0-9_]*)$`。
+3. F0-02 项目对象使用 JSON Schema Draft 2020-12。每一个对象层都必须显式 `additionalProperties: false`；嵌套引用对象和 envelope 内由已登记 data schema 校验的对象也不例外。不得以 `unevaluatedProperties`、自由 extension map 或忽略未知字段绕过关闭对象。
+4. 本锚点明确列出的 F0-02 descriptor、error、envelope、state 和 ref 版本字段按各自条目约束；这些通用约束不得外溢到未来 owner 的 `data` payload。`FactState.state_version` 必须为 integer `>=0`。
+5. Schema 校验器必须拒绝未知字段和本文列明的废弃字段，不得删除字段后继续处理，也不得把校验 PASS 解释成数据库、事务或业务门禁 PASS。
+
+#### SchemaDescriptor 与 DeprecatedField
+
+`SchemaDescriptor` 是 registry 的唯一登记单元，且自身是关闭对象。字段合同如下：
+
+| 字段 | 必需/约束 | 语义 |
+|---|---|---|
+| `schema_id` | 必需；string 长度 `3..64`；pattern `^[a-z][a-z0-9-]{2,63}$` | package 内稳定 kebab-case 合同 ID |
+| `version` | 必需；integer `>=1` | owner 显式发布的整数版本 |
+| `schema_uri` | 必需；const 派生值 `urn:zhreplan:contract:<schema_id>:<version>` | 只作精确登记标识，不提供外部发现或协商 |
+| `draft` | 必需；const `https://json-schema.org/draft/2020-12/schema` | 目标 JSON Schema draft |
+| `owner` | 必需；`OwnerKey` | 唯一语义 owner；F0-02 不代替领域 owner |
+| `schema_path` | 必需；package-relative，pattern `^src/schemas/.+\.schema\.json$` | 指向 `packages/contracts` 内的真实 schema 文件，不接受绝对路径或 `..` |
+| `sha256` | 必需；lowercase hex string，pattern `^[a-f0-9]{64}$` | schema 文件的 SHA-256，登记时必须一致 |
+| `status` | 必需；`active \| deprecated` | 每个 `schema_id` 精确一个 current active；deprecated 版本禁止新写 |
+| `replaces_version` | `version>1` 时必需且为 integer `>=1` | owner 显式声明被替代版本 |
+| `replacement_version` | `status=deprecated` 时必需且为 integer `>=1` | deprecated 版本的明确后继 |
+| `deprecated_fields` | 必需；array，可为空 | 当前版本明确拒绝的新写字段清单 |
+
+`DeprecatedField` 是关闭对象：`path` 必需且为 non-empty JSON Pointer string，`since_version` 必需且为 integer `>=1`，`replacement_path` 是唯一可选字段且为 non-empty JSON Pointer string。
+
+Registry 必须检查：`(schema_id, version)` 唯一；`schema_uri` 与 ID/version 派生一致；`schema_path` 在允许目录；文件 hash 一致；Draft 编译通过；每个 ID 只有一个 current active；replaces/replacement 字段满足上述存在条件；deprecated schema 和 `deprecated_fields[]` 均拒绝新写。缺 descriptor 时不得猜测或按“最新”替代。
+
+#### SAME/CHANGED 比较
+
+1. compare 输出枚举只有 `SAME`、`CHANGED`。
+2. 两个 descriptor 的 `schema_id + version + sha256` 全部相同才是 `SAME`；任一不同即 `CHANGED`。
+3. `CHANGED` 不声称兼容、破坏、向前或向后兼容，也不得静默替换 registry 内容。同一 ID/version 但 hash 改变必须拒绝；合法变化由 owner 显式发布下一个整数版本。
+4. F0-02 不做结构 diff、关键字子集、hash 以外的自动兼容推断或复杂 SemVer。需要判断领域升级可否消费时，由 descriptor owner 在自己的 Task 中裁决并测试。
+
+#### TechnicalValidationError
+
+`TechnicalValidationError` 仅归 `GLOBAL::CONTRACTS`，是关闭对象，字段固定为：`error_version=1`、`code`、经过脱敏且长度 `1..500` 的 string `message`、`contract_id`、`contract_version`、`path`，以及唯一可选、长度 `1..128` 的 string `field`。`contract_id` 对应 `schema_id`，`contract_version` 对应精确整数版本，`path`/`field` 只定位校验失败位置，不携带原值。
+
+`code` 枚举精确为六值：
+
+| code |
+|---|
+| `CONTRACT_NOT_FOUND` |
+| `CONTRACT_INVALID` |
+| `CONTRACT_CHANGED` |
+| `CONTRACT_PAYLOAD_INVALID` |
+| `CONTRACT_UNKNOWN_FIELD` |
+| `CONTRACT_DEPRECATED_FIELD` |
+
+`message` 必须脱敏。错误对象禁止 `details`、`stack`、SQL、raw payload、credential、Prompt、正文、`retryable`、`severity` 或 P0 字段。临时故障是否重试、输入问题退回何处、P0 是否阻断均继续由原 owner/API/n8n 状态机决定，不得塞进 F0-02 技术错误。
+
+#### MinimalRecordEnvelope
+
+`MinimalRecordEnvelope` 只包装本文件已经要求持久化的记录，不创建表、事件、日志类别、record type、投递、消费、重放或去重语义。它是关闭对象，字段为：
+
+| 字段 | 必需/约束 |
+|---|---|
+| `envelope_version` | 必需；const integer `1` |
+| `record_id`、`trace_id` | 必需；各为 `StableId` |
+| `recorded_at` | 必需；string，format `date-time` |
+| `owner` | 必需；`OwnerKey` |
+| `local_operator_id` | 必需；`StableId` |
+| `book_id`、`run_id`、`chapter_id`、`candidate_id`、`audit_attempt_id`、`model_attempt_id` | 各自可选；存在时为 `StableId` |
+| `retry_index` | 条件可选；integer `>=0`；仅在 `model_attempt_id` 同时存在时允许，否则拒绝 |
+| `config_ref` | 可选；精确 `ConfigVersionRef` |
+| `budget_ref` | 可选；精确 `BudgetVersionRef` |
+| `data_schema_id`、`data_schema_version` | 必需；分别匹配一个 current active descriptor 的 `schema_id`/精确 `version` |
+| `data` | 必需；按 `data_schema_id + data_schema_version` dispatch 到已登记 schema；内容语义仍归 descriptor owner |
+
+Envelope PASS 只证明 wrapper 和 dispatch 后 payload 的 JSON 形状正确。它不证明投递、幂等、锁、事务、留痕持久化、成本唯一计费或业务状态迁移；重复模型 attempt 的计费/重试唯一性继续由 PostgreSQL 与对应 owner 保证。
+
+#### FactState 与三态纯规则
+
+`FactState` 是关闭对象，字段精确为 `fact_id`、`fact_version`、`state`、`state_version` 和条件字段 `replaces_version`。`fact_id` 为 `StableId`；`fact_version` 为 integer `>=1`；`state_version` 为 integer `>=0`；`state` 枚举精确为 `candidate \| shadow \| formal`。`fact_version=1` 时禁止 `replaces_version`；`fact_version>1` 时必须提供 integer `replaces_version>=1`，目标存在性、当前性和替换资格由 owner/API/PostgreSQL 校验。
+
+F0-02 只提供以下确定性纯规则，且不得发明领域状态：
+
+1. 新事实版本只能创建为 `candidate`。
+2. `candidate -> formal` 只能由 owner 的受控命令发起，并仍须通过其 P0、范围、锁、CAS、版本和事务门禁。
+3. 未获批准或被替代前的候选可执行 `candidate -> shadow`。
+4. 替换当前 formal 必须在同一 PostgreSQL 事务中把旧 formal 转为 shadow，并把已批准 candidate 转为 formal；任何一步失败全部回滚。
+5. `shadow` 是 terminal，不得回到 candidate/formal，也不得原地覆盖或物理删除。
+6. `formal` 不得直接编辑或删除；除同事务替换为 shadow 外不得迁移。
+7. `state_version` 是 CAS 输入；Schema 只校验 integer 形状，数据库/API 校验当前值、单 formal、锁、事务和并发。
+8. `deduction_locked` 是 FP008-04 的独立里程碑，不是 FactState 字段或状态。`finalized` 状态值、`is_finalized` 字段和 `deduction_locked` 字段均拒绝。
+
+#### 四个关闭引用
+
+以下引用全部逐层 `additionalProperties:false`，只表达精确版本引用，不拥有对应领域生命周期：
+
+| 引用 | 精确字段与枚举 | F0-02 不拥有 |
+|---|---|---|
+| `LocalOperatorRef` | `local_operator_id: StableId` | operator 的生成、本地持久化、恢复或认证语义 |
+| `ConfigVersionRef` | `config_id: StableId`、`version>=1`、`domain: prompt \| model \| budget \| automation \| presentation`、`source: system_default \| local_operator \| book \| run` | 配置解析、active 选择、有效值、快照冻结或保存生命周期 |
+| `BudgetVersionRef` | `budget_id: StableId`、`version>=1`、`source: system_default \| local_operator \| book \| run` | 预算数值/单位、预留、计费、到顶状态、暂停或恢复 |
+| `SkillVersionRef` | `skill_id: StableId`、`version>=1`、`source: system_builtin \| user_managed` | skill 内容、所有权写入、active/archived、引用保护、召回或删除生命周期 |
+
+引用中不得附加 `owner`、`local_operator_id`、`book_id`、有效值或领域状态。对象范围由 envelope/API/数据库的原 owner 校验，不能靠引用对象自行提权。
+
+#### 最小示例
+
+以下 JSON 只展示有效形状，不是 registry 事实、真实业务数据或测试成功证据。
+
+Schema descriptor：
+
+```json
+{
+  "schema_id": "fact-state",
+  "version": 1,
+  "schema_uri": "urn:zhreplan:contract:fact-state:1",
+  "draft": "https://json-schema.org/draft/2020-12/schema",
+  "owner": "GLOBAL::CONTRACTS",
+  "schema_path": "src/schemas/fact-state.schema.json",
+  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "status": "active",
+  "deprecated_fields": [
+    { "path": "/is_finalized", "since_version": 1, "replacement_path": "/state" }
+  ]
+}
+```
+
+Technical validation error：
+
+```json
+{
+  "error_version": 1,
+  "code": "CONTRACT_PAYLOAD_INVALID",
+  "message": "payload does not match the registered contract",
+  "contract_id": "fact-state",
+  "contract_version": 1,
+  "path": "/state",
+  "field": "state"
+}
+```
+
+Minimal record envelope：
+
+```json
+{
+  "envelope_version": 1,
+  "record_id": "record:001",
+  "recorded_at": "2026-07-13T00:00:00Z",
+  "owner": "GLOBAL::CONTRACTS",
+  "local_operator_id": "operator:local",
+  "trace_id": "trace:001",
+  "data_schema_id": "fact-state",
+  "data_schema_version": 1,
+  "data": {
+    "fact_id": "fact:001",
+    "fact_version": 1,
+    "state": "candidate",
+    "state_version": 1
+  }
+}
+```
+
+Fact state：
+
+```json
+{
+  "fact_id": "fact:001",
+  "fact_version": 2,
+  "state": "candidate",
+  "state_version": 1,
+  "replaces_version": 1
+}
+```
+
+#### 必须拒绝的输入
+
+1. 任一层 unknown field，或 `deprecated_fields[]` 命中的字段。
+2. descriptor 缺失、路径越界、Draft 不符、hash 不符、重复 `(schema_id,version)` 或零/多 current active。
+3. 同 ID/version 但 hash 改变；结果必须为 `CHANGED` 并拒绝静默替换。
+4. envelope 的 `data_schema_id/version` 与 descriptor 或 payload dispatch 不匹配。
+5. FactState 的 `finalized`、`is_finalized`、`deduction_locked`，以及本文未列明的第四状态。
+6. TechnicalValidationError 的未知 code、`details`、`stack`、raw payload、`retryable`、`severity` 或 P0 字段。
+7. 没有 `model_attempt_id` 却出现 `retry_index`。
+8. 四类引用中塞入 `owner`、对象范围、有效值或生命周期字段。
+9. CloudEvents/RFC 9457 字段、extension、delivery、dedup 或 registry 字段；即使名称合法也因关闭对象被拒绝。
+10. 前端或 n8n 直接写 PostgreSQL、裸 SQL 改 formal、绕过 owner API/RPC 的输入；此项由 API/DB/n8n lint 和事务测试拒绝，不由 JSON Schema 假装证明。
+
+#### 分层执行责任
+
+| 层 | 必须执行 | Schema PASS 不得声称 |
+|---|---|---|
+| F0-02 / `GLOBAL::CONTRACTS` | Draft 编译、descriptor/registry 不变量、关闭对象、unknown/deprecated 拒绝、六种技术错误、payload dispatch、`SAME/CHANGED`、FactState 纯迁移规则、四类引用形状 | PostgreSQL 事务、业务幂等、锁、CAS 当前性、既有留痕已持久化、单 formal、唯一计费 |
+| PostgreSQL | 权威真值、事务、唯一约束、锁、CAS、required existing audit 持久化、失败回滚、成本事件/模型 attempt 唯一计费 | 前端动作已获授权、P0 已通过、n8n 编排正确 |
+| API/RPC owner | `local_operator_id`/book/run 范围、锁所有权、P0、退回目标、幂等、调整命令、版本/CAS 和受控 formal 替换入口 | n8n 已完成流程、Schema PASS 等于业务批准 |
+| n8n | 调用受控 API/RPC 编排既有重试、输入问题退回、P0 阻断和恢复；禁止裸 SQL或 direct formal write | 自身是真值、可绕过 PostgreSQL/API、可新增状态/事件治理 |
+| FP008-02 | 保持 GD-006 的既有内存推演/断点例外，直到 FP008-04 受控持久化 | 内存对象已 formal、已 `deduction_locked` 或可绕过预算/P0 |
+
+MVP 不因本合同新增用户可见历史、审计、日志或留痕功能；本文件既有 required record/audit 仍由其原 owner 按上述层次保存。用户的调整意见、退回、重生成和重审必须经系统受控命令，不能直接编辑正式数据。
+
+#### 后续 F0-02 package 边界
+
+本治理候选不授权或包含产品 code/type。正式 F0-02 后续获得独立执行授权时，仍只能在原 Task `packages/contracts/**` scope 内使用下列边界：
+
+| 允许路径 | 允许内容 |
+|---|---|
+| `packages/contracts/package.json` | package-local scripts/exports |
+| `packages/contracts/src/index.ts` | minimal public exports |
+| `packages/contracts/src/common-types.ts` | 本锚点列出的公共对象与引用类型 |
+| `packages/contracts/src/registry.ts` | descriptor registry |
+| `packages/contracts/src/validator.ts` | schema/payload validation 与技术错误 |
+| `packages/contracts/src/compare.ts` | `SAME/CHANGED` compare |
+| `packages/contracts/src/state.ts` | FactState 纯规则 |
+| `packages/contracts/src/schemas/*.schema.json` | 本锚点定义的 Draft 2020-12 schemas |
+| `packages/contracts/test/**` | 对应最小测试和合成 fixtures |
+
+禁止路径/产物包括 package 外文件、数据库迁移、API/RPC、n8n/Prompt/原型修改、领域表/领域 DTO、领域状态机、预算计费实现、operator/skill/config 生命周期、RFC 9457/CloudEvents、EventRegistry/ErrorRegistry、extension/delivery/dedup、结构兼容算法、复杂 SemVer 和任何未由具体 FP owner 批准的 code/type。根 `pnpm-lock.yaml` 不在 F0-02 scope。
+
+#### MINIMAL_JSON_V1 最小测试矩阵
+
+| 测试 ID | 必须覆盖 | 通过条件 |
+|---|---|---|
+| `MCV1-T01` | Draft 编译 | 已登记 Draft 2020-12 schema 可编译，无效 schema 被拒绝 |
+| `MCV1-T02` | descriptor | SchemaDescriptor 与 DeprecatedField 的必需、条件、pattern 和关闭对象规则可验证 |
+| `MCV1-T03` | duplicate/hash | 重复 ID/version、hash 不一致、同 ID/version changed hash 被拒绝 |
+| `MCV1-T04` | active/deprecated | 每 ID 一个 current active，deprecated schema/field 拒绝新写 |
+| `MCV1-T05` | SAME/CHANGED | 三元组全同返回 SAME，任一不同返回 CHANGED，不输出兼容/破坏结论 |
+| `MCV1-T06` | unknown/deprecated | 每层 unknown field 和 deprecated field 被拒绝 |
+| `MCV1-T07` | 六种错误 | 六个精确 code、message/field 长度和禁止字段可验证；未知 code 被拒绝 |
+| `MCV1-T08` | record + payload dispatch | 合法 envelope 与 exact-version payload dispatch 通过；缺 descriptor、version mismatch 和坏 payload 被拒绝 |
+| `MCV1-T09` | retry 条件 | `retry_index` 只在 `model_attempt_id` 存在时允许，且必须为 integer `>=0` |
+| `MCV1-T10` | 三态形状/transition | candidate/shadow/formal 形状和本文列出的合法/非法 transition 可验证 |
+| `MCV1-T11` | legacy/deduction 拒绝 | finalized、is_finalized、FactState 内 deduction_locked 和未知状态被拒绝 |
+| `MCV1-T12` | 四 refs | LocalOperatorRef、ConfigVersionRef、BudgetVersionRef、SkillVersionRef 的字段、枚举和关闭对象规则可验证 |
+| `MCV1-T13` | 无外部治理 export | 不导出 RFC 9457、CloudEvents、EventRegistry/ErrorRegistry、extension/delivery/dedup 或兼容/SemVer API |
+| `MCV1-T14` | Task test 重复通过 | `pnpm --filter @zh/contracts test` 可重复运行并通过 |
+
+上述 14 项只定义正式 F0-02 实现的验收面，不把当前治理文档候选或未来 package test 结果写成 `VERIFIED`。
 
 ## FP 对齐矩阵骨架
 
@@ -1061,7 +1437,7 @@ SCOPE_ALLOWED_WRITES=docs/IMPLEMENTATION_CONTROL.md;README.md;DEV_HARNESS.md
 - [x] `G04-BA-04`：W0 使用固定 fixture 和 Fake Model 覆盖选定主要技术边界；它不创建正式对象、不替代 FP、不等待 n8n lint，也不阻塞 S1，只在 MVP 发布验收汇合。
 - [x] `G04-BA-05`：系统内置技能 bootstrap 在 FP001 前独立完成；FP001 不依赖 FP015，FP015 用户管理保持 S3 后置且可选；S1-S7 仍按创作者可演示结果组织。
 - [x] `G04-BA-06`：50 个活跃 FP 节点各有且仅有一个主归属；第 51 个业务责任 FP007-02 映射到 `S3-FP007-01`，不恢复独立 Task/API/状态机/Gate，通知幂等、摘要只读且无第二确认。
-- [x] `G04-BA-07`：85 个 Task 均填写 Task ID、切片、业务结果、覆盖 FP、依赖、风险、模型、角色、锚点、write_scope、禁止项、命令、业务场景、Replan 和状态；当前全部 PLANNED。
+- [x] `G04-BA-07`：85 个 Task 均填写 Task ID、切片、业务结果、覆盖 FP、依赖、风险、模型、角色、锚点、write_scope、禁止项、命令、业务场景、Replan 和状态；当前精确为 1 个 `READY`（`F0-01-REPO`）与 84 个 `PLANNED`。本句只修正历史验收叙述与当前 Task Index 的噪声，不改变任何 Task 业务规则、依赖、owner 或状态事实。
 - [x] `G04-BA-08`：每个 Task 只交付一个状态变化或公共底座结果；未按前端/后端/测试形成瀑布层。
 - [x] `G04-BA-09`：MVP、首个可用版本和完整版本分别有关键路径；首三项仅为推荐派发，F0-02 后四个 Task 可并行依赖闭合的事实已明确；当前只有 F0-01 满足 Gate 与依赖并为 READY。
 - [x] `G04-BA-10`：创作者于 2026-07-11 明确回复“批准 G04 蓝图”的证据只绑定 revision 1；该证据已迁移到 `G04_R1_*`，不得用于批准 revision 2。
@@ -1106,7 +1482,7 @@ SCOPE_ALLOWED_WRITES=docs/IMPLEMENTATION_CONTROL.md;README.md;DEV_HARNESS.md
 | 检查 ID | 规则 | 通过条件 | 失败动作 |
 |---|---|---|---|
 | CHECK-001 | Gate 精确值 | G01/G02/G03-A~D、`G04_R1_GATE` 与活动 `G04_GATE` 均精确为 APPROVED；`G04_REVISION=2`，批准日期与 `CREATOR_EXPLICIT_APPROVAL_IN_TASK` 证据非空 | 阻断对应后续执行 |
-| CHECK-002 | 允许修改范围 | 读取 `SCOPE_SNAPSHOT_ID=G04-R2-P1-20260711-A`；最终 diff 路径集合不得超出快照五路径，且本轮允许内容变更仅为控制面、README、DEV_HARNESS | 立即停止并报告新增/越界路径，不自动回退既有内容 |
+| CHECK-002 | G04 revision 2 文档修订期允许修改范围 | 只在 `SCOPE_SNAPSHOT_ID=G04-R2-P1-20260711-A` 所登记的 G04 revision 2 文档修订期适用：该期最终 diff 路径不得超出快照五路径，且内容变更仅为控制面、README、DEV_HARNESS。G04-r2 获准后，本检查不得阻断已获准 Task 的正式 `write_scope`，也不得覆盖后续另行授权并登记的治理制品范围；后续动作仍分别受 Task 行、Gate、分支和自身范围证据约束 | 修订期内立即停止并报告新增/越界路径，不自动回退既有内容；修订期外按目标 Task/Gate 的正式 scope 检查 |
 | CHECK-003 | 受保护材料 | V7 SHA-256 仍为 `ddc97e...ad54`，Prompt SHA-256 仍为 `927b49...d7b`；n8n、原型、`.env` 不得出现在最终 dirty paths；完整值以范围快照表为准 | 立即停止；保留现场并报告 hash/path 差异 |
 | CHECK-004 | 稳定 FP 键 | 键满足 `^FP::FP[0-9]{3}-[0-9]{2}$`、全局唯一，集合与 V7 §4 节点编号一致 | 阻断 Task 解锁 |
 | CHECK-005 | 活跃路径 | README、V7 读取协议、Prompt 源声明和 DEV_HARNESS 的本地活跃入口均真实存在 | 删除/改为真实路径；不可建立假占位文件 |
@@ -1134,6 +1510,10 @@ SCOPE_ALLOWED_WRITES=docs/IMPLEMENTATION_CONTROL.md;README.md;DEV_HARNESS.md
 | CHECK-027 | 全局恢复分权 | F0-16 只按 descriptor 路由；owner FP 唯一写 checkpoint/局部状态并实现 resume adapter；恢复校验锁、配置和预算且不重放副作用 | 阻断 MVP/可用版/完整版发布 |
 | CHECK-028 | 三版本关键路径 | MVP、首个可用、完整版本分别命中项目章程 BA-18/19/20；W0 只汇入 MVP 发布，S6 汇入可用版，S7-FULL-BOOK-CONTINUITY 汇入完整版 | 阻断对应版本声明 |
 | CHECK-029 | F0 早期并行解锁 | G04-r2 批准且 F0-01/02 VERIFIED 后，F0-03/06/09/17 四项同时依赖闭合；“首三项”只表示推荐派发优先级，不得据此压制其余 READY 资格 | 修正调度说明，不得串行化静态 DAG |
+| CHECK-030 | G07 Gate 不可自批 | `G07_GATE` 在创作者明确批准前保持 `PENDING`；G07-A/G07-B、测试、dry-run、Task/Slice 状态和 Architect 结论均无 Gate 写权 | 拒绝写入并转 `CREATOR_REQUIRED` |
+| CHECK-031 | G07 事件与证据完整 | 事件 SHA 链与工作区外单调 head 的 count/hash 一致；删尾/整文件删除拒绝；所有状态提升/身份/证据由平台 Ed25519 收据授权；历史 context 可回放；`VERIFIED` 同时满足同 commit、capability、含删除 scope、原始文本/二进制 blob、秘密、平台验收和独立角色 | 拒绝迁移，保留失败指纹并进入 `REWORK/BLOCKED` |
+| CHECK-032 | G07 并发、预算与硬停止 | 最多 1 个平台 capability 写租约和 2 个只读审查租约；可信 inbox/public key/head command 无链接/越界；80% 通知、100% 硬停；产品 Task、真实模型/付费测试、push、部署、生产写入和凭据动作在 G07 阶段全部拒绝 | 立即硬停；缺外部 head、sandbox capability、可信 inbox 或平台权限时输出 `ENVIRONMENT_APPROVAL_REQUIRED` |
+| CHECK-033 | G07 完整基线证据 | `tools/g07-control-evidence.mjs --all` 可从 Git 对象独立复现 G06 baseline 58 项，并从 `G07_A_BASE_COMMIT` 扫描到调用时 `HEAD`；changed paths 全在批准治理集合，所有 candidate blobs 完成文本/二进制秘密扫描，登记制品哈希匹配 | 任一登记 commit 未覆盖、命令不可复现、scope 越界、blob 未扫描或 hash 漂移均拒绝 G07-B |
 
 ## 仍未对齐材料清单
 
