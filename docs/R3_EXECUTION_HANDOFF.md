@@ -13,9 +13,9 @@
 - docs/前端原型_v2/（页面结构、CSS、外观、布局和交互参考；不授权 V7 外功能）
 
 启动顺序：
-1. 验证当前分支为 autonomy/integration、工作树干净，并记录 HEAD。
-2. 运行 pnpm mvp:plan、status、dry-run、--self-test，核对 13 Tasks、9 Page Tasks、0 READY/13 PLANNED、terra 模型策略和页面原型哈希。
-3. 当前 PAUSED_BY_CREATOR 是源窗口的停机状态。本交接已记录创作者的新窗口执行授权。只做一次最小治理激活，不重新规划、不重做审计架构：将 R3 标为 APPROVED/ACTIVE，把 F0-05-PG-RUNTIME-GUARDS 与 F0-06-N8N-PRODUCTION-BASE 置 READY，目标计数为 2 READY/11 PLANNED，并同步只读校验与证据。完成后立即开始产品 Task。
+1. 已验证当前分支为 autonomy/integration、工作树干净，激活基线 HEAD 为 `7cf17e17666c1c82fb3e5ae6ea9560b5b282884c`。
+2. 已在激活前运行 pnpm mvp:plan、status、dry-run、--self-test，核对 13 Tasks、9 Page Tasks、0 READY/13 PLANNED、terra 模型策略和页面原型哈希。
+3. 创作者授权的唯一一次最小治理激活已记录：R3 为 APPROVED/ACTIVE，F0-05-PG-RUNTIME-GUARDS 与 F0-06-N8N-PRODUCTION-BASE 为 READY，计数为 2 READY/11 PLANNED。不得重复激活或重做 Task 架构；立即开始产品 Task。
 4. 禁止调用旧 IMPLEMENTATION_CONTROL 的 R2 Task Index 选择工作；旧 85 项只用于 old85_to_r3 覆盖证明。
 
 模型策略：
@@ -43,7 +43,7 @@
 
 并发与角色：
 - 只有 Orchestrator 可以创建叶子任务；所有叶子禁止再创建代理。
-- 最多并行两个 write_scope 不相交的 Coder；集成合并串行。本地 DB migration 和 n8n runtime 写入验证分别串行。
+- 全角色独立委派任务总并发上限为 10；最多并行两个 write_scope 不相交的 Coder。独立 Auditor/Reviewer 和其他依赖已闭合的只读任务可并发；集成合并串行，本地 DB migration 和 n8n runtime 写入验证分别串行。
 - 激活后先并行 F0-05（terra/high）与 F0-06（terra/medium）。其后按依赖推进；S2-WORLD-PAGE 与 S2-CHARACTERS-PAGE 可并行施工，但环境写入验证串行。
 - 每个 Task 的 Coder 必须提交 candidate commit。Orchestrator 先做 scope/diff/secret/commit 检查，再创建全新独立 terra Business Auditor；仅 CRITICAL_SQL、FP008-02 或控制合同修改另加 terra Reviewer。
 - Auditor/Reviewer 必须使用独立会话和独立上下文，审同一 candidate commit，只读且不修代码。candidate 变化后旧报告全部失效。
@@ -58,5 +58,5 @@
 
 终止条件：本地 MVP-GATE 完成、CREATOR_REQUIRED、ENVIRONMENT_APPROVAL_REQUIRED、预算硬停或关键路径 BLOCKED_TECHNICAL。MVP-GATE PASS 只形成本地 MVP 候选；main、push、上云、生产部署和 R0 发布仍需创作者决定。
 
-现在先完成上述机器验证和最小激活，然后立即并行派发 F0-05 与 F0-06；不要再做一轮方法论或架构重写。
+现在立即使用两个独立 gpt-5.6-terra 委派任务并行派发 F0-05 与 F0-06；不要再次激活，也不要重做方法论或架构。
 ```

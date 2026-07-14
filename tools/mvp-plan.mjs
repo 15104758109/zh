@@ -50,6 +50,11 @@ const HIGH_REASONING_TASKS = [
   "MVP-GATE"
 ];
 
+const INITIAL_READY_TASKS = [
+  "F0-05-PG-RUNTIME-GUARDS",
+  "F0-06-N8N-PRODUCTION-BASE"
+];
+
 const SCENE_PACKAGE_SOURCES = [
   "formal_world_version",
   "formal_character_versions",
@@ -163,17 +168,18 @@ export function validatePlan(index, candidatesMarkdown, historicalControl, hando
   if (index.schema_version !== "mvp-task-index-r3/v1") errors.push("schema_version must be mvp-task-index-r3/v1");
   if (index.plan_revision !== 3) errors.push("plan_revision must be 3");
   if (index.base_commit !== "5e7e4caa2d4bf20d098bc44f80c9678cf1715a89") errors.push("base_commit mismatch");
-  if (index.plan_status !== "CANDIDATE_PAUSED") errors.push("plan_status must be CANDIDATE_PAUSED");
-  if (index.execution_status !== "PAUSED_BY_CREATOR") errors.push("execution_status must be PAUSED_BY_CREATOR");
+  if (index.plan_status !== "APPROVED") errors.push("plan_status must be APPROVED");
+  if (index.execution_status !== "ACTIVE") errors.push("execution_status must be ACTIVE");
   if (index.selected_task !== null) errors.push("selected_task must be null");
-  if (index.authority?.formal_gate_approved !== false || index.authority?.may_start_product_task !== false) {
-    errors.push("R3 candidate must not claim approval or execution authority");
+  if (index.authority?.formal_gate_approved !== true || index.authority?.may_start_product_task !== true) {
+    errors.push("activated R3 must record approval and product execution authority");
   }
-  if (!sameSet(taskIds, EXPECTED_TASKS) || !unique(taskIds)) errors.push("Task Index must contain the exact 19 R3 Task IDs once");
+  if (!sameSet(taskIds, EXPECTED_TASKS) || !unique(taskIds)) errors.push("Task Index must contain the exact 13 R3 Task IDs once");
   if (index.tasks?.length !== 13) errors.push("Task count must be 13");
-  if (index.tasks?.some((task) => task.status !== "PLANNED")) errors.push("all R3 Tasks must remain PLANNED");
-  if (index.tasks?.some((task) => task.status === "READY")) errors.push("R3 candidate must contain zero READY Tasks");
-  if (index.counts?.ready !== 0 || index.counts?.planned !== 13 || index.counts?.total !== 13) errors.push("declared counts must be 0 READY / 13 PLANNED");
+  if (index.tasks?.some((task) => !["READY", "PLANNED"].includes(task.status))) errors.push("initial active R3 Tasks must be READY or PLANNED");
+  const readyTaskIds = (index.tasks ?? []).filter((task) => task.status === "READY").map((task) => task.id);
+  if (!sameSet(readyTaskIds, INITIAL_READY_TASKS)) errors.push("initial active R3 must make only F0-05 and F0-06 READY");
+  if (index.counts?.ready !== 2 || index.counts?.planned !== 11 || index.counts?.total !== 13) errors.push("declared counts must be 2 READY / 11 PLANNED");
 
   for (const task of index.tasks ?? []) {
     for (const field of REQUIRED_TASK_FIELDS) {
@@ -264,8 +270,8 @@ export function validatePlan(index, candidatesMarkdown, historicalControl, hando
   if (highCode.length !== 1 || highCode[0]?.id !== "S4-MULTI-AGENT-DEDUCTION-PAGE") {
     errors.push("S4-MULTI-AGENT-DEDUCTION-PAGE must be the only high-code exception");
   }
-  if ((index.tasks ?? []).some((task) => task.model?.actual_model !== null)) {
-    errors.push("future Task actual_model must remain unresolved until Orchestrator dispatch");
+  if ((index.tasks ?? []).some((task) => task.model?.actual_model !== null && task.model?.actual_model !== TERRA_MODEL)) {
+    errors.push("resolved actual_model must come from a gpt-5.6-terra platform delegation");
   }
   if (index.model_routing?.required_family !== "terra"
     || index.model_routing?.requested_model !== TERRA_MODEL
@@ -368,8 +374,8 @@ export function validatePlan(index, candidatesMarkdown, historicalControl, hando
     errors.push("S5 formal writeback must consume the validated FP013-01 released candidate");
   }
 
-  if (index.resources?.max_disjoint_coders !== 2 || index.resources?.integration_merge !== "SERIAL" || index.resources?.DB_WRITE !== 1 || index.resources?.N8N_RUNTIME_WRITE !== 1) {
-    errors.push("resource policy must be 2 disjoint Coders, serial merge, DB_WRITE=1, N8N_RUNTIME_WRITE=1");
+  if (index.resources?.max_concurrent_delegated_tasks !== 10 || index.resources?.max_disjoint_coders !== 2 || index.resources?.integration_merge !== "SERIAL" || index.resources?.DB_WRITE !== 1 || index.resources?.N8N_RUNTIME_WRITE !== 1) {
+    errors.push("resource policy must cap total delegated concurrency at 10, with 2 disjoint Coders, serial merge, DB_WRITE=1, N8N_RUNTIME_WRITE=1");
   }
   if (!deductionReview?.v7_anchors.includes("V7::FP009-00") || auditStage?.v7_anchors.includes("V7::FP009-00")) {
     errors.push("audit-review page must uniquely own the FP009-00 prose handoff");
@@ -379,9 +385,9 @@ export function validatePlan(index, candidatesMarkdown, historicalControl, hando
     || !handoffMarkdown.includes("F0-05-PG-RUNTIME-GUARDS")
     || !handoffMarkdown.includes("F0-06-N8N-PRODUCTION-BASE")
     || index.handoff?.prompt_path !== "docs/R3_EXECUTION_HANDOFF.md"
-    || index.handoff?.next_window_may_record_activation_without_reasking_creator !== true
-    || index.handoff?.current_window_may_start_product_task !== false) {
-    errors.push("new-window execution handoff is missing or inconsistent");
+    || index.handoff?.current_window_may_start_product_task !== true
+    || index.handoff?.next_window_may_record_activation_without_reasking_creator !== false) {
+    errors.push("activated new-window execution handoff is missing or inconsistent");
   }
 
   if (!unique(candidateIds)) errors.push("feature candidate IDs must be unique");
@@ -454,7 +460,10 @@ function runSelfTest(inputs) {
     mutations.push(name);
   }
 
-  rejected("ready-task", (copy) => { copy.tasks[0].status = "READY"; });
+  rejected("unexpected-ready-task", (copy) => {
+    copy.tasks.find((task) => task.id === "F0-07-RUNTIME-SEEDS").status = "READY";
+    copy.counts = { ready: 3, planned: 10, total: 13 };
+  });
   rejected("mapping-duplicate", (copy) => { copy.old85_to_r3[1].old_task_id = copy.old85_to_r3[0].old_task_id; });
   rejected("missing-n8n-scope", (copy) => {
     const task = copy.tasks.find((item) => item.id === "S1-NEW-BOOK-PAGE");
@@ -510,6 +519,7 @@ function runSelfTest(inputs) {
 }
 
 function statusPayload(index, command) {
+  const readyTasks = index.tasks.filter((task) => task.status === "READY").map((task) => task.id);
   return {
     ok: true,
     command,
@@ -517,11 +527,11 @@ function statusPayload(index, command) {
     plan_status: index.plan_status,
     execution_status: index.execution_status,
     counts: index.counts,
-    selected_task: null,
-    ready_tasks: [],
-    may_start_product_task: false,
+    selected_task: index.selected_task,
+    ready_tasks: readyTasks,
+    may_start_product_task: index.authority.may_start_product_task,
     side_effects: false,
-    message: "PAUSED_BY_CREATOR: R3 is a candidate plan and no product Task may start."
+    message: "ACTIVE: dispatch F0-05 and F0-06 in independent gpt-5.6-terra worktree tasks."
   };
 }
 

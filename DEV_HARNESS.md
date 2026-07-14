@@ -263,15 +263,15 @@ node tools/project-orchestrator.mjs report --run-id <run-id> [--slice-id <slice>
 - `tools/g07-control-evidence.mjs --all` 是独立复现入口：从 Git 对象运行旧 G06 58 项，运行当前 G06/G07 自测，并从 `G07_A_BASE_COMMIT` 动态扫描到调用时 `HEAD`，所以证据登记 commit 也在 scope 和原始 blob 秘密检查内。
 - 活动实现、证据路径/哈希、policy/report/秘密扫描版本只取第 1 节机器块，并由 `tools/g07-control-evidence.mjs --all` 与 IMPLEMENTATION_CONTROL 逐项比较；任一语义漂移直接 FAIL。`G07_A_STATUS=IMPLEMENTED` 只表示等待新的独立 G07-B。审计必须在最终 HEAD 运行完整证据命令，不得据此启动产品 Task。
 
-## 11. R3 最小 MVP 候选暂停入口
+## 11. R3 最小 MVP 活动入口
 
-R3 候选以 `docs/MVP_IMPLEMENTATION_PLAN_R3.md` 和 `docs/MVP_TASK_INDEX_R3.json` 为唯一新入口；旧 G04 revision 2、G07 R2/V11 与 85 项索引仅用于历史映射。R3 当前不是正式批准的活动控制面：
+R3 以 `docs/MVP_IMPLEMENTATION_PLAN_R3.md` 和 `docs/MVP_TASK_INDEX_R3.json` 为唯一新入口；旧 G04 revision 2、G07 R2/V11 与 85 项索引仅用于历史映射。创作者授权的最小激活已记录：
 
 ```text
-R3_PLAN_STATUS=CANDIDATE_PAUSED
-R3_EXECUTION_STATUS=PAUSED_BY_CREATOR
-R3_READY=0
-R3_PLANNED=13
+R3_PLAN_STATUS=APPROVED
+R3_EXECUTION_STATUS=ACTIVE
+R3_READY=2
+R3_PLANNED=11
 R3_SELECTED_TASK=null
 ```
 

@@ -26,18 +26,21 @@ function digest(paths) {
   return hash.digest("hex");
 }
 
-test("check validates the exact paused R3 plan and old 85 mapping", () => {
+test("check validates the exact active R3 plan and old 85 mapping", () => {
   const result = run("check");
   assert.equal(result.ok, true);
   assert.equal(result.task_count, 13);
-  assert.equal(result.ready_count, 0);
-  assert.equal(result.planned_count, 13);
+  assert.equal(result.ready_count, 2);
+  assert.equal(result.planned_count, 11);
   assert.equal(result.historical_task_count, 85);
   assert.equal(result.mapping_count, 85);
   assert.equal(result.candidate_count, 22);
   assert.deepEqual(result.high_code_tasks, ["S4-MULTI-AGENT-DEDUCTION-PAGE"]);
   assert.equal(result.page_task_count, 9);
   assert.equal(result.requested_model, "gpt-5.6-terra");
+  const index = JSON.parse(readFileSync(join(root, "docs", "MVP_TASK_INDEX_R3.json"), "utf8"));
+  assert.equal(index.resources.max_concurrent_delegated_tasks, 10);
+  assert.equal(index.resources.max_disjoint_coders, 2);
 });
 
 test("page-owned R3 preserves FP005-01, FP013-01, and observability deferral semantics", () => {
@@ -96,20 +99,20 @@ test("nine page Tasks have exclusive prototype ownership and terra audit routing
   assert.ok(index.tasks.every((task) => task.model.requested_model === "gpt-5.6-terra"));
 });
 
-test("status reports creator pause and no selected task", () => {
+test("status reports the two initial READY tasks and no single selected task", () => {
   const result = run("status");
-  assert.equal(result.execution_status, "PAUSED_BY_CREATOR");
-  assert.deepEqual(result.counts, { ready: 0, planned: 13, total: 13 });
+  assert.equal(result.execution_status, "ACTIVE");
+  assert.deepEqual(result.counts, { ready: 2, planned: 11, total: 13 });
   assert.equal(result.selected_task, null);
-  assert.deepEqual(result.ready_tasks, []);
-  assert.equal(result.may_start_product_task, false);
+  assert.deepEqual(result.ready_tasks, ["F0-05-PG-RUNTIME-GUARDS", "F0-06-N8N-PRODUCTION-BASE"]);
+  assert.equal(result.may_start_product_task, true);
 });
 
 test("dry-run is read-only and cannot select work", () => {
   const before = digest(protectedInputs);
   const result = run("dry-run");
   const after = digest(protectedInputs);
-  assert.equal(result.execution_status, "PAUSED_BY_CREATOR");
+  assert.equal(result.execution_status, "ACTIVE");
   assert.equal(result.selected_task, null);
   assert.equal(result.side_effects, false);
   assert.equal(after, before);
@@ -121,7 +124,7 @@ test("self-test rejects unsafe mutations without writing state", () => {
   const after = digest(protectedInputs);
   assert.equal(result.ok, true);
   assert.deepEqual(result.rejected_mutations, [
-    "ready-task",
+    "unexpected-ready-task",
     "mapping-duplicate",
     "missing-n8n-scope",
     "second-high-code-task",

@@ -2,24 +2,24 @@
   "schema_version": "mvp-task-index-r3/v1",
   "plan_revision": 3,
   "base_commit": "5e7e4caa2d4bf20d098bc44f80c9678cf1715a89",
-  "plan_status": "CANDIDATE_PAUSED",
-  "execution_status": "PAUSED_BY_CREATOR",
+  "plan_status": "APPROVED",
+  "execution_status": "ACTIVE",
   "selected_task": null,
   "counts": {
-    "ready": 0,
-    "planned": 13,
+    "ready": 2,
+    "planned": 11,
     "total": 13
   },
   "authority": {
-    "formal_gate_approved": false,
-    "may_start_product_task": false,
+    "formal_gate_approved": true,
+    "may_start_product_task": true,
     "new_window_execution_instruction_recorded": true,
     "historical_only": [
       "G04 revision 2",
       "G07 R2/V11",
       "docs/IMPLEMENTATION_CONTROL.md 85-task index"
     ],
-    "activation_requirement": "The next Orchestrator may record the already authorized R3 activation without asking the creator again; this source window must not start a product Task."
+    "activation_requirement": "The creator-authorized R3 activation was recorded once from baseline 7cf17e17666c1c82fb3e5ae6ea9560b5b282884c; do not repeat activation or select work from historical Task indexes."
   },
   "architecture": {
     "product_surface": "WEB_ONLY",
@@ -54,6 +54,7 @@
     "task_budget": "UNCONFIGURED"
   },
   "resources": {
+    "max_concurrent_delegated_tasks": 10,
     "max_disjoint_coders": 2,
     "integration_merge": "SERIAL",
     "DB_WRITE": 1,
@@ -164,7 +165,7 @@
       ],
       "audit_policy": "BUSINESS_AUDITOR_PLUS_REVIEWER_CRITICAL_SQL",
       "implementation_mode": "MINIMAL_STITCH",
-      "status": "PLANNED"
+      "status": "READY"
     },
     {
       "id": "F0-06-N8N-PRODUCTION-BASE",
@@ -213,7 +214,7 @@
       },
       "audit_policy": "BUSINESS_AUDITOR_ONLY",
       "implementation_mode": "MINIMAL_STITCH",
-      "status": "PLANNED"
+      "status": "READY"
     },
     {
       "id": "F0-07-RUNTIME-SEEDS",
@@ -1522,8 +1523,8 @@
   "handoff": {
     "prompt_path": "docs/R3_EXECUTION_HANDOFF.md",
     "creator_instruction": "EXECUTE_CURRENT_R3_TASKS_IN_A_NEW_WINDOW",
-    "current_window_may_start_product_task": false,
-    "next_window_may_record_activation_without_reasking_creator": true,
+    "current_window_may_start_product_task": true,
+    "next_window_may_record_activation_without_reasking_creator": false,
     "activation_scope": "CURRENT_R3_TASK_INDEX_ONLY",
     "old_r2_task_index_is_historical_only": true
   }

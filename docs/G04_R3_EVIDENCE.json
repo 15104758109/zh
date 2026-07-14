@@ -1,15 +1,15 @@
 {
-  "schema_version": "g04-r3-candidate-evidence/v1",
-  "evidence_status": "CANDIDATE_PAUSED",
-  "execution_status": "PAUSED_BY_CREATOR",
-  "formal_approval_claimed": false,
-  "verification_claimed": false,
-  "base_commit": "0c566bbf7fcdff426b6b3431f03a393ab3f62719",
-  "base_parent_commit": "5e7e4caa2d4bf20d098bc44f80c9678cf1715a89",
+  "schema_version": "r3-activation-evidence/v1",
+  "evidence_status": "APPROVED",
+  "execution_status": "ACTIVE",
+  "formal_approval_claimed": true,
+  "verification_claimed": true,
+  "base_commit": "7cf17e17666c1c82fb3e5ae6ea9560b5b282884c",
+  "base_parent_commit": "0c566bbf7fcdff426b6b3431f03a393ab3f62719",
   "candidate_commit": null,
   "candidate_commit_note": "The Orchestrator records the Git candidate commit after this evidence file is committed; this file does not self-attest its containing commit.",
   "creator_decision_summary": [
-    "Keep the source window paused after changing the Task plan; execute current R3 in a new window after one minimal activation record.",
+    "Record the creator-authorized R3 activation exactly once from 7cf17e17666c1c82fb3e5ae6ea9560b5b282884c and immediately dispatch F0-05 with F0-06.",
     "The product is Web-only; native mobile and native desktop are outside scope and are not acceptance dependencies.",
     "Use minimal Web + n8n + PostgreSQL stitching, with PostgreSQL owning transactions and truth.",
     "Make one page the unit of frontend delivery: nine MVP pages have nine exclusive owner Tasks instead of fragmented feature Tasks.",
@@ -24,8 +24,8 @@
     "revision": 3,
     "task_count": 13,
     "page_task_count": 9,
-    "ready_count": 0,
-    "planned_count": 13,
+    "ready_count": 2,
+    "planned_count": 11,
     "selected_task": null,
     "historical_task_mapping_count": 85,
     "feature_candidate_count": 22,
@@ -36,7 +36,7 @@
   },
   "planning_model_record": {
     "profile": "MODEL::REASON_HIGH",
-    "actual_model": "INHERITED_ROOT_MODEL_UNVERIFIED",
+    "actual_model": null,
     "reasoning_effort": "high",
     "fallback": "ORCHESTRATOR_ONLY",
     "task_budget": "UNCONFIGURED"
@@ -46,42 +46,42 @@
     "g07_r2_v11": "HISTORICAL_ONLY",
     "old_implementation_control_task_index": "HISTORICAL_MAPPING_SOURCE_ONLY",
     "platform_trust_claim": "NONE",
-    "current_window_may_activate_product_task": false,
-    "next_window_may_record_current_r3_activation_without_reasking_creator": true,
+    "current_window_may_activate_product_task": true,
+    "next_window_may_record_current_r3_activation_without_reasking_creator": false,
     "handoff_prompt": "docs/R3_EXECUTION_HANDOFF.md"
   },
   "content_hash_domain": "SHA256_OF_UTF8_CONTENT_WITH_CRLF_AND_CR_NORMALIZED_TO_LF",
   "content_sha256": {
-    "docs/MVP_IMPLEMENTATION_PLAN_R3.md": "fc86283a641b662570f425b3de2d6e00d0ba2a7075f40da66e04069ecaa5691b",
-    "docs/MVP_TASK_INDEX_R3.json": "1b184c6a5791df43d69aae2d39ac6b8aaa8983531ad128fc61b3dc1c0b6cf4a9",
-    "docs/R3_EXECUTION_HANDOFF.md": "21ffab313bfc2959c7f4f92011ee8dbd05e6850f751c61285116b882410eaf99",
+    "docs/MVP_IMPLEMENTATION_PLAN_R3.md": "5347ce9997bb756553066340e6074ef51db3940cc2067305289de5229e3d7758",
+    "docs/MVP_TASK_INDEX_R3.json": "fac6a7b20e63e5806a0146d806030b9e8a388e9c70147468cc775d19ca9e73c9",
+    "docs/R3_EXECUTION_HANDOFF.md": "1dd0a52d365df9b512b1bf4e31eeeac85e3d4e3e856907557965b12bf0e61378",
     "docs/FEATURE_CANDIDATES.md": "b6668934ea7e535987b2cf0c9f026a1a144bf910e10c82e87ba40b326df909a5",
-    "tools/mvp-plan.mjs": "2f27760b7bca762aa6e1fa4c477c0b058d40d0201cf0fdbaec65cd4afd3f2d0c",
-    "tests/tooling/mvp-plan/mvp-plan.test.mjs": "92452e85915ea47a225918ffb02eb0089eae5554bbb5fbd940ed548be7b8b421",
-    "README.md": "2981a6d3a9ac17f18717fa491ecd955e8b05903f19fed4358856ab8c16bc93fa",
-    "DEV_HARNESS.md": "a724fb849d861d7bc9a655867ebbf9fe40913f50c0553b22038f9b55a2bb90ee",
+    "tools/mvp-plan.mjs": "fc94586484e141a94f5d8c235a02edde7651dc1f85070dd69d59735a23fddcba",
+    "tests/tooling/mvp-plan/mvp-plan.test.mjs": "cc5527f4fa96b298618bceb646d09f7d1f3f971b71302d8ea4418165d0fe5926",
+    "README.md": "aa54b5d4ece9685b655b728de47f223f35410ae02a493d49cffe79479267aa6d",
+    "DEV_HARNESS.md": "dc46e0d7319354b29b9250af4618ddc39550f3fc8c5bdef5b14c958cf67581db",
     "package.json": "171d9980296b98bf177a83df6cf0115e6b0694c8922eb572ff2f863c631e5188"
   },
   "mechanical_results": [
     {
       "command": "pnpm mvp:plan",
       "result": "PASS",
-      "detail": "13 Tasks, 9 exclusive page owners, 0 READY, 13 PLANNED, 85 historical mappings, one high-code Task, all execution/audit roles routed to gpt-5.6-terra."
+      "detail": "13 Tasks, 9 exclusive page owners, 2 READY, 11 PLANNED, 85 historical mappings, one high-code Task, all execution/audit roles routed to gpt-5.6-terra."
     },
     {
       "command": "node tools/mvp-plan.mjs status",
       "result": "PASS",
-      "detail": "PAUSED_BY_CREATOR; selected_task null; no execution authority in the source window."
+      "detail": "APPROVED/ACTIVE; F0-05 and F0-06 READY; selected_task null; product execution authorized."
     },
     {
       "command": "node tools/mvp-plan.mjs dry-run",
       "result": "PASS",
-      "detail": "PAUSED_BY_CREATOR; selected_task null; side_effects false."
+      "detail": "APPROVED/ACTIVE; F0-05 and F0-06 READY; selected_task null; side_effects false."
     },
     {
       "command": "node tools/mvp-plan.mjs --self-test",
       "result": "PASS",
-      "detail": "Rejected 15 mutations including duplicate page ownership, prototype hash drift, visual audit removal, non-terra role routing, V7 semantic drift, and historical mapping drift."
+      "detail": "Rejected 15 mutations including an unexpected third READY Task, duplicate page ownership, prototype hash drift, visual audit removal, non-terra role routing, V7 semantic drift, and historical mapping drift."
     },
     {
       "command": "node --test tests/tooling/mvp-plan/mvp-plan.test.mjs",
@@ -122,8 +122,6 @@
     }
   ],
   "prohibited_actions_confirmed_absent": [
-    "PRODUCT_TASK_START",
-    "READY_TRANSITION",
     "LEASE",
     "DATABASE_RUNTIME_WRITE",
     "DOCKER_OR_CONTAINER_OPERATION",
@@ -144,6 +142,8 @@
     "requested_model": "gpt-5.6-terra",
     "ordinary_reasoning_effort": "medium",
     "risk_raised_reasoning_effort": "high",
+    "max_concurrent_delegated_tasks": 10,
+    "max_disjoint_coders": 2,
     "actual_model_source": "PLATFORM_DELEGATION_OR_SESSION_METADATA_AT_DISPATCH",
     "fallback": "TERRA_ONLY_ENVIRONMENT_APPROVAL_IF_UNAVAILABLE",
     "task_budget": "UNCONFIGURED"

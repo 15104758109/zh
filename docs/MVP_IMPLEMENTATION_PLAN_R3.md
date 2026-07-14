@@ -4,12 +4,12 @@
 
 - Plan revision: 3
 - Base commit: `5e7e4caa2d4bf20d098bc44f80c9678cf1715a89`
-- Plan status: `CANDIDATE_PAUSED`
-- Execution status: `PAUSED_BY_CREATOR`
-- Task state: `0 READY / 13 PLANNED`
+- Plan status: `APPROVED`
+- Execution status: `ACTIVE`
+- Task state: `2 READY / 11 PLANNED`
 - Selected task: none
-- 当前窗口只完成 Task 重排和交接，不启动产品 Task。
-- 创作者已要求新窗口按当前 R3 执行；新窗口可以记录一次最小激活，不需要再次询问是否采用 R3。
+- 当前窗口已从基线 `7cf17e17666c1c82fb3e5ae6ea9560b5b282884c` 记录唯一一次最小激活。
+- 首批仅 `F0-05-PG-RUNTIME-GUARDS` 与 `F0-06-N8N-PRODUCTION-BASE` 为 `READY`，使用独立 terra 委派任务并行施工。
 
 旧 G04 revision 2、G07 R2/V11 和 85-Task `IMPLEMENTATION_CONTROL` 只保留为历史映射来源，不再是活动任务源。
 
@@ -51,7 +51,7 @@ R3 由 3 个运行底座、9 个页面缝合 Task 和 1 个只读 MVP Gate 组�
 
 `F0-07-RUNTIME-SEEDS -> S1-WORKBENCH-PAGE -> S1-NEW-BOOK-PAGE -> (S2-WORLD-PAGE || S2-CHARACTERS-PAGE) -> S2-L1A-PAGE -> S3-PRODUCTION-STAGE-PAGE -> S4-MULTI-AGENT-DEDUCTION-PAGE -> S4-AUDIT-REVIEW-PAGE -> S5-AUDIT-STAGE-PAGE -> MVP-GATE`
 
-两个 Coder 可以并行编辑不相交 scope；集成合并、同一数据库迁移验证和同一 n8n runtime 写入保持串行。
+全角色独立委派任务总并发上限为 10；其中最多两个 Coder 可以并行编辑不相交 scope。独立 Auditor/Reviewer 和其他依赖已闭合的只读任务可并发，集成合并、同一数据库迁移验证和同一 n8n runtime 写入保持串行。
 
 ## 5. 页面唯一所有权
 
@@ -117,7 +117,7 @@ terra 不可用或无法确认实际模型时转 `ENVIRONMENT_APPROVAL_REQUIRED`
 
 ## 10. 并发和集成
 
-- 最多两个依赖闭合且 write scope 不相交的 Coder 并行。
+- 全角色独立委派总并发上限为 10；最多两个依赖闭合且 write scope 不相交的 Coder 并行。
 - 第一组是 F0-05 与 F0-06；第二个明确并行点是 World Page 与 Characters Page。
 - Coder 只改获批 scope，不改 Task Index、`.autonomy` 或治理文档，也不能创建代理。
 - candidate commit 改变后，旧 Auditor/Reviewer 证据全部失效。
@@ -127,7 +127,7 @@ terra 不可用或无法确认实际模型时转 `ENVIRONMENT_APPROVAL_REQUIRED`
 
 完整交接提示词位于 `docs/R3_EXECUTION_HANDOFF.md`。
 
-本窗口保持 `PAUSED_BY_CREATOR` 和 `0 READY / 13 PLANNED`。新窗口读取本交接后，可以把当前创作者指令持久化为一次最小激活，目标初始状态是：
+创作者授权的最小激活已在当前窗口持久化，初始活动状态是：
 
 - `plan_status=APPROVED`
 - `execution_status=ACTIVE`
@@ -135,6 +135,6 @@ terra 不可用或无法确认实际模型时转 `ENVIRONMENT_APPROVAL_REQUIRED`
 - `F0-06-N8N-PRODUCTION-BASE=READY`
 - `2 READY / 11 PLANNED`
 
-该激活不允许重做 Task 架构或增加功能。激活后应立即并行派发 F0-05 与 F0-06。
+该激活未重做 Task 架构或增加功能。当前应立即并行派发 F0-05 与 F0-06，不得再次执行激活。
 
 `MVP-GATE` PASS 只形成本地 MVP 候选。main、push、云部署、生产部署和 R0 发布仍为 `CREATOR_REQUIRED`。
