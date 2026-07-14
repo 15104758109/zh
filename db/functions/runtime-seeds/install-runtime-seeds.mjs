@@ -6,7 +6,7 @@ import path from "node:path";
 import vm from "node:vm";
 
 const database = process.env.ZH_RUNTIME_SEEDS_DATABASE ?? "zh_narrative_test";
-if (database !== "zh_narrative_test") throw new Error("ZH_RUNTIME_SEEDS_DATABASE must be zh_narrative_test");
+if (!new Set(["zh_narrative", "zh_narrative_test"]).has(database)) throw new Error("ZH_RUNTIME_SEEDS_DATABASE must be zh_narrative or zh_narrative_test");
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(directory, "../../..");
 const schemaSql = readFileSync(path.join(directory, "install-runtime-seeds.sql"), "utf8");
@@ -22,7 +22,7 @@ for (const [category, count] of Object.entries(expected)) if (!Array.isArray(sou
 
 const categories = { "theme-combos": "题材组合", "chapter-expansion": "章节展开", "art-presentation": "艺术呈现", "camera-language": "镜头语言" };
 const sourceLocator = "docs/前端原型_v2/pages/skill_library.html#defaultSkillData";
-const sourceSha256 = createHash("sha256").update(prototype, "utf8").digest("hex");
+const sourceSha256 = createHash("sha256").update(JSON.stringify(source), "utf8").digest("hex");
 const reviewDate = "2026-07-14";
 
 // Ratings are display metadata only. The fixed identity set preserves the approved 24/48 decision,
@@ -31,12 +31,16 @@ const optimizedIds = new Set(["tc-4", "tc-27", "tc-29", "tc-1", "tc-17", "tc-28"
 const ruleCatalog = {
   DIRECT_PRESENTATION: "艺术呈现和镜头语言是局部表现技术；它们只改变已验证场景的叙述、感官或镜头组织，不主张新增世界事实、资源或权限，因此可直接优化使用。",
   RESOURCE_PRODUCTION_LOOP: "资源、生产、经营闭环把投入、消耗、产出或组织能力写成可核验的因果链；在正式设定和已验证资源内可优化使用。",
+  TEAM_CAPABILITY_RESOURCE_LOOP: "团队角色、能力互补和探索资源闭环只编排已验证成员、能力、风险与补给；不预设队伍权限或战果，因此可优化使用。",
   REUSABLE_CAUSAL_ARC: "可复用因果弧以已发生的压力、选择、代价和结果组织节奏；不需要预设超规格权限，因此可优化使用。",
   SYSTEM_OR_HIGH_ASSUMPTION: "依赖系统权限、重生先知、全知 AI、军事或机构能力、超规格资源或高设定前提的候选，不能把题材标签当成事实，必须约束使用。",
+  SETTING_SPECIFIC_TROPE: "该题材组合预设特定作品的世界规则、冲突关系或结果走向；这些前提不能由技能标签补造，必须受正式设定和已验证场景约束。",
   FACE_SLAP_OR_REVERSAL: "打脸或反转弧容易把预设胜利、对手失智或未铺垫真相写成既定结果，必须以已验证动机、线索和因果约束使用。"
 };
 const resourceLoopIds = new Set(["tc-4", "tc-27", "tc-1", "tc-17", "tc-28", "tc-41", "tc-16", "tc-23"]);
-const causalArcIds = new Set(["tc-29", "ce-2", "ce-4", "ce-5", "ce-7", "ce-8"]);
+const teamCapabilityResourceLoopIds = new Set(["tc-29"]);
+const causalArcIds = new Set(["ce-2", "ce-4", "ce-5", "ce-7", "ce-8"]);
+const highAssumptionIds = new Set(["tc-44", "tc-50", "tc-3", "tc-6", "tc-8", "tc-24", "tc-26", "tc-36", "tc-39", "tc-43", "tc-45", "tc-47", "tc-49", "tc-52", "tc-2", "tc-7", "tc-9", "tc-11", "tc-13", "tc-20", "tc-21", "tc-31", "tc-35", "tc-40", "tc-46", "tc-51", "tc-12", "tc-14", "tc-22", "tc-25", "tc-42", "tc-10"]);
 const revisedConstraints = {
   "tc-50": "系统面板、任务奖励和越级成长只在本书已确认的魔法体系与代价规则中使用，不能把系统权限当作现实或跨书事实。",
   "tc-6": "都市巨型系统的调度、资源与制度影响必须由本书已写明的组织能力支持，不能凭系统标签补造现实机构权限。",
@@ -60,9 +64,11 @@ function evidenceSummary(evidence) {
 function classificationRule(raw, category, optimized) {
   if (category === "art-presentation" || category === "camera-language") return "DIRECT_PRESENTATION";
   if (resourceLoopIds.has(raw.id)) return "RESOURCE_PRODUCTION_LOOP";
+  if (teamCapabilityResourceLoopIds.has(raw.id)) return "TEAM_CAPABILITY_RESOURCE_LOOP";
   if (causalArcIds.has(raw.id)) return "REUSABLE_CAUSAL_ARC";
   if (["ce-1", "ce-3", "ce-6"].includes(raw.id)) return "FACE_SLAP_OR_REVERSAL";
-  if (!optimized) return "SYSTEM_OR_HIGH_ASSUMPTION";
+  if (highAssumptionIds.has(raw.id)) return "SYSTEM_OR_HIGH_ASSUMPTION";
+  if (!optimized) return "SETTING_SPECIFIC_TROPE";
   throw new Error(`no classification rule for ${raw.id}`);
 }
 function riskFlags(raw, ruleId) {
@@ -80,8 +86,10 @@ function optimizationActions(raw, ruleId) {
   const actions = ["Keep raw_source byte-for-field faithful; use only as a candidate preference."];
   if (ruleId === "DIRECT_PRESENTATION") actions.push("Apply presentation choices only to a verified scene and POV.");
   if (ruleId === "RESOURCE_PRODUCTION_LOOP") actions.push("Require explicit inputs, costs, outputs, and elapsed capability before proposing progression.");
+  if (ruleId === "TEAM_CAPABILITY_RESOURCE_LOOP") actions.push("Require verified members, complementary abilities, expedition risks, and resources before proposing team progression.");
   if (ruleId === "REUSABLE_CAUSAL_ARC") actions.push("Bind each beat to verified prior causes, stakes, and consequences.");
   if (ruleId === "SYSTEM_OR_HIGH_ASSUMPTION") actions.push("Convert any implied permission, foreknowledge, capability, or resource into a verified precondition.");
+  if (ruleId === "SETTING_SPECIFIC_TROPE") actions.push("Treat implied world rules, conflicts, and outcomes as verified preconditions, never as generated facts.");
   if (ruleId === "FACE_SLAP_OR_REVERSAL") actions.push("Require verified motive, clues, and causal reversal before proposing payoff.");
   if (raw.id === "ce-5") actions.push("Derived-only normalization: interpret raw keyPoint typo '资源资源消耗出口' as '资源消耗出口'; raw_source remains unchanged.");
   return actions;
@@ -138,9 +146,7 @@ const encoded = Buffer.from(JSON.stringify(rows), "utf8").toString("base64");
 const sql = `BEGIN;
 SET LOCAL zh.bypass_rpc = 'true';
 ${schemaSql}
-DELETE FROM public.t_repertoire_assets
-WHERE source_type = 'system_builtin'
-  AND (skill_code LIKE 'prototype:skill-library:%' OR skill_code LIKE 'runtime-seeds:skill-library:%');
+DELETE FROM public.t_repertoire_assets WHERE source_type = 'system_builtin' AND skill_code LIKE 'prototype:skill-library:%';
 WITH seed AS (SELECT value AS item FROM jsonb_array_elements(convert_from(decode('${encoded}', 'base64'), 'UTF8')::jsonb))
 INSERT INTO public.t_repertoire_assets (skill_code, version_no, skill_name, skill_category, skill_description, skill_config_jsonb, input_requirements, execution_steps, output_structure, applicable_scenes, rollback_strategy, eval_criteria, genre_main, genre_sub_tags, combo_logic, fun_source, essence, candidate_status, source_type, owner_local_operator_id, lifecycle_status)
 SELECT item->>'skill_code', (item->>'version_no')::integer, item->>'skill_name', item->>'skill_category', item->>'skill_description', item->'skill_config_jsonb', item->'input_requirements', to_jsonb(item->'execution_steps'), item->'output_structure', item->'applicable_scenes', item->'rollback_strategy', item->'eval_criteria', item->>'genre_main', item->'genre_sub_tags', item->'combo_logic', item->>'fun_source', item->>'essence', item->>'candidate_status', item->>'source_type', NULL, item->>'lifecycle_status' FROM seed

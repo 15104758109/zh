@@ -18,15 +18,17 @@ test("runtime seed install preserves all prototype identities, is idempotent, an
   const raw = prototype();
   assert.deepEqual(Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, value.length])), { "theme-combos": 54, "chapter-expansion": 8, "art-presentation": 6, "camera-language": 4 });
   assert.equal(Object.values(raw).flat().length, 72);
-  const expectedSha = createHash("sha256").update(prototypeDocument(), "utf8").digest("hex");
+  const expectedSha = createHash("sha256").update(JSON.stringify(raw), "utf8").digest("hex");
   const optimizedIds = new Set(["tc-4", "tc-27", "tc-29", "tc-1", "tc-17", "tc-28", "tc-41", "tc-16", "tc-23", "ce-2", "ce-4", "ce-5", "ce-7", "ce-8", "ap-1", "ap-2", "ap-3", "ap-4", "ap-5", "ap-6", "cl-1", "cl-2", "cl-3", "cl-4"]);
   sql("DROP TABLE IF EXISTS public.t_repertoire_assets CASCADE;");
   install();
+  const skillIdsBeforeReinstall = sql("SELECT string_agg(skill_code || ':' || skill_id, E'\\n' ORDER BY skill_code) FROM public.t_repertoire_assets WHERE skill_code LIKE 'runtime-seeds:skill-library:%'");
   const userCode = `runtime-seeds-user-${process.pid}`;
   sql(`INSERT INTO public.t_repertoire_assets (skill_code, skill_name, skill_category, candidate_status, source_type, lifecycle_status) VALUES ('${userCode}', 'user survives', '题材组合', 'draft', 'user_managed', 'draft');`);
   sql("INSERT INTO public.t_repertoire_assets (skill_code, skill_name, skill_category, candidate_status, source_type, lifecycle_status) VALUES ('prototype:skill-library:theme-combos:legacy', 'replaced builtin', '题材组合', 'committed', 'system_builtin', 'active'), ('prototype:skill-library:user:legacy', 'user legacy survives', '题材组合', 'draft', 'user_managed', 'draft');");
   try {
     install();
+    assert.equal(sql("SELECT string_agg(skill_code || ':' || skill_id, E'\\n' ORDER BY skill_code) FROM public.t_repertoire_assets WHERE skill_code LIKE 'runtime-seeds:skill-library:%'"), skillIdsBeforeReinstall, "reinstall preserves builtin skill IDs");
     assert.equal(sql("SELECT count(*) FROM public.t_repertoire_assets WHERE skill_code LIKE 'runtime-seeds:skill-library:%'"), "72");
     assert.equal(sql("SELECT count(*) FROM public.t_repertoire_assets WHERE source_type='system_builtin' AND skill_code LIKE '%skill-library:%'"), "72");
     assert.equal(sql("SELECT count(*) FROM public.t_repertoire_assets WHERE skill_code='prototype:skill-library:theme-combos:legacy'"), "0");
@@ -55,6 +57,8 @@ test("runtime seed install preserves all prototype identities, is idempotent, an
       assert.ok(Object.keys(research.evidence_fields).length > 0, `${item.id}:evidence fields`);
       assert.ok(Object.entries(research.evidence_fields).some(([field, value]) => research.classification_reason.includes(`${field}=${value.slice(0, 120)}`)), `${item.id}:reason cites evidence`);
       assert.equal(research.decision, optimizedIds.has(item.id) ? "ACTIVE_OPTIMIZED" : "ACTIVE_CONSTRAINED", `${item.id}:exact decision`);
+      if (item.id === "tc-29") assert.equal(research.classification_rule_id, "TEAM_CAPABILITY_RESOURCE_LOOP");
+      if (["ce-2", "ce-4", "ce-5", "ce-7", "ce-8"].includes(item.id)) assert.equal(research.classification_rule_id, "REUSABLE_CAUSAL_ARC");
       const stored = JSON.parse(sql(`SELECT output_structure->'raw_source' FROM public.t_repertoire_assets WHERE skill_code='runtime-seeds:skill-library:${category}:${item.id}'`));
       assert.deepEqual(stored, JSON.parse(JSON.stringify(item)));
       const configRaw = JSON.parse(sql(`SELECT skill_config_jsonb->'raw_source' FROM public.t_repertoire_assets WHERE skill_code='${code}'`));
