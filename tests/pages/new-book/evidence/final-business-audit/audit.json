@@ -1,0 +1,36 @@
+{
+  "task": "S1-NEW-BOOK-PAGE",
+  "verdict": "PASS",
+  "local_main_merge_allowed": true,
+  "head": "6d1f6cb71eff047fcd24675114243891b07dfe58",
+  "urls": {
+    "new_book": "http://127.0.0.1:4176/books/new/",
+    "workbench": "http://127.0.0.1:4176/workbench"
+  },
+  "screenshots": [
+    { "file": "normal-1440x900.jpg", "state": "normal", "url": "http://127.0.0.1:4176/books/new/", "pixels": "1440x900", "sha256": "dc428749edd5d217973090a5524a825d6aed988f94864fa888aaf5f38bacaab4" },
+    { "file": "returned-1280x720.jpg", "state": "returned", "url": "http://127.0.0.1:4176/books/new/?state=returned", "pixels": "1280x720", "sha256": "d94098adcce50863f242185ac2ebd7c3d8bd768aa4e0a1303411e4be76c5d4b9" },
+    { "file": "restored-1280x720.jpg", "state": "restored", "url": "http://127.0.0.1:4176/books/new/?state=restored", "pixels": "1280x720", "sha256": "e9cee1a0ae39ea57575cab186666ce22b8f0aeddacae91ba274c5ad0d3e84451" },
+    { "file": "completed-1440x900.jpg", "state": "completed", "url": "http://127.0.0.1:4176/books/new/?state=completed", "pixels": "1440x900", "sha256": "4328002e18b13c5e9c28c3488a367a0043ee5e29572858e1f8ebdbb11a39c564" },
+    { "file": "workbench-context-1440x900.jpg", "state": "cross_page_context", "url": "http://127.0.0.1:4176/workbench", "pixels": "1425x891", "css_viewport": "1440x900", "sha256": "bbff3d1c14b4ab07beb9ea74f842f83b96f13a0aa7f83481e8bbd88df9def80f" }
+  ],
+  "real_creation": {
+    "book_id": "ed9fc464-a7c0-496c-ad1f-402cad58137a",
+    "idempotency_key": "0a956eda-5405-4572-8e95-734d2c6e248d",
+    "database_before_cleanup": { "book_projects": 1, "world_assets": 16, "character_profiles": 3, "segment_promises": 9 },
+    "page_completed": true,
+    "workbench_context_matched": true,
+    "cleaned_in_one_transaction": true,
+    "post_cleanup_book_and_child_rows": 0
+  },
+  "sidebar": {
+    "sequence": ["228px", "62px", "228px"],
+    "root_classes": ["", "sidebar-collapsed", ""],
+    "main_margins": ["228px", "62px", "228px"],
+    "toggle_top": "24px",
+    "toggle_click_actionable": true,
+    "overlap_with_brand_separator_first_menu": false
+  },
+  "findings": { "P0": [], "P1": [], "P2": [] },
+  "tests": { "command": "node --test tests/pages/new-book/new-book.test.mjs", "passed": 5, "failed": 0 }
+}
