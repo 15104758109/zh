@@ -63,6 +63,15 @@ BEGIN
      OR EXISTS (SELECT 1 FROM unnest(ARRAY['characters','world_assets','relations','segment_promises']) f WHERE jsonb_typeof(p_data->f) <> 'array') THEN
     RETURN jsonb_build_object('ok', false, 'error', jsonb_build_object('code','INVALID_REQUEST','message','The request could not be accepted.'));
   END IF;
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(p_data->'world_assets') AS asset(value)
+    WHERE jsonb_typeof(value) <> 'object'
+      OR jsonb_typeof(value->'item_content') <> 'object'
+      OR CASE WHEN jsonb_typeof(value->'item_content'->'affordance_dims') = 'array'
+        THEN jsonb_array_length(value->'item_content'->'affordance_dims') = 0 ELSE true END
+  ) THEN
+    RETURN jsonb_build_object('ok', false, 'error', jsonb_build_object('code','INVALID_REQUEST','message','The request could not be accepted.'));
+  END IF;
 
   IF v_idempotency_key IS NOT NULL THEN
     SELECT book_id, book_name INTO v_existing, v_existing_title FROM public.t_book_projects

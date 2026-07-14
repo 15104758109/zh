@@ -38,7 +38,7 @@ function payload(suffix, overrides = {}) {
       { client_ref: "lead", name: "Lead", char_type: "protagonist", five_layers: { L0: {}, L1: {}, L2: {}, L3: {} }, knowledge_boundary: { knows: [], unknown: [], false_belief: [], reasonable_suspect: [] } },
       { client_ref: "rival", name: "Rival", char_type: "antagonist", five_layers: { L0: {}, L1: {}, L2: {}, L3: {} }, knowledge_boundary: { knows: [], unknown: [], false_belief: [], reasonable_suspect: [] } },
     ],
-    world_assets: [{ board_type: "rule", atom_type: "rule", item_name: "Cost", item_content: { price: "truth" } }],
+    world_assets: [{ board_type: "rule", atom_type: "rule", item_name: "Cost", item_content: { price: "truth", affordance_dims: ["cost"] } }],
     relations: [{ from_ref: "lead", to_ref: "rival", intimacy: -1, trust: -2, dependence: 1, support_level: 0, emotional_bond: 2 }],
     segment_promises: [{ l1a_seq: 1, l1a_name: "Opening conflict", conflict_background: {}, stakes: {}, irreversible_consequences: {}, escalation_path: {}, plot_promise: {}, emotion_promise: {}, role_arc: {}, world_progress: {} }],
     ...overrides,
@@ -77,6 +77,15 @@ test("invalid input is closed and leaves no book", () => {
   const result = query(bad);
   assert.deepEqual(result, { ok: false, error: { code: "INVALID_REQUEST", message: "The request could not be accepted." } });
   assert.equal(Number(sql(`SELECT count(*) FROM public.t_book_projects WHERE idempotency_key='${prefix}-invalid';`)), 0);
+});
+
+test("world assets require a nonempty affordance_dims array before any write", () => {
+  const invalid = query(payload("missing-affordance", {
+    idempotency_key: `${prefix}-missing-affordance`,
+    world_assets: [{ board_type: "rule", atom_type: "rule", item_name: "Cost", item_content: {} }],
+  }));
+  assert.deepEqual(invalid, { ok: false, error: { code: "INVALID_REQUEST", message: "The request could not be accepted." } });
+  assert.equal(Number(sql(`SELECT count(*) FROM public.t_book_projects WHERE idempotency_key='${prefix}-missing-affordance';`)), 0);
 });
 
 test("FP001-05 commercial score is rejected and a prefixed operator is invalid", () => {
@@ -131,6 +140,9 @@ test("request, preview, blocked, success, error and canonical workflow contracts
   const postgres = workflow.nodes.find((node) => node.name === "FP001-07 PostgreSQL RPC");
   assert.match(postgres.parameters.query, /rpc_create_book_project/);
   assert.equal(postgres.parameters.options.queryReplacement, "={{ [JSON.stringify($json.rpc_request)] }}");
+  const dependencies = workflow.nodes.find((node) => node.name === "FP001-03 active dependency lookup");
+  assert.match(dependencies.parameters.query, /genre_main = \$1/);
+  assert.equal(dependencies.parameters.options.queryReplacement, "={{ [ $('FP001-02 closed validation and route').item.json.preview_request.intent.genre_main ] }}");
   const incomplete = workflow.connections["FP001-02 confirm route"].main[1][0];
   assert.equal(incomplete.node, "FP001-03 active dependency lookup");
   assert.equal(workflow.connections["FP001-03 agent route"].main[1][0].node, "Respond");
