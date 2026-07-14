@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { access, mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { access, link, mkdtemp, mkdir, rename, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises';
 import test from 'node:test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -238,8 +238,27 @@ test('production scan recursively reports only new findings and does not echo se
 
 test('public production options reject hooks and cannot suppress an unsafe workflow', async () => withFixture(async (fixture) => {
   await writeProduction(fixture, 'active.json', { ...workflow('active'), active: true }); let invoked = false;
-  await assert.rejects(lintProductionN8n({ cwd: fixture.cwd, productionDir: 'production', hooks: { afterCollectionEnumeratedBeforeCapture() { invoked = true; } } }), /internal-only/);
+  assert.throws(() => lintProductionN8n({ cwd: fixture.cwd, productionDir: 'production', hooks: { afterCollectionEnumeratedBeforeCapture() { invoked = true; } } }), /Invalid n8n lint public options/);
   assert.equal(invoked, false); assert.ok(codes(await lintProduction(fixture)).includes('ACTIVE_STATUS_ANOMALY'));
+}));
+
+test('public APIs synchronously reject non-allowlisted, symbol, accessor, and prototype options', async () => withFixture(async (fixture) => {
+  const ownProto = {}; Object.defineProperty(ownProto, '__proto__', { value: 'polluted', enumerable: true });
+  const symbol = { cwd: fixture.cwd }; symbol[Symbol('unknown')] = true;
+  const inherited = Object.create({ cwd: fixture.cwd });
+  let accessed = false; const accessor = {}; Object.defineProperty(accessor, 'cwd', { enumerable: true, get() { accessed = true; return fixture.cwd; } });
+  const cases = [
+    { fs: {} }, { hooks: {} }, { afterDirectoryVerifiedBeforeRead() {} }, { afterCollectionScannedBeforeVerify() {} }, { unsafeMutation: true }, { randomUnknown: true }, { constructor: true }, { prototype: true }, ownProto, symbol, inherited, Object.create(null), accessor,
+  ];
+  for (const value of cases) {
+    assert.throws(() => lintN8n(value), /Invalid n8n lint public options/);
+    assert.throws(() => lintProductionN8n(value), /Invalid n8n lint public options/);
+  }
+  assert.throws(() => lintN8n({ productionDir: 'production' }), /Invalid n8n lint public options/);
+  assert.throws(() => lintProductionN8n({ referenceDir: 'references' }), /Invalid n8n lint public options/);
+  assert.equal(accessed, false);
+  assert.deepEqual((await lintN8n({ cwd: fixture.cwd, referenceDir: 'references', baselinePath: 'baseline.json' })).summary, { known: 6, new: 0, total: 6 });
+  assert.deepEqual((await lintProductionN8n({ cwd: fixture.cwd, productionDir: 'production' })).summary, { known: 0, new: 0, total: 0 });
 }));
 
 test('production scan blocks invalid JSON and every valid non-object JSON value as structure-only findings', async () => withFixture(async (fixture) => {
@@ -362,3 +381,25 @@ test('collection snapshot rejects JSON additions and deletions after scanning', 
     assert.ok(deleted);
   });
 });
+
+test('production scan rejects hard-linked JSON workflows', async () => withFixture(async (fixture) => {
+  await writeProduction(fixture, 'source.json', workflow('source'));
+  await link(join(fixture.cwd, 'production', 'source.json'), join(fixture.cwd, 'production', 'linked.json'));
+  await assert.rejects(lintProduction(fixture), /hard linked/);
+}));
+
+test('collection snapshot rejects a rename replacement after scanning', async () => withFixture(async (fixture) => {
+  await writeProduction(fixture, 'inside.json', workflow('inside')); const inside = join(fixture.cwd, 'production', 'inside.json'); const replacement = join(fixture.cwd, 'replacement.json'); await writeFile(replacement, JSON.stringify(workflow('replacement'))); let replaced = false;
+  await assert.rejects(lintProductionInternal(fixture, 'production', { afterCollectionScannedBeforeVerify: async () => {
+    if (!replaced) { replaced = true; await rm(inside, { force: true }); await rename(replacement, inside); }
+  } }), /collection changed/);
+  assert.ok(replaced);
+}));
+
+test('collection snapshot rejects same-size content changes with restored mtime', async () => withFixture(async (fixture) => {
+  await writeProduction(fixture, 'inside.json', '"aaaa"'); const inside = join(fixture.cwd, 'production', 'inside.json'); const before = await stat(inside); let changed = false;
+  await assert.rejects(lintProductionInternal(fixture, 'production', { afterCollectionScannedBeforeVerify: async () => {
+    if (!changed) { changed = true; await writeFile(inside, '"bbbb"'); await utimes(inside, before.atime, before.mtime); }
+  } }), /collection changed/);
+  assert.ok(changed);
+}));

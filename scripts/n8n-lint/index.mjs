@@ -6,18 +6,35 @@ function rejectParentTraversal(value, label) {
   if (value.split(/[\\/]+/).includes('..')) throw new Error(`${label} must not contain parent traversal`);
 }
 
-function checkedOptions({ referenceDir = DEFAULT_REFERENCE_DIR, baselinePath = DEFAULT_BASELINE, cwd = process.cwd() } = {}) {
-  return { referenceDir, baselinePath, cwd };
+const PUBLIC_OPTIONS_ERROR = 'Invalid n8n lint public options';
+const LEGACY_OPTION_NAMES = new Set(['referenceDir', 'baselinePath', 'cwd']);
+const PRODUCTION_OPTION_NAMES = new Set(['productionDir', 'cwd']);
+
+function publicOptions(options, allowed) {
+  try {
+    if (options === null || typeof options !== 'object' || Array.isArray(options) || Object.getPrototypeOf(options) !== Object.prototype) throw new Error(PUBLIC_OPTIONS_ERROR);
+    if (Object.getOwnPropertySymbols(options).length !== 0) throw new Error(PUBLIC_OPTIONS_ERROR);
+    const values = {};
+    for (const name of Object.getOwnPropertyNames(options)) {
+      if (!allowed.has(name)) throw new Error(PUBLIC_OPTIONS_ERROR);
+      const descriptor = Object.getOwnPropertyDescriptor(options, name);
+      if (!descriptor || !Object.hasOwn(descriptor, 'value')) throw new Error(PUBLIC_OPTIONS_ERROR);
+      values[name] = descriptor.value;
+    }
+    return values;
+  } catch { throw new Error(PUBLIC_OPTIONS_ERROR); }
 }
 
-export async function lintN8n(options = {}) {
-  return lintLegacyN8nInternal(checkedOptions(options));
+function optionOrDefault(options, name, value) { return Object.hasOwn(options, name) && options[name] !== undefined ? options[name] : value; }
+
+export function lintN8n(options = {}) {
+  const values = publicOptions(options, LEGACY_OPTION_NAMES);
+  return lintLegacyN8nInternal({ referenceDir: optionOrDefault(values, 'referenceDir', DEFAULT_REFERENCE_DIR), baselinePath: optionOrDefault(values, 'baselinePath', DEFAULT_BASELINE), cwd: optionOrDefault(values, 'cwd', process.cwd()) });
 }
 
-export async function lintProductionN8n(options = {}) {
-  if (Object.hasOwn(options, 'hooks')) throw new Error('hooks are internal-only test controls');
-  const { productionDir = DEFAULT_PRODUCTION_DIR, cwd = process.cwd() } = options;
-  return lintProductionN8nInternal({ productionDir, cwd });
+export function lintProductionN8n(options = {}) {
+  const values = publicOptions(options, PRODUCTION_OPTION_NAMES);
+  return lintProductionN8nInternal({ productionDir: optionOrDefault(values, 'productionDir', DEFAULT_PRODUCTION_DIR), cwd: optionOrDefault(values, 'cwd', process.cwd()) });
 }
 
 function parseArgs(args) {
@@ -34,7 +51,7 @@ function parseArgs(args) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    const options = parseArgs(process.argv.slice(2)); const legacy = await lintN8n(options); const production = await lintProductionN8n(options); const report = { ...legacy, production };
+    const options = parseArgs(process.argv.slice(2)); const legacy = await lintN8n({ referenceDir: options.referenceDir, baselinePath: options.baselinePath }); const production = await lintProductionN8n({ productionDir: options.productionDir }); const report = { ...legacy, production };
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`); process.exitCode = legacy.summary.new === 0 && production.summary.new === 0 ? 0 : 1;
   } catch (error) {
     process.stderr.write(`n8n lint failed: ${error instanceof Error ? error.message : String(error)}\n`); process.exitCode = 2;
