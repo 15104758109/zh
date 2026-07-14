@@ -14,6 +14,7 @@ CREATE TABLE zhreplan.runtime_idempotency_ledger (
   book_id text NOT NULL CHECK (book_id ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'),
   operation text NOT NULL CHECK (operation ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'),
   payload jsonb NOT NULL,
+  intent jsonb NOT NULL,
   status text NOT NULL CHECK (status IN ('claimed', 'finalized')),
   result jsonb,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -138,7 +139,7 @@ CREATE FUNCTION zhreplan.runtime_guarded_write(
 ) RETURNS TABLE(code text, state_version bigint, result jsonb)
 LANGUAGE plpgsql
 AS $$
-DECLARE v_idempotency zhreplan.runtime_idempotency_ledger%ROWTYPE; v_state_version bigint; v_audit_id text;
+DECLARE v_idempotency zhreplan.runtime_idempotency_ledger%ROWTYPE; v_intent jsonb; v_state_version bigint; v_audit_id text;
 BEGIN
   PERFORM 1 FROM zhreplan.runtime_write_locks
   WHERE local_operator_id = p_local_operator_id AND book_id = p_book_id
@@ -149,13 +150,23 @@ BEGIN
     RETURN QUERY SELECT 'LOCK_CONFLICT'::text, NULL::bigint, NULL::jsonb;
     RETURN;
   END IF;
+  v_intent := jsonb_build_object(
+    'local_operator_id', p_local_operator_id,
+    'book_id', p_book_id,
+    'operation', p_operation,
+    'idempotency_key', p_idempotency_key,
+    'entity_id', p_entity_id,
+    'expected_version', p_expected_version,
+    'payload', p_payload,
+    'state_value', p_state_value,
+    'result', p_result
+  );
   INSERT INTO zhreplan.runtime_idempotency_ledger
-    (idempotency_key, local_operator_id, book_id, operation, payload, status)
-  VALUES (p_idempotency_key, p_local_operator_id, p_book_id, p_operation, p_payload, 'claimed')
+    (idempotency_key, local_operator_id, book_id, operation, payload, intent, status)
+  VALUES (p_idempotency_key, p_local_operator_id, p_book_id, p_operation, p_payload, v_intent, 'claimed')
   ON CONFLICT (idempotency_key) DO NOTHING;
   SELECT * INTO v_idempotency FROM zhreplan.runtime_idempotency_ledger WHERE idempotency_key = p_idempotency_key FOR UPDATE;
-  IF v_idempotency.local_operator_id <> p_local_operator_id OR v_idempotency.book_id <> p_book_id
-    OR v_idempotency.operation <> p_operation OR v_idempotency.payload <> p_payload THEN
+  IF v_idempotency.intent IS DISTINCT FROM v_intent THEN
     RETURN QUERY SELECT 'IDEMPOTENCY_CONFLICT'::text, NULL::bigint, NULL::jsonb;
     RETURN;
   ELSIF v_idempotency.status = 'finalized' THEN

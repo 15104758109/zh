@@ -185,9 +185,33 @@ test("guarded write is idempotent and stale versions leave zero partial rows", (
   const replay = write(lock);
   assert.equal(replay.ok, true);
   assert.equal(replay.value.replay, true);
-  assert.equal(write(lock, { payload: "different" }).error.code, "IDEMPOTENCY_CONFLICT");
+  const countsBeforeConflict = [
+    count("runtime_idempotency_ledger", "WHERE idempotency_key = 'write-1'"),
+    count("runtime_guarded_state", "WHERE book_id = 'book-write'"),
+    count("runtime_guard_audit_log", "WHERE book_id = 'book-write'"),
+  ];
+  for (const [field, value] of [
+    ["entity_id", "run-different"],
+    ["expected_version", 1],
+    ["payload", "different-payload"],
+    ["state", "different-state"],
+    ["result", "different-result"],
+    ["operation", "other-operation"],
+  ]) {
+    const conflict = write(lock, { [field]: value });
+    assert.equal(conflict.ok, false, field);
+    assert.equal(conflict.error.code, "IDEMPOTENCY_CONFLICT", field);
+    assert.equal(Object.hasOwn(conflict.error, "result"), false, field);
+    assert.deepEqual([
+      count("runtime_idempotency_ledger", "WHERE idempotency_key = 'write-1'"),
+      count("runtime_guarded_state", "WHERE book_id = 'book-write'"),
+      count("runtime_guard_audit_log", "WHERE book_id = 'book-write'"),
+    ], countsBeforeConflict, field);
+  }
   const otherBookLock = acquire("other-book");
-  assert.equal(write(otherBookLock, { book_id: "other-book", holder_token: otherBookLock.holder_token, fence_version: otherBookLock.fence_version }).error.code, "IDEMPOTENCY_CONFLICT");
+  const scopeConflict = write(otherBookLock, { book_id: "other-book", holder_token: otherBookLock.holder_token, fence_version: otherBookLock.fence_version });
+  assert.equal(scopeConflict.error.code, "IDEMPOTENCY_CONFLICT");
+  assert.equal(Object.hasOwn(scopeConflict.error, "result"), false);
   const stateBefore = count("runtime_guarded_state", "WHERE book_id = 'book-write'");
   const auditBefore = count("runtime_guard_audit_log", "WHERE book_id = 'book-write'");
   const stale = write(lock, { idempotency_key: "write-stale", payload: "payload-stale", expected_version: 0 });
