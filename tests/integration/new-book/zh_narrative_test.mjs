@@ -139,7 +139,7 @@ test("request, preview, blocked, success, error and canonical workflow contracts
   assert.equal(webhook.parameters.path, "create_book");
   const postgres = workflow.nodes.find((node) => node.name === "FP001-07 PostgreSQL RPC");
   assert.match(postgres.parameters.query, /rpc_create_book_project/);
-  assert.equal(postgres.parameters.options.queryReplacement, "={{ [JSON.stringify($json.rpc_request)] }}");
+  assert.equal(postgres.parameters.options.queryReplacement, "={{ [JSON.stringify($json.create_request)] }}");
   const dependencies = workflow.nodes.find((node) => node.name === "FP001-03 active dependency lookup");
   assert.match(dependencies.parameters.query, /genre_main = \$1/);
   assert.equal(dependencies.parameters.options.queryReplacement, "={{ [ $('FP001-02 closed validation and route').item.json.preview_request.intent.genre_main ] }}");
