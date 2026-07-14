@@ -52,8 +52,7 @@ CREATE FUNCTION zhreplan.runtime_guard_acquire(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  v_token text := md5(random()::text || clock_timestamp()::text || pg_backend_pid()::text)
-    || md5(random()::text || clock_timestamp()::text || txid_current()::text);
+  v_token text := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
 BEGIN
   IF p_ttl_seconds < 1 OR p_ttl_seconds > 300 THEN
     RETURN QUERY SELECT 'INPUT_INVALID'::text, NULL::bigint, NULL::text, NULL::timestamptz;
@@ -132,70 +131,15 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION zhreplan.runtime_guard_claim(
-  p_local_operator_id text, p_book_id text, p_operation text, p_idempotency_key text, p_payload jsonb
-) RETURNS TABLE(code text, result jsonb)
-LANGUAGE plpgsql
-AS $$
-DECLARE v_row zhreplan.runtime_idempotency_ledger%ROWTYPE; v_inserted boolean;
-BEGIN
-  WITH inserted AS (
-    INSERT INTO zhreplan.runtime_idempotency_ledger
-    (idempotency_key, local_operator_id, book_id, operation, payload, status)
-    VALUES (p_idempotency_key, p_local_operator_id, p_book_id, p_operation, p_payload, 'claimed')
-    ON CONFLICT (idempotency_key) DO NOTHING
-    RETURNING idempotency_key
-  )
-  SELECT EXISTS (SELECT 1 FROM inserted) INTO v_inserted;
-  SELECT * INTO v_row FROM zhreplan.runtime_idempotency_ledger WHERE idempotency_key = p_idempotency_key FOR UPDATE;
-  IF v_row.local_operator_id <> p_local_operator_id OR v_row.book_id <> p_book_id
-    OR v_row.operation <> p_operation OR v_row.payload <> p_payload THEN
-    RETURN QUERY SELECT 'IDEMPOTENCY_CONFLICT'::text, NULL::jsonb;
-  ELSIF v_row.status = 'finalized' THEN
-    RETURN QUERY SELECT 'IDEMPOTENCY_REPLAY'::text, v_row.result;
-  ELSE
-    RETURN QUERY SELECT CASE WHEN v_inserted THEN 'IDEMPOTENCY_CLAIMED' ELSE 'IDEMPOTENCY_PENDING' END, NULL::jsonb;
-  END IF;
-END;
-$$;
-
-CREATE FUNCTION zhreplan.runtime_guard_finalize(
-  p_local_operator_id text, p_book_id text, p_operation text, p_idempotency_key text, p_payload jsonb, p_result jsonb
-) RETURNS TABLE(code text, result jsonb)
-LANGUAGE plpgsql
-AS $$
-DECLARE v_row zhreplan.runtime_idempotency_ledger%ROWTYPE;
-BEGIN
-  SELECT * INTO v_row FROM zhreplan.runtime_idempotency_ledger WHERE idempotency_key = p_idempotency_key FOR UPDATE;
-  IF NOT FOUND OR v_row.local_operator_id <> p_local_operator_id OR v_row.book_id <> p_book_id
-    OR v_row.operation <> p_operation OR v_row.payload <> p_payload THEN
-    RETURN QUERY SELECT 'IDEMPOTENCY_CONFLICT'::text, NULL::jsonb;
-    RETURN;
-  END IF;
-  IF v_row.status = 'finalized' THEN
-    RETURN QUERY SELECT 'IDEMPOTENCY_REPLAY'::text, v_row.result;
-    RETURN;
-  END IF;
-  UPDATE zhreplan.runtime_idempotency_ledger
-  SET status = 'finalized', result = p_result, finalized_at = clock_timestamp()
-  WHERE idempotency_key = p_idempotency_key;
-  RETURN QUERY SELECT 'IDEMPOTENCY_FINALIZED'::text, p_result;
-END;
-$$;
-
 CREATE FUNCTION zhreplan.runtime_guarded_write(
   p_local_operator_id text, p_book_id text, p_entity_id text, p_expected_version bigint,
   p_holder_token text, p_fence_version bigint, p_operation text, p_idempotency_key text,
-  p_payload jsonb, p_state_value jsonb, p_result jsonb, p_fault_stage text DEFAULT NULL
+  p_payload jsonb, p_state_value jsonb, p_result jsonb
 ) RETURNS TABLE(code text, state_version bigint, result jsonb)
 LANGUAGE plpgsql
 AS $$
 DECLARE v_idempotency zhreplan.runtime_idempotency_ledger%ROWTYPE; v_state_version bigint; v_audit_id text;
 BEGIN
-  IF p_fault_stage IS NOT NULL AND p_fault_stage NOT IN ('after_claim', 'after_state', 'after_audit', 'after_finalize') THEN
-    RETURN QUERY SELECT 'INPUT_INVALID'::text, NULL::bigint, NULL::jsonb;
-    RETURN;
-  END IF;
   PERFORM 1 FROM zhreplan.runtime_write_locks
   WHERE local_operator_id = p_local_operator_id AND book_id = p_book_id
     AND holder_token = p_holder_token AND fence_version = p_fence_version
@@ -218,7 +162,6 @@ BEGIN
     RETURN QUERY SELECT 'IDEMPOTENCY_REPLAY'::text, NULL::bigint, v_idempotency.result;
     RETURN;
   END IF;
-  IF p_fault_stage = 'after_claim' THEN RAISE EXCEPTION 'GUARD_TRANSACTION_FAILED'; END IF;
   IF p_expected_version = 0 THEN
     INSERT INTO zhreplan.runtime_guarded_state (local_operator_id, book_id, entity_id, state_version, state_value)
     VALUES (p_local_operator_id, p_book_id, p_entity_id, 1, p_state_value)
@@ -233,17 +176,13 @@ BEGIN
   IF v_state_version IS NULL THEN
     RAISE EXCEPTION 'GUARD_STALE_VERSION';
   END IF;
-  IF p_fault_stage = 'after_state' THEN RAISE EXCEPTION 'GUARD_TRANSACTION_FAILED'; END IF;
-  v_audit_id := md5(random()::text || clock_timestamp()::text || pg_backend_pid()::text)
-    || md5(random()::text || clock_timestamp()::text || txid_current()::text);
+  v_audit_id := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
   INSERT INTO zhreplan.runtime_guard_audit_log
     (audit_id, local_operator_id, book_id, entity_id, idempotency_key, state_version)
   VALUES (v_audit_id, p_local_operator_id, p_book_id, p_entity_id, p_idempotency_key, v_state_version);
-  IF p_fault_stage = 'after_audit' THEN RAISE EXCEPTION 'GUARD_TRANSACTION_FAILED'; END IF;
   UPDATE zhreplan.runtime_idempotency_ledger
   SET status = 'finalized', result = p_result, finalized_at = clock_timestamp()
   WHERE idempotency_key = p_idempotency_key;
-  IF p_fault_stage = 'after_finalize' THEN RAISE EXCEPTION 'GUARD_TRANSACTION_FAILED'; END IF;
   RETURN QUERY SELECT 'CAS_APPLIED'::text, v_state_version, p_result;
 EXCEPTION
   WHEN raise_exception THEN
@@ -254,3 +193,14 @@ EXCEPTION
     RAISE;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION zhreplan.runtime_guard_acquire(text, text, integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION zhreplan.runtime_guard_renew(text, text, text, bigint, integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION zhreplan.runtime_guard_validate(text, text, text, bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION zhreplan.runtime_guard_release(text, text, text, bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION zhreplan.runtime_guarded_write(text, text, text, bigint, text, bigint, text, text, jsonb, jsonb, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION zhreplan.runtime_guard_acquire(text, text, integer) TO CURRENT_USER;
+GRANT EXECUTE ON FUNCTION zhreplan.runtime_guard_renew(text, text, text, bigint, integer) TO CURRENT_USER;
+GRANT EXECUTE ON FUNCTION zhreplan.runtime_guard_validate(text, text, text, bigint) TO CURRENT_USER;
+GRANT EXECUTE ON FUNCTION zhreplan.runtime_guard_release(text, text, text, bigint) TO CURRENT_USER;
+GRANT EXECUTE ON FUNCTION zhreplan.runtime_guarded_write(text, text, text, bigint, text, bigint, text, text, jsonb, jsonb, jsonb) TO CURRENT_USER;

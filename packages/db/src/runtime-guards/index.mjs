@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 import { sql } from "../database.mjs";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-const OPERATOR = /^operator:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const OPERATOR = /^operator:[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
 const TOKEN = /^[0-9a-f]{64}$/;
 const MAX_SAFE = Number.MAX_SAFE_INTEGER;
 
@@ -36,24 +36,39 @@ function validInteger(value, minimum) {
   return Number.isSafeInteger(value) && value >= minimum && value <= MAX_SAFE;
 }
 
-function scalarJson(value) {
-  return Buffer.from(JSON.stringify(value), "utf8").toString("base64");
+function jsonArgument(value) {
+  const encoded = Buffer.from(JSON.stringify(value), "utf8").toString("base64");
+  return `convert_from(decode('${encoded}', 'base64'), 'UTF8')::jsonb`;
 }
 
-function jsonArgument(value) {
-  return `convert_from(decode('${scalarJson(value)}', 'base64'), 'UTF8')::jsonb`;
+function textArgument(value) {
+  return `${jsonArgument(value)} #>> '{}'`;
+}
+
+function valueArgument(value) {
+  return jsonArgument({ value });
 }
 
 function parseRows(statement) {
   try {
-    return sql(statement).trim().split("\n").filter(Boolean).map((line) => line.split("|"));
+    const output = sql(statement).trim();
+    return output === "" ? [] : output.split("\n").map((line) => line.split("|"));
   } catch {
     return null;
   }
 }
 
-function decodeJson(value) {
-  return JSON.parse(Buffer.from(value, "base64").toString("utf8"));
+function oneRow(rows, width) {
+  return Array.isArray(rows) && rows.length === 1 && rows[0]?.length === width ? rows[0] : null;
+}
+
+function decodeValue(encoded) {
+  try {
+    const value = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
+    return exact(value, ["value"]) && typeof value.value === "string" ? value.value : null;
+  } catch {
+    return null;
+  }
 }
 
 function lockRequest(value) {
@@ -69,15 +84,6 @@ function leaseRequest(value) {
     && validInteger(value.fence_version, 1);
 }
 
-function idempotencyRequest(value, finalize = false) {
-  const keys = finalize
-    ? ["local_operator_id", "book_id", "operation", "idempotency_key", "payload", "result"]
-    : ["local_operator_id", "book_id", "operation", "idempotency_key", "payload"];
-  return exact(value, keys) && validId(value.local_operator_id, true) && validId(value.book_id)
-    && validId(value.operation) && validId(value.idempotency_key) && validText(value.payload)
-    && (!finalize || validText(value.result));
-}
-
 function writeRequest(value) {
   const keys = ["local_operator_id", "book_id", "entity_id", "expected_version", "holder_token", "fence_version", "operation", "idempotency_key", "payload", "state", "result"];
   return exact(value, keys) && validId(value.local_operator_id, true) && validId(value.book_id)
@@ -87,58 +93,50 @@ function writeRequest(value) {
     && validText(value.payload) && validText(value.state) && validText(value.result);
 }
 
-function valueArgument(value) {
-  return jsonArgument({ value });
+function normalLeaseResult(rows, successCode, value) {
+  const row = oneRow(rows, 1);
+  if (row?.[0] === successCode) return { ok: true, value };
+  return error(row?.[0] === "LOCK_CONFLICT" ? "LOCK_CONFLICT" : "INTERNAL_ERROR");
 }
 
 export const pgRuntimeGuards = Object.freeze({
   acquire(request) {
     if (!lockRequest(request)) return error("INPUT_INVALID");
-    const rows = parseRows(`SELECT code, COALESCE(fence_version::text, ''), COALESCE(holder_token, '') FROM zhreplan.runtime_guard_acquire(${jsonArgument(request.local_operator_id)} #>> '{}', ${jsonArgument(request.book_id)} #>> '{}', ${request.ttl_seconds});`);
-    const row = rows?.[0];
-    if (!row || row[0] !== "LOCK_ACQUIRED" || !row[1] || !row[2]) return row?.[0] === "LOCK_CONFLICT" ? error("LOCK_CONFLICT") : error("INTERNAL_ERROR");
-    return { ok: true, value: { fence_version: Number(row[1]), holder_token: row[2] } };
+    const row = oneRow(parseRows(`SELECT code, COALESCE(fence_version::text, ''), COALESCE(holder_token, '') FROM zhreplan.runtime_guard_acquire(${textArgument(request.local_operator_id)}, ${textArgument(request.book_id)}, ${request.ttl_seconds});`), 3);
+    const fenceVersion = Number(row?.[1]);
+    if (row?.[0] === "LOCK_ACQUIRED" && validInteger(fenceVersion, 1) && typeof row[2] === "string" && TOKEN.test(row[2])) {
+      return { ok: true, value: { fence_version: fenceVersion, holder_token: row[2] } };
+    }
+    return error(row?.[0] === "LOCK_CONFLICT" ? "LOCK_CONFLICT" : "INTERNAL_ERROR");
   },
   renew(request) {
     if (!leaseRequest(request)) return error("INPUT_INVALID");
-    const rows = parseRows(`SELECT code FROM zhreplan.runtime_guard_renew(${jsonArgument(request.local_operator_id)} #>> '{}', ${jsonArgument(request.book_id)} #>> '{}', ${jsonArgument(request.holder_token)} #>> '{}', ${request.fence_version}, 30);`);
-    return rows?.[0]?.[0] === "LOCK_RENEWED" ? { ok: true, value: { renewed: true } } : error(rows?.[0]?.[0] === "LOCK_CONFLICT" ? "LOCK_CONFLICT" : "INTERNAL_ERROR");
+    return normalLeaseResult(parseRows(`SELECT code FROM zhreplan.runtime_guard_renew(${textArgument(request.local_operator_id)}, ${textArgument(request.book_id)}, ${textArgument(request.holder_token)}, ${request.fence_version}, 30);`), "LOCK_RENEWED", { renewed: true });
   },
   validate(request) {
     if (!leaseRequest(request)) return error("INPUT_INVALID");
-    const rows = parseRows(`SELECT code FROM zhreplan.runtime_guard_validate(${jsonArgument(request.local_operator_id)} #>> '{}', ${jsonArgument(request.book_id)} #>> '{}', ${jsonArgument(request.holder_token)} #>> '{}', ${request.fence_version});`);
-    return rows?.[0]?.[0] === "LOCK_VALID" ? { ok: true, value: { valid: true } } : error(rows?.[0]?.[0] === "LOCK_CONFLICT" ? "LOCK_CONFLICT" : "INTERNAL_ERROR");
+    return normalLeaseResult(parseRows(`SELECT code FROM zhreplan.runtime_guard_validate(${textArgument(request.local_operator_id)}, ${textArgument(request.book_id)}, ${textArgument(request.holder_token)}, ${request.fence_version});`), "LOCK_VALID", { valid: true });
   },
   release(request) {
     if (!leaseRequest(request)) return error("INPUT_INVALID");
-    const rows = parseRows(`SELECT code FROM zhreplan.runtime_guard_release(${jsonArgument(request.local_operator_id)} #>> '{}', ${jsonArgument(request.book_id)} #>> '{}', ${jsonArgument(request.holder_token)} #>> '{}', ${request.fence_version});`);
-    return rows?.[0]?.[0] === "LOCK_RELEASED" ? { ok: true, value: { released: true } } : error(rows?.[0]?.[0] === "LOCK_CONFLICT" ? "LOCK_CONFLICT" : "INTERNAL_ERROR");
+    return normalLeaseResult(parseRows(`SELECT code FROM zhreplan.runtime_guard_release(${textArgument(request.local_operator_id)}, ${textArgument(request.book_id)}, ${textArgument(request.holder_token)}, ${request.fence_version});`), "LOCK_RELEASED", { released: true });
   },
-  claim(request) {
-    if (!idempotencyRequest(request)) return error("INPUT_INVALID");
-    const rows = parseRows(`SELECT code, COALESCE(encode(convert_to(result::text, 'UTF8'), 'base64'), '') FROM zhreplan.runtime_guard_claim(${jsonArgument(request.local_operator_id)} #>> '{}', ${jsonArgument(request.book_id)} #>> '{}', ${jsonArgument(request.operation)} #>> '{}', ${jsonArgument(request.idempotency_key)} #>> '{}', ${valueArgument(request.payload)});`);
-    const row = rows?.[0];
-    if (row?.[0] === "IDEMPOTENCY_CLAIMED" || row?.[0] === "IDEMPOTENCY_PENDING") return { ok: true, value: { status: row[0] } };
-    if (row?.[0] === "IDEMPOTENCY_REPLAY" && row[1]) return { ok: true, value: { status: row[0], result: decodeJson(row[1]).value } };
-    return error(row?.[0] === "IDEMPOTENCY_CONFLICT" ? "IDEMPOTENCY_CONFLICT" : "INTERNAL_ERROR");
-  },
-  finalize(request) {
-    if (!idempotencyRequest(request, true)) return error("INPUT_INVALID");
-    const rows = parseRows(`SELECT code, COALESCE(encode(convert_to(result::text, 'UTF8'), 'base64'), '') FROM zhreplan.runtime_guard_finalize(${jsonArgument(request.local_operator_id)} #>> '{}', ${jsonArgument(request.book_id)} #>> '{}', ${jsonArgument(request.operation)} #>> '{}', ${jsonArgument(request.idempotency_key)} #>> '{}', ${valueArgument(request.payload)}, ${valueArgument(request.result)});`);
-    const row = rows?.[0];
-    if ((row?.[0] === "IDEMPOTENCY_FINALIZED" || row?.[0] === "IDEMPOTENCY_REPLAY") && row[1]) return { ok: true, value: { status: row[0], result: decodeJson(row[1]).value } };
-    return error(row?.[0] === "IDEMPOTENCY_CONFLICT" ? "IDEMPOTENCY_CONFLICT" : "INTERNAL_ERROR");
-  },
-  guardedWrite(request, options = {}) {
-    if (!writeRequest(request) || !exact(options, ["fault_stage"]) && Object.keys(options).length !== 0) return error("INPUT_INVALID");
-    const faultStage = Object.keys(options).length === 0 ? null : options.fault_stage;
-    if (faultStage !== null && !["after_claim", "after_state", "after_audit", "after_finalize"].includes(faultStage)) return error("INPUT_INVALID");
-    const rows = parseRows(`SELECT code, COALESCE(state_version::text, ''), COALESCE(encode(convert_to(result::text, 'UTF8'), 'base64'), '') FROM zhreplan.runtime_guarded_write(${jsonArgument(request.local_operator_id)} #>> '{}', ${jsonArgument(request.book_id)} #>> '{}', ${jsonArgument(request.entity_id)} #>> '{}', ${request.expected_version}, ${jsonArgument(request.holder_token)} #>> '{}', ${request.fence_version}, ${jsonArgument(request.operation)} #>> '{}', ${jsonArgument(request.idempotency_key)} #>> '{}', ${valueArgument(request.payload)}, ${valueArgument(request.state)}, ${valueArgument(request.result)}, ${faultStage === null ? "NULL" : `${jsonArgument(faultStage)} #>> '{}'`});`);
-    const row = rows?.[0];
-    if (row?.[0] === "CAS_APPLIED" && row[1] && row[2]) return { ok: true, value: { state_version: Number(row[1]), result: decodeJson(row[2]).value } };
-    if (row?.[0] === "IDEMPOTENCY_REPLAY" && row[2]) return { ok: true, value: { replay: true, result: decodeJson(row[2]).value } };
+  guardedWrite(request) {
+    if (!writeRequest(request)) return error("INPUT_INVALID");
+    const row = oneRow(parseRows(`SELECT code, COALESCE(state_version::text, ''), COALESCE(encode(convert_to(result::text, 'UTF8'), 'base64'), '') FROM zhreplan.runtime_guarded_write(${textArgument(request.local_operator_id)}, ${textArgument(request.book_id)}, ${textArgument(request.entity_id)}, ${request.expected_version}, ${textArgument(request.holder_token)}, ${request.fence_version}, ${textArgument(request.operation)}, ${textArgument(request.idempotency_key)}, ${valueArgument(request.payload)}, ${valueArgument(request.state)}, ${valueArgument(request.result)});`), 3);
+    if (row?.[0] === "CAS_APPLIED") {
+      const stateVersion = Number(row[1]);
+      const result = decodeValue(row[2]);
+      if (validInteger(stateVersion, 1) && result !== null) return { ok: true, value: { state_version: stateVersion, result } };
+      return error("INTERNAL_ERROR");
+    }
+    if (row?.[0] === "IDEMPOTENCY_REPLAY") {
+      const result = decodeValue(row[2]);
+      return result === null ? error("INTERNAL_ERROR") : { ok: true, value: { replay: true, result } };
+    }
     if (row?.[0] === "LOCK_CONFLICT") return error("LOCK_CONFLICT");
     if (row?.[0] === "IDEMPOTENCY_CONFLICT") return error("IDEMPOTENCY_CONFLICT");
-    return error(rows === null ? "INTERNAL_ERROR" : "STALE_VERSION");
+    if (row?.[0] === "STALE_VERSION") return error("STALE_VERSION");
+    return error("INTERNAL_ERROR");
   },
 });
