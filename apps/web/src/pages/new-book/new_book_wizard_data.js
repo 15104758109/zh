@@ -14,7 +14,6 @@ window.NEW_BOOK_WIZARD_DATA = {
     forbid_json: { rules: ["避免无代价开挂","战力系统失衡","核心冲突长期悬置"] },
     targetWords: "180 万字",
     chapterWords: "3,000 字 / 章",
-    commercial_score: 7,
     presentation_intensity: 0.5,
     // D-001 book_project 自动化开关（对应快速控制面板）
     auto_production: true,  // 生产阶段自动化
@@ -315,7 +314,7 @@ const WIZARD_DATA = {
     RELATION_HIERARCHIES: ["平等", "上下级", "导师-学徒", "庇护-被庇护", "控制-反抗"],
     INIT_POLICY: "user_filled_only",
   },
-  NO_PERSIST_FIELDS: ["ai.tension", "ai.commercial", "ai.note", "ai.suggestion", "activeProposals", "pivotStack", "bindingDraft", "currentProjection", "viewMode", "mapLayer", "externalRoles"],
+  NO_PERSIST_FIELDS: ["ai.tension", "ai.note", "ai.suggestion", "activeProposals", "pivotStack", "bindingDraft", "currentProjection", "viewMode", "mapLayer", "externalRoles"],
 };
 WIZARD_DATA.BINDING_TYPES = WIZARD_DATA.WORLD_SCHEMA.BINDING_TYPES;
 window.WIZARD_DATA = WIZARD_DATA;

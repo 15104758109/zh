@@ -9,6 +9,7 @@ const runtimeCapabilities = window.NEW_BOOK_RUNTIME_CAPABILITIES;
 const canRunCreation = runtimeCapabilities?.creation_available !== false;
 const canRunGeneration = Boolean(runtimeCapabilities?.active_skill && runtimeCapabilities?.active_config && runtimeCapabilities?.budget_available);
 let state = allowedStates.has(params.get("state")) ? params.get("state") : "normal";
+let createdBookSummary = "";
 
 function stableUuid(storageKey) {
   const existing = localStorage.getItem(storageKey);
@@ -46,11 +47,29 @@ function statusCopy(current) {
 }
 
 function renderRuntime(detail = "") {
-  if (!runtime) return;
-  const [title, body] = statusCopy(state);
-  runtime.dataset.state = state;
-  runtime.innerHTML = `<div class="runtime-status runtime-${state}"><strong>${safeText(title)}</strong><span>${safeText(detail || body)}</span></div>`;
-  document.body.classList.toggle("new-book-disabled", state === "loading" || state === "disabled" || state === "blocked" || state === "completed");
+  const inactive = ["loading", "disabled", "blocked", "completed"].includes(state);
+  const pill = document.querySelector("#bookContextPill");
+  if (pill) pill.textContent = state === "completed" ? `当前作品 · ${createdBookSummary || "新书已创建"}` : "草稿态 · 未入库";
+  if (runtime) {
+    const [title, body] = statusCopy(state);
+    runtime.dataset.state = state;
+    runtime.innerHTML = `<div class="runtime-status runtime-${state}"><strong>${safeText(title)}</strong><span>${safeText(detail || body)}</span></div>`;
+  }
+  document.body.classList.toggle("new-book-disabled", inactive);
+  document.querySelectorAll("#workspace button, #workspace input, #workspace textarea, #workspace select").forEach((control) => {
+    if (inactive) {
+      if (!("runtimeWasDisabled" in control.dataset)) control.dataset.runtimeWasDisabled = control.disabled ? "1" : "0";
+      if (!("runtimeWasAriaDisabled" in control.dataset)) control.dataset.runtimeWasAriaDisabled = control.getAttribute("aria-disabled") ?? "";
+      control.disabled = true;
+      control.setAttribute("aria-disabled", "true");
+    } else if ("runtimeWasDisabled" in control.dataset) {
+      control.disabled = control.dataset.runtimeWasDisabled === "1";
+      const previousAria = control.dataset.runtimeWasAriaDisabled;
+      if (previousAria) control.setAttribute("aria-disabled", previousAria); else control.removeAttribute("aria-disabled");
+      delete control.dataset.runtimeWasDisabled;
+      delete control.dataset.runtimeWasAriaDisabled;
+    }
+  });
 }
 
 function numericValue(value) {
@@ -228,6 +247,7 @@ async function createBook() {
     if (!response.ok || !result?.book_id) { state = "failed"; renderRuntime(); return; }
     currentBook(result.book_id);
     rotateDraftIdempotencyKey();
+    createdBookSummary = `${String(DATA?.book?.bookName || DATA?.book?.title || "新书")} · ${result.book_id}`;
     state = "completed";
     renderRuntime(`已切换至当前作品：${result.book_id}`);
   } catch {
