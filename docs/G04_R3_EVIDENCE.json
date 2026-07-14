@@ -4,32 +4,35 @@
   "execution_status": "PAUSED_BY_CREATOR",
   "formal_approval_claimed": false,
   "verification_claimed": false,
-  "base_commit": "5e7e4caa2d4bf20d098bc44f80c9678cf1715a89",
-  "base_parent_commit": "114203e38a5a0290fddd9de83da63b16d18efe14",
+  "base_commit": "0c566bbf7fcdff426b6b3431f03a393ab3f62719",
+  "base_parent_commit": "5e7e4caa2d4bf20d098bc44f80c9678cf1715a89",
   "candidate_commit": null,
   "candidate_commit_note": "The Orchestrator records the Git candidate commit after this evidence file is committed; this file does not self-attest its containing commit.",
   "creator_decision_summary": [
-    "Produce the fastest MVP and stop after the Task plan is changed.",
+    "Keep the source window paused after changing the Task plan; execute current R3 in a new window after one minimal activation record.",
     "The product is Web-only; native mobile and native desktop are outside scope and are not acceptance dependencies.",
     "Use minimal Web + n8n + PostgreSQL stitching, with PostgreSQL owning transactions and truth.",
-    "Keep apps/api as optional thin security glue; FP008-02 is the only high-code exception.",
-    "Move features outside the V7 MVP and non-blocking code optimization into a later candidate register.",
-    "Audit only contracted interface business behavior for ordinary Tasks; add a Reviewer only for critical SQL, FP008-02, or control-contract changes.",
-    "R3 Round 1 restores FP005-01 scene_condition_package materialization and lineage inside S3-PRODUCTION-START rather than creating another platform Task.",
-    "R3 Round 1 requires FP013-01 fact-preserving enhancement, non-empty formal_summary, and change_limit before released.",
-    "R3 Round 1 defers complete Trace and unified model usage/cost attribution to CAND-OUTSIDE-ADVANCED-OBSERVABILITY."
+    "Make one page the unit of frontend delivery: nine MVP pages have nine exclusive owner Tasks instead of fragmented feature Tasks.",
+    "Systematically inherit and audit prototype CSS, appearance, page layout, control hierarchy, interaction logic, visible states, and cross-page continuity.",
+    "Prototype functionality outside V7 anchors and acceptance remains a feature candidate and is not pulled into MVP by visual inheritance.",
+    "Use gpt-5.6-terra for Coder, Business Auditor, Reviewer, MVP Gate Runner, and any required Architect/Replanner; raise reasoning from medium to high based on registered Task risk.",
+    "Keep apps/api as optional thin security glue; the multi-agent deduction page containing FP008-02 is the only high-code exception.",
+    "Audit contracted interface business behavior and registered visual/interaction inheritance; add a Reviewer only for critical SQL, FP008-02, or control-contract changes.",
+    "Preserve FP005-01 scene_condition_package lineage, FP013-01 release order, and the post-MVP advanced observability candidate."
   ],
   "plan_facts": {
     "revision": 3,
-    "task_count": 19,
+    "task_count": 13,
+    "page_task_count": 9,
     "ready_count": 0,
-    "planned_count": 19,
+    "planned_count": 13,
     "selected_task": null,
     "historical_task_mapping_count": 85,
     "feature_candidate_count": 22,
-    "high_code_exception": "S4-DEDUCTION-RUNTIME",
+    "high_code_exception": "S4-MULTI-AGENT-DEDUCTION-PAGE",
+    "requested_model": "gpt-5.6-terra",
     "product_surface": "WEB_ONLY",
-    "architecture": "n8n + PostgreSQL + minimal Web interface"
+    "architecture": "one-page-one-Task Web + n8n + PostgreSQL stitching"
   },
   "planning_model_record": {
     "profile": "MODEL::REASON_HIGH",
@@ -43,34 +46,32 @@
     "g07_r2_v11": "HISTORICAL_ONLY",
     "old_implementation_control_task_index": "HISTORICAL_MAPPING_SOURCE_ONLY",
     "platform_trust_claim": "NONE",
-    "may_activate_product_task": false
+    "current_window_may_activate_product_task": false,
+    "next_window_may_record_current_r3_activation_without_reasking_creator": true,
+    "handoff_prompt": "docs/R3_EXECUTION_HANDOFF.md"
   },
   "content_hash_domain": "SHA256_OF_UTF8_CONTENT_WITH_CRLF_AND_CR_NORMALIZED_TO_LF",
   "content_sha256": {
-    "docs/MVP_IMPLEMENTATION_PLAN_R3.md": "05611254f7317a5d830c73567cd90385ff51f522526d2066ec81568bb295dc4e",
-    "docs/MVP_TASK_INDEX_R3.json": "e7864999daa85b2c85b0fc7100acce2eb67ee1caf5c4ed945148928df97cc0e8",
+    "docs/MVP_IMPLEMENTATION_PLAN_R3.md": "fc86283a641b662570f425b3de2d6e00d0ba2a7075f40da66e04069ecaa5691b",
+    "docs/MVP_TASK_INDEX_R3.json": "1b184c6a5791df43d69aae2d39ac6b8aaa8983531ad128fc61b3dc1c0b6cf4a9",
+    "docs/R3_EXECUTION_HANDOFF.md": "21ffab313bfc2959c7f4f92011ee8dbd05e6850f751c61285116b882410eaf99",
     "docs/FEATURE_CANDIDATES.md": "b6668934ea7e535987b2cf0c9f026a1a144bf910e10c82e87ba40b326df909a5",
-    "tools/mvp-plan.mjs": "5e4ba3fe89ee9cd014ecc21256f8ddfc1fa415bbf8e6b33197e6f71129b860e0",
-    "tests/tooling/mvp-plan/mvp-plan.test.mjs": "a90a81b05071e7725197e8e1dd5c8f2fd7e94d81c79671e7119475ef7b7d1d3c",
-    "README.md": "66459f93d401b7919425067686ebb5e83b141997a561108096af1e7b14bcb4b8",
-    "DEV_HARNESS.md": "061649829255a97a616b97eaee4cac1fee37c6bc0b3c257954ea2fa0a23d83a8",
+    "tools/mvp-plan.mjs": "2f27760b7bca762aa6e1fa4c477c0b058d40d0201cf0fdbaec65cd4afd3f2d0c",
+    "tests/tooling/mvp-plan/mvp-plan.test.mjs": "92452e85915ea47a225918ffb02eb0089eae5554bbb5fbd940ed548be7b8b421",
+    "README.md": "2981a6d3a9ac17f18717fa491ecd955e8b05903f19fed4358856ab8c16bc93fa",
+    "DEV_HARNESS.md": "a724fb849d861d7bc9a655867ebbf9fe40913f50c0553b22038f9b55a2bb90ee",
     "package.json": "171d9980296b98bf177a83df6cf0115e6b0694c8922eb572ff2f863c631e5188"
   },
   "mechanical_results": [
     {
-      "command": "pnpm install --frozen-lockfile",
-      "result": "PASS",
-      "detail": "Lockfile up to date; 125 packages reused; no lockfile change."
-    },
-    {
       "command": "pnpm mvp:plan",
       "result": "PASS",
-      "detail": "19 Tasks, 0 READY, 19 PLANNED, 85 historical mappings, one high-code Task."
+      "detail": "13 Tasks, 9 exclusive page owners, 0 READY, 13 PLANNED, 85 historical mappings, one high-code Task, all execution/audit roles routed to gpt-5.6-terra."
     },
     {
       "command": "node tools/mvp-plan.mjs status",
       "result": "PASS",
-      "detail": "PAUSED_BY_CREATOR; selected_task null; no execution authority."
+      "detail": "PAUSED_BY_CREATOR; selected_task null; no execution authority in the source window."
     },
     {
       "command": "node tools/mvp-plan.mjs dry-run",
@@ -80,12 +81,16 @@
     {
       "command": "node tools/mvp-plan.mjs --self-test",
       "result": "PASS",
-      "detail": "Rejected 11 mutations, including FP005-01 source/rejection/consumer drift, FP013-01 release-order drift, and old F0-06 mapping drift."
+      "detail": "Rejected 15 mutations including duplicate page ownership, prototype hash drift, visual audit removal, non-terra role routing, V7 semantic drift, and historical mapping drift."
     },
     {
       "command": "node --test tests/tooling/mvp-plan/mvp-plan.test.mjs",
       "result": "PASS",
-      "detail": "6/6 tests."
+      "detail": "7/7 tests."
+    },
+    {
+      "command": "node --check tools/mvp-plan.mjs && node --check tests/tooling/mvp-plan/mvp-plan.test.mjs",
+      "result": "PASS"
     },
     {
       "command": "pnpm lint",
@@ -93,10 +98,6 @@
     },
     {
       "command": "pnpm typecheck",
-      "result": "PASS"
-    },
-    {
-      "command": "pnpm build",
       "result": "PASS"
     },
     {
@@ -130,5 +131,21 @@
     "MAIN_MERGE",
     "PUSH",
     "DEPLOY"
-  ]
+  ],
+  "execution_model_policy": {
+    "policy_version": "r3-terra/v1",
+    "roles": [
+      "CODER",
+      "BUSINESS_AUDITOR",
+      "REVIEWER",
+      "MVP_GATE_RUNNER",
+      "ARCHITECT_REPLANNER_IF_NEEDED"
+    ],
+    "requested_model": "gpt-5.6-terra",
+    "ordinary_reasoning_effort": "medium",
+    "risk_raised_reasoning_effort": "high",
+    "actual_model_source": "PLATFORM_DELEGATION_OR_SESSION_METADATA_AT_DISPATCH",
+    "fallback": "TERRA_ONLY_ENVIRONMENT_APPROVAL_IF_UNAVAILABLE",
+    "task_budget": "UNCONFIGURED"
+  }
 }

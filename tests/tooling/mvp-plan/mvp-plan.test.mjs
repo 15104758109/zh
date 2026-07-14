@@ -12,7 +12,8 @@ const protectedInputs = [
   join(root, "docs", "MVP_IMPLEMENTATION_PLAN_R3.md"),
   join(root, "docs", "MVP_TASK_INDEX_R3.json"),
   join(root, "docs", "FEATURE_CANDIDATES.md"),
-  join(root, "docs", "IMPLEMENTATION_CONTROL.md")
+  join(root, "docs", "IMPLEMENTATION_CONTROL.md"),
+  join(root, "docs", "R3_EXECUTION_HANDOFF.md")
 ];
 
 function run(command) {
@@ -28,19 +29,21 @@ function digest(paths) {
 test("check validates the exact paused R3 plan and old 85 mapping", () => {
   const result = run("check");
   assert.equal(result.ok, true);
-  assert.equal(result.task_count, 19);
+  assert.equal(result.task_count, 13);
   assert.equal(result.ready_count, 0);
-  assert.equal(result.planned_count, 19);
+  assert.equal(result.planned_count, 13);
   assert.equal(result.historical_task_count, 85);
   assert.equal(result.mapping_count, 85);
   assert.equal(result.candidate_count, 22);
-  assert.deepEqual(result.high_code_tasks, ["S4-DEDUCTION-RUNTIME"]);
+  assert.deepEqual(result.high_code_tasks, ["S4-MULTI-AGENT-DEDUCTION-PAGE"]);
+  assert.equal(result.page_task_count, 9);
+  assert.equal(result.requested_model, "gpt-5.6-terra");
 });
 
-test("Round 1 preserves FP005-01, FP013-01, and observability deferral semantics", () => {
+test("page-owned R3 preserves FP005-01, FP013-01, and observability deferral semantics", () => {
   const index = JSON.parse(readFileSync(join(root, "docs", "MVP_TASK_INDEX_R3.json"), "utf8"));
   const taskById = new Map(index.tasks.map((task) => [task.id, task]));
-  const production = taskById.get("S3-PRODUCTION-START").business_contract;
+  const production = taskById.get("S3-PRODUCTION-STAGE-PAGE").business_contracts.scene_condition_package;
   assert.equal(production.output, "scene_condition_package_version");
   assert.deepEqual(production.materializes_on_start_from, [
     "formal_world_version",
@@ -57,9 +60,9 @@ test("Round 1 preserves FP005-01, FP013-01, and observability deferral semantics
     "missing_scene",
     "unresolved_data_debt"
   ]);
-  assert.deepEqual(taskById.get("S3-CHAPTER-PLAN").business_contract.consumes, ["scene_condition_package_version"]);
+  assert.deepEqual(taskById.get("S3-PRODUCTION-STAGE-PAGE").business_contracts.chapter_plan.consumes, ["scene_condition_package_version"]);
 
-  const editor = taskById.get("S5-EDITOR-REVISION").business_contract;
+  const editor = taskById.get("S5-AUDIT-STAGE-PAGE").business_contracts.editor_release;
   assert.deepEqual(editor.y_release_sequence, [
     "FP013-01_FACT_PRESERVING_STYLE_ENHANCEMENT",
     "REQUIRE_NONEMPTY_FORMAL_SUMMARY",
@@ -80,10 +83,23 @@ test("Round 1 preserves FP005-01, FP013-01, and observability deferral semantics
   );
 });
 
+test("nine page Tasks have exclusive prototype ownership and terra audit routing", () => {
+  const index = JSON.parse(readFileSync(join(root, "docs", "MVP_TASK_INDEX_R3.json"), "utf8"));
+  const pageTasks = index.tasks.filter((task) => task.page_contract);
+  assert.equal(pageTasks.length, 9);
+  assert.equal(new Set(pageTasks.map((task) => task.page_contract.page_id)).size, 9);
+  assert.equal(new Set(pageTasks.map((task) => task.page_contract.route)).size, 9);
+  assert.equal(new Set(pageTasks.map((task) => task.page_contract.prototype)).size, 9);
+  assert.ok(pageTasks.every((task) => task.page_contract.owns_page_exclusively));
+  assert.ok(pageTasks.every((task) => task.acceptance.some((item) => item.includes("真实浏览器"))));
+  assert.ok(Object.values(index.model_routing.roles).every((model) => model === "gpt-5.6-terra"));
+  assert.ok(index.tasks.every((task) => task.model.requested_model === "gpt-5.6-terra"));
+});
+
 test("status reports creator pause and no selected task", () => {
   const result = run("status");
   assert.equal(result.execution_status, "PAUSED_BY_CREATOR");
-  assert.deepEqual(result.counts, { ready: 0, planned: 19, total: 19 });
+  assert.deepEqual(result.counts, { ready: 0, planned: 13, total: 13 });
   assert.equal(result.selected_task, null);
   assert.deepEqual(result.ready_tasks, []);
   assert.equal(result.may_start_product_task, false);
@@ -115,7 +131,11 @@ test("self-test rejects unsafe mutations without writing state", () => {
     "scene-package-rejection",
     "scene-package-consumer",
     "editor-release-order",
-    "observability-mapping"
+    "observability-mapping",
+    "non-terra-role",
+    "duplicate-page-owner",
+    "prototype-hash-drift",
+    "visual-audit-removed"
   ]);
   assert.equal(after, before);
 });

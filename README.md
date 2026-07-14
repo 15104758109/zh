@@ -167,9 +167,9 @@ MIT
 
 ## R3 最小 MVP 候选计划
 
-R3 入口为 [MVP 实施计划](./docs/MVP_IMPLEMENTATION_PLAN_R3.md)、[19 项 Task Index](./docs/MVP_TASK_INDEX_R3.json) 和 [MVP 后候选功能](./docs/FEATURE_CANDIDATES.md)。该候选只规划 Web + n8n + PostgreSQL 的单章最快闭环；原生移动端和原生桌面端不在产品范围，也不是验收依赖。
+R3 入口为 [MVP 实施计划](./docs/MVP_IMPLEMENTATION_PLAN_R3.md)、[13 项页面化 Task Index](./docs/MVP_TASK_INDEX_R3.json)、[新窗口执行交接](./docs/R3_EXECUTION_HANDOFF.md) 和 [MVP 后候选功能](./docs/FEATURE_CANDIDATES.md)。该候选只规划 Web + n8n + PostgreSQL 的单章最快闭环；9 个 MVP 页面各由一个 Task 唯一交付，原生移动端和原生桌面端不在产品范围，也不是验收依赖。
 
-当前状态固定为 CANDIDATE_PAUSED / PAUSED_BY_CREATOR：0 READY、19 PLANNED、selected_task=null。旧 G04 revision 2、G07 R2/V11 和 85 项 Task Index 仅作历史映射，不授权继续施工。
+当前源窗口状态固定为 CANDIDATE_PAUSED / PAUSED_BY_CREATOR：0 READY、13 PLANNED、selected_task=null。施工、业务 Auditor、Reviewer 和 MVP Gate Runner 全部请求 `gpt-5.6-terra`，并按 Task 风险使用 medium/high 推理。旧 G04 revision 2、G07 R2/V11 和 85 项 Task Index 仅作历史映射。
 
 ```text
 pnpm mvp:plan
@@ -178,4 +178,4 @@ node tools/mvp-plan.mjs dry-run
 node tools/mvp-plan.mjs --self-test
 ```
 
-以上入口只读，不提供启动、租约或状态写入命令。R3 经新的创作者治理 Gate 激活前，不得启动产品 Task。
+以上入口只读，不提供启动、租约或状态写入命令。本源窗口不启动产品 Task；新窗口按交接文件记录一次最小激活后立即执行当前 R3，无需重新询问是否采用该版本。

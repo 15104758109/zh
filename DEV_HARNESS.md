@@ -271,7 +271,7 @@ R3 候选以 `docs/MVP_IMPLEMENTATION_PLAN_R3.md` 和 `docs/MVP_TASK_INDEX_R3.js
 R3_PLAN_STATUS=CANDIDATE_PAUSED
 R3_EXECUTION_STATUS=PAUSED_BY_CREATOR
 R3_READY=0
-R3_PLANNED=19
+R3_PLANNED=13
 R3_SELECTED_TASK=null
 ```
 
@@ -284,4 +284,4 @@ node tools/mvp-plan.mjs dry-run
 node tools/mvp-plan.mjs --self-test
 ```
 
-`tools/mvp-plan.mjs` 不实现 start、lease、transition 或任何状态写入。新的创作者治理 Gate 激活 R3 前，不得依据该候选启动 F0、W0 或 S1-S5 产品 Task。
+`tools/mvp-plan.mjs` 不实现 start、lease、transition 或任何状态写入。本源窗口不得启动产品 Task。`docs/R3_EXECUTION_HANDOFF.md` 已记录创作者要求新窗口执行当前 R3；新窗口只需完成一次最小激活，不得重做 Task 架构。13 项中包含 9 个页面唯一 owner；所有 Coder、Business Auditor、Reviewer 和 MVP Gate Runner 请求 `gpt-5.6-terra`，页面 Auditor 必须检查原型/CSS/外观/布局/交互继承及真实浏览器状态。
