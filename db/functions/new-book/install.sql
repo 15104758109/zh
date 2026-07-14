@@ -4,6 +4,21 @@ SET search_path TO public;
 ALTER TABLE public.t_book_projects ADD COLUMN IF NOT EXISTS local_operator_id text;
 ALTER TABLE public.t_book_projects ADD COLUMN IF NOT EXISTS normalized_title text;
 ALTER TABLE public.t_book_projects ADD COLUMN IF NOT EXISTS idempotency_key text;
+ALTER TABLE public.t_segment_promises ADD COLUMN IF NOT EXISTS source_type text NOT NULL DEFAULT 'initial';
+ALTER TABLE public.t_segment_promises ADD COLUMN IF NOT EXISTS core_conflict_flag boolean NOT NULL DEFAULT false;
+
+DO $segment_constraint$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.t_segment_promises'::regclass
+      AND conname = 't_segment_promises_source_type_check_v7'
+  ) THEN
+    ALTER TABLE public.t_segment_promises ADD CONSTRAINT t_segment_promises_source_type_check_v7
+      CHECK (source_type IN ('initial', 'traversal', 'manual'));
+  END IF;
+END;
+$segment_constraint$;
 
 DO $precondition$
 BEGIN

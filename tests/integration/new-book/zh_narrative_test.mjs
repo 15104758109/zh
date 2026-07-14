@@ -28,7 +28,7 @@ function fixtureInstall(schema) {
 
 function createProductionShapeFixture(schema, legacyRow = false) {
   const tables = ["t_book_projects", "t_character_profiles", "t_world_assets", "t_relation_states", "t_segment_promises", "t_writeback_logs"];
-  sql(`CREATE SCHEMA ${schema};\n${tables.map((table) => `CREATE TABLE ${schema}.${table} AS TABLE public.${table} WITH NO DATA;`).join("\n")}\nALTER TABLE ${schema}.t_book_projects DROP COLUMN local_operator_id, DROP COLUMN normalized_title, DROP COLUMN idempotency_key;${legacyRow ? `\nINSERT INTO ${schema}.t_book_projects (book_name) VALUES ('legacy fixture');` : ""}`);
+  sql(`CREATE SCHEMA ${schema};\n${tables.map((table) => `CREATE TABLE ${schema}.${table} AS TABLE public.${table} WITH NO DATA;`).join("\n")}\nALTER TABLE ${schema}.t_book_projects DROP COLUMN local_operator_id, DROP COLUMN normalized_title, DROP COLUMN idempotency_key;\nALTER TABLE ${schema}.t_segment_promises DROP COLUMN source_type, DROP COLUMN core_conflict_flag;${legacyRow ? `\nINSERT INTO ${schema}.t_book_projects (book_name) VALUES ('legacy fixture');` : ""}`);
 }
 
 function query(functionInput) {
@@ -82,6 +82,7 @@ test("installer upgrades an empty production-shape clone idempotently and rolls 
     fixtureInstall(emptySchema);
     fixtureInstall(emptySchema);
     assert.equal(sql(`SELECT count(*) FROM information_schema.columns WHERE table_schema='${emptySchema}' AND table_name='t_book_projects' AND column_name IN ('local_operator_id','normalized_title','idempotency_key');`), "3");
+    assert.equal(sql(`SELECT column_name || ':' || column_default FROM information_schema.columns WHERE table_schema='${emptySchema}' AND table_name='t_segment_promises' AND column_name IN ('source_type','core_conflict_flag') ORDER BY column_name;`), "core_conflict_flag:false\nsource_type:'initial'::text");
 
     createProductionShapeFixture(legacySchema, true);
     assert.throws(() => fixtureInstall(legacySchema), /NEW_BOOK_INSTALL_PRECONDITION_FAILED/);
