@@ -33,3 +33,13 @@ export {
 } from "./registry.js";
 export { isFactStateTransitionAllowed } from "./state.js";
 export { ContractValidator } from "./validator.js";
+export {
+  PG_RUNTIME_GUARD_ERROR_CODES,
+  pgRuntimeGuardContracts,
+  pgRuntimeGuardErrorSchema,
+} from "./pg-runtime-guards/index.js";
+export type {
+  PgRuntimeGuardError,
+  PgRuntimeGuardErrorCode,
+  PgRuntimeGuardOperation,
+} from "./pg-runtime-guards/index.js";
