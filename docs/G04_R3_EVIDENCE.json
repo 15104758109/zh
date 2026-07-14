@@ -53,13 +53,13 @@
   "content_hash_domain": "SHA256_OF_UTF8_CONTENT_WITH_CRLF_AND_CR_NORMALIZED_TO_LF",
   "content_sha256": {
     "docs/MVP_IMPLEMENTATION_PLAN_R3.md": "5347ce9997bb756553066340e6074ef51db3940cc2067305289de5229e3d7758",
-    "docs/MVP_TASK_INDEX_R3.json": "e6a550383c5ca72ff1da8da5bf82de03f5c683be0c3f7e1dfbfabb59ea262584",
+    "docs/MVP_TASK_INDEX_R3.json": "28c2e0f38550c4ef61f0cd1166aaa140b9c5778ba0434cc11fa6fd953df01f21",
     ".gitignore": "7b1af8b286f36e10d917c1408fe3ef31aca1c7c3e82a5ec45165abc81653033b",
     "docs/前端原型_v2/pages/workbench.html": "161051b94568eca2f8605b710cbb08ddb06067326b358ca9ab4a94ac3c448353",
     "docs/R3_EXECUTION_HANDOFF.md": "1dd0a52d365df9b512b1bf4e31eeeac85e3d4e3e856907557965b12bf0e61378",
     "docs/FEATURE_CANDIDATES.md": "b6668934ea7e535987b2cf0c9f026a1a144bf910e10c82e87ba40b326df909a5",
-    "tools/mvp-plan.mjs": "b83db41fc00c828a83b56d8654c53f7ed058134c2072a5435a8e79ef4766835e",
-    "tests/tooling/mvp-plan/mvp-plan.test.mjs": "e4cdda2fc40843fb0ae40223f99325748819f07361fc834409f8e6979d300d51",
+    "tools/mvp-plan.mjs": "aa62e26f243694fc8479ea0507472caebbf982b3567ce18e4fd1f64ec72e1863",
+    "tests/tooling/mvp-plan/mvp-plan.test.mjs": "df32a3df872c334a19ab587a8aeb945fd9defa65489e480f0c8e374d462886f0",
     "README.md": "aa54b5d4ece9685b655b728de47f223f35410ae02a493d49cffe79479267aa6d",
     "DEV_HARNESS.md": "dc46e0d7319354b29b9250af4618ddc39550f3fc8c5bdef5b14c958cf67581db",
     "package.json": "171d9980296b98bf177a83df6cf0115e6b0694c8922eb572ff2f863c631e5188"
@@ -93,6 +93,39 @@
     "candidate_commit": null,
     "candidate_commit_note": "The candidate commit is recorded after this evidence file is committed; this object does not self-attest its containing commit."
   },
+  "migration_scope_contract_repair": {
+    "task_id": "R3-MIGRATION-SCOPE-CONTRACT-REPAIR",
+    "attempt_id": "a2-fresh",
+    "base_commit": "1a6ffbb965e76b2b4770b941397ab4c408fd336b",
+    "scope": "Correct only seven db/migrations glob slugs from hyphens to loader-accepted underscores; retain all page IDs, routes, prototypes, and non-migration paths.",
+    "exact_replacements": {
+      "pg-runtime-guards": "pg_runtime_guards",
+      "runtime-seeds": "runtime_seeds",
+      "new-book": "new_book",
+      "production-stage": "production_stage",
+      "multi-agent-deduction": "multi_agent_deduction",
+      "audit-review": "audit_review",
+      "audit-stage": "audit_stage"
+    },
+    "validator_contract": "mvp-plan maps each migration-bearing Task to an explicit loader-safe slug, requires exactly the registered mappings, rejects hyphen and unknown scope mutations, and leaves page path stitching keyed by the original page_id.",
+    "platform_model_evidence": {
+      "record_type": "PLATFORM_SESSION_TURN_CONTEXT",
+      "session_id": "019f5ec3-ea01-7511-b5e1-f1edd50d6fb8",
+      "turn_id": "019f5ec3-fd12-79e3-b2b6-d8006e17fe24",
+      "rollout_line": 8,
+      "exact_line_sha256": "66a8b108ca5ce5ad373a81493a3d74292903edcf0ea181ae518e5d20c693c756",
+      "actual_model": "gpt-5.6-terra",
+      "reasoning_effort": "high"
+    },
+    "verification": {
+      "task_index_semantic_diff": "PASS: exactly seven write_scope migration-glob strings changed from the specified base; Task DAG, status, counts, acceptance, V7 anchors, page contracts, and model routing are unchanged.",
+      "migration_loader_compatibility": "PASS: every registered migration slug forms a filename accepted by packages/db/src/database.mjs loader regex.",
+      "self_test": "PASS: 18 rejected mutations, including migration-scope-format and migration-scope-mapping.",
+      "tooling_test": "PASS: 8/8 tests."
+    },
+    "candidate_commit": null,
+    "candidate_commit_note": "The candidate commit is recorded after this evidence file is committed; this object does not self-attest its containing commit."
+  },
   "mechanical_results": [
     {
       "command": "pnpm mvp:plan",
@@ -112,12 +145,12 @@
     {
       "command": "node tools/mvp-plan.mjs --self-test",
       "result": "PASS",
-      "detail": "Rejected 16 mutations including an unexpected third READY Task, unbound actual model metadata, duplicate page ownership, prototype hash drift, visual audit removal, non-terra role routing, V7 semantic drift, and historical mapping drift."
+      "detail": "Rejected 18 mutations including migration scope format and mapping drift, an unexpected third READY Task, unbound actual model metadata, duplicate page ownership, prototype hash drift, visual audit removal, non-terra role routing, V7 semantic drift, and historical mapping drift."
     },
     {
       "command": "node --test tests/tooling/mvp-plan/mvp-plan.test.mjs",
       "result": "PASS",
-      "detail": "7/7 tests."
+      "detail": "8/8 tests."
     },
     {
       "command": "node --check tools/mvp-plan.mjs && node --check tests/tooling/mvp-plan/mvp-plan.test.mjs",

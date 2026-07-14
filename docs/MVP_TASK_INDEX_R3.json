@@ -159,7 +159,7 @@
         "V7::FP013-02"
       ],
       "write_scope": [
-        "db/migrations/*__pg-runtime-guards__*.sql",
+        "db/migrations/*__pg_runtime_guards__*.sql",
         "db/functions/pg-runtime-guards/**",
         "packages/db/src/runtime-guards/**",
         "packages/contracts/src/pg-runtime-guards/**",
@@ -259,7 +259,7 @@
       ],
       "write_scope": [
         "orchestration/workflows/runtime-seeds/**",
-        "db/migrations/*__runtime-seeds__*.sql",
+        "db/migrations/*__runtime_seeds__*.sql",
         "db/functions/runtime-seeds/**",
         "packages/contracts/src/runtime-seeds/**",
         "tests/vertical/runtime-seeds/**"
@@ -364,7 +364,7 @@
       "write_scope": [
         "apps/web/src/pages/new-book/**",
         "orchestration/workflows/new-book/**",
-        "db/migrations/*__new-book__*.sql",
+        "db/migrations/*__new_book__*.sql",
         "db/functions/new-book/**",
         "packages/contracts/src/new-book/**",
         "tests/pages/new-book/**"
@@ -602,7 +602,7 @@
       "write_scope": [
         "apps/web/src/pages/production-stage/**",
         "orchestration/workflows/production-stage/**",
-        "db/migrations/*__production-stage__*.sql",
+        "db/migrations/*__production_stage__*.sql",
         "db/functions/production-stage/**",
         "packages/contracts/src/production-stage/**",
         "tests/pages/production-stage/**"
@@ -694,7 +694,7 @@
       "write_scope": [
         "apps/web/src/pages/multi-agent-deduction/**",
         "orchestration/workflows/multi-agent-deduction/**",
-        "db/migrations/*__multi-agent-deduction__*.sql",
+        "db/migrations/*__multi_agent_deduction__*.sql",
         "db/functions/multi-agent-deduction/**",
         "packages/contracts/src/multi-agent-deduction/**",
         "apps/api/src/glue/multi-agent-deduction/**",
@@ -759,7 +759,7 @@
       "write_scope": [
         "apps/web/src/pages/audit-review/**",
         "orchestration/workflows/audit-review/**",
-        "db/migrations/*__audit-review__*.sql",
+        "db/migrations/*__audit_review__*.sql",
         "db/functions/audit-review/**",
         "packages/contracts/src/audit-review/**",
         "tests/pages/audit-review/**"
@@ -824,7 +824,7 @@
       "write_scope": [
         "apps/web/src/pages/audit-stage/**",
         "orchestration/workflows/audit-stage/**",
-        "db/migrations/*__audit-stage__*.sql",
+        "db/migrations/*__audit_stage__*.sql",
         "db/functions/audit-stage/**",
         "packages/contracts/src/audit-stage/**",
         "tests/pages/audit-stage/**"
