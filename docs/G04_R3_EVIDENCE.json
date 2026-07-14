@@ -53,11 +53,11 @@
   "content_hash_domain": "SHA256_OF_UTF8_CONTENT_WITH_CRLF_AND_CR_NORMALIZED_TO_LF",
   "content_sha256": {
     "docs/MVP_IMPLEMENTATION_PLAN_R3.md": "5347ce9997bb756553066340e6074ef51db3940cc2067305289de5229e3d7758",
-    "docs/MVP_TASK_INDEX_R3.json": "fac6a7b20e63e5806a0146d806030b9e8a388e9c70147468cc775d19ca9e73c9",
+    "docs/MVP_TASK_INDEX_R3.json": "1fc61181e2e553b37128c2111130e15b1f85632f0cba778e8025086a5e04009b",
     "docs/R3_EXECUTION_HANDOFF.md": "1dd0a52d365df9b512b1bf4e31eeeac85e3d4e3e856907557965b12bf0e61378",
     "docs/FEATURE_CANDIDATES.md": "b6668934ea7e535987b2cf0c9f026a1a144bf910e10c82e87ba40b326df909a5",
-    "tools/mvp-plan.mjs": "fc94586484e141a94f5d8c235a02edde7651dc1f85070dd69d59735a23fddcba",
-    "tests/tooling/mvp-plan/mvp-plan.test.mjs": "cc5527f4fa96b298618bceb646d09f7d1f3f971b71302d8ea4418165d0fe5926",
+    "tools/mvp-plan.mjs": "b83db41fc00c828a83b56d8654c53f7ed058134c2072a5435a8e79ef4766835e",
+    "tests/tooling/mvp-plan/mvp-plan.test.mjs": "e4cdda2fc40843fb0ae40223f99325748819f07361fc834409f8e6979d300d51",
     "README.md": "aa54b5d4ece9685b655b728de47f223f35410ae02a493d49cffe79479267aa6d",
     "DEV_HARNESS.md": "dc46e0d7319354b29b9250af4618ddc39550f3fc8c5bdef5b14c958cf67581db",
     "package.json": "171d9980296b98bf177a83df6cf0115e6b0694c8922eb572ff2f863c631e5188"
@@ -81,7 +81,7 @@
     {
       "command": "node tools/mvp-plan.mjs --self-test",
       "result": "PASS",
-      "detail": "Rejected 15 mutations including an unexpected third READY Task, duplicate page ownership, prototype hash drift, visual audit removal, non-terra role routing, V7 semantic drift, and historical mapping drift."
+      "detail": "Rejected 16 mutations including an unexpected third READY Task, unbound actual model metadata, duplicate page ownership, prototype hash drift, visual audit removal, non-terra role routing, V7 semantic drift, and historical mapping drift."
     },
     {
       "command": "node --test tests/tooling/mvp-plan/mvp-plan.test.mjs",
@@ -119,6 +119,38 @@
       "command": "pnpm n8n:lint",
       "result": "PASS",
       "detail": "17 registered reference workflows; 6 known findings; 0 new findings."
+    }
+  ],
+  "active_delegations": [
+    {
+      "task_id": "F0-05-PG-RUNTIME-GUARDS",
+      "codex_delegation_source": {
+        "source_thread_id": "019f5e40-7879-7c02-b11f-5b2d40118ac3",
+        "role": "CODER_F0_05_PG_RUNTIME_GUARDS"
+      },
+      "platform_session_metadata": {
+        "delegated_thread_id": "019f5e4b-8cd0-7ad0-84a3-6148f5bccca7",
+        "record_type": "turn_context",
+        "record_line": 8,
+        "record_sha256": "64cb37be0e0cd06b4264b0ba8c3a0db8758d96d3a657ea9ebc343aa6cb93c8e3",
+        "actual_model": "gpt-5.6-terra",
+        "reasoning_effort": "high"
+      }
+    },
+    {
+      "task_id": "F0-06-N8N-PRODUCTION-BASE",
+      "codex_delegation_source": {
+        "source_thread_id": "019f5e40-7879-7c02-b11f-5b2d40118ac3",
+        "role": "CODER_F0_06_N8N_PRODUCTION_BASE"
+      },
+      "platform_session_metadata": {
+        "delegated_thread_id": "019f5e4b-8cd8-7393-837c-53c1e00e1f71",
+        "record_type": "turn_context",
+        "record_line": 8,
+        "record_sha256": "09433374c3b30e98e38c884f5477539cb20286b3d5a69d8d92f2492bee47f068",
+        "actual_model": "gpt-5.6-terra",
+        "reasoning_effort": "medium"
+      }
     }
   ],
   "prohibited_actions_confirmed_absent": [

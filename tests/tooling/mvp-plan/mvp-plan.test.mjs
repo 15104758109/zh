@@ -97,6 +97,10 @@ test("nine page Tasks have exclusive prototype ownership and terra audit routing
   assert.ok(pageTasks.every((task) => task.acceptance.some((item) => item.includes("真实浏览器"))));
   assert.ok(Object.values(index.model_routing.roles).every((model) => model === "gpt-5.6-terra"));
   assert.ok(index.tasks.every((task) => task.model.requested_model === "gpt-5.6-terra"));
+  const dispatched = index.tasks.filter((task) => task.status === "READY");
+  assert.ok(dispatched.every((task) => task.model.actual_model === "gpt-5.6-terra"));
+  assert.ok(dispatched.every((task) => task.model.actual_model_source.type === "PLATFORM_SESSION_TURN_CONTEXT"));
+  assert.equal(new Set(dispatched.map((task) => task.model.actual_model_source.delegated_thread_id)).size, 2);
 });
 
 test("status reports the two initial READY tasks and no single selected task", () => {
@@ -136,6 +140,7 @@ test("self-test rejects unsafe mutations without writing state", () => {
     "editor-release-order",
     "observability-mapping",
     "non-terra-role",
+    "unbound-actual-model",
     "duplicate-page-owner",
     "prototype-hash-drift",
     "visual-audit-removed"

@@ -290,6 +290,19 @@ export function validatePlan(index, candidatesMarkdown, historicalControl, hando
       || task.model?.fallback !== "TERRA_ONLY_ENVIRONMENT_APPROVAL_IF_UNAVAILABLE") {
       errors.push(`${task.id} does not match terra/${expectedEffort} routing`);
     }
+    const isDispatched = INITIAL_READY_TASKS.includes(task.id);
+    const source = task.model?.actual_model_source;
+    if (isDispatched && (task.model?.actual_model !== TERRA_MODEL
+      || source?.type !== "PLATFORM_SESSION_TURN_CONTEXT"
+      || !/^019f[0-9a-f-]{32}$/u.test(source?.delegated_thread_id ?? "")
+      || source?.record_line !== 8
+      || !/^[0-9a-f]{64}$/u.test(source?.record_sha256 ?? "")
+      || source?.reasoning_effort !== expectedEffort)) {
+      errors.push(`${task.id} must bind actual_model to its platform turn_context evidence`);
+    }
+    if (!isDispatched && (task.model?.actual_model !== null || task.model?.actual_model_source !== undefined)) {
+      errors.push(`${task.id} must keep actual_model unresolved until dispatch`);
+    }
   }
 
   const allScopes = (index.tasks ?? []).flatMap((task) => task.write_scope).join("\n").toLowerCase();
@@ -494,6 +507,9 @@ function runSelfTest(inputs) {
   });
   rejected("non-terra-role", (copy) => {
     copy.model_routing.roles.BUSINESS_AUDITOR = "another-model";
+  });
+  rejected("unbound-actual-model", (copy) => {
+    copy.tasks.find((item) => item.id === "F0-05-PG-RUNTIME-GUARDS").model.actual_model_source.record_sha256 = "0".repeat(63);
   });
   rejected("duplicate-page-owner", (copy) => {
     copy.tasks.find((item) => item.id === "S2-CHARACTERS-PAGE").page_contract.route = "/books/:bookId/world";

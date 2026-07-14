@@ -140,7 +140,14 @@
         "profile": "MODEL::CODE_MEDIUM",
         "preferred_family": "terra",
         "requested_model": "gpt-5.6-terra",
-        "actual_model": null,
+        "actual_model": "gpt-5.6-terra",
+        "actual_model_source": {
+          "type": "PLATFORM_SESSION_TURN_CONTEXT",
+          "delegated_thread_id": "019f5e4b-8cd0-7ad0-84a3-6148f5bccca7",
+          "record_line": 8,
+          "record_sha256": "64cb37be0e0cd06b4264b0ba8c3a0db8758d96d3a657ea9ebc343aa6cb93c8e3",
+          "reasoning_effort": "high"
+        },
         "reasoning_effort": "high",
         "reasoning_may_raise_to": "high",
         "fallback": "TERRA_ONLY_ENVIRONMENT_APPROVAL_IF_UNAVAILABLE",
@@ -184,7 +191,14 @@
         "profile": "MODEL::CODE_MEDIUM",
         "preferred_family": "terra",
         "requested_model": "gpt-5.6-terra",
-        "actual_model": null,
+        "actual_model": "gpt-5.6-terra",
+        "actual_model_source": {
+          "type": "PLATFORM_SESSION_TURN_CONTEXT",
+          "delegated_thread_id": "019f5e4b-8cd8-7393-837c-53c1e00e1f71",
+          "record_line": 8,
+          "record_sha256": "09433374c3b30e98e38c884f5477539cb20286b3d5a69d8d92f2492bee47f068",
+          "reasoning_effort": "medium"
+        },
         "reasoning_effort": "medium",
         "reasoning_may_raise_to": "high",
         "fallback": "TERRA_ONLY_ENVIRONMENT_APPROVAL_IF_UNAVAILABLE",
