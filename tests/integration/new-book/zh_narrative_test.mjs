@@ -130,7 +130,7 @@ test("request, preview, blocked, success, error and canonical workflow contracts
   assert.equal(webhook.parameters.path, "create_book");
   const postgres = workflow.nodes.find((node) => node.name === "FP001-07 PostgreSQL RPC");
   assert.match(postgres.parameters.query, /rpc_create_book_project/);
-  assert.equal(postgres.parameters.options.queryReplacement, "={{ JSON.stringify($json.rpc_request) }}");
+  assert.equal(postgres.parameters.options.queryReplacement, "={{ [JSON.stringify($json.rpc_request)] }}");
   const incomplete = workflow.connections["FP001-02 confirm route"].main[1][0];
   assert.equal(incomplete.node, "FP001-03 active dependency lookup");
   assert.equal(workflow.connections["FP001-03 agent route"].main[1][0].node, "Respond");
