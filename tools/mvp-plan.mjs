@@ -193,9 +193,10 @@ export function validatePlan(inputs) {
     || !sameSet(staticAcceptance.out_of_scope ?? [], ["PostgreSQL", "n8n", "real model calls"])) {
     errors.push("static restore acceptance must use fixed viewports, four states, and static-only data scope");
   }
-  if (staticAcceptance.visual_acceptance_protocol?.auditor_scope !== "READ_ONLY_DEDICATED_NON_AUTHOR_INSIDE_PARENT_TASK"
-    || !staticAcceptance.required?.some((rule) => rule.includes("one dedicated internal auditor"))) {
-    errors.push("static visual acceptance must be fail-closed and owned by one dedicated non-author internal subagent");
+  if (staticAcceptance.visual_acceptance_protocol?.auditor_scope !== "READ_ONLY_INDEPENDENT_CODEX_SESSION_NON_AUTHOR_INSIDE_PARENT_TASK"
+    || !staticAcceptance.required?.some((rule) => rule.includes("one dedicated independent Codex auditor"))
+    || !staticAcceptance.visual_acceptance_protocol?.delegation_transport?.includes("not inline subagent")) {
+    errors.push("static visual acceptance must be fail-closed and owned by one dedicated independent non-author Codex session");
   }
   if (staticAcceptance.prototype_runtime_gate?.source_files_immutable !== true
     || staticAcceptance.prototype_runtime_gate?.browser_load_must_complete !== true
@@ -205,7 +206,7 @@ export function validatePlan(inputs) {
 
   const web = byId.get("WEB-STATIC-RESTORE");
   if ((web?.internal_work_packages?.length ?? 0) !== 6
-    || !web.internal_work_packages.some((item) => item.startsWith("VISUAL_ACCEPTANCE_AUDITOR:"))
+    || !web.internal_work_packages.some((item) => item.startsWith("VISUAL_ACCEPTANCE_AUDITOR:") && item.includes("independent"))
     || web?.review_policy !== "ONE_INTEGRATED_VISUAL_ACCEPTANCE_INSIDE_PARENT_TASK") {
     errors.push("WEB-STATIC-RESTORE must use one parent, three page groups, and one dedicated integrated visual auditor");
   }
