@@ -197,6 +197,11 @@ export function validatePlan(inputs) {
     || !staticAcceptance.required?.some((rule) => rule.includes("one dedicated internal auditor"))) {
     errors.push("static visual acceptance must be fail-closed and owned by one dedicated non-author internal subagent");
   }
+  if (staticAcceptance.prototype_runtime_gate?.source_files_immutable !== true
+    || staticAcceptance.prototype_runtime_gate?.browser_load_must_complete !== true
+    || staticAcceptance.prototype_runtime_gate?.failure !== "BLOCKED or ENVIRONMENT_APPROVAL_REQUIRED; never visual PASS") {
+    errors.push("static prototypes must remain immutable and become browser-ready before visual audit");
+  }
 
   const web = byId.get("WEB-STATIC-RESTORE");
   if ((web?.internal_work_packages?.length ?? 0) !== 6
@@ -281,7 +286,8 @@ function selfTest(inputs) {
     ["too-many-subagents", (x) => { x.index.execution_policy.max_internal_subagents_per_task = 6; }],
     ["merged-acceptance-role", (x) => { x.index.business_task_internal_protocol.distinct_internal_sessions.find((session) => session.role === "USER_OPERATION_AUDITOR").role = "BUSINESS_ACCEPTANCE_AUDITOR"; }],
     ["self-visual-acceptance", (x) => { x.index.static_page_acceptance.visual_acceptance_protocol.auditor_scope = "PARENT_SELF_REVIEW"; }],
-    ["n8n-node-deletion", (x) => { x.index.n8n_workflow_evolution_protocol.delete_existing_nodes = true; }]
+    ["n8n-node-deletion", (x) => { x.index.n8n_workflow_evolution_protocol.delete_existing_nodes = true; }],
+    ["unstable-prototype-runtime", (x) => { x.index.static_page_acceptance.prototype_runtime_gate.browser_load_must_complete = false; }]
   ];
   for (const [name, mutate] of cases) {
     const clone = structuredClone(inputs);
@@ -303,7 +309,7 @@ function main() {
 
   if (command === "--self-test") {
     const failures = selfTest(inputs);
-    console.log(JSON.stringify({ ok: failures.length === 0, command, rejected_mutations: failures.length ? [] : ["micro-task", "r3-reactivation", "missing-page", "lowered-high-reasoning", "draft-formalization", "too-many-subagents", "merged-acceptance-role", "self-visual-acceptance", "n8n-node-deletion"], failures, side_effects: false }, null, 2));
+    console.log(JSON.stringify({ ok: failures.length === 0, command, rejected_mutations: failures.length ? [] : ["micro-task", "r3-reactivation", "missing-page", "lowered-high-reasoning", "draft-formalization", "too-many-subagents", "merged-acceptance-role", "self-visual-acceptance", "n8n-node-deletion", "unstable-prototype-runtime"], failures, side_effects: false }, null, 2));
     if (failures.length) process.exitCode = 1;
     return;
   }

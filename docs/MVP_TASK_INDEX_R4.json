@@ -215,6 +215,7 @@
       "browser console has no errors",
       "defined navigation and static state controls work",
       "fixed viewport screenshots show no overlap, clipping, or incoherent layout shift",
+      "all immutable prototypes and targets pass the browser-ready gate before audit dispatch",
       "every page at both viewports has PASS from the one dedicated internal auditor that edited none of the nine pages",
       "coder self-audit and route/state tests cannot satisfy visual acceptance",
       "one integrated visual review after all nine pages, not per-control audit tasks"
@@ -232,6 +233,13 @@
       "required_result": "per-page per-viewport PASS|FAIL|BLOCKED matrix with observed differences and document scrollWidth/innerWidth",
       "fail_closed": "any FAIL, BLOCKED, missing pair, prototype load failure, wrong image size, or author self-review keeps WEB-STATIC-RESTORE IN_PROGRESS",
       "repair_policy": "one integrated repair inside the same Task, followed by recheck from the same non-author auditor"
+    },
+    "prototype_runtime_gate": {
+      "source_files_immutable": true,
+      "browser_load_must_complete": true,
+      "allowed_external_resource_handling": ["recorded local-equivalent asset substitution", "runtime URL rewrite that does not change prototype DOM, layout CSS, content, or interactions"],
+      "required_before_audit": ["all nine prototype endpoints return 200", "all nine target endpoints return 200", "all endpoints become browser-ready without a hanging external dependency", "all substitutions are recorded"],
+      "failure": "BLOCKED or ENVIRONMENT_APPROVAL_REQUIRED; never visual PASS"
     }
   },
   "tasks": [
