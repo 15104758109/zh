@@ -1,0 +1,20 @@
+[
+  {
+    "page": "workbench",
+    "size": "1440x900",
+    "width": 1440,
+    "height": 900,
+    "differentChannelRatio": 0.01165258487654321,
+    "meanAbsoluteChannelDifference": 0.06570621141975308,
+    "maxChannelDifference": 37
+  },
+  {
+    "page": "workbench",
+    "size": "1280x720",
+    "width": 1280,
+    "height": 720,
+    "differentChannelRatio": 0.015960828993055554,
+    "meanAbsoluteChannelDifference": 0.06292751736111112,
+    "maxChannelDifference": 31
+  }
+]

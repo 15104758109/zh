@@ -1,0 +1,61 @@
+{
+  "page": "WORKBENCH",
+  "normal": [
+    {
+      "kind": "source",
+      "size": "1440x900",
+      "url": "http://127.0.0.1:4179/pages/workbench.html",
+      "screenshot": "workbench-source-1440x900.jpg",
+      "bodyTextLength": 914,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 900,
+      "innerWidth": 1440,
+      "scrollHeight": 900,
+      "scrollWidth": 1440,
+      "consoleErrors": []
+    },
+    {
+      "kind": "target",
+      "size": "1440x900",
+      "url": "http://127.0.0.1:4182/workbench",
+      "screenshot": "workbench-target-1440x900.jpg",
+      "bodyTextLength": 914,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "scrollHeight": 720,
+      "scrollWidth": 1280,
+      "consoleErrors": []
+    },
+    {
+      "kind": "source",
+      "size": "1280x720",
+      "url": "http://127.0.0.1:4179/pages/workbench.html",
+      "screenshot": "workbench-source-1280x720.jpg",
+      "bodyTextLength": 914,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "scrollHeight": 720,
+      "scrollWidth": 1280,
+      "consoleErrors": []
+    },
+    {
+      "kind": "target",
+      "size": "1280x720",
+      "url": "http://127.0.0.1:4182/workbench",
+      "screenshot": "workbench-target-1280x720.jpg",
+      "bodyTextLength": 914,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "scrollHeight": 720,
+      "scrollWidth": 1280,
+      "consoleErrors": []
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+[
+  {
+    "page": "world",
+    "file": "world-target-1280x720-fresh.jpg",
+    "width": 1280,
+    "height": 720,
+    "dom": {
+      "bodyTextLength": 2360,
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "scrollHeight": 720,
+      "scrollWidth": 1280
+    }
+  },
+  {
+    "page": "characters",
+    "file": "characters-target-1280x720-fresh.jpg",
+    "width": 1280,
+    "height": 720,
+    "dom": {
+      "bodyTextLength": 1906,
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "scrollHeight": 720,
+      "scrollWidth": 1280
+    }
+  }
+]

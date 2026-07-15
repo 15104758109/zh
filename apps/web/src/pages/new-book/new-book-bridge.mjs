@@ -53,7 +53,7 @@ function renderRuntime(detail = "") {
   if (runtime) {
     const [title, body] = statusCopy(state);
     runtime.dataset.state = state;
-    runtime.innerHTML = `<div class="runtime-status runtime-${state}"><strong>${safeText(title)}</strong><span>${safeText(detail || body)}</span></div>`;
+    runtime.innerHTML = state === "normal" ? "" : `<div class="runtime-status runtime-${state}"><strong>${safeText(title)}</strong><span>${safeText(detail || body)}</span></div>`;
   }
   document.body.classList.toggle("new-book-disabled", inactive);
   document.querySelectorAll("#workspace button, #workspace input, #workspace textarea, #workspace select").forEach((control) => {

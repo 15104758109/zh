@@ -1,0 +1,61 @@
+{
+  "page": "L1A",
+  "normal": [
+    {
+      "kind": "source",
+      "size": "1440x900",
+      "screenshot": "l1a-source-1440x900.jpg",
+      "bodyTextLength": 1137,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 900,
+      "innerWidth": 1440,
+      "scrollHeight": 900,
+      "scrollWidth": 1440,
+      "url": "http://127.0.0.1:4179/pages/l1a_settings.html",
+      "consoleErrors": []
+    },
+    {
+      "kind": "target",
+      "size": "1440x900",
+      "screenshot": "l1a-target-1440x900.jpg",
+      "bodyTextLength": 1137,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 900,
+      "innerWidth": 1440,
+      "scrollHeight": 900,
+      "scrollWidth": 1440,
+      "url": "http://127.0.0.1:4182/books/book-context-42/l1a",
+      "consoleErrors": []
+    },
+    {
+      "kind": "source",
+      "size": "1280x720",
+      "screenshot": "l1a-source-1280x720.jpg",
+      "bodyTextLength": 1137,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "scrollHeight": 720,
+      "scrollWidth": 1280,
+      "url": "http://127.0.0.1:4179/pages/l1a_settings.html",
+      "consoleErrors": []
+    },
+    {
+      "kind": "target",
+      "size": "1280x720",
+      "screenshot": "l1a-target-1280x720.jpg",
+      "bodyTextLength": 1137,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "scrollHeight": 720,
+      "scrollWidth": 1280,
+      "url": "http://127.0.0.1:4182/books/book-context-42/l1a",
+      "consoleErrors": []
+    }
+  ]
+}

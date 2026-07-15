@@ -1,9 +1,11 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN" data-theme="garden">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>纵横叙事引擎｜新书创世 · 还原版</title>
+  <link rel="stylesheet" href="../common/daisyui-garden-full.css">
+  <link rel="stylesheet" href="../common/sidebar.css">
   <style>
     :root {
       color-scheme: light;
@@ -82,7 +84,7 @@
       border-bottom: 1px solid rgba(0,0,0,.06);
       transition: left .2s ease;
     }
-    
+
     .header-left, .header-right, .row { display: flex; align-items: center; gap: 12px; }
     .btn-icon {
       width: 38px; height: 38px; border-radius: 999px; border: 0;
@@ -130,17 +132,16 @@
     .step-shell {
       display: none !important;
       flex: 0 0 auto; padding: 12px 12px 12px 22px; border-bottom: 1px solid rgba(0,0,0,.06);
-      display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: stretch;
+      display: grid; grid-template-columns: 1fr 316px; gap: 16px; align-items: stretch;
       background: rgba(255,255,255,.38);
     }
-    .steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+    .steps { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
     .step-chip {
       display: flex; align-items: center; gap: 8px;
       min-height: 42px; padding: 7px 12px; border: 1px solid rgba(0,0,0,.06);
       border-radius: 14px; background: rgba(255,255,255,.45);
-      min-width: 0; font-size: 12px; font-weight: 800; color: inherit; opacity: .72;
+      font-size: 12px; font-weight: 800; color: inherit; opacity: .72;
     }
-    .step-chip > span:last-child { min-width: 0; overflow-wrap: anywhere; }
     .step-chip.active { opacity: 1; border-color: color-mix(in oklab, var(--color-primary) 40%, transparent); box-shadow: 0 0 12px color-mix(in oklab, var(--color-primary) 22%, transparent); }
     .step-chip.locked { opacity: 1; border-color: color-mix(in oklab, var(--color-accent) 34%, transparent); }
     .step-num {
@@ -152,6 +153,8 @@
     .step-num.pending, .timeline-dot.pending { background: var(--color-base-300); color: color-mix(in oklab, var(--color-base-content) 62%, transparent); }
     .label { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .52; }
     .book-meta-rating { grid-template-columns: 1fr; gap: 4px; padding-top: 6px; }
+    .stars { display: inline-flex; gap: 0; color: #d68a00; vertical-align: -4px; }
+    .stars .material-symbols-outlined { font-size: 18px; }
     .workspace {
       flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(360px, 1fr) 316px;
       gap: 16px; padding: 16px 22px 22px; overflow: hidden;
@@ -1298,38 +1301,8 @@
       .step-shell { grid-template-columns: 1fr; }
       .cs-trow-main { grid-template-columns: 22px 1fr 64px 64px; }
     }
-
-    /* Local fallbacks replace the prototype's shared DaisyUI/sidebar assets. */
-    :root { --sidebar-w: 228px; }
-    .hidden { display: none !important; }
-    .main-content { height: 100%; margin-left: var(--sidebar-w); display: flex; flex-direction: column; padding-top: var(--header-h); }
-    .header-glass { display: flex; }
-    .step-shell { display: grid !important; margin-left: 0; }
-    .sidebar-glass { position: fixed; inset: 0 auto 0 0; width: var(--sidebar-w); padding: 18px 12px; background: #202725; color: #f1f4ef; display: flex; flex-direction: column; z-index: 30; }
-    .sidebar-brand, .sidebar-user { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px; }
-    .sidebar-brand { align-items: flex-start; }
-    .sidebar-brand .sidebar-text { min-width: 0; overflow: hidden; }
-    .brand-mark, .sidebar-user-avatar { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; background: #5c7f67; color: #fff; font-weight: 800; }
-    .brand-title { font-size: 17px; font-weight: 800; line-height: 1.2; } .brand-subtitle { font-size: 10px; line-height: 1.3; opacity: .65; overflow-wrap: anywhere; }
-    .sidebar-separator { height: 1px; background: rgba(255,255,255,.14); margin: 14px 8px; }
-    .sidebar-menu { list-style: none; padding: 0; margin: 0; display: grid; gap: 5px; }
-    .sidebar-menu a { color: inherit; text-decoration: none; display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 7px; font-size: 13px; }
-    .sidebar-menu a:hover, .sidebar-menu a.menu-active { background: rgba(255,255,255,.13); }
-    .sidebar-footer { margin-top: auto; border-top: 1px solid rgba(255,255,255,.14); padding-top: 12px; }
-    .sidebar-toggle { position: fixed; left: calc(var(--sidebar-w) - 16px); top: 24px; z-index: 45; border: 0; width: 32px; height: 32px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
-    :root.sidebar-collapsed { --sidebar-w: 62px; } :root.sidebar-collapsed .sidebar-text { display: none; } :root.sidebar-collapsed .sidebar-glass { padding-inline: 8px; }
-    .review-ai-empty { margin: 0; color: rgba(0,0,0,.58); font-size: 13px; }
-    .material-symbols-outlined { display: inline-block; min-width: 1em; font-family: Arial, sans-serif; font-size: 16px; font-weight: 700; line-height: 1; text-align: center; vertical-align: middle; }
-    .badge { display: inline-flex; align-items: center; border: 1px solid currentColor; border-radius: 999px; padding: 2px 6px; } .badge-outline { background: transparent; }
-    .chat { display: grid; gap: 4px; } .chat-end { justify-items: end; } .chat-bubble { padding: 10px 12px; border-radius: 10px; background: #fff; } .chat-bubble-primary { background: #dcece0; } .chat-empty { padding: 12px; color: rgba(0,0,0,.58); font-size: 12px; }
-    .modal-backdrop { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; background: rgba(16,15,15,.35); padding: 18px; } .modal-backdrop.open { display: grid; }
-    .stage-modal-panel { width: min(1100px, 96vw); max-height: 92vh; display: flex; flex-direction: column; background: #e9e7e7; border-radius: 10px; box-shadow: 0 22px 60px rgba(0,0,0,.3); overflow: hidden; }
-    .modal-head, .modal-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; background: #fff; } .modal-body { overflow: auto; padding: 16px; }
-    .new-book-runtime { padding: 12px 22px 0; } .runtime-status { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; border-radius: 7px; font-size: 12px; background: rgba(255,255,255,.7); border-left: 3px solid #5c7f67; } .runtime-status span { opacity: .74; }
-    .runtime-blocked, .runtime-disabled { border-left-color: #a66a00; } .runtime-failed, .runtime-duplicate { border-left-color: #a13142; } .runtime-completed { border-left-color: #2f7a50; }
-    .new-book-disabled #workspace { opacity: .72; }
-    @media (max-width: 760px) { :root { --sidebar-w: 62px; } .sidebar-text { display: none; } .sidebar-glass { padding-inline: 8px; } .main-content { min-width: 0; } .new-book-runtime { padding-inline: 12px; } .runtime-status { align-items: flex-start; flex-direction: column; gap: 3px; } }
   </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 <body class="cyber-grid">
   <a class="hidden" href="#main">跳到主内容</a>
@@ -1354,21 +1327,12 @@
     </footer>
   </nav>
 
-  <button class="sidebar-toggle" type="button" aria-label="折叠侧栏" title="折叠侧栏">
+  <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
     <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
   </button>
 
-  <header class="header-glass" aria-label="新书向导顶栏">
-    <div class="header-left"><span class="label">设计阶段</span><strong>新书创世</strong><span class="book-pill" id="bookContextPill">草稿态 · 未入库</span></div>
-    <div class="header-right"><button class="btn btn-ghost" type="button" onclick="openConfirmModal()">打开当前步骤</button></div>
-  </header>
 
   <main class="main-content" id="main">
-    <section class="new-book-runtime" id="newBookRuntime" aria-live="polite"></section>
-    <section class="step-shell" aria-label="新书创建步骤">
-      <div class="steps" id="stepBar"></div>
-      <div class="book-pill">候选内容须经终审确认</div>
-    </section>
 
     <section class="workspace" id="workspace">
       <aside class="chat-pane glass-panel" id="chatPane">
@@ -1378,7 +1342,7 @@
             <div>AI 开书助手</div>
           </div>
           <button class="btn-icon" id="chatMinimize" type="button" onclick="toggleChatDrawer()" aria-label="最小化聊天面板">
-            <span class="material-symbols-outlined" id="chatMinimizeIcon">chevron_right</span>
+            <span class="material-symbols-outlined" id="chatMinimizeIcon"></span>
           </button>
         </div>
         <div class="chat-history scrollbar" id="chatHistory"></div>
@@ -1396,6 +1360,12 @@
           <div class="book-meta-row"><span>副题材</span><b id="sideSubGenre"></b></div>
           <div class="book-meta-row"><span>字数</span><b id="sideTargetWords"></b></div>
           <div class="book-meta-row"><span>章节字数</span><b id="sideChapterWords"></b></div>
+          <div class="book-meta-row book-meta-rating">
+            <span>预期商业评价</span>
+            <b>
+              <span class="stars" id="sideStars" aria-label="0星"></span>
+            </b>
+          </div>
         </div>
         <div class="timeline" id="sideTimeline"></div>
       </aside>
@@ -1435,7 +1405,7 @@
   </div>
 
   <div class="toast-container" id="toastContainer"></div>
-  <script charset="utf-8" src="./new_book_wizard_data.js"></script>
+  <script charset="utf-8" src="./new_book_wizard_data.js?v=20260705-rightpane"></script>
   <script>
     (() => {
       const data = window.NEW_BOOK_WIZARD_DATA;
@@ -1487,30 +1457,6 @@
         return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
       }
 
-      const localIconMap = Object.freeze({
-        deployed_code: ["<>", "应用标识"], dashboard: ["▦", "总控设置"], architecture: ["⌘", "设计阶段"], precision_manufacturing: ["⚙", "生产阶段"], fact_check: ["✓", "审核阶段"], history: ["↶", "迭代管理"], public: ["◎", "世界设定"], group: ["≋", "角色设定"], gavel: ["!", "冲突种子"],
-        chevron_left: ["‹", "折叠侧栏"], chevron_right: ["›", "展开侧栏"], psychology: ["i", "创作向导"], send: ["→", "发送"], close: ["×", "关闭"], lock_open: ["⌑", "解锁"], analytics: ["↗", "完整性分析"], verified: ["✓", "确认"], edit: ["✎", "编辑"], auto_awesome: ["+", "添加"], link: ["↔", "关联"], description: ["≡", "详情"], rocket_launch: ["↑", "开始创作"], south_west: ["↙", "入站关联"], north_east: ["↗", "出站关联"], delete: ["×", "删除"], swipe_down: ["↓", "拖放到此处"]
-      });
-
-      function localizeMaterialIcons(scope = document) {
-        scope.querySelectorAll?.(".material-symbols-outlined").forEach((icon) => {
-          const token = icon.textContent.trim();
-          if (icon.dataset.localIcon === "true" && !localIconMap[token]) return;
-          const mapped = localIconMap[token] || ["•", "操作"];
-          icon.textContent = mapped[0];
-          icon.dataset.localIcon = "true";
-          icon.setAttribute("aria-hidden", "true");
-          const button = icon.closest("button");
-          if (button && !button.textContent.replace(mapped[0], "").trim() && !button.hasAttribute("aria-label")) {
-            button.setAttribute("aria-label", mapped[1]);
-            button.setAttribute("title", mapped[1]);
-          }
-        });
-      }
-
-      const iconObserver = new MutationObserver(() => localizeMaterialIcons());
-      iconObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
-
       function worldCategoryName(value) {
         const map = {
           "职业": "职业/超能",
@@ -1544,6 +1490,12 @@
 
       normalizeWorldStep(getWorldStep());
 
+      function bookCommercialScore(book) {
+        const raw = book?.commercial_score ?? book?.commercialStars ?? 0;
+        const score = Number(raw);
+        return Number.isFinite(score) ? Math.max(0, Math.min(10, Math.round(score))) : 0;
+      }
+
       function statusMeta(index) {
         if (index < current) return { text: "已锁定", tone: "success", dot: "locked" };
         if (index === current) return { text: "进行中", tone: "info", dot: "active" };
@@ -1572,6 +1524,12 @@
         uiGet("sideSubGenre").textContent = book.subGenre || book.intent_json?.subGenre || "";
         uiGet("sideTargetWords").textContent = book.targetWords;
         uiGet("sideChapterWords").textContent = book.chapterWords;
+        const stars = uiGet("sideStars");
+        const rating = bookCommercialScore(book);
+        if (stars) {
+          stars.setAttribute("aria-label", `${rating}星`);
+          stars.innerHTML = Array.from({ length: 10 }, (_, index) => `<span class="material-symbols-outlined" style="font-variation-settings:'FILL' ${index < rating ? 1 : 0};">star</span>`).join("");
+        }
       }
 
       function renderSteps() {
@@ -1612,7 +1570,7 @@
         const history = uiGet("chatHistory");
         if (!history) return;
         const chat = data.chat || [];
-        history.innerHTML = chat.length ? chat.map((item) => {
+        history.innerHTML = chat.map((item) => {
           const isUser = item.role === "user";
           return `
             <div class="chat ${isUser ? "chat-end" : "chat-start"}">
@@ -1620,7 +1578,7 @@
               <div class="chat-bubble ${isUser ? "chat-bubble-primary" : ""}">${escapeHtml(item.text)}</div>
             </div>
           `;
-        }).join("") : '<div class="chat-empty" role="status">尚无对话记录。</div>';
+        }).join("");
         history.scrollTop = history.scrollHeight;
 
         const prompts = uiGet("quickPrompts");
@@ -1903,16 +1861,6 @@
         const philValues = char.philosophy || {};
         const activeTags = char.traitTags || [];
         const charAge = char.age || '';
-        const layerValues = {
-          L0: char.L0 || char.philosophy || {},
-          L1: char.L1 || { desire: char.arc?.desire || '', core_motivation: char.background || '' },
-          L2: char.L2 || { resources: char.bindRes || [], factions: char.bindForce || [], occupations: char.bindJob || [] },
-          L3: char.L3 || { relations: char.relations || {} },
-        };
-        const knowledgeBoundary = char.knowledge_boundary || {};
-        const knowledgeFields = [
-          ['knows', '已知'], ['unknown', '未知'], ['false_belief', '错误认知'], ['reasonable_suspect', '合理推断'],
-        ];
         function freeCardsFor(cards, bound) {
           return cards.filter((c) => !(bound || []).includes(c.id));
         }
@@ -2003,19 +1951,6 @@
                     oninput="window.charUpdateField(this)" style="min-height:64px">${escapeHtml(char.bio || '')}</textarea>
                 </div>
               </div>
-              <div class="form-section" data-character-structure="true">
-                <div class="char-section-title">角色本体与知识边界</div>
-                <div class="form-grid">
-                  ${['L0', 'L1', 'L2', 'L3'].map((layer) => `<div class="field">
-                    <label>${layer} 当前摘要（JSON，可补全缺失层）</label>
-                    <textarea class="textarea editable-field" data-char-id="${char.id}" data-char-field="layer.${layer}" oninput="window.charUpdateField(this)" placeholder='{"summary":""}'>${escapeHtml(Object.keys(layerValues[layer] || {}).length ? JSON.stringify(layerValues[layer], null, 2) : '')}</textarea>
-                  </div>`).join('')}
-                  ${knowledgeFields.map(([field, label]) => `<div class="field">
-                    <label>${label}（逗号或换行分隔）</label>
-                    <textarea class="textarea editable-field" data-char-id="${char.id}" data-char-field="knowledge_boundary.${field}" oninput="window.charUpdateField(this)" placeholder="每行一条">${escapeHtml(Array.isArray(knowledgeBoundary[field]) ? knowledgeBoundary[field].join('\n') : '')}</textarea>
-                  </div>`).join('')}
-                </div>
-              </div>
               ${charRelationHtml}
               <div class="char-philosophy-section">
                 <div class="char-section-title">角色哲学层</div>
@@ -2093,8 +2028,10 @@
               ${item.modules.map(([title, desc]) => `<div class="review-module"><b>${title}</b><small>${desc}</small></div>`).join("")}
             </div>
             <div class="form-section">
-              <h4>AI综合分析</h4>
-              <p class="review-ai-empty">尚未执行 AI 综合分析，暂无分析结果。</p>
+              <h4>AI分析结果</h4>
+              <ul class="missing-list">
+                ${item.risks.map((risk) => `<li>${risk}</li>`).join("")}
+              </ul>
               <div class="row">
                 <button class="btn" type="button">详细配置</button>
                 <button class="btn btn-rose" type="button">开始创作</button>
@@ -2135,22 +2072,14 @@
         if (!workspace || !workPane || !workBody) return;
         workTitle.innerHTML = `${item.step} ${item.title}<small>${item.guide || ""}</small>`;
         if (workSubtitle) workSubtitle.remove();
-        if (workIcon) {
-          workIcon.textContent = item.icon || "fact_check";
-          delete workIcon.dataset.localIcon;
-          localizeMaterialIcons(document);
-        }
+        if (workIcon) workIcon.textContent = item.icon || "fact_check";
         workBody.innerHTML = finalReviewBodyTemplate(item);
         workspace.classList.add("drawer-mode");
         workPane.classList.remove("hidden");
         void workPane.offsetHeight;
         workPane.classList.add("slide-in");
         const minimizeIcon = uiGet("chatMinimizeIcon");
-        if (minimizeIcon) {
-          minimizeIcon.textContent = "chevron_right";
-          delete minimizeIcon.dataset.localIcon;
-          localizeMaterialIcons(document);
-        }
+        if (minimizeIcon) minimizeIcon.textContent = "";
       }
 
       function reviewFieldValue(field) {
@@ -2271,12 +2200,15 @@
 
       function reviewBookMeta() {
         const b = data.book;
+        const rating = bookCommercialScore(b);
+        const stars = Array.from({ length: 10 }, (_, i) => `<span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' ${i < rating ? 1 : 0};color:${i < rating ? '#f59e0b' : '#d1d5db'}">star</span>`).join('');
         return `<div class="review-book-meta">
           <div class="review-book-cell"><span class="rbm-label">书名</span><span class="rbm-value">${escapeHtml(b.title || '')}</span></div>
           <div class="review-book-cell"><span class="rbm-label">题材</span><span class="rbm-value">${escapeHtml((b.intent_json && b.intent_json.genre) || b.genre || '')}</span></div>
           <div class="review-book-cell"><span class="rbm-label">副题材</span><span class="rbm-value">${escapeHtml((b.intent_json && b.intent_json.subGenre) || b.subGenre || '')}</span></div>
           <div class="review-book-cell"><span class="rbm-label">字数</span><span class="rbm-value">${escapeHtml(b.targetWords || '')}</span></div>
           <div class="review-book-cell"><span class="rbm-label">章节字数</span><span class="rbm-value">${escapeHtml(b.chapterWords || '')}</span></div>
+          <div class="review-book-cell"><span class="rbm-label">商业评级</span><span class="rbm-value">${stars}</span></div>
         </div>`;
       }
 
@@ -2313,8 +2245,10 @@
           <div class="review-board">
             ${stageBlocks}
             <section class="form-section">
-              <h4>AI综合分析</h4>
-              <p class="review-ai-empty">尚未执行 AI 综合分析，暂无分析结果。</p>
+              <h4>AI分析结果</h4>
+              <ul class="missing-list">
+                ${item.risks.map((risk) => `<li>${escapeHtml(risk)}</li>`).join("")}
+              </ul>
             </section>
             <div class="review-actions">
               <button class="btn" type="button" onclick="window.runIntegrityAnalysis()"><span class="material-symbols-outlined">analytics</span>AI综合分析</button>
@@ -2335,11 +2269,7 @@
         const chatPane = uiGet("chatPane");
         if (chatPane) { chatPane.style.padding = ""; chatPane.style.alignItems = ""; }
         const minimizeIcon = uiGet("chatMinimizeIcon");
-        if (minimizeIcon) {
-          minimizeIcon.textContent = "chevron_right";
-          delete minimizeIcon.dataset.localIcon;
-          localizeMaterialIcons(document);
-        }
+        if (minimizeIcon) minimizeIcon.textContent = "";
       }
 
       function toggleChatDrawer() {
@@ -2435,6 +2365,11 @@
         };
         window.closeWorkPane = closeWorkPane;
         window.toggleChatDrawer = toggleChatDrawer;
+        window.toggleSidebar = () => {
+          document.body.classList.toggle("sidebar-collapsed");
+          const icon = uiGet("sidebarIcon");
+          if (icon) icon.textContent = document.body.classList.contains("sidebar-collapsed") ? "chevron_right" : "chevron_left";
+        };
         window.lockCurrentStep = () => {
           // 仅当确认的是进行中步骤时推进进度指针;回看已完成步骤后锁定不重复推进
           if (viewing === current && current < steps.length - 1) current += 1;
@@ -2567,33 +2502,9 @@
           const item = getCharItem();
           const char = (item?.characters || []).find((c) => c.id === el.dataset.charId);
           if (!char) return;
-          const field = el.dataset.charField;
-          if (field.startsWith("knowledge_boundary.")) {
-            const key = field.slice("knowledge_boundary.".length);
-            char.knowledge_boundary = char.knowledge_boundary || {};
-            char.knowledge_boundary[key] = el.value.split(/[\n,]/).map((value) => value.trim()).filter(Boolean);
-          } else if (field.startsWith("layer.")) {
-            const layer = field.slice("layer.".length);
-            if (!el.value.trim()) {
-              delete char[layer];
-              if (layer === "L0") delete char.philosophy;
-            } else {
-              try {
-                const parsed = JSON.parse(el.value);
-                if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
-                char[layer] = parsed;
-                if (layer === "L0") char.philosophy = parsed;
-                el.setCustomValidity("");
-              } catch {
-                el.setCustomValidity("请输入 JSON 对象");
-                return;
-              }
-            }
-          } else {
-            char[field] = el.value;
-          }
+          char[el.dataset.charField] = el.value;
           persistCharState();
-          if (field === "name") reRenderCharPanel();
+          if (el.dataset.charField === "name") reRenderCharPanel();
         };
         window.charBindSlot = (charId, field, cardId) => {
           if (modalLocked) { showToast("解锁后可绑定", "info"); return; }
@@ -2860,7 +2771,6 @@
         document.querySelectorAll('.char-rel-dropdown,.char-bind-dropdown').forEach(function(d) { d.removeAttribute('open'); });
       });
 
-      localizeMaterialIcons();
       renderSidebar();
       renderBookMeta();
       renderSteps();
@@ -2885,27 +2795,5 @@
   function mount(){cleanup();wrapOpen();wrapLock();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount); else mount();
 })();
-</script>
-<script>
-  // Keep the shell control independent from the deferred bridge module.
-  (function bindSidebarToggle() {
-    const toggle = document.querySelector(".sidebar-toggle");
-    if (!toggle || toggle.dataset.newBookSidebarBound === "true") return;
-    const update = function updateSidebar() {
-      const collapsed = document.documentElement.classList.toggle("sidebar-collapsed");
-      const label = collapsed ? "展开侧栏" : "折叠侧栏";
-      const icon = toggle.querySelector(".material-symbols-outlined");
-      if (icon) {
-        icon.textContent = collapsed ? "›" : "‹";
-        icon.setAttribute("aria-hidden", "true");
-      }
-      toggle.setAttribute("aria-label", label);
-      toggle.setAttribute("title", label);
-    };
-    toggle.addEventListener("click", update);
-    toggle.dataset.newBookSidebarBound = "true";
-  })();
-</script>
-  <script type="module" src="./new-book-bridge.mjs?v=sidebar-truthful-1"></script>
-</body>
+</script></body>
 </html>

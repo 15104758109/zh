@@ -1,0 +1,1043 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>多代理推演 - 纵横Narrative-Engine</title>
+<!-- ★ DaisyUI v5 CDN ★ -->
+<!-- Tailwind CSS & DaisyUI v4 via CDN -->
+<link rel="stylesheet" href="../common/daisyui-garden-full.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4">
+</script>
+<link href="../common/theme.css" rel="stylesheet">
+<link rel="stylesheet" href="../common/sidebar.css">
+<script src="../common/theme.js">
+</script>
+<script src="./new_book_wizard_data.js">
+</script>
+<script src="../common/header.js">
+</script>
+</head>
+<body class="h-screen w-full overflow-hidden flex bg-base-200">
+<a href="#main-content" class="skip-link">跳到主内容</a>
+<!-- SideNavBar -->
+<nav class="sidebar-glass" aria-label="主菜单">
+<div class="sidebar-brand">
+<div class="brand-mark">
+<span class="material-symbols-outlined">deployed_code</span>
+</div>
+<div class="sidebar-text">
+<div class="brand-title">纵横</div>
+<div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
+</div>
+</div>
+<div class="sidebar-separator" aria-hidden="true">
+</div>
+<ul class="menu sidebar-menu" id="sidebarMenu">
+<li>
+<a href="workbench.html" aria-label="总控设置面板">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="sidebar-text">总控设置</span>
+</a>
+</li>
+<li>
+<a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段">
+<span class="material-symbols-outlined">architecture</span>
+<span class="sidebar-text">设计阶段</span>
+</a>
+</li>
+<li>
+<a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行" class="active">
+<span class="material-symbols-outlined">precision_manufacturing</span>
+<span class="sidebar-text">生产阶段</span>
+</a>
+</li>
+<li>
+<a href="audit_stage.html" aria-label="审计阶段：正文审计、主编裁决">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="sidebar-text">审计阶段</span>
+</a>
+</li>
+<li>
+<a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析">
+<span class="material-symbols-outlined">history</span>
+<span class="sidebar-text">迭代管理</span>
+</a>
+</li>
+</ul>
+<footer class="sidebar-footer">
+<div class="sidebar-user">
+<div class="sidebar-user-avatar">U</div>
+<span class="sidebar-text sidebar-user-name">用户</span>
+</div>
+</footer>
+</nav>
+<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+<span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
+</button>
+<!-- Main Content Wrapper -->
+<main class="main-content" id="main-content">
+<!-- TopNavBar -->
+<!-- TopNavBar -->
+<!-- TopNavBar -->
+<header class="header-glass h-16 fixed top-0 right-0 z-[60] flex justify-between items-center px-6 bg-base-100">
+<div class="flex items-center gap-4 h-full">
+<nav class="flex h-full items-center ml-2">
+<!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
+<div role="tablist" class="tabs tabs-box tabs-sm">
+<a href="production_stage.html" role="tab" class="tab">套路展开</a>
+<a href="multi_agent_deduction.html" role="tab" class="tab tab-active">多代理推演</a>
+<a href="audit_review.html" role="tab" class="tab">结果审核</a>
+</div>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<!-- 当前书籍标识 -->
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-300 text-[11px] font-medium text-base-content/80">
+<span class="w-1.5 h-1.5 rounded-full bg-success shrink-0">
+</span>
+<span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+<span id="header-book-name">苍穹纪事</span>
+</div>
+<button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<!-- 快捷设置齿轮与弹窗 -->
+<div class="relative flex items-center">
+<button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+<!-- Quick Settings Popover -->
+<div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-300 transition-all duration-300">
+<div class="flex items-center justify-between mb-3">
+<span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
+<span class="material-symbols-outlined text-base-content text-sm animate-pulse">bolt</span>
+</div>
+<div class="flex flex-col gap-2 mb-3">
+<div class="flex items-center justify-between">
+<span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
+<input id="sw-auto-production" type="checkbox" class="toggle toggle-sm" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production" checked>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
+<input id="sw-auto-audit" type="checkbox" class="toggle toggle-sm" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit">
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
+<input id="sw-auto-iteration" type="checkbox" class="toggle toggle-sm" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration" checked>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-base-300">
+<button class="btn btn-sm btn-outline w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+<span class="material-symbols-outlined text-[14px]">check</span>
+                        应用当前配置
+                    </button>
+</div>
+</div>
+</div>
+<!-- closes relative flex items-center -->
+<div class="h-8 w-[1px] bg-base-content/5 mx-1">
+</div>
+</div>
+</header>
+<!-- Canvas Area -->
+<div class="flex-1 flex flex-col pt-16 min-h-0 overflow-y-auto p-6">
+<div class="grid grid-cols-12 gap-6">
+<!-- Center Canvas (Spans 8 cols) -->
+<div class="col-span-8 flex flex-col gap-6">
+<!-- 颗粒信息与向导容器 -->
+<!-- 1. 当前颗粒信息容器 -->
+<div class="card card-border border-base-300 bg-base-100 shadow-sm p-4 flex flex-col shrink-0">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-9 h-9 rounded-lg bg-base-100 border border-base-300 flex items-center justify-center text-base-content">
+<span class="material-symbols-outlined text-[18px]">grain</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-3">
+<h3 class=" text-[13px] font-bold text-base-content">当前颗粒</h3>
+<span class="text-[11px] text-base-content  font-bold">P-起2</span>
+<span class="badge badge-sm badge-outline badge-success">已完成</span>
+</div>
+</div>
+<div class="flex items-center gap-3 text-[10px] ">
+<span class="text-base-content opacity-60">2/47</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-3">
+<div class="card card-border border-base-300 bg-base-200 p-2.5">
+<span class=" text-[8px] text-base-content opacity-40 block mb-1">颗粒类型</span>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-warning shrink-0">
+</span>
+<span class=" text-[11px] text-base-content font-medium">情绪型</span>
+</div>
+<span class=" text-[9px] text-base-content opacity-50">情绪高潮型</span>
+</div>
+<div class="card card-border border-base-300 bg-base-200 p-2.5">
+<span class=" text-[8px] text-base-content opacity-40 block mb-1">颗粒目标</span>
+<span class=" text-[10px] text-base-content opacity-70 leading-relaxed block">立誓斩妖与神力觉醒，形成双线汇聚</span>
+</div>
+<div class="card card-border border-base-300 bg-base-200 p-2.5">
+<span class=" text-[8px] text-base-content opacity-40 block mb-1">颗粒内容</span>
+<span class=" text-[10px] text-base-content opacity-70 leading-relaxed block">李逍遥立誓，赵灵儿觉醒，血灵老祖降血毒</span>
+</div>
+</div>
+</div>
+<!-- 2. 3冲程向导与控制容器 -->
+<div class="card card-border border-base-300 bg-base-100 shadow-sm px-4 py-3 flex flex-col gap-3 shrink-0">
+<div class="flex items-center justify-center gap-4 w-full">
+<!-- Node 1: 导演冲程发包 -->
+<div id="flow-node-1" class="flex flex-col items-center gap-0.5 cursor-pointer w-20 opacity-50" onclick="setActiveNode(1)">
+<div id="node-icon-1" class="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center  text-base-content text-[11px]">1</div>
+<span id="node-text-1" class="text-base-content opacity-60 text-[11px] font-medium text-center leading-tight">导演冲程发包</span>
+</div>
+<!-- Connector -->
+<div id="conn-1" class="w-8 h-0.5 bg-base-300 rounded-full">
+</div>
+<!-- Node 2: 角色推演 -->
+<div id="flow-node-2" class="flex flex-col items-center gap-0.5 cursor-pointer w-20" onclick="setActiveNode(2)">
+<div id="node-icon-2" class="w-8 h-8 rounded-full bg-base-content flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-base-content text-[14px]">person</span>
+</div>
+<span id="node-text-2" class="text-base-content text-[11px] font-medium text-center leading-tight">角色推演</span>
+</div>
+<!-- Connector -->
+<div id="conn-2" class="w-8 h-0.5 bg-base-300 rounded-full">
+</div>
+<!-- Node 3: 导演冲程验证 -->
+<div id="flow-node-3" class="flex flex-col items-center gap-0.5 cursor-pointer w-20 opacity-50" onclick="setActiveNode(3)">
+<div id="node-icon-3" class="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center  text-base-content text-[11px]">3</div>
+<span id="node-text-3" class="text-base-content opacity-60 text-[11px] font-medium text-center leading-tight">导演冲程验证</span>
+</div>
+</div>
+<!-- Right: Round Info + Buttons -->
+<div class="flex items-center justify-end gap-4 w-full border-t border-base-300 pt-3">
+<div class="flex items-center gap-4 text-right">
+<div class="flex flex-col ">
+<span class="text-base-content opacity-60 text-[9px] leading-tight">轮次</span>
+<span class="text-base-content text-[13px] font-medium">04 <span class="text-base-content opacity-40 text-[10px]">/ 06</span>
+</span>
+</div>
+</div>
+<span class="w-px h-6 bg-base-300">
+</span>
+<div class="flex items-center gap-3">
+<button id="toggle-deduction-btn" class="btn btn-sm btn-error flex items-center gap-1 whitespace-nowrap shrink-0" onclick="toggleDeduction()">
+<span class="material-symbols-outlined text-[16px]" id="deduction-icon">pause</span>
+<span id="deduction-text">中断推演</span>
+</button>
+<button class="btn btn-sm flex items-center gap-1 whitespace-nowrap shrink-0" onclick="openRegenerateModal()">
+<span class="material-symbols-outlined text-[16px]">refresh</span>
+                重新推演
+            </button>
+</div>
+</div>
+</div>
+<!-- 节点推演摘要 -->
+<div class="card card-border border-base-300 bg-base-100 flex flex-col shadow-sm">
+<!-- Header -->
+<div class="px-5 py-3 border-b border-base-300 flex items-center justify-between bg-base-200">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-base-content text-[20px]">summarize</span>
+<h2 class=" text-[16px] font-semibold text-base-content">节点推演摘要</h2>
+</div>
+<div class="flex items-center gap-1 text-base-content">
+<span class="w-2 h-2 rounded-full bg-base-content animate-pulse">
+</span>
+<span class=" text-[11px]">实时推演中</span>
+</div>
+</div>
+<!-- Content -->
+<div class="p-5" id="node-content-area">
+<!-- Panel 1: 导演冲程发包 -->
+<div id="content-panel-1" class="hidden">
+<div class="space-y-3">
+<!-- 李逍遥（主角型） -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 hover:border-base-300 transition-all">
+<div class="flex items-center gap-3 mb-3 pb-2 border-b border-base-300">
+<div class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content font-bold shrink-0 text-[14px]">李</div>
+<div class="flex-1">
+<div class="flex items-center gap-3">
+<span class=" text-[13px] font-medium text-base-content">李逍遥</span>
+<span class="text-[9px] text-base-content bg-base-100 px-1.5 py-0.5 rounded">主角</span>
+</div>
+<span class=" text-[9px] text-base-content opacity-60">主角型 · 不接收剧情目的</span>
+</div>
+<span class="text-[9px] text-base-content bg-base-100 px-2 py-1 rounded-full">已送达 ✓</span>
+</div>
+<div class="pl-12 space-y-sm  text-[10px]">
+<div class="flex items-start gap-3">
+<span class="text-base-content font-bold text-[9px] mt-0.5">▸</span>
+<div class="flex-1">
+<span class="text-base-content opacity-60">增量信息：</span>
+<span class="text-base-content opacity-80">血灵老祖血毒降临，仙灵岛结界受损</span>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="text-base-content font-bold text-[9px] mt-0.5">▸</span>
+<div class="flex-1">
+<span class="text-base-content opacity-60">情绪阶段：</span>
+<span class="text-base-content opacity-80">高 · 高潮抉择</span>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="text-base-content font-bold text-[9px] mt-0.5">▸</span>
+<div class="flex-1">
+<span class="text-base-content opacity-60">上轮摘要：</span>
+<span class="text-base-content opacity-80">P-起1 求药路上遭遇血毒前兆</span>
+</div>
+</div>
+<div class="flex items-start gap-3 text-warning/80">
+<span class="font-bold text-[9px] mt-0.5">✗</span>
+<span class="text-[9px]">不接收剧情目的（信息隔离）</span>
+</div>
+</div>
+</div>
+<!-- 赵灵儿（配角型） -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 hover:border-base-300 transition-all">
+<div class="flex items-center gap-3 mb-3 pb-2 border-b border-base-300">
+<div class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content font-bold shrink-0 text-[14px]">赵</div>
+<div class="flex-1">
+<div class="flex items-center gap-3">
+<span class=" text-[13px] font-medium text-base-content">赵灵儿</span>
+<span class="text-[9px] text-base-content bg-base-100 px-1.5 py-0.5 rounded">宿命</span>
+</div>
+<span class=" text-[9px] text-base-content opacity-60">配角型 · 接收阶段性目标</span>
+</div>
+<span class="text-[9px] text-base-content bg-base-100 px-2 py-1 rounded-full">已送达 ✓</span>
+</div>
+<div class="pl-12 space-y-sm  text-[10px]">
+<div class="flex items-start gap-3">
+<span class="text-base-content font-bold text-[9px] mt-0.5">▸</span>
+<div class="flex-1">
+<span class="text-base-content opacity-60">阶段目标：</span>
+<span class="text-base-content opacity-80">觉醒女娲神力，承担宿命代价</span>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="text-base-content font-bold text-[9px] mt-0.5">▸</span>
+<div class="flex-1">
+<span class="text-base-content opacity-60">情绪阶段：</span>
+<span class="text-base-content opacity-80">高 · 宿命觉醒</span>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="text-base-content font-bold text-[9px] mt-0.5">▸</span>
+<div class="flex-1">
+<span class="text-base-content opacity-60">可见局势：</span>
+<span class="text-base-content opacity-80">李逍遥立誓、血毒蔓延、结界将破</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 血灵老祖（反派型） -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 hover:border-base-300 transition-all">
+<div class="flex items-center gap-3 mb-3 pb-2 border-b border-base-300">
+<div class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content font-bold shrink-0 text-[14px]">血</div>
+<div class="flex-1">
+<div class="flex items-center gap-3">
+<span class=" text-[13px] font-medium text-base-content">血灵老祖</span>
+<span class="text-[9px] text-base-content bg-base-100 px-1.5 py-0.5 rounded">反派</span>
+</div>
+<span class=" text-[9px] text-base-content opacity-60">反派型 · 接收阶段性目标</span>
+</div>
+<span class="text-[9px] text-base-content bg-base-100 px-2 py-1 rounded-full">已送达 ✓</span>
+</div>
+<div class="pl-12 space-y-sm  text-[10px]">
+<div class="flex items-start gap-3">
+<span class="text-base-content font-bold text-[9px] mt-0.5">▸</span>
+<div class="flex-1">
+<span class="text-base-content opacity-60">阶段目标：</span>
+<span class="text-base-content opacity-80">以血毒诅咒碾压仙灵岛，吞噬十万冤魂</span>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="text-base-content font-bold text-[9px] mt-0.5">▸</span>
+<div class="flex-1">
+<span class="text-base-content opacity-60">可见局势：</span>
+<span class="text-base-content opacity-80">李逍遥剑气、赵灵儿神力初显、结界薄弱</span>
+</div>
+</div>
+<div class="flex items-start gap-3 text-warning/80">
+<span class="font-bold text-[9px] mt-0.5">✗</span>
+<span class="text-[9px]">不接收主角真实目标、主角独有信息</span>
+</div>
+</div>
+</div>
+</div>
+<div class="border-t border-base-300 pt-3">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-base-content opacity-60 text-[14px]">history</span>
+<span class=" text-[11px] text-base-content opacity-60 font-medium">发放历史</span>
+</div>
+<div class="space-y-1  text-[9px]">
+<div class="flex items-center gap-3 p-2 rounded-lg bg-base-200">
+<span class="text-base-content opacity-60 ">P-起1</span>
+<span class="text-base-content opacity-60 flex-1">3角色 · 求药遭遇</span>
+<span class="text-base-content bg-base-100 px-1.5 py-0.5 rounded text-[8px]">已完成</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-lg bg-base-100 border border-base-300">
+<span class="text-base-content  font-bold">P-起2</span>
+<span class="text-base-content opacity-70 flex-1">3角色 · 立誓觉醒</span>
+<span class="text-base-content bg-base-100 px-1.5 py-0.5 rounded text-[8px]">已完成</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-lg bg-base-200 opacity-50">
+<span class="text-base-content opacity-60 ">P-起3</span>
+<span class="text-base-content opacity-40 flex-1">3角色 · 血毒反噬</span>
+<span class="text-warning bg-warning/10 px-1.5 py-0.5 rounded text-[8px]">待推演</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Panel 2: 角色推演 -->
+<div id="content-panel-2" class="">
+<div class="space-y-3">
+<!-- 李逍遥 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 hover:border-base-300 transition-all">
+<div class="flex items-center gap-3 mb-3 pb-2 border-b border-base-300">
+<div class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content font-bold shrink-0 text-[14px]">李</div>
+<div class="flex-1">
+<div class="flex items-center gap-3">
+<span class=" text-[13px] font-medium text-base-content">李逍遥</span>
+<span class="text-[9px] text-base-content bg-base-100 px-1.5 py-0.5 rounded">主角</span>
+</div>
+<span class=" text-[9px] text-base-content opacity-60">状态属性变化</span>
+</div>
+<span class="text-[9px] text-warning bg-warning/15 px-2 py-1 rounded-full font-medium">灵力反噬</span>
+</div>
+<div class="pl-12 space-y-2">
+<p class=" text-[11px] text-base-content opacity-80 leading-relaxed">
+                            灵力大损，剑气反噬留下内伤；位置从水月宫外前移至仙灵岛前沿阵地。
+                        </p>
+<div class="flex flex-wrap gap-2">
+<span class="text-[9px] bg-warning/10 text-warning px-2 py-0.5 rounded border border-warning/10">灵力: 40% (受损)</span>
+<span class="text-[9px] bg-warning/10 text-warning px-2 py-0.5 rounded border border-warning/10">伤势: 内伤</span>
+<span class="text-[9px] bg-base-100 text-base-content px-2 py-0.5 rounded border border-base-300">位置: 前沿阵地</span>
+</div>
+</div>
+</div>
+<!-- 赵灵儿 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 hover:border-base-300 transition-all">
+<div class="flex items-center gap-3 mb-3 pb-2 border-b border-base-300">
+<div class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content font-bold shrink-0 text-[14px]">赵</div>
+<div class="flex-1">
+<div class="flex items-center gap-3">
+<span class=" text-[13px] font-medium text-base-content">赵灵儿</span>
+<span class="text-[9px] text-base-content bg-base-100 px-1.5 py-0.5 rounded">宿命</span>
+</div>
+<span class=" text-[9px] text-base-content opacity-60">状态属性变化</span>
+</div>
+<span class="text-[9px] text-base-content bg-base-100 px-2 py-1 rounded-full font-medium">神力觉醒</span>
+</div>
+<div class="pl-12 space-y-2">
+<p class=" text-[11px] text-base-content opacity-80 leading-relaxed">
+                            女娲神力初步觉醒，水脉法阵运转强度翻倍；情绪从恐惧转为悲壮接受宿命。
+                        </p>
+<div class="flex flex-wrap gap-2">
+<span class="text-[9px] bg-base-100 text-base-content px-2 py-0.5 rounded border border-base-300">神力: 觉醒 (25%)</span>
+<span class="text-[9px] bg-base-100 text-base-content px-2 py-0.5 rounded border border-base-300">法阵: 运转翻倍 (200%)</span>
+<span class="text-[9px] bg-warning/10 text-warning px-2 py-0.5 rounded border border-warning/10">情绪: 悲壮</span>
+</div>
+</div>
+</div>
+<!-- 血灵老祖 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 hover:border-base-300 transition-all">
+<div class="flex items-center gap-3 mb-3 pb-2 border-b border-base-300">
+<div class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content font-bold shrink-0 text-[14px]">血</div>
+<div class="flex-1">
+<div class="flex items-center gap-3">
+<span class=" text-[13px] font-medium text-base-content">血灵老祖</span>
+<span class="text-[9px] text-base-content bg-base-100 px-1.5 py-0.5 rounded">反派</span>
+</div>
+<span class=" text-[9px] text-base-content opacity-60">状态属性变化</span>
+</div>
+<span class="text-[9px] text-base-content bg-base-100 px-2 py-1 rounded-full font-medium">法力消耗</span>
+</div>
+<div class="pl-12 space-y-2">
+<p class=" text-[11px] text-base-content opacity-80 leading-relaxed">
+                            血毒巨蟒降临成功，但结界阻力超出预期；万魂血煞幡消耗三成冤魂。
+                        </p>
+<div class="flex flex-wrap gap-2">
+<span class="text-[9px] bg-base-100 text-base-content px-2 py-0.5 rounded border border-base-300">巨蟒: 召唤成功</span>
+<span class="text-[9px] bg-warning/10 text-warning px-2 py-0.5 rounded border border-warning/10">法宝消耗: 30%</span>
+<span class="text-[9px] bg-base-content/10 text-base-content/70 px-2 py-0.5 rounded border border-base-300">阻力: 超出预期</span>
+</div>
+</div>
+</div>
+<!-- 场景 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 hover:border-base-300 transition-all">
+<div class="flex items-center gap-3 mb-3 pb-2 border-b border-base-300">
+<div class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content font-bold shrink-0 text-[14px]">景</div>
+<div class="flex-1">
+<div class="flex items-center gap-3">
+<span class=" text-[13px] font-medium text-base-content">场景</span>
+<span class="text-[9px] text-base-content bg-base-100 px-1.5 py-0.5 rounded">环境</span>
+</div>
+<span class=" text-[9px] text-base-content opacity-60">世界与岛屿环境变化</span>
+</div>
+<span class="text-[9px] text-base-content bg-base-100 px-2 py-1 rounded-full font-medium">环境恶化</span>
+</div>
+<div class="pl-12 space-y-2">
+<p class=" text-[11px] text-base-content opacity-80 leading-relaxed">
+                            仙灵岛结界强度降至六成，水脉法阵出现裂纹；血毒弥漫范围扩大至外岛。
+                        </p>
+<div class="flex flex-wrap gap-2">
+<span class="text-[9px] bg-base-100 text-base-content px-2 py-0.5 rounded border border-base-300">结界强度: 60%</span>
+<span class="text-[9px] bg-warning/10 text-warning px-2 py-0.5 rounded border border-warning/10">法阵: 出现裂纹</span>
+<span class="text-[9px] bg-base-100 text-base-content px-2 py-0.5 rounded border border-base-300">污染范围: 外岛</span>
+</div>
+</div>
+</div>
+<!-- 状态记录 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 flex flex-col gap-3 mt-4">
+<div class="flex items-center gap-3 mb-2 pb-2 border-b border-base-300">
+<span class="material-symbols-outlined text-base-content opacity-60 text-[14px]">history</span>
+<span class=" text-[11px] text-base-content opacity-60 font-medium">状态记录</span>
+</div>
+<div class="space-y-1  text-[9px]">
+<div class="flex items-center gap-3 p-2 rounded bg-base-100 border border-base-300">
+<span class="text-base-content opacity-60 ">P-起1</span>
+<span class="text-base-content opacity-60 flex-1">李：出海求药 · 赵：心系外客 · 景：宁静祥和</span>
+<span class="text-base-content bg-base-100 px-1.5 py-0.5 rounded text-[8px]">初始状态</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded bg-base-100 border border-base-300">
+<span class="text-base-content  font-bold">P-起2</span>
+<span class="text-base-content opacity-70 flex-1">李：灵力受损 · 赵：神力翻倍 · 景：结界六成</span>
+<span class="text-base-content bg-base-100 px-1.5 py-0.5 rounded text-[8px]">已完成</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded bg-base-100 border border-base-300 opacity-50">
+<span class="text-base-content opacity-60 ">P-起3</span>
+<span class="text-base-content opacity-40 flex-1">待更新</span>
+<span class="text-warning bg-warning/10 px-1.5 py-0.5 rounded text-[8px]">待推演</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Panel 3: 导演冲程验证 -->
+<div id="content-panel-3" class="hidden">
+<div class="space-y-3">
+<!-- 李逍遥 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 hover:border-base-300 transition-all">
+<div class="flex items-center gap-3 mb-3 pb-2 border-b border-base-300">
+<div class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content font-bold shrink-0 text-[14px]">李</div>
+<div class="flex-1">
+<div class="flex items-center gap-3">
+<span class=" text-[13px] font-medium text-base-content">李逍遥</span>
+<span class="text-[9px] text-base-content bg-base-100 px-1.5 py-0.5 rounded">主角</span>
+</div>
+<span class=" text-[9px] text-base-content opacity-60">3 个候选行动</span>
+</div>
+<span class="text-[9px] text-base-content bg-base-100 px-2 py-1 rounded-full font-medium">已选 A01 ✓</span>
+</div>
+<div class="pl-12 space-y-1.5">
+<div class="flex items-center gap-3 p-2 rounded-lg bg-base-100 border border-base-300">
+<span class="text-base-content font-bold text-[11px] ">A01</span>
+<span class="text-base-content opacity-80 text-[11px] flex-1">负剑立誓斩妖除魔</span>
+<span class="text-[8px] text-base-content bg-base-100 px-1.5 py-0.5 rounded border border-base-300">有效</span>
+<span class="material-symbols-outlined text-base-content text-[16px]">check_circle</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-lg bg-base-200 opacity-60">
+<span class="text-base-content font-bold text-[10px] ">A02</span>
+<span class="text-base-content opacity-50 text-[10px] flex-1">剑气硬抗血毒</span>
+<span class="text-[8px] text-warning bg-warning/10 px-1.5 py-0.5 rounded border border-warning/10">被动</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-lg bg-base-200 opacity-60">
+<span class="text-base-content font-bold text-[10px] ">A03</span>
+<span class="text-base-content opacity-50 text-[10px] flex-1">退守水月宫求援</span>
+<span class="text-[8px] text-error bg-error/10 px-1.5 py-0.5 rounded border border-error/10">失真</span>
+</div>
+</div>
+</div>
+<!-- 赵灵儿 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 hover:border-base-300 transition-all">
+<div class="flex items-center gap-3 mb-3 pb-2 border-b border-base-300">
+<div class="w-10 h-10 rounded-full bg-base-100 border border-base-300 flex items-center justify-center text-base-content font-bold shrink-0 text-[14px]">赵</div>
+<div class="flex-1">
+<div class="flex items-center gap-3">
+<span class=" text-[13px] font-medium text-base-content">赵灵儿</span>
+<span class="text-[9px] text-base-content bg-base-100 px-1.5 py-0.5 rounded">宿命</span>
+</div>
+<span class=" text-[9px] text-base-content opacity-60">3 个候选行动</span>
+</div>
+<span class="text-[9px] text-base-content bg-base-100 px-2 py-1 rounded-full font-medium">已选 A01 ✓</span>
+</div>
+<div class="pl-12 space-y-1.5">
+<div class="flex items-center gap-3 p-2 rounded-lg bg-base-100 border border-base-300">
+<span class="text-base-content font-bold text-[11px] ">A01</span>
+<span class="text-base-content opacity-80 text-[11px] flex-1">女娲神力觉醒</span>
+<span class="text-[8px] text-base-content bg-base-100 px-1.5 py-0.5 rounded border border-base-300">有效</span>
+<span class="material-symbols-outlined text-base-content text-[16px]">check_circle</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-lg bg-base-200 opacity-60">
+<span class="text-base-content font-bold text-[10px] ">A02</span>
+<span class="text-base-content opacity-50 text-[10px] flex-1">借助水脉法阵抵抗</span>
+<span class="text-[8px] text-warning bg-warning/10 px-1.5 py-0.5 rounded border border-warning/10">被动</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-lg bg-base-200 opacity-60">
+<span class="text-base-content font-bold text-[10px] ">A03</span>
+<span class="text-base-content opacity-50 text-[10px] flex-1">放弃抵抗听天由命</span>
+<span class="text-[8px] text-error bg-error/10 px-1.5 py-0.5 rounded border border-error/10">失真</span>
+</div>
+</div>
+</div>
+<!-- 血灵老祖 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 hover:border-base-300 transition-all">
+<div class="flex items-center gap-3 mb-3 pb-2 border-b border-base-300">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br base-100 border border-base-300 flex items-center justify-center text-error font-bold shrink-0 text-[14px]">血</div>
+<div class="flex-1">
+<div class="flex items-center gap-3">
+<span class=" text-[13px] font-medium text-error">血灵老祖</span>
+<span class="text-[9px] text-error bg-error/10 px-1.5 py-0.5 rounded">反派</span>
+</div>
+<span class=" text-[9px] text-base-content opacity-60">3 个候选行动</span>
+</div>
+<span class="text-[9px] text-error bg-error/15 px-2 py-1 rounded-full font-medium">已选 A01 (阻断)</span>
+</div>
+<div class="pl-12 space-y-1.5">
+<div class="flex items-center gap-3 p-2.5 rounded-lg bg-base-100 border border-error/20">
+<span class="text-error font-bold text-[11px] ">A01</span>
+<span class="text-error/70 text-[11px] flex-1">跨越空间节点降血毒</span>
+<span class="text-[8px] text-error bg-error/10 px-1.5 py-0.5 rounded font-bold border border-error/10">阻断</span>
+<span class="material-symbols-outlined text-error text-[16px]">cancel</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-lg bg-base-200 opacity-60">
+<span class="text-error font-bold text-[10px] ">A02</span>
+<span class="text-base-content opacity-50 text-[10px] flex-1">强攻仙灵岛外围结界</span>
+<span class="text-[8px] text-base-content bg-base-100 px-1.5 py-0.5 rounded border border-base-300">有效</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-lg bg-base-200 opacity-60">
+<span class="text-error font-bold text-[10px] ">A03</span>
+<span class="text-base-content opacity-50 text-[10px] flex-1">施展化血大法潜入</span>
+<span class="text-[8px] text-base-content bg-base-100 px-1.5 py-0.5 rounded border border-base-300">有效</span>
+</div>
+</div>
+</div>
+<!-- 选择历史记录 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 flex flex-col gap-3 mt-4">
+<div class="flex items-center gap-3 mb-2 pb-2 border-b border-base-300">
+<span class="material-symbols-outlined text-base-content opacity-60 text-[14px]">history</span>
+<span class=" text-[11px] text-base-content opacity-60 font-medium">选择历史</span>
+</div>
+<div class="space-y-1  text-[9px]">
+<div class="flex items-center gap-3 p-2 rounded bg-base-100 border border-base-300">
+<span class="text-base-content opacity-60 ">P-起1</span>
+<span class="text-base-content opacity-60 flex-1">李 A01 · 赵 A02 · 血 A01</span>
+<span class="text-base-content bg-base-100 px-1.5 py-0.5 rounded text-[8px]">已完成</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded bg-base-100 border border-base-300">
+<span class="text-base-content  font-bold">P-起2</span>
+<span class="text-base-content opacity-70 flex-1">李 A01 · 赵 A01 · 血 阻断</span>
+<span class="text-base-content bg-base-100 px-1.5 py-0.5 rounded text-[8px]">已完成</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded bg-base-100 border border-base-300 opacity-50">
+<span class="text-base-content opacity-60 ">P-起3</span>
+<span class="text-base-content opacity-40 flex-1">待推演</span>
+<span class="text-warning bg-warning/10 px-1.5 py-0.5 rounded text-[8px]">待推演</span>
+</div>
+</div>
+</div>
+<!-- 导演验证与收束记录 -->
+<div class="border-t border-base-300 my-6 pt-6">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-base-content text-[20px]">fact_check</span>
+<h3 class=" text-sm font-semibold text-base-content">导演验证与收束记录</h3>
+</div>
+<div class="space-y-3">
+<!-- P-起1 记录 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 flex flex-col gap-2.5">
+<div class="flex items-center gap-3 pb-2 border-b border-base-300">
+<span class="text-base-content  font-bold text-[12px]">P-起1</span>
+<span class="text-base-content opacity-60 text-[10px]">求药遭遇 · 3个已选事件</span>
+<span class="text-[9px] text-base-content bg-base-100 px-2 py-0.5 rounded-full font-medium ml-auto">已通过 ✓</span>
+</div>
+<div class=" text-[10px] text-base-content opacity-75 space-y-1">
+<div class="flex items-center gap-2">
+<span class="text-base-content font-bold">融合:</span>
+<span>李逍遥借药出海，触发仙灵岛缘分起点。</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-base-content font-bold">自检:</span>
+<span>4/4 指标全部通过 · 情绪：高 · 钩子：已植入</span>
+</div>
+</div>
+</div>
+<!-- P-起2 记录 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 flex flex-col gap-2.5">
+<div class="flex items-center gap-3 pb-2 border-b border-base-300">
+<span class="text-base-content  font-bold text-[12px]">P-起2</span>
+<span class="text-base-content opacity-60 text-[10px]">立誓觉醒 · E001, E002, E003(阻断)</span>
+<span class="text-[9px] text-base-content bg-base-100 px-2 py-0.5 rounded-full font-medium ml-auto">已通过 ✓</span>
+</div>
+<div class=" text-[10px] text-base-content opacity-75 space-y-1.5">
+<div class="flex items-center gap-2">
+<span class="text-base-content font-bold">融合:</span>
+<span>李逍遥负剑立誓，赵灵儿神力觉醒；血灵老祖行动被阻断（退回重推）。</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-warning font-bold">自检:</span>
+<span>3/4 通过 · 情绪：高 · 钩子：未通过（需在P-起3补种）</span>
+</div>
+<!-- 正文草稿 -->
+<div class="p-2.5 rounded bg-base-100/50 border border-base-300 text-[9px] text-base-content opacity-70 leading-relaxed font-sans">
+                                    　　李逍遥长剑在手，剑气冲霄，立誓斩妖除魔；赵灵儿神力溢出，水脉法阵随之运转，结界大盛。血灵老祖血眸微眯，没入血雾中……
+                                </div>
+</div>
+</div>
+<!-- P-起3 记录 -->
+<div class="bg-base-200 border border-base-300 rounded-box p-4 opacity-50 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="text-base-content opacity-40  font-bold text-[12px]">P-起3</span>
+<span class="text-base-content opacity-40 text-[10px]">血毒反噬 · 待收束</span>
+</div>
+<span class="text-[9px] text-warning bg-warning/10 px-2 py-0.5 rounded-full font-medium">待推演</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- closes node-content-area -->
+</div>
+<!-- closes Card 3 container -->
+</div>
+<!-- closes Left Column col-span-8 -->
+<!-- Right Sidebar -->
+<div class="col-span-4 flex flex-col gap-4 pr-1">
+<!-- 1. L1A推演方案 -->
+<div class="card card-border border-base-300 bg-base-100 p-4 flex flex-col shrink-0 relative overflow-hidden">
+<div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent">
+</div>
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-lg bg-base-100 border border-base-300 flex items-center justify-center text-base-content shadow-sm">
+<span class="material-symbols-outlined text-[16px]">menu_book</span>
+</div>
+<div>
+<h3 class="text-xs font-bold text-base-content tracking-wide">L1A推演方案</h3>
+<span class="text-[9px] text-base-content opacity-60 uppercase  block mt-0.5">L1A Deduction Plan</span>
+</div>
+</div>
+</div>
+<!-- 核心目标 -->
+<div class="mb-3">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-base-content text-[14px]">task_alt</span>
+<span class=" text-[9px] text-base-content opacity-60">核心目标</span>
+</div>
+<span class="badge badge-sm badge-outline badge-success">2/5 通过</span>
+</div>
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center gap-3 p-2 rounded-box bg-base-100 border border-base-300">
+<div class="w-5 h-5 rounded-full bg-base-content flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-base-content text-[12px]">check</span>
+</div>
+<div class="flex-1 min-w-0">
+<span class=" text-[11px] text-base-content">揭示动机冲突</span>
+<span class=" text-[9px] text-base-content opacity-60 ml-1.5">G-0001</span>
+</div>
+<span class="badge badge-xs badge-outline badge-success">通过</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-box bg-base-100 border border-base-300">
+<div class="w-5 h-5 rounded-full bg-base-content flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-base-content text-[12px]">check</span>
+</div>
+<div class="flex-1 min-w-0">
+<span class=" text-[11px] text-base-content">建立对立立场</span>
+<span class=" text-[9px] text-base-content opacity-60 ml-1.5">G-0002</span>
+</div>
+<span class="badge badge-xs badge-outline badge-success">通过</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-box bg-base-100 border border-base-300">
+<div class="w-5 h-5 rounded-full bg-info flex items-center justify-center shrink-0 animate-pulse">
+<span class="material-symbols-outlined text-base-content text-[12px]">hourglass_top</span>
+</div>
+<div class="flex-1 min-w-0">
+<span class=" text-[11px] text-base-content font-medium">产生初步后果</span>
+<span class=" text-[9px] text-base-content opacity-60 ml-1.5">G-0725</span>
+</div>
+<span class="badge badge-xs badge-outline badge-info">推演中</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-box bg-base-200 border border-base-300 opacity-50">
+<div class="w-5 h-5 rounded-full bg-base-300 flex items-center justify-center shrink-0">
+<span class=" text-base-content opacity-40 text-[9px]">4</span>
+</div>
+<div class="flex-1 min-w-0">
+<span class=" text-[11px] text-base-content opacity-50">推动势力站队</span>
+<span class=" text-[9px] text-base-content opacity-60 ml-1.5">G-0726</span>
+</div>
+<span class="badge badge-xs">待推演</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-box bg-base-200 border border-base-300 opacity-50">
+<div class="w-5 h-5 rounded-full bg-base-300 flex items-center justify-center shrink-0">
+<span class=" text-base-content opacity-40 text-[9px]">5</span>
+</div>
+<div class="flex-1 min-w-0">
+<span class=" text-[11px] text-base-content opacity-50">记录信念转变</span>
+<span class=" text-[9px] text-base-content opacity-60 ml-1.5">G-0727</span>
+</div>
+<span class="badge badge-xs">待推演</span>
+</div>
+</div>
+</div>
+<!-- Token消耗 -->
+<div class="card card-border border-base-300 bg-base-100 p-3">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-base-content text-[14px] animate-pulse">toll</span>
+<span class=" text-[9px] text-base-content opacity-60">消耗令牌数</span>
+</div>
+<span class=" text-[13px] font-bold text-base-content">124,580</span>
+</div>
+<progress class="progress  w-full" value="62" max="100">
+</progress>
+<div class="flex justify-between mt-1  text-[9px] text-base-content opacity-60">
+<span>预算 200,000</span>
+<span>62% 已用</span>
+</div>
+</div>
+</div>
+<!-- 2. 章节与推演进度 -->
+<div class="card card-border border-base-300 bg-base-100 p-4 flex flex-col shrink-0">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-lg bg-base-100 border border-base-300 flex items-center justify-center text-base-content shadow-sm">
+<span class="material-symbols-outlined text-[16px]">menu_book</span>
+</div>
+<div>
+<h3 class="text-xs font-bold text-base-content tracking-wide">章节与推演进度</h3>
+<span class="text-[9px] text-base-content opacity-60 uppercase  block mt-0.5">Chapters &amp; Progress</span>
+</div>
+</div>
+</div>
+<!-- 章节 -->
+<div class="flex flex-col gap-1.5 mb-2">
+<div class="flex items-center gap-3 p-2 rounded-box bg-base-100 border border-base-300">
+<span class="status status-neutral">
+</span>
+<span class=" text-[10px] text-base-content flex-1">第1章：水月宫求药</span>
+<span class="badge badge-xs badge-neutral">完成</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-box bg-base-100 border border-base-300">
+<span class="status status-neutral">
+</span>
+<span class=" text-[10px] text-base-content flex-1">第2章：仙灵岛突袭</span>
+<span class="badge badge-xs badge-neutral">完成</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-box bg-base-100 border border-base-300">
+<span class="status status-success animate-pulse">
+</span>
+<span class=" text-[10px] text-base-content flex-1 font-medium">第3章：宿命冲突</span>
+<span class="badge badge-xs badge-outline badge-success">推演中</span>
+</div>
+</div>
+<!-- 章节目的 -->
+<div class="card card-border border-base-300 bg-base-100 p-3">
+<span class=" text-[9px] text-base-content opacity-60 block mb-1.5">章节目的</span>
+<p class=" text-[10px] text-base-content opacity-70 leading-relaxed">李逍遥以誓言撬动天道法则，赵灵儿觉醒女娲宿命，血灵老祖降下血毒逼迫双方做出不可逆选择。</p>
+</div>
+</div>
+<!-- 3. 全局变化 -->
+<div class="card card-border border-base-300 bg-base-100 p-4 flex flex-col flex-1 overflow-hidden">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-lg bg-base-100 border border-base-300 flex items-center justify-center text-base-content shadow-sm">
+<span class="material-symbols-outlined text-[16px]">swap_horiz</span>
+</div>
+<div>
+<h3 class="text-xs font-bold text-base-content tracking-wide">全局变化</h3>
+<span class="text-[9px] text-base-content opacity-60 uppercase  block mt-0.5">Global Changes</span>
+</div>
+</div>
+</div>
+<!-- 关系变化 -->
+<div class="flex-1 overflow-y-auto custom-scrollbar">
+<div class="flex items-center gap-1.5 mb-2">
+<span class="material-symbols-outlined text-base-content text-[14px] opacity-60">group</span>
+<span class=" text-[9px] text-base-content opacity-60">关系变化</span>
+</div>
+<div class="flex flex-col gap-1" id="relation-diff-body">
+<div class="flex items-center gap-2 p-2 rounded-lg border bg-base-100 border-base-300  text-[10px]">
+<span class="text-base-content font-medium text-[10px] shrink-0">李逍遥→赵灵儿</span>
+<span class="text-base-content opacity-40">信任</span>
+<span class="text-base-content font-bold ml-auto">+2 ↑</span>
+<span class="text-base-content opacity-30 text-[8px] shrink-0">E001 立誓护岛</span>
+</div>
+<div class="flex items-center gap-2 p-2 rounded-lg border bg-base-100 border-base-300  text-[10px]">
+<span class="text-base-content font-medium text-[10px] shrink-0">李逍遥→赵灵儿</span>
+<span class="text-base-content opacity-40">依赖</span>
+<span class="text-base-content font-bold ml-auto">+1 ↑</span>
+<span class="text-base-content opacity-30 text-[8px] shrink-0">E002 神力共鸣</span>
+</div>
+<div class="flex items-center gap-2 p-2 rounded-lg border bg-base-100 border-base-300  text-[10px]">
+<span class="text-base-content font-medium text-[10px] shrink-0">赵灵儿→李逍遥</span>
+<span class="text-base-content opacity-40">信任</span>
+<span class="text-base-content font-bold ml-auto">+3 ↑</span>
+<span class="text-base-content opacity-30 text-[8px] shrink-0">E001 舍身立誓</span>
+</div>
+<div class="flex items-center gap-2 p-2 rounded-lg border bg-base-100 border-base-300  text-[10px]">
+<span class="text-base-content font-medium text-[10px] shrink-0">李逍遥→血灵老祖</span>
+<span class="text-base-content opacity-40">冲突</span>
+<span class="text-base-content font-bold ml-auto">+5 ↑</span>
+<span class="text-base-content opacity-30 text-[8px] shrink-0">E003 血毒降临</span>
+</div>
+<div class="flex items-center gap-2 p-2 rounded-lg border bg-base-100 border-base-300  text-[10px]">
+<span class="text-base-content font-medium text-[10px] shrink-0">赵灵儿→血灵老祖</span>
+<span class="text-base-content opacity-40">冲突</span>
+<span class="text-base-content font-bold ml-auto">+4 ↑</span>
+<span class="text-base-content opacity-30 text-[8px] shrink-0">E002 法阵对抗</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- closing Main Content Area -->
+<script>
+
+    let activeNode = 2;
+    function setActiveNode(index) {
+        activeNode = index;
+        for (let i = 1; i <= 3; i++) {
+            const node = document.getElementById('flow-node-' + i);
+            const icon = document.getElementById('node-icon-' + i);
+            const text = document.getElementById('node-text-' + i);
+            const panel = document.getElementById('content-panel-' + i);
+            const conn = document.getElementById('conn-' + i);
+            if (i === index) {
+                node.classList.remove('opacity-50');
+                const activeIconClass = i === 2
+                    ? 'w-8 h-8 rounded-full bg-base-content flex items-center justify-center shadow-sm'
+                    : 'w-8 h-8 rounded-full bg-base-content flex items-center justify-center  text-base-content font-bold text-[11px] shadow-sm';
+                icon.className = activeIconClass;
+                text.className = 'text-base-content text-[11px] font-medium text-center leading-tight';
+                if (conn) conn.className = 'w-8 h-0.5 bg-base-300 rounded-full';
+                panel.classList.remove('hidden');
+            } else {
+                node.classList.add('opacity-50');
+                icon.className = 'w-8 h-8 rounded-full bg-base-300 flex items-center justify-center  text-base-content text-[11px]';
+                text.className = 'text-base-content opacity-60 text-[11px] font-medium text-center leading-tight';
+                if (conn) conn.className = 'w-8 h-0.5 bg-base-300 rounded-full';
+                panel.classList.add('hidden');
+            }
+        }
+    }
+
+    let isDeducing = true;
+    function toggleDeduction() {
+        isDeducing = !isDeducing;
+        const icon = document.getElementById('deduction-icon');
+        const text = document.getElementById('deduction-text');
+        if (isDeducing) {
+            icon.textContent = 'pause';
+            text.textContent = '中断推演';
+        } else {
+            icon.textContent = 'play_arrow';
+            text.textContent = '开始推演';
+        }
+    }
+
+    const relationDiffData = [
+        { from: '李逍遥', to: '赵灵儿', dim: '信任', before: 5, after: 7, cause: 'E001 立誓护岛' },
+        { from: '李逍遥', to: '赵灵儿', dim: '依赖', before: 3, after: 4, cause: 'E002 神力共鸣' },
+        { from: '赵灵儿', to: '李逍遥', dim: '信任', before: 4, after: 7, cause: 'E001 舍身立誓' },
+        { from: '李逍遥', to: '血灵老祖', dim: '冲突', before: 3, after: 8, cause: 'E003 血毒降临' },
+        { from: '赵灵儿', to: '血灵老祖', dim: '冲突', before: 2, after: 6, cause: 'E002 法阵对抗' }
+    ];
+
+    const stateDiffData = [
+        { char: '李逍遥', desc: '灵力大损，剑气反噬留下内伤；位置从水月宫外前移至仙灵岛前沿阵地', icon: 'swords' },
+        { char: '赵灵儿', desc: '女娲神力初步觉醒，水脉法阵运转强度翻倍；情绪从恐惧转为悲壮接受宿命', icon: 'auto_awesome' },
+        { char: '血灵老祖', desc: '血毒巨蟒降临成功，但结界阻力超出预期；万魂血煞幡消耗三成冤魂', icon: 'dangerous' },
+        { char: '场景', desc: '仙灵岛结界强度降至六成，水脉法阵出现裂纹；血毒弥漫范围扩大至外岛', icon: 'landscape' }
+    ];
+
+    function renderRelationDiff() {
+        const body = document.getElementById('relation-diff-body');
+        if (!body) return;
+        body.innerHTML = '';
+        relationDiffData.forEach(row => {
+            const delta = row.after - row.before;
+            const isUp = delta > 0;
+            const color = isUp ? 'text-base-content' : 'text-warning';
+            const bg = isUp ? 'bg-base-100 border-base-300' : 'bg-warning/5 border-warning/10';
+            const arrow = isUp ? '↑' : '↓';
+            const sign = isUp ? '+' : '';
+            body.innerHTML += `
+<div class="flex items-center gap-2 p-2 rounded-lg border ${bg} text-[10px]">
+<span class="text-base-content font-medium text-[10px] shrink-0">${row.from}→${row.to}</span>
+<span class="text-base-content opacity-40">${row.dim}</span>
+<span class="${color} font-bold ml-auto">${sign}${delta} ${arrow}</span>
+<span class="text-base-content opacity-30 text-[8px] shrink-0">${row.cause}</span>
+</div>`;
+        });
+    }
+
+    function renderStateDiff() {
+        const body = document.getElementById('state-diff-body');
+        if (!body) return;
+        body.innerHTML = '';
+        stateDiffData.forEach(row => {
+            const isScene = row.char === '场景';
+            const border = isScene ? 'border-base-300 bg-base-100' : 'border-base-300 bg-base-200';
+            const nameColor = isScene ? 'text-base-content' : 'text-base-content';
+            body.innerHTML += `
+<div class="p-2.5 rounded-xl border ${border}">
+<div class="flex items-center gap-1.5 mb-1">
+<span class="material-symbols-outlined text-[13px] ${nameColor} opacity-60">${row.icon}</span>
+<span class="text-[11px] ${nameColor} font-medium">${row.char}</span>
+</div>
+<p class="text-[9px] text-base-content opacity-55 leading-relaxed pl-5">${row.desc}</p>
+</div>`;
+        });
+    }
+
+    function openRegenerateModal() {
+        const modal = document.getElementById('regenerate-modal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        const ta = document.getElementById('re-deduction-direction');
+        if (ta) { ta.value = ''; ta.focus(); }
+    }
+
+    function closeRegenerateModal() {
+        const modal = document.getElementById('regenerate-modal');
+        if (!modal) return;
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }
+
+    function submitReplanDirection() {
+        const val = document.getElementById('re-deduction-direction');
+        if (!val || !val.value.trim()) return;
+        closeRegenerateModal();
+    }
+
+    window.addEventListener('load', () => { setActiveNode(activeNode); renderRelationDiff(); renderStateDiff(); });
+
+</script>
+<!-- 重新生成模态弹窗 -->
+<div id="regenerate-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+<div class="card card-border border-base-300 bg-base-100 w-[460px] p-6 flex flex-col gap-4 shadow-2xl relative">
+<button class="absolute top-4 right-4 text-base-content opacity-60 hover:text-base-content transition-colors" onclick="closeRegenerateModal()">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-base-content text-[22px]">psychology_alt</span>
+<h3 class=" text-sm font-semibold text-base-content">重新推演修改建议</h3>
+</div>
+<p class=" text-[11px] text-base-content opacity-60 leading-relaxed">请输入您希望针对当前 L1A 方案及关联章节重新生成的修改建议或因果推演方向。</p>
+<textarea id="re-deduction-direction" class="w-full h-28 bg-base-200 border border-base-300 rounded-lg p-3 text-xs text-base-content focus:border-base-content resize-none " placeholder="例如：李逍遥求药时的誓言语气要更慷慨激昂...">
+</textarea>
+<div class="flex justify-end gap-2 mt-2">
+<button class="px-4 py-2 rounded-lg bg-base-300 text-base-content opacity-60 text-[11px] font-medium transition-colors" onclick="closeRegenerateModal()">取消</button>
+<button id="submit-replan-btn" class="btn btn-sm" onclick="submitReplanDirection()">发送建议</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body>
+</html>

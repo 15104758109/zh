@@ -1,1 +1,1489 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>纵横 - 总控设置</title><link rel="stylesheet" href="/workbench/workbench.css"></head><body><a class="skip" href="#workspace">跳到工作区</a><aside class="sidebar"><div class="brand"><b>◇</b><span><strong>纵横</strong><small>Narrative-Engine</small></span></div><nav aria-label="主菜单"><a class="active" href="/workbench">▦ 总控设置</a><a href="/books/new/">⌘ 设计阶段</a><a aria-disabled="true">▣ 生产阶段</a><a aria-disabled="true">✓ 审计阶段</a><a aria-disabled="true">↻ 迭代管理</a></nav><footer><span class="avatar">本</span><span>本地操作者</span></footer></aside><button id="sidebarToggle" class="icon side-toggle" aria-label="折叠侧栏">‹</button><main><header><div class="tabs"><button class="active">模型设置</button><button disabled>技能设置</button></div><div class="header-tools"><span id="headerBook" class="book-pill">未选择作品</span><button id="settings" class="icon" aria-label="自动化设置">⚙</button></div></header><section id="runtime" class="runtime loading" aria-live="polite">正在读取本地工作台配置…</section><section class="banner"><div class="cover">纵<br>横</div><div class="book-info"><span id="bookGenre" class="tag">本地作品</span><button id="bookSelect" class="book-title" aria-expanded="false">选择作品⌄</button><div id="bookMenu" class="book-menu" hidden><input id="bookSearch" type="search" placeholder="搜索书籍"><div id="bookList"></div></div><small>当前上下文由本机保存并与新书页共享。</small></div><div class="banner-side"><span>当前阶段 <b id="bookStage">-</b></span><button id="refresh" class="icon" aria-label="刷新配置">↻</button></div></section><section id="workspace" class="workspace"><section class="canvas-panel"><div class="panel-head"><strong id="canvasHeaderTitle">生产流程节点设置</strong><label>阶段 <select id="stage"><option value="design">设计阶段</option><option value="production" selected>生产阶段</option><option value="audit">审计阶段</option><option value="iteration">迭代管理</option></select></label></div><div id="canvasViewport" class="canvas" tabindex="0"><div id="canvasContent"><svg aria-hidden="true" viewBox="0 0 1000 600"><path d="M220 300C280 300 280 160 340 160M220 300C280 300 280 280 340 280M220 300C280 300 280 400 340 400M530 160C580 160 580 250 640 250M530 280C580 280 580 250 640 250M530 400C580 400 580 250 640 250M790 250C830 250 830 350 860 350"/></svg><div class="node n1" data-stage="production" data-node="FP004-00" tabindex="0"><b>✓ 剧情段规划</b><small>跨章节上位约束</small></div><div class="node n2" data-stage="production" data-node="FP007-01" tabindex="0"><b>☷ 章节任务拆解</b><small>本章硬约束</small></div><div class="node n3" data-stage="production" data-node="FP008-02" tabindex="0"><b>⌘ 角色受限推演</b><small>受限博弈路径</small></div><div class="node n6" data-stage="production" data-node="FP009-01" tabindex="0"><b>✎ 正文生成</b><small>文学呈现候选正文</small></div><div class="node n4" data-stage="audit" data-node="FP010-01" tabindex="0"><b>✓ 逻辑审计</b><small>设定与叙事体检</small></div><div class="node n5" data-stage="audit" data-node="FP013-02" tabindex="0"><b>▣ 编辑决策与确认入库</b><small>受控正式提交</small></div></div><div id="stageUnavailable" class="stage-unavailable" hidden>此阶段尚未接入可运行节点；不会显示演示节点。</div><div class="zoom"><button class="icon" id="zoomOut" aria-label="缩小">−</button><output id="zoom">100%</output><button class="icon" id="zoomIn" aria-label="放大">+</button></div></div></section><aside class="config-panel"><div class="panel-head"><strong id="nodeTitle">全局有效配置</strong><span id="version">未加载</span></div><p id="nodeHint">选择工作流节点可查看其绑定；这里显示后端有效配置投影。</p><div class="config-summary"><button id="openModelSettings" type="button">模型设置</button><dl><div><dt>模型</dt><dd id="modelSummary">未配置</dd></div><div><dt>预算</dt><dd id="budgetSummary">未配置</dd></div><div><dt>自动化</dt><dd>成熟度未通过，已禁用</dd></div></dl></div><form id="configForm"><label>Prompt<textarea id="prompt" placeholder="尚无 active Prompt；请填写后保存。"></textarea></label><label>安全预算（最大 tokens）<input id="budget" type="number" min="1"></label><fieldset><legend>自动化（成熟度未通过时不可开启）</legend><label><input type="checkbox" data-auto="production" disabled>生产阶段自动化</label><label><input type="checkbox" data-auto="audit" disabled>审计阶段自动化</label><label><input type="checkbox" data-auto="iteration" disabled>提示词迭代自动化</label></fieldset><div class="two"><label>情绪密度<input id="emotion" type="number" min="0" max="1" step="0.1" value="0.5"></label><label>节奏强度<input id="pacing" type="number" min="0" max="1" step="0.1" value="0.5"></label></div><div class="actions"><button id="cancel" type="button">恢复生效值</button><button id="save" type="submit" disabled aria-disabled="true" title="请先成功测试当前模型连接">保存为新版本</button></div></form></aside></section></main><div id="popover" hidden><strong>自动化控制</strong><p>三项自动化默认关闭；当前成熟度未通过，不能在此开启。</p></div><div id="modelSettingsModal" class="modal" hidden role="dialog" aria-modal="true"><div class="modal-card"><header><h2>模型设置</h2><button class="icon" id="closeModelModal" aria-label="关闭">×</button></header><div class="modal-body"><nav class="modal-nav"><button class="active">模型连接</button><button disabled>调用参数</button><button disabled>版本记录</button></nav><section><p>使用本地 n8n OpenAI credential 测试；密钥不进入页面。</p><div class="two"><label>模型提供方<input id="provider" value="openai"></label><label>模型名称<input id="model" placeholder="未配置"></label></div><div class="test-row"><button id="testConnection" type="button">测试连接</button></div><small id="connectionState">尚未测试连接</small></section></div><footer><button id="cancelModelModal" type="button">取消</button><button id="applyModelModal" type="button">应用模型设置</button></footer></div></div><script type="module" src="/workbench/workbench.mjs"></script></body></html>
+﻿
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>纵横 Narrative-Engine - 总控设置</title>
+    <!-- ★ DaisyUI v5 CDN ★ -->
+        <!-- Tailwind CSS & DaisyUI v4 via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- 项目自定义样式 -->
+    <link href="../common/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="../common/sidebar.css">
+    <script src="../common/theme.js"></script>
+    <script src="./new_book_wizard_data.js"></script>
+    <script src="../common/header.js"></script>
+
+
+
+<style>
+.material-symbols-outlined{font-size:18px}
+        /* 顶栏随侧栏折叠隐藏 */
+        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
+        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
+        .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
+        .header-tab:hover { opacity: 0.85; }
+        .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        .settings-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-base-300); cursor: pointer; transition: background 0.2s ease; flex-shrink: 0; }
+        .settings-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.2s ease; }
+        .settings-switch.on { background: var(--color-accent); }
+        .settings-switch.on::after { transform: translateX(16px); }
+        .settings-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; cursor: pointer; transition: all 0.15s ease; }
+        .settings-btn:hover { background: var(--color-accent); color: white; }
+
+</style>
+</head>
+<body class="flex h-screen bg-base-200 selection:bg-primary/30 selection:text-base-content">
+<a href="#main-content" class="skip-link">跳到主内容</a>
+<nav class="sidebar-glass" aria-label="主菜单">
+  <div class="sidebar-brand">
+    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
+    <div class="sidebar-text">
+      <div class="brand-title">纵横</div>
+      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
+    </div>
+  </div>
+  <div class="sidebar-separator" aria-hidden="true"></div>
+  <ul class="menu sidebar-menu" id="sidebarMenu">
+    <li><a href="workbench.html" aria-label="总控设置面板" class="active"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
+    <li><a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
+    <li><a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
+    <li><a href="audit_stage.html" aria-label="审计阶段：正文审计、主编裁决"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
+    <li><a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
+  </ul>
+  <footer class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">U</div>
+      <span class="sidebar-text sidebar-user-name">用户</span>
+    </div>
+  </footer>
+</nav>
+<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
+</button>
+<!-- Main Content Area -->
+<main class="main-content" id="main">
+    <!-- TopNavBar -->
+        <!-- TopNavBar -->
+        <!-- TopNavBar -->
+    <header class="header-glass h-16 fixed top-0 right-0 z-[60] flex justify-between items-center px-6 bg-base-100">
+        <div class="flex items-center gap-4 h-full">
+            <nav class="flex h-full items-center ml-2">
+                <!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
+                                <div class="header-tabs">
+                    <a href="workbench.html" class="header-tab active">模型设置</a>
+                    <a href="skill_library.html" class="header-tab">技能设置</a>
+                </div>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- 当前书籍标识 -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-content/10 text-[11px] font-medium text-base-content/80">
+                <span class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></span>
+                <span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+                <span id="header-book-name"></span>
+            </div>
+            <button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">notifications</span>
+            </button>
+
+            <!-- 快捷设置齿轮与弹窗 -->
+            <div class="relative flex items-center">
+                <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                </button>
+                <!-- Quick Settings Popover -->
+                        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
+                    <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
+                </div>
+                <div class="flex flex-col gap-2 mb-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
+                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
+                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
+                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-base-content/5">
+                    <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        应用当前配置
+                    </button>
+                </div>
+            </div>
+
+            <div class="h-8 w-[1px] bg-base-content/5 mx-1"></div>
+
+        </div>
+    </header>
+
+    <!-- Scrollable Main Container -->
+    <div class="flex-1 overflow-y-auto pt-20 p-4 flex flex-col gap-4">
+        <!-- Book Info Banner -->
+        <div class="bg-base-100 border border-base-content/5 rounded-box p-4 flex items-center justify-between shadow-sm relative z-10 shrink-0">
+            <div class="absolute left-0 top-0 w-64 h-full bg-gradient-to-r from-[#4f85e5]/10 to-transparent pointer-events-none rounded-box"></div>
+            <div class="flex items-center gap-4 relative z-10 shrink-0">
+                <div class="w-16 h-20 rounded shadow-md relative overflow-hidden flex flex-col justify-end p-1.5 border border-base-content/10" style="background: linear-gradient(135deg, #f6d365, #ffb347, #84fab0);">
+                    <div class="text-[6px] font-bold text-base-content leading-tight uppercase mix-blend-overlay">Aetheric<br>Chronicles</div>
+                </div>
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span id="currentBookGenre" class="badge badge-accent badge-sm font-bold">科幻/赛博</span>
+                        <span id="currentBookState" class="text-base-content opacity-70 text-[11px]">剧情段规划定稿前</span>
+                    </div>
+
+                    <div class="relative" id="bookDropdownContainer">
+                        <div class="flex items-center gap-2 cursor-pointer group" onclick="document.getElementById('bookDropdown').classList.toggle('hidden')">
+                            <h1 id="currentBookTitle" class="text-xl font-bold text-base-content group-hover:text-primary transition-colors">Aetheric Chronicles</h1>
+                            <span class="material-symbols-outlined text-[18px] shrink-0" style="color: var(--color-primary, oklch(var(--p))) !important;">expand_more</span>
+                        </div>
+
+                        <!-- 下拉列表 -->
+                        <div id="bookDropdown" class="absolute top-6 left-0 mt-2 w-64 bg-base-100 border border-base-content/5 rounded-lg shadow-xl hidden z-50 overflow-hidden">
+                            <div class="p-2 border-b border-base-content/5">
+                                <input type="text" placeholder="搜索书籍..." class="w-full bg-base-100 border border-base-content/5 text-sm rounded px-2 py-1.5 text-base-content focus:outline-none focus:border-primary/30">
+                            </div>
+                            <div class="max-h-48 overflow-y-auto">
+                                <div class="book-option p-2 hover:bg-base-200 cursor-pointer flex items-center gap-3 transition-colors" data-title="Aetheric Chronicles" data-genre="科幻/赛博" data-state="剧情段规划定稿前" data-progress="78%" data-chapter="第42章: 觉醒" data-words="1.2M" data-ai="94" data-l1a="24" onclick="selectBook(this)">
+                                    <div class="w-8 h-10 rounded bg-gradient-to-br from-info to-indigo-600 flex-shrink-0"></div>
+                                    <div class="flex-1 min-w-0"><div class="text-xs font-bold text-base-content truncate">Aetheric Chronicles</div><div class="text-[10px] text-base-content opacity-70">更新于 2 小时前</div></div>
+                                </div>
+                                <div class="book-option p-2 hover:bg-base-200 cursor-pointer flex items-center gap-3 transition-colors" data-title="剑域神座" data-genre="东方玄幻" data-state="生产中" data-progress="92%" data-chapter="第128章: 剑开天门" data-words="2.5M" data-ai="88" data-l1a="85" onclick="selectBook(this)">
+                                    <div class="w-8 h-10 rounded bg-gradient-to-br from-error to-orange-600 flex-shrink-0"></div>
+                                    <div class="flex-1 min-w-0"><div class="text-xs font-bold text-base-content truncate">剑域神座</div><div class="text-[10px] text-base-content opacity-70">更新于 1 天前</div></div>
+                                </div>
+                                <div class="book-option p-2 hover:bg-base-200 cursor-pointer flex items-center gap-3 transition-colors" data-title="深渊降临" data-genre="悬疑惊悚" data-state="设计阶段" data-progress="15%" data-chapter="序章: 门外的声音" data-words="50K" data-ai="98" data-l1a="12" onclick="selectBook(this)">
+                                    <div class="w-8 h-10 rounded bg-gradient-to-br from-secondary to-gray-800 flex-shrink-0"></div>
+                                    <div class="flex-1 min-w-0"><div class="text-xs font-bold text-base-content truncate">深渊降临</div><div class="text-[10px] text-base-content opacity-70">更新于 5 分钟前</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-2 flex items-center gap-3">
+                        <div class="w-40 h-1.5 bg-base-content/10 rounded-full overflow-hidden relative">
+                            <div id="currentBookProgressBar" class="h-full bg-base-content rounded-full transition-all duration-500" style="width: 78%;"></div>
+                        </div>
+                        <span id="currentBookProgressText" class="text-base-content opacity-70 text-xs font-mono transition-all">78%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-6 relative z-10 shrink-0">
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">最新章节</span><span id="currentBookChapter" class="text-xs font-bold text-warning transition-all">第42章: 觉醒</span><span class="text-base-content opacity-50 text-[9px]">更新于 2 小时前</span></div>
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">资产数量</span><span id="currentBookAi" class="text-lg font-bold text-success transition-all">94%</span></div>
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">总字数</span><span id="currentBookWords" class="text-lg font-bold text-base-content transition-all">1.2M</span></div>
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">剧情段规划完成度</span><div class="flex items-baseline gap-1"><span id="currentBookL1a" class="text-xl font-bold text-primary transition-all">24</span><span class="text-base-content opacity-50 text-xs font-mono">/ 100</span></div></div>
+                <!-- 五彩按钮 -->
+                <button onclick="openNewBookModal()" class="px-6 py-2.5 rounded-lg text-base-content text-base font-bold flex items-center gap-1.5 btn-rainbow-glow mr-16">
+                    <span class="material-symbols-outlined text-[18px]">add</span>新建书籍
+                </button>
+            </div>
+        </div>
+
+<!-- Workspace: Canvas and Config -->
+<div class="flex-1 flex gap-4 min-h-[500px]">
+<!-- Left Canvas Container -->
+<div class="flex-1 bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden relative">
+<div class="h-12 border-b border-base-content/5 flex items-center justify-between px-4 shrink-0 bg-base-100">
+<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-text-dark"></span><span id="canvasHeaderTitle" class="text-base font-bold text-base-content opacity-70">生产流程节点设置</span></div>
+<div class="flex items-center gap-2"><div class="relative" id="stageDropdownContainer">
+  <button class="flex items-center gap-1 px-2 py-1 bg-base-content/5 border border-base-content/5 rounded-md text-sm text-base-content opacity-85 hover:bg-base-300 transition-colors" onclick="document.getElementById('stageDropdown').classList.toggle('hidden')">
+    <span class="material-symbols-outlined text-[12px]">auto_awesome</span><span id="currentStageText">设计阶段</span><span class="material-symbols-outlined text-[12px]">expand_more</span>
+  </button>
+  <div id="stageDropdown" class="absolute top-6 right-0 mt-1 w-32 bg-base-100 border border-base-content/5 rounded-md shadow-xl hidden z-50 py-1">
+    <div class="px-3 py-1.5 text-sm text-base-content opacity-85 hover:bg-base-200 cursor-pointer" onclick="selectStage('设计阶段')">设计阶段</div>
+    <div class="px-3 py-1.5 text-sm text-base-content opacity-85 hover:bg-base-200 cursor-pointer" onclick="selectStage('生产阶段')">生产阶段</div>
+    <div class="px-3 py-1.5 text-sm text-base-content opacity-85 hover:bg-base-200 cursor-pointer" onclick="selectStage('审计阶段')">审计阶段</div>
+    <div class="px-3 py-1.5 text-sm text-base-content opacity-85 hover:bg-base-200 cursor-pointer" onclick="selectStage('迭代管理')">迭代管理</div>
+    <div class="border-t border-base-content/5 my-1"></div>
+    <div class="px-3 py-1.5 text-sm text-base-content opacity-60 hover:bg-base-200 cursor-pointer font-medium" onclick="selectStage('独立节点')">独立节点</div>
+  </div>
+</div><button class="w-6 h-6 flex items-center justify-center bg-base-content/5 border border-base-content/5 rounded-md text-base-content opacity-70 hover:text-base-content transition-colors"><span class="material-symbols-outlined text-[12px]">refresh</span></button></div>
+</div>
+<div id="canvasViewport" class="flex-1 min-h-[480px] relative overflow-hidden bg-base-200 rounded-box" style="cursor: grab;">
+<div id="canvasContent" class="absolute bg-grid transform-gpu origin-top-left" style="width: 10000px; height: 10000px; left: 0; top: 0; transform: translate(0px, 0px) scale(1);">
+<svg class="absolute inset-0 w-full h-full pointer-events-none">
+<defs><linearGradient id="active-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-3="#4f85e5" stop-opacity="0.2" /><stop offset="100%" stop-3="#4f85e5" stop-opacity="0.8" /></linearGradient></defs>
+<!-- Connectors -->
+<path d="M 220 280 C 280 280, 280 160, 340 160" class="node-path" data-source="node-l1a" data-target="node-deconstruct" />
+<path d="M 220 280 C 280 280, 280 280, 340 280" class="node-path active" stroke="url(#active-line)" stroke-width="2" data-source="node-l1a" data-target="node-simulate" />
+<path d="M 220 280 C 280 280, 280 400, 340 400" class="node-path" data-source="node-l1a" data-target="node-prose" />
+
+<path d="M 530 160 C 580 160, 580 220, 640 220" class="node-path" data-source="node-deconstruct" data-target="node-audit" />
+<path d="M 530 280 C 580 280, 580 220, 640 220" class="node-path active" stroke="url(#active-line)" stroke-width="2" data-source="node-simulate" data-target="node-audit" />
+<path d="M 530 400 C 580 400, 580 220, 640 220" class="node-path" data-source="node-prose" data-target="node-audit" />
+
+<path d="M 790 220 C 830 220, 830 340, 860 340" class="node-path" data-source="node-audit" data-target="node-commit" />
+</svg>
+<!-- Nodes -->
+<div id="node-l1a" class="workflow-node absolute left-[40px] top-[250px] w-[180px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">verified</span>剧情段规划
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">定义跨章节上位约束，锁定情节、情绪与卖点承诺。确保叙事目标的一致性。</div>
+</div>
+
+<div id="node-deconstruct" class="workflow-node absolute left-[340px] top-[130px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">view_list</span>章节任务拆解
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">承接剧情段颗粒化拆解，锁定本章硬约束与禁止越界项。为后续推演提供边界。</div>
+</div>
+
+<div id="node-simulate" class="workflow-node absolute left-[340px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">hub</span>角色受限推演
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">导演与角色代理受限博弈，在约束中生长可信、自然的达成路径。执行角色主观隔离与动机推演。</div>
+</div>
+
+<div id="node-audit" class="workflow-node absolute left-[640px] top-[190px] w-[150px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">fact_check</span>逻辑体检
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">客观设定校验 + 叙事逻辑体检，识别并拦截虚空造物、人物崩坏、信息越权等逻辑硬伤。</div>
+</div>
+
+<div id="node-commit" class="workflow-node absolute left-[640px] top-[310px] w-[150px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">save</span>编辑决策与确认入库
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">提供上帝视角评价，授权伏笔植入，在不改变事实与因果链的前提下执行文风润色并入库。</div>
+</div>
+
+<!-- Independent Nodes (Hidden by default) -->
+<!-- Row 1 -->
+<div id="node-ind-rating" class="independent-node workflow-node absolute left-[80px] top-[160px] w-[180px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">trending_up</span>技能评级及优化
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">对套路与技能组合进行商业化评级评估，提供针对性的内容升级与结构优化建议。</div>
+</div>
+
+<div id="node-ind-design" class="independent-node workflow-node absolute left-[320px] top-[160px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">lightbulb</span>世界设定生成助手
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">根据选定题材与核心爽点，自动设计符合商业化要求的世界设定基础架构与编年史。</div>
+</div>
+
+<div id="node-ind-world-audit" class="independent-node workflow-node absolute left-[560px] top-[160px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">fact_check</span>世界设定校验助手
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">对世界设定的物理法则、社会结构及因果链进行多维度一致性校验，防止设定冲突。</div>
+</div>
+
+<!-- Row 2 -->
+<div id="node-ind-character" class="independent-node workflow-node absolute left-[80px] top-[300px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">person_add</span>角色生成助手
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">一键配置角色基本属性、心理状态及核心动机，构建具备高成长空间的角色人设。</div>
+</div>
+
+<div id="node-ind-l1a-var" class="independent-node workflow-node absolute left-[320px] top-[300px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">alt_route</span>剧情段变体生成助手
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">基于核心剧情段大纲智能派生出多条不同的情节变体与世界线走向，提供备选脑洞。</div>
+</div>
+
+<div id="node-ind-prompt" class="independent-node workflow-node absolute left-[560px] top-[300px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">terminal</span>提示词生成助手
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">优化与润色大模型推演所使用的系统提示词，提高推演的准确度与情节流畅性.</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Configuration Panel -->
+<div class="w-[300px] bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden shrink-0">
+<div class="h-12 border-b border-base-content/5 flex items-center px-4 shrink-0"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-base-content opacity-70">tune</span><span id="rightPanelTitle" class="text-base font-bold text-base-content opacity-70">角色受限推演</span></div></div>
+<div class="p-4 flex flex-col gap-4 flex-1 overflow-y-auto">
+<div class="flex flex-col gap-2 flex-1">
+    <label class="text-[11px] text-base-content opacity-70 font-medium flex items-center gap-1">
+        <span class="material-symbols-outlined text-[12px] text-primary">description</span>
+        <span>提示词编辑器 (双击进行编辑)</span>
+    </label>
+    <div id="promptEditor" class="textarea textarea-bordered bg-base-100 p-4 flex-1 min-h-[220px] overflow-y-auto font-mono text-[11px] text-base-content opacity-80 leading-relaxed shadow-sm cursor-pointer transition-all duration-200 hover:border-primary/30 outline-none" title="双击进行编辑">
+        <!-- Loaded dynamically by JS -->
+    </div>
+</div>
+<div class="flex flex-col gap-2 mt-auto pt-4 border-t border-base-content/5">
+<label class="text-[11px] text-base-content opacity-70 font-medium">模型的模板</label>
+<div class="relative">
+<select id="workbenchTemplateSelect" onchange="onWorkbenchTemplateChange(this.value)" class="w-full bg-base-100 border border-base-content/5 text-sm text-base-content opacity-85 rounded-md px-3 py-2 appearance-none outline-none focus:border-primary/30 cursor-pointer">
+<option>感性文字</option>
+<option>简单逻辑</option>
+<option>重复指令</option>
+<option>复杂任务</option>
+<option>客观公正</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-base-content opacity-70 pointer-events-none text-[16px]">expand_more</span>
+</div>
+<!-- Model Details Card -->
+<div id="templateDetails" class="mt-2 text-[11px] text-base-content opacity-70 space-y-1.5 p-1 font-medium transition-all duration-200">
+    <div class="flex justify-between"><span class="text-base-content opacity-50">模型名称:</span><span id="detailModelName" class="text-base-content opacity-85 font-mono text-right truncate max-w-[170px]">Logic-Runner-Lite-8B</span></div>
+    <div class="flex justify-between"><span class="text-base-content opacity-50">运营商:</span><span id="detailProviderName" class="text-base-content opacity-85 text-right truncate max-w-[170px]">Narrative AI Core</span></div>
+    <div class="flex justify-between"><span class="text-base-content opacity-50">温度:</span><span id="detailTemperature" class="text-base-content opacity-85 font-mono text-right">0.7</span></div>
+</div>
+</div></div>
+<div class="p-4 pt-0">
+    <button class="open-modal-btn w-full py-2.5 bg-neutral hover:bg-neutral/90 text-neutral-content text-xs font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[14px]">tune</span>模型设置</button>
+</div>
+</div></div></div>
+
+<!-- Modal -->
+<div id="modelSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral/60 hidden">
+<div class="bg-base-200 border border-base-content/5 rounded-box w-[700px] h-[550px] flex overflow-hidden shadow-2xl">
+<div class="w-40 bg-base-100 border-r border-base-content/5 flex flex-col">
+<div class="p-4 text-sm font-bold text-base-content opacity-70 border-b border-base-content/5">模板分类</div>
+<div id="modalCategoryList" class="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+<!-- Dynamic Category Buttons -->
+</div>
+</div>
+<div class="flex-1 p-6 flex flex-col gap-4 bg-base-100 relative shadow-sm border border-base-content/5">
+<button id="closeModalBtn" class="absolute top-4 right-4 text-base-content opacity-70 hover:text-base-content"><span class="material-symbols-outlined text-[20px]">close</span></button>
+<h2 class="text-base font-bold text-base-content mb-1">模型配置<span id="modalConfigTitle" class="hidden">简单逻辑</span></h2>
+<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">运营商名称</label><input type="text" id="modalProviderInput" class="bg-base-100 border border-base-content/5 rounded px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary/30" value="Narrative AI Core" /></div>
+<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">连接地址 (Base URL)</label><input type="text" id="modalBaseUrlInput" class="bg-base-100 border border-base-content/5 rounded px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary/30" value="https://api.narrative-engine.ai/v1" /></div>
+<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">API Key</label><div class="relative"><input type="password" id="modalApiKeyInput" class="w-full bg-base-100 border border-base-content/5 rounded px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary/30" value="R3_SANITIZED_VALUE_00001" /><button id="toggleEyeBtn" class="absolute right-3 top-1/2 -translate-y-1/2 text-base-content opacity-70 hover:text-base-content"><span class="material-symbols-outlined text-[14px]">visibility</span></button></div></div>
+<div class="flex flex-col gap-1.5">
+    <label class="text-[11px] text-base-content opacity-70">选择模型</label>
+    <div class="flex gap-2">
+        <select id="modalModelSelect" class="flex-1 bg-base-100 border border-base-content/5 rounded px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary/30">
+            <option value="Logic-Runner-Lite-8B">Logic-Runner-Lite-8B</option>
+            <option value="Prose-Master-72B">Prose-Master-72B</option>
+        </select>
+        <button id="fetchModelsBtn" onclick="fetchModelList(event)" class="btn btn-outline btn-primary btn-sm flex items-center gap-1 shrink-0">
+            <span class="material-symbols-outlined text-[14px]" id="fetchIcon">sync</span>
+            <span id="fetchText">获取清单</span>
+        </button>
+    </div>
+    <!-- Recommendation Area -->
+    <div class="text-[10px] text-base-content opacity-50 flex items-center gap-1.5 mt-0.5">
+        <span>推荐模型:</span>
+        <button type="button" onclick="applyRecommendedModel('Logic-Runner-Lite-8B')" class="text-primary hover:text-primary-hover font-mono hover:underline">Logic-Runner-Lite-8B</button>
+        <span class="text-base-content opacity-40">|</span>
+        <button type="button" onclick="applyRecommendedModel('Prose-Master-72B')" class="text-primary hover:text-primary-hover font-mono hover:underline">Prose-Master-72B</button>
+    </div>
+</div>
+<div class="flex gap-4">
+    <!-- Temperature (left col) -->
+    <div class="flex-1 flex flex-col gap-1.5">
+        <div class="flex justify-between items-center">
+            <label class="text-[11px] text-base-content opacity-70">温度设置 (Temperature)</label>
+            <span id="tempValDisplay" class="text-[11px] text-base-content opacity-80 font-mono">0.7</span>
+        </div>
+        <input id="modalTempRange" type="range" min="0.2" max="1.2" step="0.05" value="0.7" oninput="document.getElementById('tempValDisplay').innerText=this.value" class="w-full accent-primary h-1 bg-base-300 rounded-lg appearance-none cursor-pointer" />
+        <div class="flex justify-between text-[9px] text-base-content opacity-50 px-0.5">
+            <span>0.2 (严格)</span>
+            <span class="text-base-content opacity-60 font-semibold">建议区间 (0.5 - 0.9)</span>
+            <span>1.2 (发散)</span>
+        </div>
+    </div>
+    <!-- Reasoning Strength (right col) -->
+    <div class="w-[180px] flex flex-col gap-1.5 shrink-0">
+        <label class="text-[11px] text-base-content opacity-70">推理强度 (Reasoning)</label>
+        <div class="relative">
+            <select id="modalReasoningSelect" class="w-full bg-base-100 border border-base-content/5 text-sm text-base-content opacity-85 rounded-md px-3 py-1.5 appearance-none outline-none focus:border-primary/30 cursor-pointer">
+                <option value="none">无推理 (None)</option>
+                <option value="low">低强度 (Low)</option>
+                <option value="medium">中强度 (Medium)</option>
+                <option value="high">高强度 (High)</option>
+            </select>
+            <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-base-content opacity-70 pointer-events-none text-[16px]">expand_more</span>
+        </div>
+    </div>
+</div>
+<div class="flex justify-end gap-3 mt-auto pt-4 border-t border-base-content/5">
+<button onclick="testConnection(event)" class="btn btn-sm btn-outline btn-accent flex items-center gap-1">
+    <span class="material-symbols-outlined text-[14px]" id="testIcon">bolt</span>
+    <span id="testText">测试连接</span>
+</button>
+<button onclick="saveModalConfiguration()" class="btn btn-sm btn-primary">保存配置</button>
+</div></div></div></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const nodes = document.querySelectorAll('.workflow-node');
+    const paths = document.querySelectorAll('.node-path');
+    window.activeNodeId = 'node-simulate'; // Make activeNodeId global
+
+    // Map of nodes to their configured templates (persisted in localStorage)
+    let defaultNodeTemplateMap = {
+        'node-l1a': '重复指令',
+        'node-deconstruct': '客观公正',
+        'node-simulate': '复杂任务',
+        'node-prose': '感性文字',
+        'node-audit': '简单逻辑',
+        'node-commit': '重复指令',
+        'node-ind-rating': '复杂任务',
+        'node-ind-design': '感性文字',
+        'node-ind-world-audit': '客观公正',
+        'node-ind-character': '简单逻辑',
+        'node-ind-l1a-var': '复杂任务',
+        'node-ind-prompt': '客观公正'
+    };
+    window.nodeTemplateMap = JSON.parse(localStorage.getItem('nodeTemplateMap')) || defaultNodeTemplateMap;
+
+    // Function to dynamically update coin count of the active node on the canvas based on selected template reasoning strength
+    window.updateActiveNodeCoins = function(data) {
+        // 金币系统已彻底删除，对齐对比图亮色规范，不执行任何逻辑
+    };
+
+    function updateHighlight() {
+        nodes.forEach(n => {
+            n.classList.remove('bg-primary/5', 'border-primary/30', 'ring-1', 'ring-primary/20', 'shadow-sm');
+            n.classList.add('bg-base-100', 'border-base-content/5', 'hover:border-base-content/10');
+            const title = n.querySelector('.node-title');
+            if(title) { title.classList.remove('text-primary'); title.classList.add('text-base-content', 'opacity-85'); }
+        });
+        const activeNode = document.getElementById(window.activeNodeId);
+        if(activeNode) {
+            activeNode.classList.remove('bg-base-100', 'border-base-content/5', 'hover:border-base-content/10');
+            activeNode.classList.add('bg-primary/5', 'border-primary/30', 'ring-1', 'ring-primary/20', 'shadow-sm');
+            const title = activeNode.querySelector('.node-title');
+            if(title) { title.classList.remove('text-base-content', 'opacity-85'); title.classList.add('text-primary'); }
+        }
+        paths.forEach(p => {
+            const src = p.getAttribute('data-source');
+            const tgt = p.getAttribute('data-target');
+            if(src === window.activeNodeId || tgt === window.activeNodeId) {
+                p.classList.add('active');
+                p.setAttribute('stroke', 'url(#active-line)');
+                p.setAttribute('stroke-width', '2');
+            } else {
+                p.classList.remove('active');
+                p.removeAttribute('stroke');
+                p.removeAttribute('stroke-width');
+            }
+        });
+    }
+
+    nodes.forEach(node => {
+        node.addEventListener('click', () => {
+            window.activeNodeId = node.id;
+            updateHighlight();
+
+            // Update right config panel title
+            const panelTitle = document.getElementById('rightPanelTitle');
+            if (panelTitle) {
+                const titleEl = node.querySelector('.node-title');
+                let nodeTitleText = '';
+                if (titleEl) {
+                    const clone = titleEl.cloneNode(true);
+                    const icon = clone.querySelector('.material-symbols-outlined');
+                    if (icon) icon.remove();
+                    nodeTitleText = clone.innerText.trim();
+                }
+                panelTitle.innerText = nodeTitleText;
+            }
+
+            // Sync template selector on the right panel to show this node's configured template
+            const select = document.getElementById('workbenchTemplateSelect');
+            if (select) {
+                const configuredTemplate = window.nodeTemplateMap[node.id] || '简单逻辑';
+                select.value = configuredTemplate;
+                // Trigger change to update detail card and coin icons
+                window.onWorkbenchTemplateChange(configuredTemplate);
+            }
+
+            // Sync node prompt
+            if (window.loadNodePrompt) {
+                window.loadNodePrompt(node.id);
+            }
+        });
+    });
+    const modal = document.getElementById('modelSettingsModal');
+    const openBtns = document.querySelectorAll('.open-modal-btn');
+    const closeBtn = document.getElementById('closeModalBtn');
+
+    const toggleEyeBtn = document.getElementById('toggleEyeBtn');
+    const apiKeyInput = document.getElementById('modalApiKeyInput');
+
+    // Default Template Data
+    let defaultTemplatesData = {
+        "感性文字": {
+            provider: "Narrative AI Core",
+            baseUrl: "https://api.narrative-engine.ai/v1",
+            apiKey: "R3_SANITIZED_VALUE_00002",
+            model: "Prose-Master-72B",
+            temperature: "1.0",
+            reasoning: "low"
+        },
+        "简单逻辑": {
+            provider: "Narrative AI Core",
+            baseUrl: "https://api.narrative-engine.ai/v1",
+            apiKey: "R3_SANITIZED_VALUE_00003",
+            model: "Logic-Runner-Lite-8B",
+            temperature: "0.7",
+            reasoning: "medium"
+        },
+        "重复指令": {
+            provider: "Narrative AI Core",
+            baseUrl: "https://api.narrative-engine.ai/v1",
+            apiKey: "R3_SANITIZED_VALUE_00004",
+            model: "Logic-Runner-Lite-8B",
+            temperature: "0.3",
+            reasoning: "none"
+        },
+        "复杂任务": {
+            provider: "Global-Intelligence API",
+            baseUrl: "https://api.global-intel.ai/v1",
+            apiKey: "sk-intel-xxxxxxxxxxx",
+            model: "Prose-Master-72B",
+            temperature: "0.5",
+            reasoning: "high"
+        },
+        "客观公正": {
+            provider: "Local Host Service",
+            baseUrl: "http://localhost:11434/v1",
+            apiKey: "sk-local-xxxxxxxxxxx",
+            model: "Logic-Runner-Lite-8B",
+            temperature: "0.2",
+            reasoning: "medium"
+        }
+    };
+
+    window.templatesData = JSON.parse(localStorage.getItem('templatesData')) || defaultTemplatesData;
+    window.activeModalCategory = '简单逻辑';
+
+    // Sync main page display card
+    window.onWorkbenchTemplateChange = function(val) {
+        const data = window.templatesData[val];
+        if (data) {
+            document.getElementById('detailModelName').innerText = data.model;
+            document.getElementById('detailProviderName').innerText = data.provider;
+            document.getElementById('detailTemperature').innerText = data.temperature;
+
+            // Save configured template for active node
+            if (window.activeNodeId && window.nodeTemplateMap) {
+                window.nodeTemplateMap[window.activeNodeId] = val;
+                localStorage.setItem('nodeTemplateMap', JSON.stringify(window.nodeTemplateMap));
+            }
+
+            // Sync coin count of selected active node
+            window.updateActiveNodeCoins(data);
+        }
+    };
+
+    // Re-populate workbench template options
+    window.updateWorkbenchTemplateOptions = function() {
+        const select = document.getElementById('workbenchTemplateSelect');
+        if (select) {
+            // Find configured template for the active node
+            const configuredTemplate = window.nodeTemplateMap[window.activeNodeId] || '简单逻辑';
+            select.innerHTML = '';
+            Object.keys(window.templatesData).forEach(key => {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.innerText = key;
+                select.appendChild(opt);
+            });
+            if (window.templatesData[configuredTemplate]) {
+                select.value = configuredTemplate;
+            } else {
+                select.selectedIndex = 0;
+            }
+            window.onWorkbenchTemplateChange(select.value);
+        }
+    };
+
+    // Sidebar configuration load
+    window.loadCategoryConfig = function(category) {
+        window.activeModalCategory = category;
+
+        // Update Title
+        const titleSpan = document.getElementById('modalConfigTitle');
+        if (titleSpan) {
+            titleSpan.innerText = category;
+        }
+
+        const data = window.templatesData[category];
+        if (!data) return;
+
+        // Set Inputs
+        document.getElementById('modalProviderInput').value = data.provider || '';
+        document.getElementById('modalBaseUrlInput').value = data.baseUrl || '';
+        document.getElementById('modalApiKeyInput').value = data.apiKey || '';
+
+        // Model Select
+        const modelSelect = document.getElementById('modalModelSelect');
+        if (modelSelect) {
+            let optExists = false;
+            for (let i = 0; i < modelSelect.options.length; i++) {
+                if (modelSelect.options[i].value === data.model) {
+                    optExists = true;
+                    break;
+                }
+            }
+            if (!optExists) {
+                const newOpt = document.createElement('option');
+                newOpt.value = data.model;
+                newOpt.innerText = data.model;
+                modelSelect.appendChild(newOpt);
+            }
+            modelSelect.value = data.model;
+        }
+
+        // Temp
+        const tempRange = document.getElementById('modalTempRange');
+        const tempVal = document.getElementById('tempValDisplay');
+        if (tempRange && tempVal) {
+            tempRange.value = data.temperature || 0.7;
+            tempVal.innerText = data.temperature || 0.7;
+        }
+
+        // Reasoning
+        const reasoningSelect = document.getElementById('modalReasoningSelect');
+        if (reasoningSelect) {
+            reasoningSelect.value = data.reasoning || 'medium';
+        }
+
+        // Highlight active btn
+        const container = document.getElementById('modalCategoryList');
+        if (container) {
+            const buttons = container.querySelectorAll('button');
+            buttons.forEach(btn => {
+                const catName = btn.getAttribute('data-category');
+                if (catName === category) {
+                    btn.className = "sidebar-item active w-full text-left px-3 py-2 text-xs font-semibold bg-primary text-primary-content rounded-md shadow-sm transition-all";
+                } else {
+                    btn.className = "sidebar-item w-full text-left px-3 py-2 text-xs font-semibold rounded-md opacity-70 hover:opacity-100 hover:bg-base-content/5 transition-all";
+                }
+            });
+        }
+    };
+
+    // Save current modal inputs in temporary memory
+    window.saveCurrentFormToMemory = function() {
+        if (!window.templatesData[window.activeModalCategory]) return;
+
+        const provider = document.getElementById('modalProviderInput').value;
+        const baseUrl = document.getElementById('modalBaseUrlInput').value;
+        const apiKey = document.getElementById('modalApiKeyInput').value;
+        const model = document.getElementById('modalModelSelect').value;
+        const temperature = document.getElementById('modalTempRange').value;
+        const reasoning = document.getElementById('modalReasoningSelect').value;
+
+        window.templatesData[window.activeModalCategory] = {
+            provider,
+            baseUrl,
+            apiKey,
+            model,
+            temperature,
+            reasoning
+        };
+    };
+
+    // Save modal config to localStorage and close
+    window.saveModalConfiguration = function() {
+        window.saveCurrentFormToMemory();
+        localStorage.setItem('templatesData', JSON.stringify(window.templatesData));
+        window.updateWorkbenchTemplateOptions();
+        window.showToast("配置保存成功！");
+        modal.classList.add('hidden');
+    };
+
+    // Render left category sidebar
+    window.renderModalCategories = function(selectCategory) {
+        const container = document.getElementById('modalCategoryList');
+        if (!container) return;
+        container.innerHTML = '';
+
+        Object.keys(window.templatesData).forEach(cat => {
+            const btn = document.createElement('button');
+            btn.setAttribute('data-category', cat);
+            btn.className = "sidebar-item w-full text-left px-3 py-2 text-xs font-semibold rounded-md opacity-70 hover:opacity-100 hover:bg-base-content/5 transition-all";
+            btn.innerText = cat;
+            btn.onclick = () => {
+                window.saveCurrentFormToMemory();
+                window.loadCategoryConfig(cat);
+            };
+            container.appendChild(btn);
+        });
+
+        // Append the "+ 新增种类" container directly at the bottom of the scrollable list container
+        const addContainer = document.createElement('div');
+        addContainer.id = 'addCategoryContainer';
+        addContainer.className = 'mt-1 pt-1.5 border-t border-dashed border-base-content/5';
+        addContainer.innerHTML = `
+            <button onclick="showAddCategoryInput()" class="w-full py-1.5 text-xs text-base-content opacity-70 hover:text-base-content border border-dashed border-base-content/5 hover:border-gray-500 rounded flex items-center justify-center gap-1 transition-colors">
+                <span class="material-symbols-outlined text-[14px]">add</span>新增种类
+            </button>
+        `;
+        container.appendChild(addContainer);
+
+        if (selectCategory) {
+            window.loadCategoryConfig(selectCategory);
+        } else {
+            window.loadCategoryConfig(window.activeModalCategory);
+        }
+    };
+
+    // Inline creation functions
+    window.showAddCategoryInput = function() {
+        const container = document.getElementById('addCategoryContainer');
+        if (!container) return;
+        container.innerHTML = `
+            <input type="text" id="newCategoryInput" onkeydown="handleNewCategoryKey(event)" onblur="cancelAddCategory()" class="w-full bg-base-100 border border-primary rounded-md px-2 py-1.5 text-xs text-base-content focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder-gray-600" placeholder="录入名称回车..." autofocus />
+        `;
+        const input = document.getElementById('newCategoryInput');
+        if (input) input.focus();
+    };
+
+    window.cancelAddCategory = function() {
+        setTimeout(() => {
+            const container = document.getElementById('addCategoryContainer');
+            if (!container || !document.getElementById('newCategoryInput')) return;
+            container.innerHTML = `
+                <button onclick="showAddCategoryInput()" class="w-full py-1.5 text-xs text-base-content opacity-70 hover:text-base-content border border-dashed border-base-content/5 hover:border-gray-500 rounded flex items-center justify-center gap-1 transition-colors">
+                    <span class="material-symbols-outlined text-[14px]">add</span>新增种类
+                </button>
+            `;
+        }, 200);
+    };
+
+    window.handleNewCategoryKey = function(event) {
+        if (event.key === 'Enter') {
+            const val = event.target.value.trim();
+            if (!val) {
+                window.cancelAddCategory();
+                return;
+            }
+            if (window.templatesData[val]) {
+                alert('该分类名称已存在');
+                return;
+            }
+            // Add with default settings
+            window.templatesData[val] = {
+                provider: "Narrative AI Core",
+                baseUrl: "https://api.narrative-engine.ai/v1",
+                apiKey: "R3_SANITIZED_VALUE_00005",
+                model: "Logic-Runner-Lite-8B",
+                temperature: "0.7",
+                reasoning: "medium"
+            };
+            window.renderModalCategories(val);
+            window.updateWorkbenchTemplateOptions();
+            window.cancelAddCategory();
+        } else if (event.key === 'Escape') {
+            window.cancelAddCategory();
+        }
+    };
+
+    // Model recommendations shortcut
+    window.applyRecommendedModel = function(modelName) {
+        const select = document.getElementById('modalModelSelect');
+        if (select) {
+            select.value = modelName;
+            window.showToast(`已快捷选择推荐模型: ${modelName}`);
+        }
+    };
+
+    // Fetch models async simulation
+    let modelsFetched = false;
+    window.fetchModelList = function(event) {
+        event.preventDefault();
+        const btn = document.getElementById('fetchModelsBtn');
+        const icon = document.getElementById('fetchIcon');
+        const text = document.getElementById('fetchText');
+        if (!btn) return;
+
+        btn.disabled = true;
+        btn.classList.add('opacity-60', 'cursor-not-allowed');
+        text.innerText = '获取中...';
+        icon.classList.add('animate-spin');
+
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.classList.remove('opacity-60', 'cursor-not-allowed');
+            text.innerText = '获取成功';
+            icon.classList.remove('animate-spin');
+            icon.innerText = 'done';
+            btn.className = "px-3 py-1.5 bg-success/10 hover:bg-success/20 text-success text-xs font-semibold rounded border border-success/30 transition-all flex items-center gap-1 shrink-0";
+
+            if (!modelsFetched) {
+                const select = document.getElementById('modalModelSelect');
+                if (select) {
+                    const extraModels = [
+                        'Reasoning-Agent-Pro-128B',
+                        'Global-Prose-Ultra',
+                        'Local-Deep-Reasoner'
+                    ];
+                    extraModels.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m;
+                        opt.innerText = m;
+                        select.appendChild(opt);
+                    });
+                    modelsFetched = true;
+                }
+            }
+
+            window.showToast('获取模型清单成功，已载入最新模型');
+
+            setTimeout(() => {
+                text.innerText = '获取清单';
+                icon.innerText = 'sync';
+                btn.className = "px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded border border-primary/30/30 transition-all flex items-center gap-1 shrink-0";
+            }, 2000);
+        }, 1000);
+    };
+
+    // Connection test async simulation
+    window.testConnection = function(event) {
+        event.preventDefault();
+        const icon = document.getElementById('testIcon');
+        const text = document.getElementById('testText');
+
+        icon.classList.add('animate-pulse');
+        text.innerText = '测试中...';
+
+        setTimeout(() => {
+            icon.classList.remove('animate-pulse');
+            text.innerText = '测试连接';
+            window.showToast('测试连接成功！接口响应正常(RTT: 42ms)');
+        }, 800);
+    };
+
+    // Premium glassmorphism Toast system
+    window.showToast = function(message) {
+        const existing = document.getElementById('premium-toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.id = 'premium-toast';
+        toast.className = 'fixed top-6 left-1/2 transform -translate-x-1/2 z-[200] px-5 py-3 rounded-box border border-base-content/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-2.5 transition-all duration-300 translate-y-[-20px] opacity-0 bg-base-100/85 backdrop-blur-md';
+
+        toast.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-success shadow-[0_0_8px_rgba(78,222,163,0.6)] animate-ping"></span>
+            <span class="w-2 h-2 absolute rounded-full bg-success shadow-[0_0_8px_rgba(78,222,163,0.6)]"></span>
+            <span class="text-xs font-semibold text-base-content tracking-wide ml-1.5">${message}</span>
+        `;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.remove('translate-y-[-20px]', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+        }, 10);
+
+        setTimeout(() => {
+            toast.classList.remove('translate-y-0', 'opacity-100');
+            toast.classList.add('translate-y-[-20px]', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 2500);
+    };
+
+    // Prompt Editor Double Click Edit & Confirm Save
+    const promptEditor = document.getElementById('promptEditor');
+    let originalPromptContent = '';
+    let isPromptEditing = false;
+
+    const defaultNodePrompts = {
+        'node-l1a': '执行跨章节上位约束设定。锁定剧情大纲、情绪线与商业卖点承诺。<br><br>- 确保大纲主线连贯，无逻辑跳跃。<br>- 设定各阶段的情绪波峰与波谷，避免读者阅读疲劳。<br>- 明确各关键节点的卖点与爽点兑现机制。',
+        'node-deconstruct': '根据剧情段规划，对本章节进行颗粒化任务拆解。<br><br>- 明确本章的主线剧情推进目标。<br>- 锁定本章的硬性约束（时间、地点、参与人物）。<br>- 规定禁止越界项（如主角不得在此处暴露真实身份等）。',
+        'node-simulate': '执行角色受限推演。模拟角色在极端约束下的真实反应。<br><br>- 禁止脱离人设，确保角色决策符合背景逻辑。<br>- 导演代理需不断施压，促使角色在冲突中完成叙事目标。<br>- 记录所有关键动作与对话流，作为正文生成的逻辑依据。',
+        'node-prose': '将角色受限推演的动作与对话流转化为叙事正文。<br><br>- 控制视点越界，保持沉浸式叙事体验。<br>- 自动对齐作者特有的风格化文风与语调。<br>- 保证节奏紧凑，环境描写与动作细节比例协调。',
+        'node-audit': '对生成的正文执行多维度客观逻辑校验与体检。<br><br>- 识别并拦截虚空造物、凭空出现道具等硬伤。<br>- 校验角色前后行为逻辑，拦截突然性的人物崩坏。<br>- 查验是否有不合设定的信息泄露或越权知晓行为。',
+        'node-commit': '进入确认入库前，执行最后的编辑决策与文风润色。<br><br>- 提供上帝视角评价，指导伏笔与钩子的埋设。<br>- 在不改变核心事实与因果链的前提下执行文风微调。<br>- 确认入库并更新后续章节的上下文记忆库。',
+        'node-ind-rating': '评估技能与题材组合的商业化潜力并输出评级。<br><br>- 分析核心爽点对目标读者群的吸引力。<br>- 诊断组合逻辑公式是否通顺，是否存在逻辑断层。<br>- 提供具体的避坑修改建议与战力平衡优化策略。',
+        'node-ind-design': '根据选定的商业套路与题材，辅助策划并自动生成世界设定的基础框架与核心法则。<br><br>- 构建地理环境、势力分布及超凡阶梯层级。<br>- 设计合理的底层社会结构与核心生存法则。<br>- 预设3个以上的地标性核心奇观与上古背景历史故事。',
+        'node-ind-world-audit': '对当前的世界设定（地理、历史、超凡体系、社会规则）进行一致性校验。<br><br>- 检查是否存在逻辑硬伤或因果链断层。<br>- 校验超凡力量体系是否符合能量守恒或等价交换原则。<br>- 拦截与常识或已有核心设定发生物理冲突的设定漏洞。',
+        'node-ind-character': '构建符合商业网文逻辑的立体角色人设与成长线。<br><br>- 定义主角的外在伪装身份与隐藏的核心权能。<br>- 锁定主角的底层情绪动机，确保其行为具有强合理性。<br>- 自动生成主角与配角/反派的冲突与羁绊对立图谱。',
+        'node-ind-l1a-var': '基于剧情段大纲，智能派生并演变出3个备选的变体剧情走向。<br><br>- 变体一（激进线）：引入突发意外，使主角面临更大的冲突与危机。<br>- 变体二（智斗线）：主角通过巧妙的伏笔和智斗手段达成目标。<br>- 变体三（颠覆线）：剧情发生反转，推翻前期的读者预期。',
+        'node-ind-prompt': '优化和生成供大模型推演使用的系统与角色提示词。<br><br>- 将用户的自然语言指令转化为高结构化的System Prompt。<br>- 引入明确的约束条件（如禁止脱离人设、禁止圣母、严格控制节奏）。<br>- 自动生成符合角色视角的对话推演指引。'
+    };
+
+    window.loadNodePrompt = function(nodeId) {
+        if (!promptEditor) return;
+        const saved = localStorage.getItem('node_prompt_' + nodeId);
+        if (saved) {
+            promptEditor.innerHTML = saved;
+        } else {
+            promptEditor.innerHTML = defaultNodePrompts[nodeId] || defaultNodePrompts['node-simulate'];
+        }
+    };
+
+    if (promptEditor) {
+        // Initialize active node prompt
+        window.loadNodePrompt(window.activeNodeId || 'node-simulate');
+
+        promptEditor.addEventListener('dblclick', () => {
+            if (isPromptEditing) return;
+            isPromptEditing = true;
+            originalPromptContent = promptEditor.innerHTML;
+            promptEditor.contentEditable = 'true';
+            promptEditor.focus();
+            promptEditor.classList.remove('border-base-content/5');
+            promptEditor.classList.add('border-primary', 'ring-2', 'ring-primary/20', 'bg-base-100');
+        });
+
+        promptEditor.addEventListener('blur', () => {
+            if (!isPromptEditing) return;
+
+            const currentContent = promptEditor.innerHTML;
+            if (currentContent !== originalPromptContent) {
+                if (confirm('提示词内容已修改，是否保存修改？')) {
+                    const nodeId = window.activeNodeId || 'node-simulate';
+                    localStorage.setItem('node_prompt_' + nodeId, currentContent);
+                    window.showToast('提示词已保存');
+                } else {
+                    promptEditor.innerHTML = originalPromptContent;
+                }
+            }
+
+            promptEditor.contentEditable = 'false';
+            promptEditor.classList.remove('border-primary', 'ring-2', 'ring-primary/20', 'bg-base-100');
+            promptEditor.classList.add('border-base-content/10');
+            isPromptEditing = false;
+        });
+
+        promptEditor.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isPromptEditing) {
+                promptEditor.innerHTML = originalPromptContent;
+                promptEditor.blur();
+            }
+        });
+    }
+
+    // Modal listeners
+    openBtns.forEach(btn => btn.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+        const mainSelect = document.getElementById('workbenchTemplateSelect');
+        if (mainSelect) {
+            window.activeModalCategory = mainSelect.value;
+        }
+        window.renderModalCategories(window.activeModalCategory);
+    }));
+
+    if(closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+    modal.addEventListener('click', (e) => { if(e.target === modal) modal.classList.add('hidden'); });
+
+    if(toggleEyeBtn) toggleEyeBtn.addEventListener('click', () => {
+        if(apiKeyInput.type === 'password') {
+            apiKeyInput.type = 'text';
+            toggleEyeBtn.innerHTML = '<span class="material-symbols-outlined text-[14px]">visibility_off</span>';
+        } else {
+            apiKeyInput.type = 'password';
+            toggleEyeBtn.innerHTML = '<span class="material-symbols-outlined text-[14px]">visibility</span>';
+        }
+    });
+
+    // Initialize Workbench Select
+    window.updateWorkbenchTemplateOptions();
+
+    // Set initial stage to 设计阶段 to synchronize nodes and paths visibility
+    if (window.selectStage) {
+        window.selectStage('设计阶段');
+    }
+
+    // Initialize active node highlight and right panel state
+    const defaultActiveNode = document.getElementById(window.activeNodeId || 'node-simulate');
+    if (defaultActiveNode) {
+        defaultActiveNode.click();
+    }
+});
+</script>
+
+    <script>
+// Book selection logic
+
+    window.selectBook = function(opt) {
+        const overlay = document.getElementById('bookSwitchOverlay');
+        const statusText = document.getElementById('bookSwitchStatusText');
+        const tick1 = document.getElementById('tick-1');
+        const tick2 = document.getElementById('tick-2');
+        const tick3 = document.getElementById('tick-3');
+
+        // 强制锁死全网页交互，拦截任何键盘或鼠标事件
+        document.body.style.pointerEvents = 'none';
+        if (overlay) {
+            overlay.style.pointerEvents = 'auto'; // 允许遮罩本身响应
+            overlay.classList.remove('hidden');
+        }
+
+        statusText.innerText = '正在销毁上一作品本地缓存...';
+        if (tick1) {
+            tick1.classList.remove('bg-primary/30');
+            tick1.classList.add('bg-primary', 'animate-ping');
+        }
+
+        // 销毁缓存逻辑：清理本地缓存和草稿状态
+        const prevTitle = document.getElementById('currentBookTitle')?.innerText || '';
+        if (prevTitle) {
+            localStorage.removeItem('draft_prompt_' + prevTitle);
+            localStorage.removeItem('edit_state_' + prevTitle);
+        }
+        window.originalPromptContent = '';
+        window.isPromptEditing = false;
+
+        setTimeout(() => {
+            statusText.innerText = '正在隔离当前作品上下文数据并重置沙箱...';
+            if (tick1) {
+                tick1.classList.remove('animate-ping');
+            }
+            if (tick2) {
+                tick2.classList.remove('bg-primary/30');
+                tick2.classList.add('bg-primary', 'animate-ping');
+            }
+
+            // 沙箱重置逻辑
+            sessionStorage.clear(); // 清空会话存储以防止跨作品交叉数据污染
+
+            setTimeout(() => {
+                statusText.innerText = '载入新作品事实层及因果链...';
+                if (tick2) {
+                    tick2.classList.remove('animate-ping');
+                }
+                if (tick3) {
+                    tick3.classList.remove('bg-primary/30');
+                    tick3.classList.add('bg-primary', 'animate-ping');
+                }
+
+                setTimeout(() => {
+                    // 装载新作品数据
+                    const newTitle = opt.getAttribute('data-title');
+                    document.getElementById('currentBookTitle').innerText = newTitle;
+                    const tbt = document.getElementById('topBarBookTitle');
+                    if(tbt) tbt.innerText = newTitle.toUpperCase();
+                    document.getElementById('currentBookGenre').innerText = opt.getAttribute('data-genre');
+                    document.getElementById('currentBookState').innerText = opt.getAttribute('data-state');
+
+                    const progress = opt.getAttribute('data-progress');
+                    document.getElementById('currentBookProgressBar').style.width = progress;
+                    document.getElementById('currentBookProgressText').innerText = progress;
+
+                    document.getElementById('currentBookChapter').innerText = opt.getAttribute('data-chapter');
+                    document.getElementById('currentBookAi').innerText = opt.getAttribute('data-ai');
+                    document.getElementById('currentBookWords').innerText = opt.getAttribute('data-words');
+                    document.getElementById('currentBookL1a').innerText = opt.getAttribute('data-l1a');
+
+                    // 将当前作品写入缓存以持久化状态
+                    localStorage.setItem('current_active_book', newTitle);
+
+                    // 重新触发当前节点点击以重载新书对应节点的提示词与右侧模板详情配置
+                    const activeNode = document.getElementById(window.activeNodeId || 'node-simulate');
+                    if (activeNode) {
+                        activeNode.click();
+                    }
+
+                    if (overlay) {
+                        overlay.classList.add('hidden');
+                    }
+                    if (tick1) {
+                        tick1.classList.remove('bg-primary');
+                        tick1.classList.add('bg-primary/30');
+                    }
+                    if (tick2) {
+                        tick2.classList.remove('bg-primary');
+                        tick2.classList.add('bg-primary/30');
+                    }
+                    if (tick3) {
+                        tick3.classList.remove('bg-primary', 'animate-ping');
+                        tick3.classList.add('bg-primary/30');
+                    }
+
+                    // 解冻全网页交互
+                    document.body.style.pointerEvents = 'auto';
+                    window.showToast(`已成功切换至 《${newTitle}》`);
+                }, 600);
+            }, 600);
+        }, 600);
+
+        document.getElementById('bookDropdown').classList.add('hidden');
+    };
+    document.addEventListener('click', (e) => {
+        const container = document.getElementById('bookDropdownContainer');
+        if (container && !container.contains(e.target)) {
+            document.getElementById('bookDropdown').classList.add('hidden');
+        }
+    });
+
+    // Canvas Pan and Zoom logic
+    const canvasViewport = document.getElementById('canvasViewport');
+    const canvasContent = document.getElementById('canvasContent');
+
+    if (canvasViewport && canvasContent) {
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+
+        canvasViewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSensitivity = 0.001;
+            const delta = -e.deltaY * zoomSensitivity;
+
+            const rect = canvasViewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const canvasX = (mouseX - translateX) / scale;
+            const canvasY = (mouseY - translateY) / scale;
+
+            scale += delta;
+            scale = Math.min(Math.max(0.2, scale), 3);
+
+            translateX = mouseX - (canvasX * scale);
+            translateY = mouseY - (canvasY * scale);
+
+            canvasContent.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        }, { passive: false });
+
+        canvasViewport.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.workflow-node')) return;
+            isDragging = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+            canvasViewport.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            canvasContent.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            canvasViewport.style.cursor = 'grab';
+        });
+    }
+
+    window.selectStage = function(stage) {
+        document.getElementById('currentStageText').innerText = stage;
+        const cht = document.getElementById('canvasHeaderTitle');
+        if (cht) {
+            if (stage === '独立节点') {
+                cht.innerText = '独立节点设置';
+            } else {
+                cht.innerText = '生产流程节点设置';
+            }
+        }
+        document.getElementById('stageDropdown').classList.add('hidden');
+
+        // Toggle node visibility
+        const workflowNodes = document.querySelectorAll('.workflow-node:not(.independent-node)');
+        const independentNodes = document.querySelectorAll('.independent-node');
+        const paths = document.querySelectorAll('.node-path');
+
+        if (stage === '独立节点') {
+            workflowNodes.forEach(node => node.classList.add('hidden'));
+            paths.forEach(p => p.classList.add('hidden'));
+            independentNodes.forEach(node => node.classList.remove('hidden'));
+
+            // Set first independent node as active if current active is a workflow node
+            if (!window.activeNodeId || !window.activeNodeId.startsWith('node-ind-')) {
+                const firstIndNode = document.querySelector('.independent-node');
+                if (firstIndNode) {
+                    firstIndNode.click();
+                }
+            }
+        } else {
+            workflowNodes.forEach(node => node.classList.remove('hidden'));
+            paths.forEach(p => p.classList.remove('hidden'));
+            independentNodes.forEach(node => node.classList.add('hidden'));
+
+            // Set first workflow node as active if current active is an independent node
+            if (window.activeNodeId && window.activeNodeId.startsWith('node-ind-')) {
+                const firstWfNode = document.getElementById('node-simulate');
+                if (firstWfNode) {
+                    firstWfNode.click();
+                }
+            }
+        }
+    };
+
+    document.addEventListener('click', (e) => {
+        const container2 = document.getElementById('stageDropdownContainer');
+        if (container2 && !container2.contains(e.target)) {
+            const dp = document.getElementById('stageDropdown');
+            if(dp) dp.classList.add('hidden');
+        }
+    });
+
+    // --- New Book Modal Logic ---
+    const genreTagsMap = {
+        '科幻': ['黑科技', '都市', '文明升级', '星际扩张', 'AI', '人类对抗/共生', '末世', '重生', '系统', '基建'],
+        '仙侠': ['修仙', '重生', '系统', '苟道', '宗门经营', '炼丹/炼器', '多世界/飞升', '因果/布局流'],
+        '都市': ['废柴', '隐藏身份', '小人物', '巨型系统', '商战', '科技', '都市'],
+        '军事': ['军事', '重生', '黑科技', '系统', '基建', '小队/特种兵', '星际战争', '国家经营', 'AI', '人类对抗/共生', '文明升级', '星际扩张'],
+        '末世': ['末世', '囤货', '重生', '系统', '基建', '黑科技', 'AI', '人类对抗/共生', '小队/特种兵'],
+        '商战': ['重生', '商战', '科技', '都市', '隐藏身份', '小人物'],
+        '无限流': ['无限流', '副本', '模拟器', '人生重开', '系统', '重生', '修仙', '黑科技'],
+        '奇幻': ['魔法', '剑与魔法', '领主经营', '巨龙', '炼金术', '异界大陆', '重生', '系统'],
+        '玄幻': ['东方玄幻', '废柴逆袭', '异世大陆', '王朝争霸', '系统', '高武', '重生']
+    };
+
+    let selectedMainGenre = '';
+    let selectedSubGenres = [];
+
+    window.openNewBookModal = function() {
+        document.getElementById('newBookModal').classList.remove('hidden');
+        document.getElementById('modalBookTitle').value = '';
+        document.getElementById('modalTargetWords').value = '100'; // Default 100万字
+        selectedMainGenre = '科幻';
+        selectedSubGenres = [];
+        renderMainGenres();
+        renderSubGenres();
+    };
+
+    window.closeNewBookModal = function() {
+        document.getElementById('newBookModal').classList.add('hidden');
+    };
+
+    function renderMainGenres() {
+        const container = document.getElementById('mainGenreContainer');
+        container.innerHTML = '';
+        Object.keys(genreTagsMap).forEach(genre => {
+            const isActive = genre === selectedMainGenre;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                isActive
+                    ? 'bg-primary/20 text-primary border-primary shadow-[0_0_10px_rgba(79,133,229,0.25)]'
+                    : 'bg-base-100 text-base-content opacity-70 border-base-content/5 hover:border-gray-500'
+            }`;
+            btn.innerText = genre;
+            btn.onclick = () => {
+                selectedMainGenre = genre;
+                selectedSubGenres = [];
+                renderMainGenres();
+                renderSubGenres();
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    function getAffinity(mainGenre, tag) {
+        const sTags = {
+            '科幻': ['黑科技', '文明升级', '星际扩张', 'AI', '人类对抗/共生'],
+            '仙侠': ['修仙', '苟道', '宗门经营', '炼丹/炼器', '多世界/飞升', '因果/布局流'],
+            '都市': ['废柴', '隐藏身份', '小人物', '巨型系统'],
+            '军事': ['军事', '重生', '黑科技', '系统', '基建', '小队/特种兵', '星际战争', '国家经营'],
+            '末世': ['末世', '囤货', '重生', '系统', '基建'],
+            '商战': ['重生', '商战', '科技'],
+            '无限流': ['无限流', '副本', '模拟器', '人生重开'],
+            '奇幻': ['魔法', '剑与魔法', '领主经营', '巨龙', '炼金术'],
+            '玄幻': ['东方玄幻', '废柴逆袭', '异世大陆', '高武']
+        };
+        const aTags = {
+            '科幻': ['都市', '末世', '重生', '系统', '基建'],
+            '仙侠': ['重生', '系统'],
+            '末世': ['黑科技', 'AI', '人类对抗/共生', '小队/特种兵'],
+            '都市': ['都市', '商战', '科技'],
+            '军事': ['AI', '人类对抗/共生', '文明升级', '星际扩张'],
+            '商战': ['都市', '隐藏身份', '小人物'],
+            '无限流': ['系统', '重生', '修仙', '黑科技'],
+            '奇幻': ['异界大陆', '重生', '系统'],
+            '玄幻': ['系统', '重生', '王朝争霸']
+        };
+
+        if (sTags[mainGenre] && sTags[mainGenre].includes(tag)) return 'S';
+        if (aTags[mainGenre] && aTags[mainGenre].includes(tag)) return 'A';
+
+        const generalS = ['重生', '系统', '无限流'];
+        if (generalS.includes(tag)) return 'B';
+
+        return 'C';
+    }
+
+    function renderSubGenres() {
+        const container = document.getElementById('subGenreContainer');
+        container.innerHTML = '';
+
+        // Gather all unique tags
+        const allTagsSet = new Set();
+        Object.values(genreTagsMap).forEach(list => list.forEach(t => allTagsSet.add(t)));
+        const allUniqueTags = Array.from(allTagsSet);
+
+        // Sort tags so that S and A tags are listed first
+        allUniqueTags.sort((a, b) => {
+            const affA = getAffinity(selectedMainGenre, a);
+            const affB = getAffinity(selectedMainGenre, b);
+            const score = { 'S': 4, 'A': 3, 'B': 2, 'C': 1 };
+            return (score[affB] || 0) - (score[affA] || 0);
+        });
+
+        allUniqueTags.forEach(tag => {
+            const isSelected = selectedSubGenres.includes(tag);
+            const affinity = getAffinity(selectedMainGenre, tag);
+
+            let affClass = '';
+            if (affinity === 'S') affClass = 'text-warning font-extrabold';
+            else if (affinity === 'A') affClass = 'text-warning font-bold';
+            else if (affinity === 'B') affClass = 'text-info';
+            else affClass = 'text-base-content opacity-50';
+
+            const tagSpan = document.createElement('span');
+            tagSpan.className = `px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-all border flex items-center gap-1 ${
+                isSelected
+                    ? 'bg-primary/20 text-primary border-primary shadow-[0_0_8px_rgba(79,133,229,0.25)]'
+                    : 'bg-base-100/60 text-base-content opacity-70 border-base-content/5 hover:border-white/20'
+            }`;
+            tagSpan.innerHTML = `<span>${tag}</span><span class="text-[9px] px-1 bg-base-content/5 rounded font-mono ${affClass}">${affinity}</span>`;
+            tagSpan.onclick = () => {
+                if (isSelected) {
+                    selectedSubGenres = selectedSubGenres.filter(t => t !== tag);
+                } else {
+                    selectedSubGenres.push(tag);
+                }
+                renderSubGenres();
+            };
+            container.appendChild(tagSpan);
+        });
+    }
+
+    window.createNewBook = function() {
+        const title = document.getElementById('modalBookTitle').value.trim();
+        const targetWords = document.getElementById('modalTargetWords').value.trim();
+
+        if (!title) {
+            alert('请输入书名');
+            return;
+        }
+        if (!selectedMainGenre) {
+            alert('请选择主题材');
+            return;
+        }
+        if (selectedSubGenres.length === 0) {
+            alert('请选择至少一个副题材/标签');
+            return;
+        }
+        if (!targetWords) {
+            alert('请输入目标字数');
+            return;
+        }
+
+        // Check for duplicate book titles
+        const existingTitles = Array.from(document.querySelectorAll('.book-option')).map(opt => opt.getAttribute('data-title'));
+        if (existingTitles.includes(title)) {
+            alert('书名已存在，请换一个书名');
+            return;
+        }
+
+        const newBookData = {
+            title: title,
+            mainGenre: selectedMainGenre,
+            subGenres: selectedSubGenres,
+            targetWords: targetWords
+        };
+
+        localStorage.setItem('temp_new_book', JSON.stringify(newBookData));
+        window.location.href = 'new_book.html';
+    };
+    </script>
+
+    <!-- New Book Modal HTML -->
+    <div id="newBookModal" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral/60 backdrop-blur-sm hidden">
+        <div class="bg-base-200 border border-base-content/5 rounded-box w-[550px] flex flex-col overflow-hidden shadow-2xl p-6 relative">
+            <button onclick="closeNewBookModal()" class="absolute top-4 right-4 text-base-content opacity-70 hover:text-base-content transition-colors">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+
+            <h2 class="text-lg font-bold text-base-content mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">add_box</span>
+                <span>新建新书构思</span>
+            </h2>
+
+            <div class="flex flex-col gap-4 overflow-y-auto max-h-[400px] pr-1">
+                <!-- Book Title -->
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">书名</label>
+                    <input type="text" id="modalBookTitle" placeholder="如：科幻末日生存指南" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-2 text-sm text-base-content focus:outline-none focus:border-primary/30 placeholder-gray-600 w-full" />
+                </div>
+
+                <!-- Target Words -->
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">目标字数</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="modalTargetWords" value="100" placeholder="如 100" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-2 text-sm text-base-content focus:outline-none focus:border-primary/30 font-mono flex-1" />
+                        <span class="text-xs text-base-content opacity-70 font-bold">万字</span>
+                    </div>
+                </div>
+
+                <!-- Main Genre -->
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs text-base-content opacity-70 font-medium">主题材 (单选)</label>
+                    <div class="flex flex-wrap gap-2" id="mainGenreContainer">
+                        <!-- Dynamic rendering by JS -->
+                    </div>
+                </div>
+
+                <!-- Sub Genre / Tags -->
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs text-base-content opacity-70 font-medium">副题材 / 标签 (多选)</label>
+                    <div class="flex flex-wrap gap-2 bg-base-100 border border-base-content/5 rounded-lg p-3 min-h-[80px]" id="subGenreContainer">
+                        <span class="text-xs text-base-content opacity-50 self-center w-full text-center">请先选择主题材</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-base-content/5">
+                <button onclick="closeNewBookModal()" class="px-5 py-2 bg-transparent text-base-content opacity-70 hover:text-base-content border border-base-content/5 hover:bg-base-content/5 text-sm font-medium rounded-lg transition-colors">
+                    取消
+                </button>
+                <button onclick="createNewBook()" class="px-6 py-2 bg-gradient-to-r from-primary to-[#3d71d1] hover:brightness-110 text-base-content text-sm font-bold rounded-lg shadow-lg transition-all">
+                    创建并进入设计
+                </button>
+            </div>
+    <!-- Book Switch Sandbox Isolation Overlay -->
+    <div id="bookSwitchOverlay" class="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-neutral/60 backdrop-blur-sm hidden transition-all duration-300">
+        <div class="flex flex-col items-center gap-4 max-w-sm text-center">
+            <!-- Glassmorphic Spinner -->
+            <div class="relative w-16 h-16 flex items-center justify-center">
+                <div class="absolute inset-0 rounded-full border-4 border-primary/30/20 border-t-[#4f85e5] animate-spin"></div>
+                <span class="material-symbols-outlined text-primary text-[28px] animate-pulse">lock_reset</span>
+            </div>
+            <div class="space-y-1 mt-2">
+                <h3 class="text-base font-bold text-base-content tracking-wide">构建安全沙箱环境...</h3>
+                <p id="bookSwitchStatusText" class="text-xs text-base-content opacity-70 font-mono">正在初始化数据隔离层...</p>
+            </div>
+            <!-- Progress ticks (aesthetic) -->
+            <div class="flex gap-1.5 mt-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-primary/30" id="tick-1"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-primary/30" id="tick-2"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-primary/30" id="tick-3"></span>
+            </div>
+        </div>
+    </div>
+</main>
+<script>
+window.toggleSidebar = function() {
+  document.body.classList.toggle('sidebar-collapsed');
+  const icon = document.getElementById('sidebarIcon');
+  if (icon) icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
+};
+</script>
+</body></html>

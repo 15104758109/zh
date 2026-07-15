@@ -3,11 +3,33 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>作品工作台</title>
-    <link rel="stylesheet" href="./shell.css">
+    <title>Narrative-Engine</title>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="./app-shell.mjs"></script>
+    <script>
+      const pages = {
+        "/workbench": "/pages/workbench/index.html", "/books/new": "/pages/new-book/index.html",
+        world: "/pages/world/index.html", characters: "/pages/characters/index.html", l1a: "/pages/l1a/index.html",
+        production: "/pages/production-stage/index.html", deduction: "/pages/multi-agent-deduction/index.html",
+        "deduction-review": "/pages/audit-review/index.html", audit: "/pages/audit-stage/index.html"
+      };
+      const path = location.pathname.replace(/\/$/, "") || "/workbench";
+      const page = pages[path] || pages[path.split("/").at(-1)] || pages["/workbench"];
+      const state = new URLSearchParams(location.search).get("state") || "normal";
+      const routeBridge = `<script>(function(){const match=location.pathname.match(/^\\/books\\/([^/]+)\\//);const bookId=decodeURIComponent(match?.[1]||new URLSearchParams(location.search).get('bookId')||'book-ashfall');const routes={'workbench.html':'/workbench','new_book.html':'/books/new','world_creator.html':'/books/'+bookId+'/world','\u4e16\u754c\u8bbe\u5b9a\u9875\u9762_\u62d6\u62fd\u7ed1\u5b9a\u7248.html':'/books/'+bookId+'/world','character_settings.html':'/books/'+bookId+'/characters','l1a_settings.html':'/books/'+bookId+'/l1a','production_stage.html':'/books/'+bookId+'/production','multi_agent_deduction.html':'/books/'+bookId+'/deduction','audit_review.html':'/books/'+bookId+'/deduction-review','audit_stage.html':'/books/'+bookId+'/audit'};document.addEventListener('click',function(event){const link=event.target.closest('a[href]');if(!link)return;const key=decodeURIComponent(link.getAttribute('href').split('/').pop());if(routes[key]){event.preventDefault();location.href=routes[key]}});window.createNewBook=function(){location.href='/books/'+bookId+'/world'};})()<\/script>`;
+      const states = {
+        empty: ["\u6682\u65e0\u5185\u5bb9", "\u5f53\u524d\u4f5c\u54c1\u5728\u6b64\u9875\u9762\u8fd8\u6ca1\u6709\u53ef\u663e\u793a\u7684\u6570\u636e\u3002"],
+        loading: ["\u6b63\u5728\u52a0\u8f7d", "\u6b63\u5728\u83b7\u53d6\u5f53\u524d\u4f5c\u54c1\u7684\u9875\u9762\u72b6\u6001\u3002"],
+        error: ["\u9875\u9762\u52a0\u8f7d\u5931\u8d25", "\u6682\u65f6\u65e0\u6cd5\u8bfb\u53d6\u6570\u636e\uff0c\u8bf7\u91cd\u8bd5\u3002"]
+      };
+      const stateBridge = states[state] ? `<script>(function(){const value=${JSON.stringify(states[state])};const style=document.createElement('style');style.textContent='#static-page-state{position:absolute;inset:0;z-index:120;display:grid;place-items:center;min-width:0;min-height:260px;background:rgba(244,243,242,.94);color:#24211f}#static-page-state>div{width:min(440px,calc(100% - 48px));box-sizing:border-box;border:1px solid rgba(0,0,0,.12);border-radius:8px;background:#fff;padding:28px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.08)}#static-page-state h1{margin:0 0 10px;font-size:20px;letter-spacing:0}#static-page-state p{margin:0;color:#706b67;line-height:1.6}#static-page-state button{margin-top:18px;border:1px solid rgba(0,0,0,.18);border-radius:6px;background:#24211f;color:#fff;padding:8px 14px;cursor:pointer}#static-page-state[data-kind=loading] h1:before{content:"";display:inline-block;width:13px;height:13px;margin-right:8px;border:2px solid #aaa;border-top-color:#24211f;border-radius:50%;vertical-align:-1px;animation:static-spin .8s linear infinite}@keyframes static-spin{to{transform:rotate(360deg)}}';document.head.append(style);const host=document.querySelector('main')||document.querySelector('.main-content')||document.body;if(getComputedStyle(host).position==='static')host.style.position='relative';const panel=document.createElement('section');panel.id='static-page-state';panel.dataset.kind='${state}';panel.setAttribute('role','${state === "error" ? "alert" : "status"}');panel.innerHTML='<div><h1>'+value[0]+'</h1><p>'+value[1]+'</p>${state === "error" ? "<button type=\"button\">\u91cd\u8bd5</button>" : ""}</div>';panel.querySelector('button')?.addEventListener('click',function(){const url=new URL(location.href);url.searchParams.delete('state');location.href=url});host.append(panel)})()<\/script>` : "";
+      fetch(page)
+        .then((response) => {
+          if (!response.ok) throw new Error(`page fetch failed: ${response.status}`);
+          return response.text();
+        })
+        .then((html) => html.replaceAll("../common/", "/pages/prototype/common/").replaceAll("./new_book_wizard_data.js", "/pages/new-book/prototype-data.js").replace("</body>", `${routeBridge}${stateBridge}</body>`))
+        .then((html) => { document.open(); document.write(html); document.close(); });
+    </script>
   </body>
 </html>

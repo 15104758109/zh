@@ -1,0 +1,65 @@
+{
+  "page": "AUDIT_STAGE",
+  "normal": [
+    {
+      "kind": "source",
+      "size": "1440x900",
+      "screenshot": "audit_stage-source-1440x900.jpg",
+      "bodyTextLength": 1287,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 900,
+      "innerWidth": 1440,
+      "scrollHeight": 900,
+      "scrollWidth": 1440,
+      "url": "http://127.0.0.1:4179/pages/audit_stage.html",
+      "consoleErrors": [
+        "TypeError: Cannot read properties of null (reading 'addEventListener')\n    at HTMLDocument.<anonymous> (http://127.0.0.1:4179/pages/audit_stage.html:1305:18)"
+      ]
+    },
+    {
+      "kind": "target",
+      "size": "1440x900",
+      "screenshot": "audit_stage-target-1440x900.jpg",
+      "bodyTextLength": 1287,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 900,
+      "innerWidth": 1440,
+      "scrollHeight": 900,
+      "scrollWidth": 1440,
+      "url": "http://127.0.0.1:4182/books/book-context-42/audit",
+      "consoleErrors": []
+    },
+    {
+      "kind": "source",
+      "size": "1280x720",
+      "screenshot": "audit_stage-source-1280x720.jpg",
+      "bodyTextLength": 1287,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "scrollHeight": 720,
+      "scrollWidth": 1280,
+      "url": "http://127.0.0.1:4179/pages/audit_stage.html",
+      "consoleErrors": [
+        "TypeError: Cannot read properties of null (reading 'addEventListener')\n    at HTMLDocument.<anonymous> (http://127.0.0.1:4179/pages/audit_stage.html:1305:18)"
+      ]
+    },
+    {
+      "kind": "target",
+      "size": "1280x720",
+      "screenshot": "audit_stage-target-1280x720.jpg",
+      "bodyTextLength": 1287,
+      "frames": 0,
+      "htmlHasPrototype": false,
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "scrollHeight": 720,
+      "scrollWidth": 1280,
+      "url": "http://127.0.0.1:4182/books/book-context-42/audit",
+      "consoleErrors": []
+    }
+  ]
+}

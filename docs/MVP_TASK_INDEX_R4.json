@@ -7,9 +7,9 @@
   "base_branch": "autonomy/integration",
   "required_baseline_ancestor": "7cf17e17666c1c82fb3e5ae6ea9560b5b282884c",
   "counts": {
-    "ready": 0,
-    "in_progress": 1,
-    "planned": 9,
+    "ready": 1,
+    "in_progress": 0,
+    "planned": 8,
     "total": 10,
     "business_tasks": 9,
     "gate_tasks": 1
@@ -301,7 +301,7 @@
       "acceptance_ref": "static_page_acceptance",
       "acceptance": ["all nine routes refresh directly", "defined static interactions work", "all eighteen prototype/target viewport pairs receive non-author PASS under static_page_acceptance.visual_acceptance_protocol"],
       "review_policy": "ONE_INTEGRATED_VISUAL_ACCEPTANCE_INSIDE_PARENT_TASK",
-      "status": "IN_PROGRESS"
+      "status": "COMPLETE"
     },
     {
       "id": "B1-CREATE-DRAFT-BOOK",
@@ -316,7 +316,7 @@
       "transaction_boundary": "draft t_book_projects shell only; no world/character/L1A formalization",
       "acceptance": ["stable local_operator_id scopes the draft", "normalized duplicate title is rejected", "idempotent replay creates one draft", "minimal model/budget support is available without a governance platform", "browser journey completes against real n8n and PostgreSQL"],
       "review_policy": "IN_TASK_ACCEPTANCE_ONLY",
-      "status": "PLANNED"
+      "status": "READY"
     },
     {
       "id": "B2-WORLD-SETTINGS",

@@ -1,0 +1,79 @@
+{
+  "page": "AUDIT_REVIEW",
+  "states": [
+    {
+      "state": "empty",
+      "screenshot": "audit_review-empty-1280x720.jpg",
+      "hasOverlay": true,
+      "heading": "暂无内容",
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "rect": {
+        "height": 632,
+        "width": 1064.800048828125,
+        "x": 200,
+        "y": 64
+      },
+      "role": "status",
+      "scrollHeight": 720,
+      "scrollWidth": 1280,
+      "text": "暂无内容\n\n当前作品在此页面还没有可显示的数据。",
+      "url": "http://127.0.0.1:4182/books/book-context-42/deduction-review?state=empty",
+      "retryCount": 0,
+      "retryResult": null,
+      "consoleErrors": []
+    },
+    {
+      "state": "loading",
+      "screenshot": "audit_review-loading-1280x720.jpg",
+      "hasOverlay": true,
+      "heading": "正在加载",
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "rect": {
+        "height": 632,
+        "width": 1064.800048828125,
+        "x": 200,
+        "y": 64
+      },
+      "role": "status",
+      "scrollHeight": 720,
+      "scrollWidth": 1280,
+      "text": "正在加载\n\n正在获取当前作品的页面状态。",
+      "url": "http://127.0.0.1:4182/books/book-context-42/deduction-review?state=loading",
+      "retryCount": 0,
+      "retryResult": null,
+      "consoleErrors": []
+    },
+    {
+      "state": "error",
+      "screenshot": "audit_review-error-1280x720.jpg",
+      "hasOverlay": true,
+      "heading": "页面加载失败",
+      "innerHeight": 720,
+      "innerWidth": 1280,
+      "rect": {
+        "height": 632,
+        "width": 1064.800048828125,
+        "x": 200,
+        "y": 64
+      },
+      "role": "alert",
+      "scrollHeight": 720,
+      "scrollWidth": 1280,
+      "text": "页面加载失败\n\n暂时无法读取数据，请重试。\n\n重试",
+      "url": "http://127.0.0.1:4182/books/book-context-42/deduction-review?state=error",
+      "retryCount": 1,
+      "retryResult": {
+        "url": "http://127.0.0.1:4182/books/book-context-42/deduction-review",
+        "normalOverlay": true
+      },
+      "consoleErrors": []
+    }
+  ],
+  "retry": {
+    "attempted": true,
+    "passed": true
+  },
+  "distinct": true
+}

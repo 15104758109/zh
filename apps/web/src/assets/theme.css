@@ -1,0 +1,2 @@
+/* Local adaptation of docs/前端原型_v2/common/theme.css. */
+:root { color-scheme: light; --color-base-100: #e9e7e7; --color-base-200: #d4d2d2; --color-base-300: #bebdbd; --color-base-content: #100f0f; --color-primary: #ed1974; --color-accent: #5c7f67; --color-neutral: #302f2d; --color-neutral-content: #f5f4f2; --color-success: #52aa73; }

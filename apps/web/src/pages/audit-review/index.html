@@ -1,0 +1,1331 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>纵横 Narrative-Engine - 结果审核</title>
+<!-- Tailwind CSS & DaisyUI v4 via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="../common/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="../common/sidebar.css">
+    <script src="../common/theme.js"></script>
+    <script src="./new_book_wizard_data.js"></script>
+    <script src="../common/header.js"></script>
+
+
+
+
+
+
+<style>
+        .font-label-caps { font-family: 'Inter', sans-serif; font-size: 11px; line-height: 16px; letter-spacing: 0.05em; font-weight: 700; }
+        .font-code-sm { font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 18px; font-weight: 400; }
+        .font-body-md { font-family: 'Inter', sans-serif; font-size: 14px; line-height: 20px; font-weight: 400; }
+        .font-body-lg { font-family: 'Inter', sans-serif; font-size: 16px; line-height: 24px; font-weight: 400; }
+        .font-headline-sm { font-family: 'Geist', sans-serif; font-size: 18px; line-height: 24px; font-weight: 500; }
+        .font-headline-md { font-family: 'Geist', sans-serif; font-size: 24px; line-height: 32px; font-weight: 600; }
+        .font-headline-lg { font-family: 'Geist', sans-serif; font-size: 32px; line-height: 40px; letter-spacing: -0.02em; font-weight: 600; }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        .glass-panel {
+            background: rgba(20, 27, 38, 0.6);
+            backdrop-3: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+
+
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0e14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #32353c;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #424754;
+        }
+
+
+        /* Quick Settings Popover */
+        .quick-settings-glass {
+            background: var(--color-base-100, rgba(15, 18, 25, 0.9)) !important;
+            backdrop-3: blur(20px);
+            -webkit-backdrop-3: blur(20px);
+            border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1)) !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Custom Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .4s;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 12px; width: 12px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        input:checked + .toggle-slider { background-color: rgba(77, 142, 255, 0.3); border-color: rgba(77, 142, 255, 0.4); }
+        input:checked + .toggle-slider:before { transform: translateX(16px); background-color: #4d8eff; box-shadow: 0 0 15px rgba(77, 142, 255, 0.6); }
+
+        /* Custom Scrollbar for dark theme (specific container) */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #32353c; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #424754; }
+
+        /* Dashed border util */
+        .dashed-border { background-image: linear-gradient(to right, #424754 50%, rgba(255,255,255,0) 0%); background-position: bottom; background-size: 8px 1px; background-repeat: repeat-x; }
+
+        /* Custom Slider */
+        .custom-range {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+        .custom-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #4d8eff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(77, 142, 255, 0.5);
+            border: 2px solid white;
+        }
+
+        /* Audit page specific styles */
+        .status-gradient-green {
+            background: linear-gradient(135deg, rgba(0, 230, 118, 0.1) 0%, rgba(0, 230, 118, 0) 100%);
+        }
+        .text-glow-blue {
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+        }
+        .dash-border-right {
+            border-right: 1px dashed #252D3D;
+        }
+
+        /* Rainbow Glow Button animation */
+        @keyframes rainbow-flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(255, 0, 127, 0.4), 0 0 30px rgba(127, 0, 255, 0.2); }
+            50% { box-shadow: 0 0 25px rgba(255, 0, 127, 0.7), 0 0 50px rgba(127, 0, 255, 0.4), 0 0 10px #00f0ff; }
+        }
+        .btn-rainbow-glow {
+            background: linear-gradient(90deg, #ff007f, #7f00ff, #00f0ff, #ff007f) !important;
+            background-size: 300% 100% !important;
+            animation: rainbow-flow 3s linear infinite, pulse-glow 2s ease-in-out infinite !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+            transform: scale(1.05);
+            transition: transform 0.2s ease, filter 0.2s ease !important;
+        }
+        .btn-rainbow-glow:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+
+        /* Toast Notification Styles */
+        .toast-item {
+            animation: slideIn 0.3s ease forwards;
+            background: rgba(18, 22, 31, 0.95);
+            border: 1px solid rgba(0, 230, 118, 0.25);
+            border-left: 4px solid #00E676;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-3: blur(12px);
+        }
+        .toast-item.error {
+            border-color: rgba(255, 82, 82, 0.25);
+            border-left-color: #FF5252;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(120%); opacity: 0; }
+        }
+        .toast-progress {
+            height: 2px;
+            background: #00E676;
+            animation: toast-progress 4s linear forwards;
+        }
+        .toast-item.error .toast-progress {
+            background: #FF5252;
+        }
+        @keyframes toast-progress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+
+        /* Interactive Tabs and Particle Pills */
+        .tab-btn {
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tab-btn.active.tab-promise {
+            color: #00F0FF;
+            border-color: rgba(0, 240, 255, 0.3);
+            background: rgba(0, 240, 255, 0.05);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+        }
+        .tab-btn.active.tab-sparks {
+            color: #ff007f;
+            border-color: rgba(255, 0, 127, 0.3);
+            background: rgba(255, 0, 127, 0.05);
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.1);
+        }
+        .tab-btn.active.tab-world {
+            color: #FFAB00;
+            border-color: rgba(255, 171, 0, 0.3);
+            background: rgba(255, 171, 0, 0.05);
+            box-shadow: 0 0 15px rgba(255, 171, 0, 0.1);
+        }
+        .particle-pill {
+            transition: all 0.2s ease;
+        }
+        .particle-pill:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px var(--pill-glow);
+        }
+        .particle-pill:active {
+            transform: translateY(0);
+        }
+        .particle-pill.active {
+            border-color: currentColor !important;
+            background-color: var(--pill-active-bg) !important;
+            box-shadow: 0 0 12px var(--pill-glow) !important;
+        }
+            /* 顶栏随侧栏折叠隐藏 */
+        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
+        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
+        .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
+        .header-tab:hover { opacity: 0.85; }
+        .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        .settings-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-base-300); cursor: pointer; transition: background 0.2s ease; flex-shrink: 0; }
+        .settings-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.2s ease; }
+        .settings-switch.on { background: var(--color-accent); }
+        .settings-switch.on::after { transform: translateX(16px); }
+        .settings-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; cursor: pointer; transition: all 0.15s ease; }
+        .settings-btn:hover { background: var(--color-accent); color: white; }
+
+</style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-base-200 text-base-content font-body-md overflow-hidden h-screen flex selection:bg-primary/30 selection:text-base-content">
+<a href="#main-content" class="skip-link">跳到主内容</a>
+
+<!-- SideNavBar -->
+<!-- SideNavBar -->
+<nav class="sidebar-glass" aria-label="主菜单">
+  <div class="sidebar-brand">
+    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
+    <div class="sidebar-text">
+      <div class="brand-title">纵横</div>
+      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
+    </div>
+  </div>
+  <div class="sidebar-separator" aria-hidden="true"></div>
+  <ul class="menu sidebar-menu" id="sidebarMenu">
+    <li><a href="workbench.html" aria-label="总控设置面板"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
+    <li><a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
+    <li><a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
+    <li><a href="audit_stage.html" aria-label="审计阶段：正文审计、主编裁决" class="active"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
+    <li><a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
+  </ul>
+  <footer class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">U</div>
+      <span class="sidebar-text sidebar-user-name">用户</span>
+    </div>
+  </footer>
+</nav>
+<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
+  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
+</button>
+
+<!-- Main Content Area -->
+<div class="main-content" id="main-content">
+
+<!-- TopNavBar -->
+        <!-- TopNavBar -->
+        <!-- TopNavBar -->
+    <header class="header-glass h-16 fixed top-0 right-0 z-[60] flex justify-between items-center px-6 bg-base-100">
+        <div class="flex items-center gap-4 h-full">
+            <nav class="flex h-full items-center ml-2">
+                <!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
+                                <div class="header-tabs">
+                    <a href="production_stage.html" class="header-tab">套路展开</a>
+                    <a href="multi_agent_deduction.html" class="header-tab">多代理推演</a>
+                    <a href="audit_review.html" class="header-tab active">结果审核</a>
+                </div>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- 当前书籍标识 -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-content/10 text-[11px] font-medium text-base-content/80">
+                <span class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></span>
+                <span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+                <span id="header-book-name"></span>
+            </div>
+            <button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">notifications</span>
+            </button>
+
+            <!-- 快捷设置齿轮与弹窗 -->
+            <div class="relative flex items-center">
+                <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                </button>
+                <!-- Quick Settings Popover -->
+                        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
+                    <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
+                </div>
+                <div class="flex flex-col gap-2 mb-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
+                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
+                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
+                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-base-content/5">
+                    <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        应用当前配置
+                    </button>
+                </div>
+            </div>
+
+            <div class="h-8 w-[1px] bg-base-content/5 mx-1"></div>
+
+        </div>
+    </header>
+
+<!-- Main Content: 结果审核 -->
+<main class="flex-1 mt-16 p-6 grid grid-cols-12 gap-6 overflow-y-auto content-start">
+<!-- Left Column -->
+<div class="col-span-8 flex flex-col gap-6 pr-2">
+<!-- Plot Summary Section (摘要置顶并重构为交互目标清单) -->
+<section class="bg-base-100 border border-base-content/10 rounded-box shadow-sm p-6 mb-6" data-purpose="plot-summary-tabs">
+    <div class="flex items-center justify-between border-b border-base-content/10 pb-3 mb-4">
+        <h2 class="text-sm font-semibold flex items-center gap-2 text-base-content">
+            <span class="w-1.5 h-3 bg-cyber-blue rounded-full"></span>
+            结构化目标清单
+        </h2>
+    </div>
+
+    <!-- Tabs 分类选择卡 -->
+    <div class="flex gap-2 mb-4 bg-base-200/60 p-1.5 rounded-box border border-base-content/10">
+        <button id="tab-promise" onclick="switchAuditTab('promise')" class="tab-btn tab-promise flex-1 py-1.5 px-3 rounded text-xs font-bold text-cyber-gray hover:text-base-content border border-transparent transition-all active">
+            剧情承诺
+        </button>
+        <button id="tab-sparks" onclick="switchAuditTab('sparks')" class="tab-btn tab-sparks flex-1 py-1.5 px-3 rounded text-xs font-bold text-cyber-gray hover:text-base-content border border-transparent transition-all">
+            短期爽点
+        </button>
+        <button id="tab-world" onclick="switchAuditTab('world')" class="tab-btn tab-world flex-1 py-1.5 px-3 rounded text-xs font-bold text-cyber-gray hover:text-base-content border border-transparent transition-all">
+            世界推进
+        </button>
+    </div>
+
+    <!-- 清单容器 -->
+    <div id="audit-list-container" class="space-y-2">
+        <!-- JS 动态渲染此处 -->
+    </div>
+
+    <!-- 底部备注栏 -->
+    <div class="mt-4 p-3 bg-base-content/5 border border-base-content/5 rounded-lg text-[10px] text-cyber-gray flex items-center gap-2">
+        <span class="material-symbols-outlined text-[14px] text-cyber-amber">info</span>
+        <span>情绪承诺、角色弧光校验修文后审计结果已同步底层向量库。</span>
+    </div>
+
+    <!-- 颗粒实现清单详细看板 (点击某颗粒展示) -->
+    <div id="granule-detail-panel" class="hidden mt-3 p-4 bg-base-200/50 border border-base-content/10 rounded-box animate-fade-in">
+        <!-- JS 动态渲染具体颗粒清单 -->
+    </div>
+</section>
+</section>
+<!-- Chapter Cut Preview Section -->
+<section class="bg-base-100 border border-base-content/10 rounded-box shadow-sm p-6" data-purpose="chapter-cut-preview">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-sm font-semibold flex items-center gap-2">
+            断章预览
+</h2>
+<div class="flex gap-6 text-[10px] text-cyber-gray">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-cyber-red"></span> 情绪峰值</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 bg-cyber-amber rotate-45"></span> 悬念节点</span>
+</div>
+</div>
+<!-- Emotion Curve Visualization -->
+<div class="relative h-32 mb-10">
+<div class="absolute inset-0 flex flex-col justify-between opacity-10">
+<div class="border-t border-white w-full"></div>
+<div class="border-t border-white w-full"></div>
+<div class="border-t border-white w-full"></div>
+</div>
+<svg class="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+<path d="M0 80 Q 50 90, 100 70 T 200 40 T 300 85 T 400 50 T 500 75 T 600 30 T 700 80 T 800 20" fill="none" stroke="rgba(0, 240, 255, 0.4)" stroke-width="2"></path>
+<path d="M0 80 Q 50 90, 100 70 T 200 40 T 300 85 T 400 50 T 500 75 T 600 30 T 700 80 T 800 20" fill="url(#grad)" fill-opacity="0.1"></path>
+<defs>
+<linearGradient id="grad" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-3="var(--color-accent)" style="stop-opacity:1"></stop>
+<stop offset="100%" stop-3="var(--color-accent)" style="stop-opacity:0"></stop>
+</linearGradient>
+</defs>
+</svg>
+
+<!-- 断章点 1 (原峰值 73) -->
+<div class="absolute inset-y-0 left-[20%] w-[1px] border-l border-dashed border-cyber-gray/40 flex flex-col items-center justify-center" id="cliff-marker-container-1">
+    <div onclick="switchCliffhanger(1)" id="cliff-dot-1" class="w-4 h-4 rounded-full bg-cyber-gray/20 border border-cyber-gray cursor-pointer flex items-center justify-center hover:scale-125 transition-transform z-20 relative -mt-4" title="点击切换至断章点 #978">
+        <span class="w-1.5 h-1.5 rounded-full bg-cyber-gray"></span>
+    </div>
+    <div class="absolute top-2 -translate-x-1/2 bg-cyber-gray text-base-content text-[7px] font-mono font-bold px-1 rounded shadow-sm whitespace-nowrap pointer-events-none select-none transition-all" id="cliff-label-1">
+        断章点 #978
+    </div>
+</div>
+
+<!-- 断章点 2 (原峰值 81) -->
+<div class="absolute inset-y-0 left-[55%] w-[1px] border-l border-dashed border-cyber-amber/50 flex flex-col items-center justify-center" id="cliff-marker-container-2">
+    <div onclick="switchCliffhanger(2)" id="cliff-dot-2" class="w-4 h-4 rounded-full bg-cyber-amber/25 border border-cyber-amber cursor-pointer flex items-center justify-center hover:scale-125 transition-transform shadow-[0_0_12px_rgba(255,171,0,0.75)] z-20 relative -mt-6" title="点击切换至断章点 #1012">
+        <span class="w-1.5 h-1.5 rounded-full bg-cyber-amber animate-pulse"></span>
+        <span class="absolute inset-0 rounded-full border border-cyber-amber/50 animate-ping opacity-75" id="cliff-ping-2"></span>
+    </div>
+    <div class="absolute top-0 -translate-x-1/2 bg-cyber-amber text-neutral-content text-[7px] font-mono font-bold px-1 rounded shadow-[0_0_8px_rgba(255,171,0,0.3)] whitespace-nowrap pointer-events-none select-none transition-all" id="cliff-label-2">
+        断章点 #1012
+    </div>
+</div>
+
+<!-- 断章点 3 (原峰值 68) -->
+<div class="absolute inset-y-0 left-[90%] w-[1px] border-l border-dashed border-cyber-gray/40 flex flex-col items-center justify-center" id="cliff-marker-container-3">
+    <div onclick="switchCliffhanger(3)" id="cliff-dot-3" class="w-4 h-4 rounded-full bg-cyber-gray/20 border border-cyber-gray cursor-pointer flex items-center justify-center hover:scale-125 transition-transform z-20 relative -mt-2" title="点击切换至断章点 #1095">
+        <span class="w-1.5 h-1.5 rounded-full bg-cyber-gray"></span>
+    </div>
+    <div class="absolute top-2 -translate-x-1/2 bg-cyber-gray text-base-content text-[7px] font-mono font-bold px-1 rounded shadow-sm whitespace-nowrap pointer-events-none select-none transition-all" id="cliff-label-3">
+        断章点 #1095
+    </div>
+</div>
+
+</div>
+<div class="grid grid-cols-12 items-center gap-4">
+<div class="col-span-1 text-[10px] text-cyber-gray">Grain #</div>
+<div class="col-span-11 flex justify-between text-[10px] text-cyber-gray px-2">
+<span class="">950</span><span class="">970</span><span class="">990</span><span class="">1010</span><span class="">1030</span><span class="">1050</span><span class="">1070</span><span class="">1090</span><span class="">1110</span><span class="">1126</span>
+</div>
+</div>
+<div class="mt-8 grid grid-cols-12 gap-2 min-h-[56px] h-auto items-stretch">
+<div id="ch42-card" class="col-span-5 bg-info/20 border border-info/30 rounded p-3 flex flex-col items-center justify-center text-center relative transition-all duration-300 min-h-[56px]">
+    <div id="ch42-card-content">
+        <p class="text-xs font-bold">第042章 <span class="font-normal">(霓虹深渊的低语)</span></p>
+        <p class="text-[10px] text-cyber-gray">建议字数：约 10.8K</p>
+    </div>
+    <div class="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-base-100 border-r border-b border-info/30 rotate-[-45deg] z-10"></div>
+</div>
+<!-- 和谐化连接线与更新按钮 -->
+<div class="col-span-2 flex items-center justify-center relative">
+    <div class="absolute left-0 right-0 h-[1px] bg-gradient-to-r from-info/20 via-cyber-amber/50 to-info/20 z-0"></div>
+    <div onclick="toggleCliffhangerDetails()" class="w-8 h-8 rounded-full bg-base-100 border border-base-content/10 hover:border-cyber-amber/60 flex items-center justify-center z-10 cursor-pointer shadow-md transition-all group" title="点击更新断章细节">
+        <span class="material-symbols-outlined text-[16px] text-cyber-amber group-hover:scale-110 transition-transform">leak_add</span>
+    </div>
+</div>
+<div id="ch43-card" class="col-span-5 bg-info/20 border border-info/30 rounded p-3 flex flex-col items-center justify-center text-center relative transition-all duration-300 min-h-[56px]">
+    <div class="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-base-100 border-l border-t border-info/30 rotate-[-45deg] z-10"></div>
+    <div id="ch43-card-content">
+        <p class="text-xs font-bold">第043章 <span class="font-normal">(虚拟主机的觉醒)</span></p>
+        <p class="text-[10px] text-cyber-gray">建议字数：约 11.2K</p>
+    </div>
+</div>
+</div>
+
+</section>
+</div>
+<!-- Right Column -->
+<div class="col-span-4 flex flex-col gap-6 pb-6">
+
+    <!-- 右一：推演结果总览 -->
+    <section class="bg-base-100 border border-base-content/10 rounded-box shadow-sm p-6" data-purpose="simulation-outcome">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-sm font-semibold flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-[20px]">insights</span>
+                推演结果总览
+            </h2>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <p class="text-xs text-cyber-gray mb-1">当前 L1A</p>
+                <h3 class="text-lg font-bold text-base-content leading-tight">L1A-07 霓虹迷局的反向渗透</h3>
+            </div>
+            <div class="grid grid-cols-3 gap-3 border-t border-base-content/10 pt-4 text-center">
+                <div class="bg-base-200/50 p-2 rounded border border-base-content/10">
+                    <p class="text-[9px] text-cyber-gray uppercase">已完成 GRAIN</p>
+                    <p class="text-sm font-bold text-cyber-green mt-0.5">100%</p>
+                </div>
+                <div class="bg-base-200/50 p-2 rounded border border-base-content/10">
+                    <p class="text-[9px] text-cyber-gray uppercase">输出素材量</p>
+                    <p class="text-sm font-bold text-base-content mt-0.5">5 章</p>
+                </div>
+                <div class="bg-base-200/50 p-2 rounded border border-base-content/10">
+                    <p class="text-[9px] text-cyber-gray uppercase">推演时长</p>
+                    <p class="text-sm font-bold text-base-content mt-0.5">00:12:48</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 右二：推演结果指标 (5卡片，压缩图标尺寸) -->
+    <section class="bg-base-100 border border-base-content/10 rounded-box shadow-sm p-6" data-purpose="simulation-indicators">
+        <h2 class="text-sm font-semibold flex items-center gap-2 mb-4 text-base-content tracking-wide">
+            <span class="material-symbols-outlined text-cyber-blue text-[20px]">analytics</span>
+            推演结果指标
+        </h2>
+        <div class="grid grid-cols-2 gap-2.5">
+            <!-- 关键事件链 -->
+            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 hover:border-cyber-blue/50 transition-all duration-300 relative group overflow-hidden cursor-pointer">
+                <div class="absolute inset-0 bg-gradient-to-r from-cyber-blue/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-8 h-8 rounded bg-cyber-blue/10 flex items-center justify-center text-cyber-blue shrink-0 relative z-10">
+                    <span class="material-symbols-outlined text-[18px]">bolt</span>
+                </div>
+                <div class="relative z-10 min-w-0 flex-1">
+                    <p class="text-[9px] text-cyber-gray font-semibold truncate leading-none">关键事件链</p>
+                    <p class="text-xs font-bold text-base-content mt-0.5">12 条</p>
+                </div>
+                <span class="material-symbols-outlined text-cyber-gray text-[10px] ml-auto group-hover:text-cyber-blue transition-colors">chevron_right</span>
+            </div>
+
+            <!-- 角色变化 -->
+            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 hover:border-secondary/50 transition-all duration-300 relative group overflow-hidden cursor-pointer">
+                <div class="absolute inset-0 bg-gradient-to-r from-secondary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-8 h-8 rounded bg-secondary/10 flex items-center justify-center text-secondary shrink-0 relative z-10">
+                    <span class="material-symbols-outlined text-[18px]">person</span>
+                </div>
+                <div class="relative z-10 min-w-0 flex-1">
+                    <p class="text-[9px] text-cyber-gray font-semibold truncate leading-none">角色变化</p>
+                    <p class="text-xs font-bold text-base-content mt-0.5">6 人</p>
+                </div>
+                <span class="material-symbols-outlined text-cyber-gray text-[10px] ml-auto group-hover:text-secondary transition-colors">chevron_right</span>
+            </div>
+
+            <!-- 关系变化 -->
+            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 hover:border-cyber-amber/50 transition-all duration-300 relative group overflow-hidden cursor-pointer">
+                <div class="absolute inset-0 bg-gradient-to-r from-cyber-amber/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-8 h-8 rounded bg-cyber-amber/10 flex items-center justify-center text-cyber-amber shrink-0 relative z-10">
+                    <span class="material-symbols-outlined text-[18px]">groups</span>
+                </div>
+                <div class="relative z-10 min-w-0 flex-1">
+                    <p class="text-[9px] text-cyber-gray font-semibold truncate leading-none">关系变化</p>
+                    <p class="text-xs font-bold text-base-content mt-0.5">9 对</p>
+                </div>
+                <span class="material-symbols-outlined text-cyber-gray text-[10px] ml-auto group-hover:text-cyber-amber transition-colors">chevron_right</span>
+            </div>
+
+            <!-- 资源消耗 -->
+            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 hover:border-cyber-red/50 transition-all duration-300 relative group overflow-hidden cursor-pointer">
+                <div class="absolute inset-0 bg-gradient-to-r from-cyber-red/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-8 h-8 rounded bg-cyber-red/10 flex items-center justify-center text-cyber-red shrink-0 relative z-10">
+                    <span class="material-symbols-outlined text-[18px]">inventory_2</span>
+                </div>
+                <div class="relative z-10 min-w-0 flex-1">
+                    <p class="text-[9px] text-cyber-gray font-semibold truncate leading-none">资源消耗</p>
+                    <p class="text-xs font-bold text-base-content mt-0.5">关键资源 5项</p>
+                </div>
+                <span class="material-symbols-outlined text-cyber-gray text-[10px] ml-auto group-hover:text-cyber-red transition-colors">chevron_right</span>
+            </div>
+
+            <!-- 世界状态改变 (横拉满) -->
+            <div class="col-span-2 bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 hover:border-cyber-green/50 transition-all duration-300 relative group overflow-hidden cursor-pointer">
+                <div class="absolute inset-0 bg-gradient-to-r from-cyber-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-8 h-8 rounded bg-cyber-green/10 flex items-center justify-center text-cyber-green shrink-0 relative z-10">
+                    <span class="material-symbols-outlined text-[18px]">public</span>
+                </div>
+                <div class="relative z-10 min-w-0 flex-1">
+                    <p class="text-[9px] text-cyber-gray font-semibold truncate leading-none">世界状态改变</p>
+                    <p class="text-xs font-bold text-base-content mt-0.5">8 项 (重大改变 2)</p>
+                </div>
+                <span class="material-symbols-outlined text-cyber-gray text-[10px] ml-auto group-hover:text-cyber-green transition-colors">chevron_right</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 右三：放行闸门 -->
+    <!-- Release to Chapter Text Section -->
+<section class="bg-base-100 border border-base-content/10 rounded-box shadow-sm p-6 flex-1" data-purpose="release-preparation">
+<h2 class="text-sm font-semibold flex items-center gap-2 mb-6">放行闸门
+</h2>
+<div class="w-full mb-6">
+<div class="grid grid-cols-5 gap-2">
+    <div class="flex flex-col items-center justify-center bg-base-content/5 border border-base-content/5 p-3.5 rounded-box text-[10px] text-center hover:border-cyber-green/30 transition-all">
+            <span class="material-symbols-outlined text-[18px] text-cyber-green mb-1">shield</span>
+            <span class="text-cyber-gray text-[9px] scale-90 mb-1.5">凭空造物</span>
+            <span class="px-1.5 py-0.2 bg-cyber-green/10 text-cyber-green text-[8px] font-bold rounded border border-cyber-green/20">PASS</span>
+        </div>
+        <div class="flex flex-col items-center justify-center bg-base-content/5 border border-base-content/5 p-3.5 rounded-box text-[10px] text-center hover:border-cyber-green/30 transition-all">
+            <span class="material-symbols-outlined text-[18px] text-cyber-green mb-1">manage_search</span>
+            <span class="text-cyber-gray text-[9px] scale-90 mb-1.5">信息越权</span>
+            <span class="px-1.5 py-0.2 bg-cyber-green/10 text-cyber-green text-[8px] font-bold rounded border border-cyber-green/20">PASS</span>
+        </div>
+        <div class="flex flex-col items-center justify-center bg-base-content/5 border border-base-content/5 p-3.5 rounded-box text-[10px] text-center hover:border-cyber-green/30 transition-all">
+            <span class="material-symbols-outlined text-[18px] text-cyber-green mb-1">edit_attributes</span>
+            <span class="text-cyber-gray text-[9px] scale-90 mb-1.5">设定污染</span>
+            <span class="px-1.5 py-0.2 bg-cyber-green/10 text-cyber-green text-[8px] font-bold rounded border border-cyber-green/20">PASS</span>
+        </div>
+        <div class="flex flex-col items-center justify-center bg-base-content/5 border border-base-content/5 p-3.5 rounded-box text-[10px] text-center hover:border-cyber-green/30 transition-all">
+            <span class="material-symbols-outlined text-[18px] text-cyber-green mb-1">person_off</span>
+            <span class="text-cyber-gray text-[9px] scale-90 mb-1.5">失活实体</span>
+            <span class="px-1.5 py-0.2 bg-cyber-green/10 text-cyber-green text-[8px] font-bold rounded border border-cyber-green/20">PASS</span>
+        </div>
+        <div class="flex flex-col items-center justify-center bg-base-content/5 border border-base-content/5 p-3.5 rounded-box text-[10px] text-center hover:border-cyber-blue/30 transition-all">
+            <span class="material-symbols-outlined text-[18px] text-cyber-blue mb-1">theater_comedy</span>
+            <span class="text-cyber-gray text-[9px] scale-90 mb-1.5">情绪任务</span>
+            <span class="px-1.5 py-0.2 bg-cyber-blue/10 text-cyber-blue text-[8px] font-bold rounded border border-cyber-blue/20">合格</span>
+        </div>
+</div>
+</div>
+
+<div class="grid grid-cols-2 gap-4">
+    <!-- 放行按钮 -->
+    <button class="btn btn-primary h-auto py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] transition-transform">
+        <span class="material-symbols-outlined text-[20px]">task_alt</span>
+        <div class="text-left">
+            <p class="text-xs font-bold">放行至正文生成</p>
+            <p class="text-[8px] opacity-80">Deduction Approved</p>
+        </div>
+    </button>
+    <!-- 退回按钮 -->
+    <button onclick="openRegenerateModal()" class="btn btn-outline border-base-content/10 hover:bg-base-content/5 h-auto py-2.5 rounded-lg flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]">
+        <span class="material-symbols-outlined text-[20px] text-base-content opacity-75">assignment_return</span>
+        <div class="text-left">
+            <p class="text-xs font-bold text-base-content">退回推演</p>
+            <p class="text-[8px] text-base-content/65">Return to Sim</p>
+        </div>
+    </button>
+</div>
+</section>
+</div>
+</main>
+
+<!-- Footer -->
+<footer class="flex items-center justify-between text-[10px] text-cyber-gray px-6 py-3" data-purpose="status-footer">
+
+</footer>
+
+</div>
+
+<script>
+    // 选项卡切换与点击颗粒渲染的完整业务控制 JS 逻辑 (含数据源)
+    const AUDIT_GRANULES_DATA = {
+        promise: [
+            {
+                id: "p1",
+                title: "潜伏并窃取“逆向渗透计划”底层算法与证据",
+                status: "达成",
+                particles: { fact: 2, resource: 1, info: 2 },
+                details: {
+                    fact: [
+                        "“Elyse 通过主控台物理接口接入，逆向算法的编译签名瞬间在中枢生成。” —— 第 029 章正文片段 (Grain #962)",
+                        "“中央日志在系统高压警报前被成功篡改，只读访问标记已写入底层逻辑扇区。” —— 第 029 章正文片段 (Grain #980)"
+                    ],
+                    resource: [
+                        "“为了规避诱饵桥局部的网络阻断，Elyse 物理熔断了防火墙上 15% 的储备宽带。” —— 第 029 章正文片段 (Grain #965)"
+                    ],
+                    info: [
+                        "“逆向渗透算法的核心密匙已完全导入，呈现面板的文字由红转入亮青。” —— 第 029 章正文片段 (Grain #970)",
+                        "“主板上布满了动态校验特征指纹，任何后续追踪审计均会被反向污染。” —— 第 029 章正文片段 (Grain #975)"
+                    ]
+                }
+            },
+            {
+                id: "p2",
+                title: "与内部关键同盟建立安全双向通讯保障",
+                status: "达成",
+                particles: { fact: 1, resource: 0, info: 1 },
+                details: {
+                    fact: [
+                        "“Thorne 在集团中庭交换了特制芯片，与 Elyse 达成了物理级别的信道加密。” —— 第 029 章正文片段 (Grain #872)"
+                    ],
+                    resource: [],
+                    info: [
+                        "“同盟端口提供的安全特征参数注入了 Elyse 的网格视界，自动隐藏了其真实 IP。” —— 第 029 章正文片段 (Grain #890)"
+                    ]
+                }
+            }
+        ],
+        sparks: [
+            {
+                id: "s1",
+                title: "强力拦截警报，建立蜜罐拖延追踪系统",
+                status: "达成",
+                particles: { fact: 1, resource: 2, info: 1 },
+                details: {
+                    fact: [
+                        "“反向防卫矩阵成功触发，追踪方的追踪线程被拖入死循环蜜罐空间。” —— 第 030 章正文片段 (Grain #1033)"
+                    ],
+                    resource: [
+                        "“集团备用的算力通道强制超载，CPU 防火墙发出了尖锐的物理熔断蜂鸣。” —— 第 030 章正文片段 (Grain #1035)",
+                        "“Elyse 敲击键盘，物理切断了暴露的中继天线，用以掩护本次的数据出逃。” —— 第 030 章正文片段 (Grain #1040)"
+                    ],
+                    info: [
+                        "“追踪方的网络数字签名被诱导协议完整截获，生成了 12 组安全特征指纹。” —— 第 030 章正文片段 (Grain #1038)"
+                    ]
+                }
+            },
+            {
+                id: "s2",
+                title: "Elaine 高智商从容应对集团突击内审",
+                status: "达成",
+                particles: { fact: 2, resource: 0, info: 1 },
+                details: {
+                    fact: [
+                        "“Elyse 亮出伪造的安全特许巡检密匙，内审组的防火墙自动识别并选择放行。” —— 第 030 章正文片段 (Grain #992)",
+                        "“Elyse 镇定地将本地算力数据漏损解释为硬件发热导致的冗余包堆积。” —— 第 030 章正文片段 (Grain #995)"
+                    ],
+                    resource: [],
+                    info: [
+                        "“在与内审组擦肩而过的瞬间，Elyse 成功提取了内审终端正在交换的蜜罐参数。” —— 第 030 章正文片段 (Grain #1002)"
+                    ]
+                }
+            }
+        ],
+        world: [
+            {
+                id: "w1",
+                title: "诱饵桥集团局部防御机制黄色警告强制升级",
+                status: "达成",
+                particles: { fact: 1, resource: 1, info: 1 },
+                details: {
+                    fact: [
+                        "“诱饵桥防御中枢亮起高危橙光，全网进入三级网络战备警戒防线。” —— 第 031 章正文片段 (Grain #875)"
+                    ],
+                    resource: [
+                        "“集团的安全线路被强制抢占，三组备用网络通道直接被切换为外部诱捕态。” —— 第 031 章正文片段 (Grain #880)"
+                    ],
+                    info: [
+                        "“Elyse 拦截了集团下发的升级控制代码，获取了防线密钥重写前置特征值。” —— 第 031 章正文片段 (Grain #885)"
+                    ]
+                }
+            },
+            {
+                id: "w2",
+                title: "冲突不可逆激化，正式进入隐秘对抗阶段",
+                status: "达成",
+                particles: { fact: 2, resource: 1, info: 1 },
+                details: {
+                    fact: [
+                        "“Elyse 的物理出逃通道被内鬼阻断，视界面板呈现大片数据流红字。” —— 第 031 章正文片段 (Grain #1110)",
+                        "“Thorne 在外网强行引爆了离线数据协议，用以物理销毁追踪证据。” —— 第 031 章正文片段 (Grain #1126)"
+                    ],
+                    resource: [
+                        "“Elyse 强行接入了第三方的公共备用信道，以此拖延安全自毁程序的倒计时。” —— 第 031 章正文片段 (Grain #1115)"
+                    ],
+                    info: [
+                        "“在中继节点的缓存区，Elyse 成功抓取了内鬼在离线前发出的加密交互指令。” —— 第 031 章正文片段 (Grain #1120)"
+                    ]
+                }
+            }
+        ]
+    };
+
+    let activeTab = 'promise';
+    let selectedItemIndex = null;
+    let selectedParticleType = null;
+
+    function renderAuditList() {
+        const container = document.getElementById('audit-list-container');
+        if (!container) return;
+
+        const items = AUDIT_GRANULES_DATA[activeTab];
+        let html = '';
+
+        items.forEach((item, index) => {
+            const hasFact = item.particles.fact > 0;
+            const hasResource = item.particles.resource > 0;
+            const hasInfo = item.particles.info > 0;
+
+            const isFactActive = selectedItemIndex === index && selectedParticleType === 'fact';
+            const isResourceActive = selectedItemIndex === index && selectedParticleType === 'resource';
+            const isInfoActive = selectedItemIndex === index && selectedParticleType === 'info';
+
+            // 设置并列清单的配色风格
+            let pillColorPromise = 'border-cyber-blue/20 text-cyber-blue bg-cyber-blue/5';
+            let pillColorSparks = 'border-cyber-red/20 text-cyber-red bg-cyber-red/5';
+            let pillColorWorld = 'border-cyber-amber/20 text-cyber-amber bg-cyber-amber/5';
+
+            html += `
+            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3.5 hover:border-base-content/10 transition-all flex items-center justify-between gap-4">
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs text-base-content font-medium truncate">${item.title}</p>
+                </div>
+
+                <!-- 颗粒控制 Pills -->
+                <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="handleParticleClick('${activeTab}', ${index}, 'fact')"
+                            style="--pill-glow: rgba(0, 240, 255, 0.2); --pill-active-bg: rgba(0, 240, 255, 0.15);"
+                            class="particle-pill px-2 py-1 border rounded text-[9px] font-mono flex items-center gap-1 ${pillColorPromise} ${isFactActive ? 'active' : ''}">
+                        <span>事实颗粒</span>
+                        <span class="bg-cyber-blue/20 px-1 rounded font-bold">${item.particles.fact}</span>
+                    </button>
+                    <button onclick="handleParticleClick('${activeTab}', ${index}, 'resource')"
+                            style="--pill-glow: rgba(255, 82, 82, 0.2); --pill-active-bg: rgba(255, 82, 82, 0.15);"
+                            class="particle-pill px-2 py-1 border rounded text-[9px] font-mono flex items-center gap-1 ${pillColorSparks} ${isResourceActive ? 'active' : ''}">
+                        <span>资源颗粒</span>
+                        <span class="bg-cyber-red/20 px-1 rounded font-bold">${item.particles.resource}</span>
+                    </button>
+                    <button onclick="handleParticleClick('${activeTab}', ${index}, 'info')"
+                            style="--pill-glow: rgba(255, 171, 0, 0.2); --pill-active-bg: rgba(255, 171, 0, 0.15);"
+                            class="particle-pill px-2 py-1 border rounded text-[9px] font-mono flex items-center gap-1 ${pillColorWorld} ${isInfoActive ? 'active' : ''}">
+                        <span>信息颗粒</span>
+                        <span class="bg-cyber-amber/20 px-1 rounded font-bold">${item.particles.info}</span>
+                    </button>
+                </div>
+
+                <!-- 达成状态 -->
+                <div class="shrink-0 flex items-center gap-1.5 pl-2 border-l border-base-content/10">
+                    <span class="w-1.5 h-1.5 bg-cyber-green rounded-full shadow-[0_0_8px_rgba(0,230,118,0.6)] animate-pulse"></span>
+                    <span class="text-[10px] text-cyber-green font-bold">达成</span>
+                </div>
+            </div>`;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // 3组断章点及前后关联章节的真值数据源
+    const CLIFFHANGER_DATA = {
+        1: {
+            grain: "#978",
+            leftChapter: {
+                title: "第041章",
+                subtitle: "(主控机房的密码)",
+                goal: "破译核心防御区信道，建立中继站",
+                tempo: "由缓入急，重在策略解密",
+                emotion: "65",
+                limit: "不得惊动主控 AI 清洗线程",
+                words: "约 9.5K"
+            },
+            rightChapter: {
+                title: "第042章",
+                subtitle: "(霓虹深渊的低语)",
+                goal: "角色入场与数据窃取契约",
+                tempo: "前平后突，强化紧张感",
+                emotion: "73",
+                limit: "不得跨越清洗协议防线",
+                words: "约 10.8K"
+            }
+        },
+        2: {
+            grain: "#1012",
+            leftChapter: {
+                title: "第042章",
+                subtitle: "(霓虹深渊的低语)",
+                goal: "角色入场与数据窃取契约",
+                tempo: "前平后突，强化紧张感",
+                emotion: "73",
+                limit: "不得跨越清洗协议防线",
+                words: "约 10.8K"
+            },
+            rightChapter: {
+                title: "第043章",
+                subtitle: "(虚拟主机的觉醒)",
+                goal: "同盟建立与内部追捕升级",
+                tempo: "高压对抗，多维信息战",
+                emotion: "81",
+                limit: "Thorne 悬念度需维持 0.8",
+                words: "约 11.2K"
+            }
+        },
+        3: {
+            grain: "#1095",
+            leftChapter: {
+                title: "第043章",
+                subtitle: "(虚拟主机的觉醒)",
+                goal: "同盟建立与内部追捕升级",
+                tempo: "高压对抗，多维信息战",
+                emotion: "81",
+                limit: "Thorne 悬念度需维持 0.8",
+                words: "约 11.2K"
+            },
+            rightChapter: {
+                title: "第044章",
+                subtitle: "(黑影深处的微光)",
+                goal: "暗网终极对决，寻找母体漏洞",
+                tempo: "绝境爆发，高频情绪反转",
+                emotion: "88",
+                limit: "Thorne 虚实转化度必须稳定在 1.0",
+                words: "约 12.0K"
+            }
+        }
+    };
+
+    let activeCliffhangerId = 2; // 默认展示断章点 #1012
+    let cliffhangerExpanded = true; // 页面加载时默认展开呈现 5 项大纲参数
+
+    function updateCliffhangerCards() {
+        const ch42Content = document.getElementById('ch42-card-content');
+        const ch43Content = document.getElementById('ch43-card-content');
+        const ch42Card = document.getElementById('ch42-card');
+        const ch43Card = document.getElementById('ch43-card');
+        const data = CLIFFHANGER_DATA[activeCliffhangerId];
+
+        if (cliffhangerExpanded) {
+            // 展开状态：增加 padding，左对齐，并使用水平分栏紧凑布局以极大减少垂直高度
+            if (ch42Card) ch42Card.className = "col-span-5 bg-info/10 border border-info/20 rounded-box p-4 flex flex-col items-start justify-start text-left relative transition-all duration-300 min-h-[56px] shadow-sm";
+            if (ch43Card) ch43Card.className = "col-span-5 bg-info/10 border border-info/20 rounded-box p-4 flex flex-col items-start justify-start text-left relative transition-all duration-300 min-h-[56px] shadow-sm";
+
+            if (ch42Content) {
+                ch42Content.innerHTML = `
+                    <div class="w-full text-left space-y-3">
+                        <!-- 头部卡片标题区 -->
+                        <div class="flex items-center justify-between border-b border-base-content/5 pb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 bg-cyber-blue/10 border border-cyber-blue/20 text-cyber-blue text-[9px] font-mono font-bold rounded">${data.leftChapter.title}</span>
+                                <span class="text-[10px] text-cyber-gray truncate font-medium max-w-[120px]">${data.leftChapter.subtitle || ""}</span>
+                            </div>
+                            <div class="flex items-center gap-1 text-[9px] text-cyber-gray/70">
+                                <span class="w-1.5 h-1.5 rounded-full bg-cyber-blue shadow-[0_0_6px_rgba(0,240,255,0.5)] animate-pulse"></span>
+                                <span>大纲评估</span>
+                            </div>
+                        </div>
+
+                        <!-- 水平左右分栏区 -->
+                        <div class="grid grid-cols-12 gap-3 items-stretch">
+                            <!-- 左侧栏 (7列)：长文本指标 -->
+                            <div class="col-span-7 space-y-2 flex flex-col justify-between">
+                                <!-- 章节目标 -->
+                                <div class="bg-base-content/[0.02] border border-base-content/5 rounded-lg p-2 flex-1">
+                                    <p class="text-[8px] uppercase tracking-wider text-cyber-gray font-semibold mb-1">章节目标</p>
+                                    <p class="text-[10.5px] text-base-content font-medium leading-relaxed">${data.leftChapter.goal}</p>
+                                </div>
+                                <!-- 强度限制 -->
+                                <div class="bg-cyber-amber/5 border border-cyber-amber/10 rounded-lg p-2">
+                                    <p class="text-[8px] uppercase tracking-wider text-cyber-gray font-semibold mb-1">强度限制</p>
+                                    <p class="text-cyber-amber text-[9px] font-medium leading-normal flex items-start gap-1">
+                                        <span class="material-symbols-outlined text-[10px] text-cyber-amber/70 mt-0.5 shrink-0">report</span>
+                                        <span>${data.leftChapter.limit}</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- 右侧栏 (5列)：精炼参数与节奏 -->
+                            <div class="col-span-5 flex flex-col justify-between space-y-2">
+                                <!-- 字数与情绪并排 -->
+                                <div class="grid grid-cols-2 gap-2 text-[10px]">
+                                    <div class="bg-cyber-blue/5 border border-cyber-blue/10 rounded-lg p-1.5 flex flex-col justify-between hover:bg-cyber-blue/[0.08] transition-colors">
+                                        <span class="text-cyber-gray text-[8px] font-medium">字数</span>
+                                        <span class="text-cyber-blue font-mono font-bold text-[10.5px] mt-0.5 truncate">${data.leftChapter.words.replace('约 ', '')}</span>
+                                    </div>
+                                    <div class="bg-cyber-red/5 border border-cyber-red/10 rounded-lg p-1.5 flex flex-col justify-between hover:bg-cyber-red/[0.08] transition-colors">
+                                        <span class="text-cyber-gray text-[8px] font-medium">情绪</span>
+                                        <span class="text-cyber-red font-mono font-bold text-[10.5px] mt-0.5 truncate">${data.leftChapter.emotion}</span>
+                                    </div>
+                                </div>
+
+                                <!-- 节奏 -->
+                                <div class="bg-base-content/[0.02] border border-base-content/5 rounded-lg p-2 flex-1 flex flex-col justify-between">
+                                    <span class="text-cyber-gray text-[8px] font-semibold tracking-wider">节奏</span>
+                                    <span class="text-base-content text-[9.5px] font-medium mt-1 leading-normal flex items-start gap-1">
+                                        <span class="material-symbols-outlined text-[10px] text-base-content opacity-50 mt-0.5 shrink-0">pace</span>
+                                        <span class="line-clamp-2">${data.leftChapter.tempo}</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (ch43Content) {
+                ch43Content.innerHTML = `
+                    <div class="w-full text-left space-y-3">
+                        <!-- 头部卡片标题区 -->
+                        <div class="flex items-center justify-between border-b border-base-content/5 pb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 bg-cyber-blue/10 border border-cyber-blue/20 text-cyber-blue text-[9px] font-mono font-bold rounded">${data.rightChapter.title}</span>
+                                <span class="text-[10px] text-cyber-gray truncate font-medium max-w-[120px]">${data.rightChapter.subtitle || ""}</span>
+                            </div>
+                            <div class="flex items-center gap-1 text-[9px] text-cyber-gray/70">
+                                <span class="w-1.5 h-1.5 rounded-full bg-cyber-blue shadow-[0_0_6px_rgba(0,240,255,0.5)] animate-pulse"></span>
+                                <span>大纲评估</span>
+                            </div>
+                        </div>
+
+                        <!-- 水平左右分栏区 -->
+                        <div class="grid grid-cols-12 gap-3 items-stretch">
+                            <!-- 左侧栏 (7列)：长文本指标 -->
+                            <div class="col-span-7 space-y-2 flex flex-col justify-between">
+                                <!-- 章节目标 -->
+                                <div class="bg-base-content/[0.02] border border-base-content/5 rounded-lg p-2 flex-1">
+                                    <p class="text-[8px] uppercase tracking-wider text-cyber-gray font-semibold mb-1">章节目标</p>
+                                    <p class="text-[10.5px] text-base-content font-medium leading-relaxed">${data.rightChapter.goal}</p>
+                                </div>
+                                <!-- 强度限制 -->
+                                <div class="bg-cyber-amber/5 border border-cyber-amber/10 rounded-lg p-2">
+                                    <p class="text-[8px] uppercase tracking-wider text-cyber-gray font-semibold mb-1">强度限制</p>
+                                    <p class="text-cyber-amber text-[9px] font-medium leading-normal flex items-start gap-1">
+                                        <span class="material-symbols-outlined text-[10px] text-cyber-amber/70 mt-0.5 shrink-0">report</span>
+                                        <span>${data.rightChapter.limit}</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- 右侧栏 (5列)：精炼参数与节奏 -->
+                            <div class="col-span-5 flex flex-col justify-between space-y-2">
+                                <!-- 字数与情绪并排 -->
+                                <div class="grid grid-cols-2 gap-2 text-[10px]">
+                                    <div class="bg-cyber-blue/5 border border-cyber-blue/10 rounded-lg p-1.5 flex flex-col justify-between hover:bg-cyber-blue/[0.08] transition-colors">
+                                        <span class="text-cyber-gray text-[8px] font-medium">字数</span>
+                                        <span class="text-cyber-blue font-mono font-bold text-[10.5px] mt-0.5 truncate">${data.rightChapter.words.replace('约 ', '')}</span>
+                                    </div>
+                                    <div class="bg-cyber-red/5 border border-cyber-red/10 rounded-lg p-1.5 flex flex-col justify-between hover:bg-cyber-red/[0.08] transition-colors">
+                                        <span class="text-cyber-gray text-[8px] font-medium">情绪</span>
+                                        <span class="text-cyber-red font-mono font-bold text-[10.5px] mt-0.5 truncate">${data.rightChapter.emotion}</span>
+                                    </div>
+                                </div>
+
+                                <!-- 节奏 -->
+                                <div class="bg-base-content/[0.02] border border-base-content/5 rounded-lg p-2 flex-1 flex flex-col justify-between">
+                                    <span class="text-cyber-gray text-[8px] font-semibold tracking-wider">节奏</span>
+                                    <span class="text-base-content text-[9.5px] font-medium mt-1 leading-normal flex items-start gap-1">
+                                        <span class="material-symbols-outlined text-[10px] text-base-content opacity-50 mt-0.5 shrink-0">pace</span>
+                                        <span class="line-clamp-2">${data.rightChapter.tempo}</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            // 折叠状态：恢复居中排版和原始 padding
+            if (ch42Card) ch42Card.className = "col-span-5 bg-info/10 border border-info/20 rounded-box p-3 flex flex-col items-center justify-center text-center relative transition-all duration-300 min-h-[56px]";
+            if (ch43Card) ch43Card.className = "col-span-5 bg-info/10 border border-info/20 rounded-box p-3 flex flex-col items-center justify-center text-center relative transition-all duration-300 min-h-[56px]";
+
+            if (ch42Content) {
+                ch42Content.innerHTML = `
+                    <p class="text-xs font-bold">${data.leftChapter.title} <span class="font-normal">${data.leftChapter.subtitle}</span></p>
+                    <p class="text-[10px] text-cyber-gray">建议字数：${data.leftChapter.words}</p>
+                `;
+            }
+            if (ch43Content) {
+                ch43Content.innerHTML = `
+                    <p class="text-xs font-bold">${data.rightChapter.title} <span class="font-normal">${data.rightChapter.subtitle}</span></p>
+                    <p class="text-[10px] text-cyber-gray">建议字数：${data.rightChapter.words}</p>
+                `;
+            }
+        }
+    }
+
+    function switchCliffhanger(id) {
+        activeCliffhangerId = id;
+
+        const leftClasses = { 1: "left-[20%]", 2: "left-[55%]", 3: "left-[90%]" };
+
+        // 更新图表上的标志器发光样式
+        [1, 2, 3].forEach(i => {
+            const container = document.getElementById(`cliff-marker-container-${i}`);
+            const dot = document.getElementById(`cliff-dot-${i}`);
+            const label = document.getElementById(`cliff-label-${i}`);
+
+            // 移除原本所有的激活/呼吸动画结构
+            let ping = document.getElementById(`cliff-ping-${i}`);
+            if (ping) ping.remove();
+
+            const leftClass = leftClasses[i] || "";
+
+            if (i === id) {
+                // 激活高亮金黄色
+                if (container) container.className = `absolute inset-y-0 ${leftClass} w-[1px] border-l border-dashed border-cyber-amber/50 flex flex-col items-center justify-center`;
+                if (dot) {
+                    dot.className = "w-4 h-4 rounded-full bg-cyber-amber/25 border border-cyber-amber cursor-pointer flex items-center justify-center hover:scale-125 transition-transform shadow-[0_0_12px_rgba(255,171,0,0.75)] z-20 relative";
+                    // 重新创建 ping 动画
+                    const newPing = document.createElement('span');
+                    newPing.id = `cliff-ping-${i}`;
+                    newPing.className = "absolute inset-0 rounded-full border border-cyber-amber/50 animate-ping opacity-75";
+                    dot.appendChild(newPing);
+
+                    const dotInner = dot.querySelector('span:not(.animate-ping)');
+                    if (dotInner) dotInner.className = "w-1.5 h-1.5 rounded-full bg-cyber-amber animate-pulse";
+                }
+                if (label) {
+                    label.className = "absolute bg-cyber-amber text-neutral-content text-[7px] font-mono font-bold px-1 rounded shadow-[0_0_8px_rgba(255,171,0,0.3)] whitespace-nowrap pointer-events-none select-none transition-all";
+                }
+            } else {
+                // 还原未激活待选态（灰色）
+                if (container) container.className = `absolute inset-y-0 ${leftClass} w-[1px] border-l border-dashed border-cyber-gray/40 flex flex-col items-center justify-center`;
+                if (dot) {
+                    dot.className = "w-4 h-4 rounded-full bg-cyber-gray/20 border border-cyber-gray cursor-pointer flex items-center justify-center hover:scale-125 transition-transform z-20 relative";
+                    const dotInner = dot.querySelector('span');
+                    if (dotInner) dotInner.className = "w-1.5 h-1.5 rounded-full bg-cyber-gray";
+                }
+                if (label) {
+                    label.className = "absolute bg-cyber-gray text-base-content text-[7px] font-mono font-bold px-1 rounded shadow-sm whitespace-nowrap pointer-events-none select-none transition-all";
+                }
+            }
+
+            // 调整各自断章点顶端偏移高度，和原 SVG 折线波峰高度严格咬合
+            if (i === 1) { if (dot) dot.classList.add('-mt-4'); if (label) label.className += " top-2"; }
+            if (i === 2) { if (dot) dot.classList.add('-mt-6'); if (label) label.className += " top-0"; }
+            if (i === 3) { if (dot) dot.classList.add('-mt-2'); if (label) label.className += " top-2"; }
+        });
+
+        updateCliffhangerCards();
+        showToast(`已成功切换至断章点 ${CLIFFHANGER_DATA[id].grain} 的前后大纲参数评估`, 'info');
+    }
+
+    function toggleCliffhangerDetails() {
+        cliffhangerExpanded = !cliffhangerExpanded;
+        updateCliffhangerCards();
+        if (cliffhangerExpanded) {
+            showToast('已展现当前断章点两侧大纲与强度限制参数', 'info');
+        } else {
+            showToast('已还原当前断章点章节简要字数视图', 'success');
+        }
+    }
+
+    // 显式挂载到 window 全局对象，防止在隔离的执行环境或作用域中丢失事件绑定
+    window.switchCliffhanger = switchCliffhanger;
+    window.toggleCliffhangerDetails = toggleCliffhangerDetails;
+
+    function switchAuditTab(tabName) {
+        // 重置颗粒选中状态
+        selectedItemIndex = null;
+        selectedParticleType = null;
+        activeTab = tabName;
+
+        // 更新 Tab 按钮的激活态样式
+        ['promise', 'sparks', 'world'].forEach(t => {
+            const btn = document.getElementById('tab-' + t);
+            if (btn) {
+                btn.classList.remove('active');
+            }
+        });
+        const activeBtn = document.getElementById('tab-' + tabName);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
+
+        renderAuditList();
+
+        // 隐藏/重置底部颗粒清单看板
+        const panel = document.getElementById('granule-detail-panel');
+        if (panel) {
+            panel.classList.add('hidden');
+        }
+    }
+
+    function handleParticleClick(tabName, itemIndex, type) {
+        const item = AUDIT_GRANULES_DATA[tabName][itemIndex];
+        const count = item.particles[type];
+
+        // 如果该颗粒数量为 0，不进行点击交互
+        if (count === 0) return;
+
+        // 切换选中态
+        if (selectedItemIndex === itemIndex && selectedParticleType === type) {
+            selectedItemIndex = null;
+            selectedParticleType = type; // 保留或折叠
+            document.getElementById('granule-detail-panel').classList.add('hidden');
+            selectedItemIndex = null;
+            selectedParticleType = null;
+            renderAuditList();
+            return;
+        }
+
+        selectedItemIndex = itemIndex;
+        selectedParticleType = type;
+        renderAuditList();
+
+        // 渲染并展示底部颗粒实现详情
+        const panel = document.getElementById('granule-detail-panel');
+        if (!panel) return;
+
+        const list = item.details[type];
+        const typeLabels = { fact: '事实', resource: '资源', info: '信息' };
+        const iconClasses = { fact: 'text-cyber-blue', resource: 'text-cyber-red', info: 'text-cyber-amber' };
+
+        let detailsHtml = `
+            <div class="text-[10px] text-cyber-gray font-semibold mb-2.5 flex items-center justify-between">
+                <span class="flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-base-content/40"></span>
+                    [ ${typeLabels[type]}颗粒对应推演正文片段 ]
+                </span>
+                <span class="font-mono text-base-content opacity-50">共 ${list.length} 项</span>
+            </div>
+            <ul class="space-y-1.5 text-[10px] text-base-content">
+        `;
+
+        list.forEach(detail => {
+            detailsHtml += `
+                <li class="flex items-start gap-2 bg-black/35 p-2.5 rounded-lg border border-base-content/5 hover:border-cyber-blue/20 transition-all">
+                    <span class="text-cyber-blue shrink-0 mt-0.5 font-mono font-bold">“</span>
+                    <span class="leading-relaxed text-base-content opacity-60 font-medium">${detail}</span>
+                </li>
+            `;
+        });
+
+        detailsHtml += '</ul>';
+        panel.innerHTML = detailsHtml;
+        panel.classList.remove('hidden');
+    }
+
+    // 页面初始化加载（直接同步执行，防止 DOMContentLoaded 事件已过导致事件回调未触发）
+    switchAuditTab('promise');
+    cliffhangerExpanded = true; // 确保直接保持为展开状态
+    updateCliffhangerCards(); // 直观呈递 5 项参数
+    switchCliffhanger(2); // 默认高亮中间第二个断章点
+
+    function openRegenerateModal() {
+        const modal = document.getElementById('regenerate-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('replan-suggestion').focus();
+        }
+    }
+
+    function closeRegenerateModal() {
+        const modal = document.getElementById('regenerate-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.getElementById('replan-suggestion').value = '';
+        }
+    }
+
+    function submitReplanDirection() {
+        const suggestion = document.getElementById('replan-suggestion').value.trim();
+        if (!suggestion) {
+            showToast('请输入退回推演修改的方向建议！', 'error');
+            return;
+        }
+
+        const confirmBtn = document.getElementById('confirm-replan-btn');
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>发送中...</span>`;
+
+        setTimeout(() => {
+            closeRegenerateModal();
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = `<span>确认退回</span>`;
+            showToast('退回成功！已发送重推方向及建议给后端。', 'success');
+        }, 1500);
+    }
+
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast-item ${type === 'error' ? 'error' : ''} rounded-lg overflow-hidden w-80 shadow-2xl transition-all duration-300`;
+
+        const icon = type === 'error' ? 'error' : 'check_circle';
+        const iconColor = type === 'error' ? 'text-cyber-red' : 'text-cyber-green';
+
+        toast.innerHTML = `
+            <div class="p-4 flex items-start gap-3">
+                <span class="material-symbols-outlined ${iconColor} text-[20px] shrink-0">${icon}</span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs text-base-content font-medium">${message}</p>
+                </div>
+            </div>
+            <div class="toast-progress"></div>
+        `;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s ease forwards';
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 4000);
+    }
+</script>
+
+<!-- Regenerate suggestions modal -->
+<div id="regenerate-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 transition-all duration-300">
+    <div class="w-[500px] bg-base-100 border border-base-content/10 rounded-box p-6 shadow-2xl relative overflow-hidden">
+        <div class="absolute -right-16 -top-16 w-32 h-32 bg-primary/10 rounded-full blur-3xl"></div>
+        <div class="flex items-center justify-between mb-4 pb-2 border-b border-base-content/10">
+            <h3 class="text-sm font-semibold flex items-center gap-2 text-base-content">
+                <span class="material-symbols-outlined text-primary text-[20px]">assignment_return</span>
+                退回推演修改方向建议
+            </h3>
+            <button onclick="closeRegenerateModal()" class="text-cyber-gray hover:text-base-content transition-colors">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <div class="space-y-2">
+                <label class="text-[10px] text-cyber-gray uppercase font-semibold tracking-wider">退回修改方向与建议</label>
+                <textarea id="replan-suggestion" rows="4" class="w-full bg-base-200 border border-base-content/10 rounded-box p-3 text-xs text-base-content placeholder-gray-600 focus:outline-none focus:border-primary transition-colors resize-none" placeholder="请输入对本次推演的退回建议及故事线调整方向..."></textarea>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="closeRegenerateModal()" class="btn btn-outline border-base-content/10 hover:bg-base-content/5 btn-sm text-xs">取消</button>
+                <button id="confirm-replan-btn" onclick="submitReplanDirection()" class="btn btn-primary btn-sm flex items-center gap-2">
+                    <span>确认退回</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
+
+<script>
+window.toggleSidebar = function() {
+    document.body.classList.toggle('sidebar-collapsed');
+    const icon = document.querySelector('#sidebarIcon');
+    if (icon) {
+        icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
+    }
+};
+</script>
+</body>
+</html>
