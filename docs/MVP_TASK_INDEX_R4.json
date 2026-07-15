@@ -137,6 +137,20 @@
     "delete_existing_nodes": false,
     "allowed_existing_node_changes": ["prompt", "code", "parameters", "connections"],
     "v7_card_classification": ["MATCH", "UPDATE_IN_PLACE", "ADD_MISSING", "PRESERVE_UNMAPPED", "CONFLICT_CREATOR_REQUIRED"],
+    "delegation_prompt_required_inputs": [
+      "exact Task-owned workflow JSON path and exclusive writer scope",
+      "task-start immutable node identity manifest with workflow content hash",
+      "exact V7 node-card headings or anchors applicable to this workflow",
+      "Task acceptance and the agreed Web/JSON/PostgreSQL contract",
+      "existing PostgreSQL RPC/function names used by workflow nodes",
+      "test write scope and required real-local execution journey"
+    ],
+    "parallel_write_lanes": [
+      "workflow owner updates the workflow JSON including Prompt and Code nodes",
+      "data owner updates PostgreSQL/RPC, contracts, and seeds",
+      "test owner updates tests and fixtures against the agreed contract without changing product code"
+    ],
+    "runtime_write_serialization": "PostgreSQL application and n8n import/activation are performed serially by the parent after file integration",
     "tests": ["node identity set is monotonic", "every added node maps to V7 or Task acceptance", "no orphan branch", "no duplicate trigger or write", "imports and executes in existing local n8n"],
     "conflict_policy": "CREATOR_REQUIRED when an existing node cannot remain without violating V7 or Task acceptance"
   },
@@ -214,6 +228,8 @@
       "all routes can be refreshed directly",
       "browser console has no errors",
       "defined navigation and static state controls work",
+      "each target renders application-owned page DOM and interactions without iframe, redirect, reverse proxy, or runtime reads from docs/前端原型_v2",
+      "the target dev/build artifact remains usable after the prototype baseline server is unavailable",
       "fixed viewport screenshots show no overlap, clipping, or incoherent layout shift",
       "all immutable prototypes and targets pass the browser-ready gate before audit dispatch",
       "every page at both viewports has PASS from the one dedicated independent Codex auditor that edited none of the nine pages",
@@ -226,13 +242,15 @@
       "direct_inputs": ["source_prototype", "target_route"],
       "normal_state_comparison": [
         "same fixed viewport and exact screenshot dimensions",
+        "target required regions are present in the target top-level document rather than only inside a framed or proxied prototype document",
+        "target network and runtime inspection show no dependency on the prototype baseline server or docs/前端原型_v2",
         "major regions present in the same order with comparable geometry",
         "prototype-specific layout, density, typography, colors, controls, and content hierarchy are retained",
         "no whole-page horizontal overflow, clipping, overlap, or unintended layout shift"
       ],
       "non_normal_state_comparison": ["empty, loading, and error remain inside the accepted page geometry without overlap or clipping"],
-      "required_result": "per-page per-viewport PASS|FAIL|BLOCKED matrix with observed differences and document scrollWidth/innerWidth",
-      "fail_closed": "any FAIL, BLOCKED, missing pair, prototype load failure, wrong image size, or author self-review keeps WEB-STATIC-RESTORE IN_PROGRESS",
+      "required_result": "per-page per-viewport PASS|FAIL|BLOCKED matrix with observed differences, target top-level DOM evidence, runtime independence evidence, and document scrollWidth/innerWidth",
+      "fail_closed": "any FAIL, BLOCKED, missing pair, prototype load failure, wrong image size, author self-review, framed/proxied prototype, empty target top-level page DOM, or target runtime dependency on prototype sources keeps WEB-STATIC-RESTORE IN_PROGRESS",
       "repair_policy": "one integrated repair inside the same Task, followed by recheck from the same non-author auditor"
     },
     "prototype_runtime_gate": {
@@ -241,6 +259,12 @@
       "allowed_external_resource_handling": ["recorded local-equivalent asset substitution", "runtime URL rewrite that does not change prototype DOM, layout CSS, content, or interactions"],
       "required_before_audit": ["all nine prototype endpoints return 200", "all nine target endpoints return 200", "all endpoints become browser-ready without a hanging external dependency", "all substitutions are recorded"],
       "failure": "BLOCKED or ENVIRONMENT_APPROVAL_REQUIRED; never visual PASS"
+    },
+    "target_runtime_gate": {
+      "application_owned_runtime": true,
+      "forbidden": ["iframe or frame embedding of the prototype", "redirect or reverse proxy to a prototype URL", "runtime reads from docs/前端原型_v2", "hard-coded prototype baseline port"],
+      "required_before_audit": ["target regions exist in the top-level target DOM", "target static interactions execute in the target document", "fresh target server works while the prototype baseline server is unavailable", "build validation includes all target page assets"],
+      "failure": "FAIL; visual similarity cannot override target runtime dependence"
     }
   },
   "tasks": [
