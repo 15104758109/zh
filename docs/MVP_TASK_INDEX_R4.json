@@ -89,6 +89,7 @@
       "B8-AUDIT-AND-COMMIT"
     ],
     "outcome": "one complete user-visible Web + n8n + PostgreSQL module inside one business Task",
+    "delegation_transport": "platform-created independent Codex sessions with indexed model/reasoning parameters and source-role-task-only codex_delegation blocks; inline inherited-model subagents are forbidden",
     "main_agent_owns": ["Web page behavior and data binding", "shared integration", "serialized runtime writes", "one integrated repair", "final structured result"],
     "distinct_internal_sessions": [
       {
@@ -132,6 +133,7 @@
     "applies_to": ["B1-CREATE-DRAFT-BOOK", "B2-WORLD-SETTINGS", "B3-CHARACTER-SETTINGS", "B4-FINALIZE-BOOK-DESIGN", "B5-CHAPTER-PLAN", "B6-DEDUCTION", "B7-LITERARY-PRESENTATION", "B8-AUDIT-AND-COMMIT"],
     "single_writer_per_workflow_json": true,
     "prompt_and_code_node_owner": "N8N_WORKFLOW_IMPLEMENTER",
+    "baseline_source": "workflow blob at the parent Task dispatch HEAD, optionally verified against a pre-edit local runtime export; a dirty working-tree candidate can never redefine the baseline",
     "baseline_identity": ["id", "name", "type"],
     "final_node_set": "SUPERSET_OF_TASK_START_BASELINE",
     "delete_existing_nodes": false,
@@ -139,7 +141,7 @@
     "v7_card_classification": ["MATCH", "UPDATE_IN_PLACE", "ADD_MISSING", "PRESERVE_UNMAPPED", "CONFLICT_CREATOR_REQUIRED"],
     "delegation_prompt_required_inputs": [
       "exact Task-owned workflow JSON path and exclusive writer scope",
-      "task-start immutable node identity manifest with workflow content hash",
+      "task-start HEAD workflow blob reference, immutable node identity manifest, and baseline content hash plus the separate candidate hash",
       "exact V7 node-card headings or anchors applicable to this workflow",
       "Task acceptance and the agreed Web/JSON/PostgreSQL contract",
       "existing PostgreSQL RPC/function names used by workflow nodes",
@@ -158,6 +160,7 @@
     {
       "page_id": "WORKBENCH",
       "source_prototype": "docs/前端原型_v2/pages/workbench.html",
+      "target_implementation": "apps/web/src/pages/workbench/index.html",
       "target_route": "/workbench",
       "required_regions": ["sidebar", "topbar", "project_summary", "primary_actions", "recent_activity"],
       "interactions": ["new_book_to_/books/new", "select_book_context", "collapse_sidebar_expands_content"]
@@ -165,13 +168,15 @@
     {
       "page_id": "NEW_BOOK",
       "source_prototype": "docs/前端原型_v2/pages/new_book.html",
+      "target_implementation": "apps/web/src/pages/new-book/index.html",
       "target_route": "/books/new",
       "required_regions": ["sidebar", "topbar", "book_form", "preview", "primary_actions"],
       "interactions": ["form_state_switch", "back_to_workbench", "continue_to_book_context"]
     },
     {
       "page_id": "WORLD",
-      "source_prototype": "docs/前端原型_v2/pages/world_creator.html",
+      "source_prototype": "docs/前端原型_v2/pages/世界设定页面_拖拽绑定版.html",
+      "target_implementation": "apps/web/src/pages/world/index.html",
       "target_route": "/books/:bookId/world",
       "required_regions": ["sidebar", "topbar", "world_boards", "item_editor", "version_actions"],
       "interactions": ["switch_world_board", "toggle_editor", "navigate_with_book_context"]
@@ -179,6 +184,7 @@
     {
       "page_id": "CHARACTERS",
       "source_prototype": "docs/前端原型_v2/pages/character_settings.html",
+      "target_implementation": "apps/web/src/pages/characters/index.html",
       "target_route": "/books/:bookId/characters",
       "required_regions": ["sidebar", "topbar", "character_list", "character_editor", "relation_panel", "version_actions"],
       "interactions": ["select_character", "switch_relation_view", "navigate_with_book_context"]
@@ -186,6 +192,7 @@
     {
       "page_id": "L1A",
       "source_prototype": "docs/前端原型_v2/pages/l1a_settings.html",
+      "target_implementation": "apps/web/src/pages/l1a/index.html",
       "target_route": "/books/:bookId/l1a",
       "required_regions": ["sidebar", "topbar", "candidate_groups", "three_line_order", "review_actions", "lock_state"],
       "interactions": ["switch_candidate_group", "reorder_preview", "toggle_locked_state"]
@@ -193,6 +200,7 @@
     {
       "page_id": "PRODUCTION",
       "source_prototype": "docs/前端原型_v2/pages/production_stage.html",
+      "target_implementation": "apps/web/src/pages/production-stage/index.html",
       "target_route": "/books/:bookId/production",
       "required_regions": ["sidebar", "topbar", "run_summary", "scene_package", "presentation_plan", "approval_actions", "execution_plan"],
       "interactions": ["switch_plan_state", "approve_or_return_preview", "navigate_with_book_context"]
@@ -200,6 +208,7 @@
     {
       "page_id": "DEDUCTION",
       "source_prototype": "docs/前端原型_v2/pages/multi_agent_deduction.html",
+      "target_implementation": "apps/web/src/pages/multi-agent-deduction/index.html",
       "target_route": "/books/:bookId/deduction",
       "required_regions": ["sidebar", "topbar", "progress", "particle_timeline", "agent_status", "run_controls"],
       "interactions": ["pause_resume_preview", "select_particle", "navigate_to_review"]
@@ -207,6 +216,7 @@
     {
       "page_id": "AUDIT_REVIEW",
       "source_prototype": "docs/前端原型_v2/pages/audit_review.html",
+      "target_implementation": "apps/web/src/pages/audit-review/index.html",
       "target_route": "/books/:bookId/deduction-review",
       "required_regions": ["sidebar", "topbar", "deduction_summary", "p0_review", "decision_actions"],
       "interactions": ["approve_or_return_preview", "navigate_to_deduction", "navigate_to_audit"]
@@ -214,12 +224,14 @@
     {
       "page_id": "AUDIT_STAGE",
       "source_prototype": "docs/前端原型_v2/pages/audit_stage.html",
+      "target_implementation": "apps/web/src/pages/audit-stage/index.html",
       "target_route": "/books/:bookId/audit",
       "required_regions": ["sidebar", "topbar", "prose_view", "objective_audit", "editor_decision", "enhancement", "release_actions"],
       "interactions": ["switch_audit_panel", "show_returned_state", "show_released_state"]
     }
   ],
   "static_page_acceptance": {
+    "restoration_strategy": "use each source_prototype as the target page base and apply only minimal application-path, local-asset, target-route/state, and proven runtime-error replacements; do not refactor page DOM, page CSS, layout, content hierarchy, or interaction state machine",
     "viewports": ["1440x900", "1280x720"],
     "states": ["normal", "empty", "loading", "error"],
     "data_mode": "static_mock",
@@ -239,7 +251,7 @@
     "visual_acceptance_protocol": {
       "auditor_scope": "READ_ONLY_INDEPENDENT_CODEX_SESSION_NON_AUTHOR_INSIDE_PARENT_TASK",
       "delegation_transport": "platform-created independent Codex session with indexed model parameters and source/role-only codex_delegation block; not inline subagent or product Task",
-      "direct_inputs": ["source_prototype", "target_route"],
+      "direct_inputs": ["source_prototype", "target_implementation", "target_route"],
       "normal_state_comparison": [
         "same fixed viewport and exact screenshot dimensions",
         "target required regions are present in the target top-level document rather than only inside a framed or proxied prototype document",
@@ -250,7 +262,7 @@
       ],
       "non_normal_state_comparison": ["empty, loading, and error remain inside the accepted page geometry without overlap or clipping"],
       "required_result": "per-page per-viewport PASS|FAIL|BLOCKED matrix with observed differences, target top-level DOM evidence, runtime independence evidence, and document scrollWidth/innerWidth",
-      "fail_closed": "any FAIL, BLOCKED, missing pair, prototype load failure, wrong image size, author self-review, framed/proxied prototype, empty target top-level page DOM, or target runtime dependency on prototype sources keeps WEB-STATIC-RESTORE IN_PROGRESS",
+      "fail_closed": "any FAIL, BLOCKED, missing pair, prototype load failure, wrong image size, author self-review, framed/proxied prototype, empty target top-level page DOM, target runtime dependency on prototype sources, or duplicate/dead route-canonical page implementation keeps WEB-STATIC-RESTORE IN_PROGRESS",
       "repair_policy": "one integrated repair inside the same Task, followed by recheck from the same non-author auditor"
     },
     "prototype_runtime_gate": {
@@ -262,8 +274,8 @@
     },
     "target_runtime_gate": {
       "application_owned_runtime": true,
-      "forbidden": ["iframe or frame embedding of the prototype", "redirect or reverse proxy to a prototype URL", "runtime reads from docs/前端原型_v2", "hard-coded prototype baseline port"],
-      "required_before_audit": ["target regions exist in the top-level target DOM", "target static interactions execute in the target document", "fresh target server works while the prototype baseline server is unavailable", "build validation includes all target page assets"],
+      "forbidden": ["iframe or frame embedding of the prototype", "redirect or reverse proxy to a prototype URL", "runtime reads from docs/前端原型_v2", "hard-coded prototype baseline port", "second route-canonical copy outside target_implementation"],
+      "required_before_audit": ["each target route resolves its registered target_implementation", "target regions exist in the top-level target DOM", "target static interactions execute in the target document", "fresh target server works while the prototype baseline server is unavailable", "build validation includes all target page assets"],
       "failure": "FAIL; visual similarity cannot override target runtime dependence"
     }
   },
