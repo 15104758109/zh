@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zhreplan:contract:v7-l1a-request:1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["local_operator_id", "book_id", "correlation_id", "idempotency_key"],
+  "properties": {
+    "local_operator_id": { "type": "string", "format": "uuid" },
+    "book_id": { "type": "string", "format": "uuid" },
+    "correlation_id": { "type": "string", "minLength": 1 },
+    "idempotency_key": { "type": "string" },
+    "generated_candidates": { "type": "array" },
+    "l1a_ids": { "type": "array" },
+    "future_world_atoms": { "type": "array" },
+    "future_world_bindings": { "type": "array" }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zhreplan:contract:v7-character-request:1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "local_operator_id", "book_id", "correlation_id"],
+  "properties": {
+    "action": { "enum": ["save_candidate", "read_versions", "restore", "confirm"] },
+    "local_operator_id": { "type": "string", "format": "uuid" },
+    "book_id": { "type": "string", "format": "uuid" },
+    "correlation_id": { "type": "string", "minLength": 1 },
+    "idempotency_key": { "type": "string" },
+    "version_id": { "type": "string", "format": "uuid" },
+    "snapshot": { "type": "object" }
+  }
+}

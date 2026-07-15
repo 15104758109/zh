@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zhreplan:contract:v7-rpc-envelope:1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "correlation_id"],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "correlation_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "idempotent": { "type": "boolean" },
+    "result": { "type": "object", "additionalProperties": true },
+    "redacted_error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}

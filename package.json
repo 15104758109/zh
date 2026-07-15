@@ -17,6 +17,7 @@
     "db:migrate": "node packages/db/src/migrate.mjs",
     "db:reset": "node packages/db/src/reset.mjs",
     "db:migrate:check": "node packages/db/src/migrate.mjs --check",
+    "db:v7:rebuild": "node packages/db/src/rebuild-v7.mjs",
     "test:db": "node --test packages/db/test/migrations.test.mjs",
     "verify:task": "node scripts/verify-task/index.mjs",
     "interaction:lint": "pnpm --filter @zh/contracts run build && pnpm --filter @zh/interaction-contracts run lint",
