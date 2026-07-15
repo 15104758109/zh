@@ -28,14 +28,23 @@ Ordinary bugs stay inside the original Task and allow at most one repair pass. S
 
 ## Complete Module Pipeline
 
-For `B1` through `B8`, one parent Task delivers the complete Web + n8n + PostgreSQL user result. Its prompt assigns four distinct internal sessions where the corresponding layer is in scope:
+For `B1` through `B8`, one parent Task delivers the complete Web + n8n + PostgreSQL user result. Its prompt assigns five distinct internal sessions where the corresponding layer is in scope:
 
-- `N8N_WORKFLOW_IMPLEMENTER` modifies only the Task-owned workflow and its workflow tests.
-- `DATA_INTEGRATION_IMPLEMENTER` modifies only Task-owned PostgreSQL/RPC, JSON contracts, seeds, and data tests.
+- `N8N_WORKFLOW_IMPLEMENTER` modifies only the Task-owned workflow, including its Prompt and Code node contents.
+- `DATA_INTEGRATION_IMPLEMENTER` modifies only Task-owned PostgreSQL/RPC, JSON contracts, and seeds.
+- `INTEGRATION_TEST_IMPLEMENTER` modifies only Task-owned tests and fixtures; it consumes agreed contracts and cannot change product code.
 - `BUSINESS_ACCEPTANCE_AUDITOR` is read-only and checks the observable result only against V7 anchors and Task acceptance; it cannot invent or improve requirements.
 - `USER_OPERATION_AUDITOR` is independent of the implementers, uses the real local Web, n8n, and PostgreSQL journey, and may write only Task evidence.
 
-The parent owns the page behavior/data binding, shared integration, and final result. During implementation the parent, n8n subagent, and data subagent may work concurrently on mutually exclusive files. Database application and n8n runtime import remain parent-serialized. After integration, the two auditors may run concurrently. They return `PASS|FAIL|BLOCKED`; any result other than complete `PASS` keeps the same Task open for its one integrated repair, followed by recheck in the same auditor sessions.
+The parent owns the page behavior/data binding, shared integration, and final result. During implementation the parent, n8n subagent, data subagent, and test subagent may work concurrently on mutually exclusive files. Database application and n8n runtime import remain parent-serialized. After integration, the two auditors may run concurrently. They return `PASS|FAIL|BLOCKED`; any result other than complete `PASS` keeps the same Task open for its one integrated repair, followed by recheck in the same auditor sessions.
+
+### n8n Workflow Evolution
+
+Each workflow JSON has one writer. Prompt and Code nodes inside the same JSON stay with that writer; they are not split between subagents. Multiple n8n implementers may run only when they own different workflow files.
+
+At Task start, derive a node identity manifest from the current local workflow. The final `(id, name, type)` set must be a superset of that manifest: existing nodes are never deleted, while their prompts, code, parameters, and connections may be updated to satisfy V7. The implementer maps every existing and added node to a V7 node card or Task acceptance and classifies it as `MATCH`, `UPDATE_IN_PLACE`, `ADD_MISSING`, `PRESERVE_UNMAPPED`, or `CONFLICT_CREATOR_REQUIRED`.
+
+The test subagent verifies node-set monotonicity, V7-card coverage for additions, absence of orphan branches and duplicate triggers/writes, and real import/execution against the existing local n8n. If an existing node contradicts V7 and cannot remain without violating acceptance, the Task stops at `CREATOR_REQUIRED`; it cannot silently delete or bypass the node.
 
 ## Task Sequence
 
@@ -52,7 +61,7 @@ The parent owns the page behavior/data binding, shared integration, and final re
 | `B8-AUDIT-AND-COMMIT` | Audit, decide, enhance, release, and atomically commit one formal chapter | B7 | P0 and critical SQL review |
 | `MVP-GATE` | Complete the full local browser journey | B8 | independent gate runner |
 
-`B2` and `B3` are the only initial cross-Task parallel pair. Within a large Task, at most three internal subagents are active at once even when four distinct implementation/acceptance sessions are used across phases. Database migration/application, n8n import/activation, and shared Web shell integration stay serial.
+`B2` and `B3` are the only initial cross-Task parallel pair. Within a large Task, at most three internal subagents are active at once even when five distinct implementation/acceptance sessions are used across phases. Database migration/application, n8n import/activation, and shared Web shell integration stay serial.
 
 ## Static Restore
 

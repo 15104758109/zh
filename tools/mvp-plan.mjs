@@ -147,10 +147,10 @@ export function validatePlan(inputs) {
 
   const policy = index.execution_policy ?? {};
   if (policy.max_concurrent_business_tasks !== 2
-    || policy.max_internal_subagents_per_task !== 4
+    || policy.max_internal_subagents_per_task !== 5
     || policy.max_concurrent_internal_subagents_per_task !== 3
     || policy.max_total_concurrent_agents !== 10) {
-    errors.push("R4 concurrency must be 2 business Tasks, 4 phased internal sessions, 3 concurrent internal subagents, and 10 total agents");
+    errors.push("R4 concurrency must be 2 business Tasks, 5 phased internal sessions, 3 concurrent internal subagents, and 10 total agents");
   }
   if (policy.main_task_owns_integration !== true || !policy.internal_subagent_rules?.some((rule) => rule.includes("not product tasks"))) {
     errors.push("internal subagents must remain work packages owned by the main business Task");
@@ -165,9 +165,17 @@ export function validatePlan(inputs) {
   const moduleProtocol = index.business_task_internal_protocol ?? {};
   const moduleRoles = moduleProtocol.distinct_internal_sessions?.map((session) => session.role) ?? [];
   if (!sameSet(moduleProtocol.applies_to ?? [], EXPECTED_TASKS.filter((id) => /^B[1-8]-/.test(id)))
-    || !sameSet(moduleRoles, ["N8N_WORKFLOW_IMPLEMENTER", "DATA_INTEGRATION_IMPLEMENTER", "BUSINESS_ACCEPTANCE_AUDITOR", "USER_OPERATION_AUDITOR"])
+    || !sameSet(moduleRoles, ["N8N_WORKFLOW_IMPLEMENTER", "DATA_INTEGRATION_IMPLEMENTER", "INTEGRATION_TEST_IMPLEMENTER", "BUSINESS_ACCEPTANCE_AUDITOR", "USER_OPERATION_AUDITOR"])
     || moduleProtocol.completion_rule !== "all implementation results integrated and both required acceptance sessions PASS") {
-    errors.push("B1-B8 must use distinct n8n, data, business-acceptance, and user-operation sessions inside each business Task");
+    errors.push("B1-B8 must use distinct n8n, data, integration-test, business-acceptance, and user-operation sessions inside each business Task");
+  }
+
+  const n8nProtocol = index.n8n_workflow_evolution_protocol ?? {};
+  if (n8nProtocol.single_writer_per_workflow_json !== true
+    || n8nProtocol.final_node_set !== "SUPERSET_OF_TASK_START_BASELINE"
+    || n8nProtocol.delete_existing_nodes !== false
+    || !sameSet(n8nProtocol.baseline_identity ?? [], ["id", "name", "type"])) {
+    errors.push("n8n workflows must have one writer and preserve the complete Task-start node identity set");
   }
 
   const pages = index.static_pages ?? [];
@@ -270,9 +278,10 @@ function selfTest(inputs) {
     ["missing-page", (x) => { x.index.static_pages.pop(); }],
     ["lowered-high-reasoning", (x) => { x.index.tasks.find((task) => task.id === "B6-DEDUCTION").model.reasoning_effort = "medium"; }],
     ["draft-formalization", (x) => { x.index.tasks.find((task) => task.id === "B1-CREATE-DRAFT-BOOK").transaction_boundary = "formalize everything"; }],
-    ["too-many-subagents", (x) => { x.index.execution_policy.max_internal_subagents_per_task = 5; }],
-    ["merged-acceptance-role", (x) => { x.index.business_task_internal_protocol.distinct_internal_sessions[3].role = "BUSINESS_ACCEPTANCE_AUDITOR"; }],
-    ["self-visual-acceptance", (x) => { x.index.static_page_acceptance.visual_acceptance_protocol.auditor_scope = "PARENT_SELF_REVIEW"; }]
+    ["too-many-subagents", (x) => { x.index.execution_policy.max_internal_subagents_per_task = 6; }],
+    ["merged-acceptance-role", (x) => { x.index.business_task_internal_protocol.distinct_internal_sessions.find((session) => session.role === "USER_OPERATION_AUDITOR").role = "BUSINESS_ACCEPTANCE_AUDITOR"; }],
+    ["self-visual-acceptance", (x) => { x.index.static_page_acceptance.visual_acceptance_protocol.auditor_scope = "PARENT_SELF_REVIEW"; }],
+    ["n8n-node-deletion", (x) => { x.index.n8n_workflow_evolution_protocol.delete_existing_nodes = true; }]
   ];
   for (const [name, mutate] of cases) {
     const clone = structuredClone(inputs);
@@ -294,7 +303,7 @@ function main() {
 
   if (command === "--self-test") {
     const failures = selfTest(inputs);
-    console.log(JSON.stringify({ ok: failures.length === 0, command, rejected_mutations: failures.length ? [] : ["micro-task", "r3-reactivation", "missing-page", "lowered-high-reasoning", "draft-formalization", "too-many-subagents", "merged-acceptance-role", "self-visual-acceptance"], failures, side_effects: false }, null, 2));
+    console.log(JSON.stringify({ ok: failures.length === 0, command, rejected_mutations: failures.length ? [] : ["micro-task", "r3-reactivation", "missing-page", "lowered-high-reasoning", "draft-formalization", "too-many-subagents", "merged-acceptance-role", "self-visual-acceptance", "n8n-node-deletion"], failures, side_effects: false }, null, 2));
     if (failures.length) process.exitCode = 1;
     return;
   }

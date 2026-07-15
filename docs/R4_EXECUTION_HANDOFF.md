@@ -10,13 +10,14 @@ In `D:\zhreplan` on `autonomy/integration`, complete the local Web single-chapte
 
 1. Dispatch only a `READY` top-level R4 Task.
 2. Create the business Task as an independent Codex task with `gpt-5.6-terra` and the indexed reasoning effort. Record `actual_model` only from platform metadata.
-3. The main Task agent may use up to four distinct internal subagent sessions across implementation and acceptance, with no more than three active concurrently. They are work packages, not product Tasks.
+3. The main Task agent may use up to five distinct internal subagent sessions across implementation and acceptance, with no more than three active concurrently. They are work packages, not product Tasks.
 4. Internal subagents cannot create Tasks, replan, edit the Task Index, or change formal database semantics. The main Task agent integrates the result, but it cannot override a required non-author acceptance verdict.
 5. Ordinary defects remain in the same business Task. Do not create repair, screenshot, contract, lint, or ordinary audit Tasks.
 6. Only B4, B6, B8, and MVP-GATE receive independent deep review.
 7. Database changes and n8n runtime imports are serialized by the Orchestrator.
 8. `WEB-STATIC-RESTORE` uses exactly one dedicated `VISUAL_ACCEPTANCE_AUDITOR` after all builders are idle. It edited none of the nine pages, opens every source and target directly, owns the complete eighteen-pair matrix, and fails closed on missing or invalid evidence.
-9. For `B1` through `B8`, use distinct `N8N_WORKFLOW_IMPLEMENTER`, `DATA_INTEGRATION_IMPLEMENTER`, `BUSINESS_ACCEPTANCE_AUDITOR`, and `USER_OPERATION_AUDITOR` sessions. The parent owns Web integration; the two implementers may run beside it, then the two auditors run after integration. Do not let an implementer self-audit or promote these roles into top-level Tasks.
+9. For `B1` through `B8`, use distinct `N8N_WORKFLOW_IMPLEMENTER`, `DATA_INTEGRATION_IMPLEMENTER`, `INTEGRATION_TEST_IMPLEMENTER`, `BUSINESS_ACCEPTANCE_AUDITOR`, and `USER_OPERATION_AUDITOR` sessions. The parent owns Web integration; the three implementers may run beside it, then the two auditors run after integration. Do not let an implementer self-audit or promote these roles into top-level Tasks.
+10. One n8n workflow JSON has one writer. Preserve every Task-start node identity, update Prompt/Code/configuration in place, add V7-missing nodes, and never delete an existing node. Require a V7 node-card mapping and monotonic-node test. An unavoidable existing-node conflict is `CREATOR_REQUIRED`.
 
 ## First Task
 

@@ -53,7 +53,7 @@
   },
   "execution_policy": {
     "max_concurrent_business_tasks": 2,
-    "max_internal_subagents_per_task": 4,
+    "max_internal_subagents_per_task": 5,
     "max_concurrent_internal_subagents_per_task": 3,
     "max_total_concurrent_agents": 10,
     "main_task_owns_integration": true,
@@ -62,7 +62,7 @@
       "write scopes must be mutually exclusive",
       "subagents cannot create product tasks, replan, or change formal database semantics",
       "the main task agent merges, tests, and returns one structured business result",
-      "n8n implementation, data integration, business acceptance, and user-operation acceptance use distinct internal sessions when those layers are in scope",
+      "n8n implementation, data integration, integration tests, business acceptance, and user-operation acceptance use distinct internal sessions when those layers are in scope",
       "a visual verdict must come from an internal subagent that did not edit the page under review",
       "acceptance subagents are read-only and fail closed; missing or invalid evidence is not PASS"
     ],
@@ -93,13 +93,18 @@
     "distinct_internal_sessions": [
       {
         "role": "N8N_WORKFLOW_IMPLEMENTER",
-        "write_scope_rule": "Task-owned n8n workflow and workflow tests only",
-        "result": "workflow files, tests, runtime-import instructions, blockers"
+        "write_scope_rule": "Task-owned n8n workflow only, including Prompt and Code node contents",
+        "result": "workflow files, V7 node-card mapping, runtime-import instructions, blockers"
       },
       {
         "role": "DATA_INTEGRATION_IMPLEMENTER",
-        "write_scope_rule": "Task-owned PostgreSQL/RPC, JSON contracts, seeds, and data tests only",
-        "result": "data files, tests, migration/application instructions, blockers"
+        "write_scope_rule": "Task-owned PostgreSQL/RPC, JSON contracts, and seeds only",
+        "result": "data files, migration/application instructions, blockers"
+      },
+      {
+        "role": "INTEGRATION_TEST_IMPLEMENTER",
+        "write_scope_rule": "Task-owned tests and fixtures only; no product code",
+        "result": "targeted workflow, data, rollback, and browser-integration tests against agreed contracts"
       },
       {
         "role": "BUSINESS_ACCEPTANCE_AUDITOR",
@@ -115,13 +120,25 @@
       }
     ],
     "scheduling": [
-      "parent Web work, n8n implementation, and data integration may run concurrently with disjoint write scopes",
+      "parent Web work, n8n implementation, data integration, and integration tests may run concurrently with disjoint write scopes and at most three internal subagents active",
       "database application and n8n runtime import are serialized by the parent",
       "business acceptance and user-operation acceptance start only after integration and may run concurrently",
       "auditors cannot accept code they authored",
       "any non-PASS remains in the original Task for one integrated repair and same-session recheck"
     ],
     "completion_rule": "all implementation results integrated and both required acceptance sessions PASS"
+  },
+  "n8n_workflow_evolution_protocol": {
+    "applies_to": ["B1-CREATE-DRAFT-BOOK", "B2-WORLD-SETTINGS", "B3-CHARACTER-SETTINGS", "B4-FINALIZE-BOOK-DESIGN", "B5-CHAPTER-PLAN", "B6-DEDUCTION", "B7-LITERARY-PRESENTATION", "B8-AUDIT-AND-COMMIT"],
+    "single_writer_per_workflow_json": true,
+    "prompt_and_code_node_owner": "N8N_WORKFLOW_IMPLEMENTER",
+    "baseline_identity": ["id", "name", "type"],
+    "final_node_set": "SUPERSET_OF_TASK_START_BASELINE",
+    "delete_existing_nodes": false,
+    "allowed_existing_node_changes": ["prompt", "code", "parameters", "connections"],
+    "v7_card_classification": ["MATCH", "UPDATE_IN_PLACE", "ADD_MISSING", "PRESERVE_UNMAPPED", "CONFLICT_CREATOR_REQUIRED"],
+    "tests": ["node identity set is monotonic", "every added node maps to V7 or Task acceptance", "no orphan branch", "no duplicate trigger or write", "imports and executes in existing local n8n"],
+    "conflict_policy": "CREATOR_REQUIRED when an existing node cannot remain without violating V7 or Task acceptance"
   },
   "static_pages": [
     {
