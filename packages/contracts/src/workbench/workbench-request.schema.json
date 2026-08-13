@@ -1,1 +1,0 @@
-{"$id":"https://zhreplan.local/contracts/workbench/request/1","type":"object","additionalProperties":false,"required":["action","local_operator_id"],"properties":{"action":{"enum":["load","save","test_connection"]},"local_operator_id":{"type":"string","format":"uuid"},"book_id":{"type":"string","format":"uuid"},"items":{"type":"array","minItems":5,"maxItems":5}}}

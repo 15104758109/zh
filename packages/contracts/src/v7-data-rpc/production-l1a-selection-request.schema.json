@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zhreplan:contract:rpc-select-l1a-for-production:1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["local_operator_id", "book_id", "l1a_id", "idempotency_key"],
+  "properties": {
+    "local_operator_id": { "type": "string", "format": "uuid" },
+    "book_id": { "type": "string", "format": "uuid" },
+    "l1a_id": { "type": "string", "format": "uuid" },
+    "correlation_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "idempotency_key": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" }
+  }
+}

@@ -1,0 +1,673 @@
+{
+  "fixture_id": "melting-apocalypse-v4.3-page-journey",
+  "fixture_purpose": "Use an existing novel bible as creator-facing input for the real Web -> n8n -> PostgreSQL journey. This file is not an RPC payload, SQL seed, database fixture, or n8n import.",
+  "source": {
+    "file": "《熔炼末世》世界观圣典V4.3.docx",
+    "sha256": "a25aa6860b4e0afd7863c2b73747746cf9209b39c7c91e41cb41899fd18dd9e2",
+    "rendered_pages": 20,
+    "page_size": "A4",
+    "paragraphs": 761,
+    "nonempty_paragraphs": 506,
+    "tables": 0,
+    "images": 0,
+    "comments": 0,
+    "tracked_changes": 0,
+    "visual_review": "All 20 pages inspected. No clipping, overlap, broken glyphs, or truncated content was observed."
+  },
+  "classification_contract": {
+    "SOURCE_EXPLICIT": "The source says this directly. Wording may be shortened without changing meaning.",
+    "PAGE_MODEL_CANDIDATE": "The source provides evidence, but the page's documented model step must translate it into the V7 field shape and the creator must review it.",
+    "PAGE_TEST_ACTOR_ACTION": "The test actor uses an already documented page review, approve, return, or confirm control. This is not source data, a new default, or a bypass of the product state transition.",
+    "CREATOR_REQUIRED": "The source does not define the value, defines an ambiguity, or does not authorize the V7 semantic choice. Do not invent it.",
+    "PRODUCT_DEFAULT": "The creator has approved this editable product default independently of the source document.",
+    "format_normalization": "A separate note used only for non-semantic page or enum formatting. It never upgrades a candidate into a source fact."
+  },
+  "page_paste_materials": {
+    "creative_origin": {
+      "source_section": [
+        "宣传语（第一眼惊艳）",
+        "一、核心一句话（剥削熵增定律）",
+        "3.1 能力哲学对立",
+        "5.1 江城市核心矛盾结构"
+      ],
+      "source_pages": [1, 4, 5, 6, 18, 19],
+      "classification": "SOURCE_EXPLICIT",
+      "paste_material": "作品名《熔炼末世》。核心命题是：末世真正的敌人是资源递减后自动重建的吃人秩序；文明是否能靠工程、制度和协作打破这种‘剥削熵增定律’。主角江枫以工业工程和‘熔炼’能力建设可复制的生产与防御体系；叶凡以随身空间、存量物资和效率暴力建立资源堡垒。两人互相需要，又因‘创造与给予’对‘控制与占有’的文明路线必然冲突。",
+      "target_fields": [
+        "title",
+        "intent_json.creative_intent",
+        "selling_points_json",
+        "target_emotion"
+      ],
+      "field_rulings": {
+        "title": {
+          "value": "熔炼末世",
+          "classification": "SOURCE_EXPLICIT",
+          "format_normalization": "Remove Chinese book-title brackets for the page title field only."
+        },
+        "intent_json.genre_main": {
+          "suggested_value": "科幻",
+          "classification": "PAGE_MODEL_CANDIDATE",
+          "reason": "The source mixes apocalypse, implanted locks, alien-origin clues, powers, and industrial engineering but never declares one V7 main genre."
+        },
+        "target_words": {
+          "value": 1000000,
+          "classification": "PRODUCT_DEFAULT"
+        },
+        "chapter_words": {
+          "value": 2000,
+          "classification": "PRODUCT_DEFAULT"
+        },
+        "forbid_json": {
+          "value": null,
+          "classification": "PAGE_MODEL_CANDIDATE",
+          "reason": "Energy costs and setting rules are world facts, not creator red lines. The model may return a reviewable candidate or a controlled missing-field result, but the fixture must not turn those world facts into a red line or supply an empty-value default."
+        }
+      }
+    },
+    "world_setting": {
+      "source_section": [
+        "2.1 ‘锁’的本质",
+        "2.2 末世起源（三阶段时间线）",
+        "2.3 晶核体系（能量守恒核心）",
+        "2.4 丧尸进化体系",
+        "2.5 异能体系",
+        "四、组织体系",
+        "5.2 西半球势力"
+      ],
+      "source_pages": [1, 2, 3, 4, 16, 17, 18, 19, 20],
+      "classification": "SOURCE_EXPLICIT",
+      "paste_material": "世界规则：人类基因中的‘锁’限制能量与物质操控；晶核只转移和耗散能量，不凭空生产；全球晶核能量持续递减。2030 年‘钥匙’扩散到东半球，多数错误解锁者丧尸化，少数正确解锁者觉醒异能。丧尸分力量、敏捷、智慧三类进化，最高五级；异能也最高五级，单人最多叠加三种。江枫的熔炼空间可重构物质但消耗晶核并受每日次数限制；叶凡的随身空间用于存取与资源控制。主要组织为火种计划、安全屋、精英金字塔和海盗船，分别代表制度生产、资源垄断、等级特权和暴力掠夺。",
+      "target_fields": [
+        "world_state.board_type",
+        "world_state.atom_type",
+        "world_state.atom_key",
+        "world_state.atom_value_jsonb",
+        "world_state.affordance_dims",
+        "world_binding"
+      ]
+    },
+    "character_setting_core": {
+      "source_section": [
+        "3.2 江枫：失业工程师 → 规则制定者",
+        "3.3 叶凡｜效率暴君",
+        "3.4 为什么必须合作",
+        "3.5 为什么必然冲突",
+        "3.6 关键互动台词"
+      ],
+      "source_pages": [4, 5, 6, 7, 8, 9, 10],
+      "classification": "SOURCE_EXPLICIT",
+      "paste_material": "江枫，28 岁，末世前是智能制造高级工程师，末世后成为火种计划的规则制定者与技术架构师。他沉默务实、数据驱动，想用可复制的生产、制度与协作证明普通人也能活下去；核心能力是物质重构型‘熔炼’。叶凡，26 岁但带有重生经历，前世为求生小队后勤队长，今生以随身空间和存量物资建立安全屋，信奉资源控制、先知特权和效率暴力。叶凡需要江枫把废铁变成生产力；江枫需要叶凡的库存和前期保护。合作会因奴隶制对雇佣制、存量争夺对生产增量、控制对共生而破裂。",
+      "target_fields": [
+        "character.char_name",
+        "character.char_type",
+        "character.five_layers_json.L0",
+        "character.five_layers_json.L1",
+        "character.five_layers_json.L2",
+        "character.five_layers_json.L3",
+        "character.knowledge_boundary_json",
+        "character.arc_json",
+        "relation_state"
+      ]
+    },
+    "character_setting_supporting": {
+      "source_section": [
+        "3.7 吴芮",
+        "3.8 苏婉清",
+        "3.9 周瑶",
+        "3.10 林薇",
+        "3.12 王大伟",
+        "3.13 李彪",
+        "3.14 二狗子",
+        "3.15 老鬼",
+        "3.17 戚国防",
+        "3.18 包万里"
+      ],
+      "source_pages": [10, 11, 12, 13, 14, 15, 16],
+      "classification": "SOURCE_EXPLICIT",
+      "paste_material": "江枫阵营包括：负责能源调度且会过载的吴芮；能读心、维护制度又面临隐私伦理冲突的苏婉清；商业与外交担当王大伟；部署在机器人中的剪枝算法‘二狗子’。叶凡阵营包括：以武力维持安全屋的周瑶；将人视作生物材料的外科医生林薇；执行压榨的李彪。外部角色包括中立情报商老鬼、精英金字塔领袖戚国防和海盗船首领包万里。请保持他们的阵营、能力、价值冲突和功能定位，不要生成文档未给出的记忆、知识边界或关系数值。",
+      "target_fields": [
+        "character source profiles",
+        "character candidate generation",
+        "qualitative relation evidence"
+      ]
+    },
+    "conflict_seed": {
+      "source_section": [
+        "3.4 为什么必须合作",
+        "3.5 为什么必然冲突",
+        "3.6 叙事钩子与剧情爆发点",
+        "5.1 江城市核心矛盾结构",
+        "5.3 真相阶梯表"
+      ],
+      "source_pages": [8, 9, 10, 18, 19],
+      "classification": "SOURCE_EXPLICIT",
+      "paste_material": "核心冲突种子是江枫与叶凡的文明路线之争。前期叶凡提供钢材和废弃车辆，江枫熔炼成自动防御设施，两人合作抵御尸潮；中期基地扩张后，叶凡主张奴隶制和按劳动力等级分配，江枫主张雇佣制、信用点和循环生产；后期叶凡必须在重复前世的封闭安全与拿出库存共同建设之间选择。文档还给出从晶核递减、丧尸可文明化、锁被植入到外部测试目的的长期揭露阶梯，但没有指定单章范围。",
+      "target_fields": [
+        "conflict_seed.seed_type",
+        "conflict_seed.involved_chars",
+        "conflict_seed.desired_arc",
+        "conflict_seed.desired_intensity",
+        "l1a candidate source intent"
+      ]
+    }
+  },
+  "world_entries": [
+    {
+      "entry_id": "world-rule-lock",
+      "source_section": "2.1 ‘锁’的本质",
+      "source_pages": [1],
+      "classification": "SOURCE_EXPLICIT",
+      "board": "规则",
+      "name": "基因锁限制",
+      "content": "人类基因中的‘锁’限制个体对能量和物质的操控上限；其来源和植入目的仍是故事中的终极谜题。",
+      "target_fields": ["board_type", "atom_type", "atom_key", "atom_value_jsonb", "affordance_dims"],
+      "expected_state": "page model candidate, then creator-reviewed initial world item",
+      "downstream_consumers": ["FP004-01", "FP005-01", "FP007-01", "FP010-01"],
+      "missing": ["affordance_dims", "per-fact knowledge boundary"]
+    },
+    {
+      "entry_id": "world-rule-energy",
+      "source_section": "2.3 晶核体系（能量守恒核心）",
+      "source_pages": [2],
+      "classification": "SOURCE_EXPLICIT",
+      "board": "规则",
+      "name": "晶核能量守恒与递减",
+      "content": "晶核储藏并转移生命能量，不凭空生产；耗尽会崩解，全球可用能量持续递减。",
+      "target_fields": ["board_type", "atom_key", "atom_value_jsonb", "apply_scope_json", "violate_cost_json", "affordance_dims"],
+      "expected_state": "page model candidate, then creator-reviewed initial world item",
+      "downstream_consumers": ["FP004-01", "FP005-01", "FP007-01", "FP010-01"],
+      "missing": ["V7 apply scope", "V7 violation cost", "affordance_dims"]
+    },
+    {
+      "entry_id": "world-geography-jiangcheng",
+      "source_section": "5.1 江城市核心矛盾结构",
+      "source_pages": [18, 19],
+      "classification": "SOURCE_EXPLICIT",
+      "board": "地理",
+      "name": "江城市",
+      "content": "火种计划、安全屋、精英金字塔与海盗船的主要竞争场域；文档只给出城市级范围，没有给出单个 L1A 的具体场景地点。",
+      "target_fields": ["board_type", "atom_key", "atom_value_jsonb.location_text", "affordance_dims"],
+      "expected_state": "initial geography candidate only; must not be reused as scene_location without creator input",
+      "downstream_consumers": ["FP004-01", "FP005-01"],
+      "missing": ["danger_level", "access_condition", "specific L1A scene_location"]
+    },
+    {
+      "entry_id": "world-resource-crystal-core",
+      "source_section": "2.3 晶核体系（能量守恒核心）",
+      "source_pages": [2],
+      "classification": "SOURCE_EXPLICIT",
+      "board": "资源",
+      "name": "晶核",
+      "content": "末世能源与异能升级的核心稀缺资源；颜色和体积随能量密度变化，可由人类、丧尸和动物等来源获得。",
+      "target_fields": ["board_type", "atom_key", "atom_value_jsonb", "affordance_dims"],
+      "expected_state": "page model candidate, then creator-reviewed initial resource item",
+      "downstream_consumers": ["FP003-02", "FP004-01", "FP005-01", "FP007-01"],
+      "missing": ["page scarcity enum selection", "usability enum selection", "affordance_dims"]
+    },
+    {
+      "entry_id": "world-factions-four",
+      "source_section": "四、组织体系；4.1 末世四大派系全景图；4.2 派系详细设定",
+      "source_pages": [16, 17, 18],
+      "classification": "SOURCE_EXPLICIT",
+      "board": "势力",
+      "name": "四大派系",
+      "content": "火种计划以生产与制度组织幸存者；安全屋依靠库存、交易和资本控制；精英金字塔依靠等级与特权；海盗船依靠流动暴力和掠夺。应在页面拆为四个条目。",
+      "target_fields": ["four faction items", "faction_status", "stance", "world bindings", "affordance_dims"],
+      "expected_state": "four source-backed faction candidates; enum values and bindings remain reviewable",
+      "downstream_consumers": ["FP003-02", "FP004-01", "FP005-01", "FP007-01"],
+      "missing": ["faction_status enums", "stance enums", "binding strength", "affordance_dims"]
+    },
+    {
+      "entry_id": "world-profession-powers",
+      "source_section": "2.5 异能体系；3.2 江枫；3.3 叶凡",
+      "source_pages": [2, 3, 4, 5, 7],
+      "classification": "SOURCE_EXPLICIT",
+      "board": "职业/超能",
+      "name": "熔炼与随身空间",
+      "content": "熔炼负责受成本约束的物质重构和制造；随身空间负责存取、库存与占有。应在页面拆为两个能力条目。",
+      "target_fields": ["two profession/power items", "cost_mechanism", "promotion_path", "affordance_dims"],
+      "expected_state": "two page model candidates, then creator-reviewed initial ability items",
+      "downstream_consumers": ["FP003-02", "FP004-01", "FP005-01", "FP008-02"],
+      "missing": ["page cost enum mapping", "promotion_path normalization", "affordance_dims"]
+    },
+    {
+      "entry_id": "world-monster-zombie",
+      "source_section": "2.4 丧尸进化体系",
+      "source_pages": [2, 3],
+      "classification": "SOURCE_EXPLICIT",
+      "board": "怪物/灾难",
+      "name": "丧尸与智慧丧尸",
+      "content": "多数错误解锁者丧尸化，丧尸沿力量、敏捷或智慧方向进化；智慧型可组织协作并形成文明竞争。",
+      "target_fields": ["board_type", "atom_key", "atom_value_jsonb", "affordance_dims"],
+      "expected_state": "page model candidate, then creator-reviewed initial monster item",
+      "downstream_consumers": ["FP004-01", "FP005-01", "FP007-01", "FP010-01"],
+      "missing": ["threat_level", "counter_text", "habitat", "affordance_dims"]
+    },
+    {
+      "entry_id": "world-events-timeline",
+      "source_section": "2.2 末世起源（三阶段时间线）",
+      "source_pages": [1],
+      "classification": "SOURCE_EXPLICIT",
+      "board": "大事",
+      "name": "黑潮、钥匙扩散与秩序重建",
+      "content": "2020 年黑潮事件埋下错误解锁种子；2030 年钥匙扩散后爆发大规模丧尸化与少量异能觉醒；2030-2032 年进入秩序重建和组织竞争。应在页面拆为三个事件。",
+      "target_fields": ["three event items", "event_era", "cause", "consequence", "affordance_dims"],
+      "expected_state": "three source-backed event candidates, then creator review",
+      "downstream_consumers": ["FP004-01", "FP005-01", "FP007-01", "FP010-01"],
+      "missing": ["event_era enum normalization", "affordance_dims"]
+    }
+  ],
+  "character_profiles": [
+    {
+      "name": "江枫",
+      "source_section": "3.2 江枫",
+      "source_pages": [4, 5, 6, 7],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "28 岁，前智能制造高级工程师；末世后为火种计划规则制定者和技术架构师，以熔炼、制度和协作建设可持续文明。",
+      "role_in_source": "主角",
+      "downstream_consumers": ["FP004-01", "FP005-01", "FP006-01", "FP007-01", "FP008-02"]
+    },
+    {
+      "name": "叶凡",
+      "source_section": "3.3 叶凡",
+      "source_pages": [7, 8, 9, 10],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "26 岁并带有前世经历；安全屋领袖，以随身空间、库存和信息差建立效率暴力秩序，是江枫的盟友、对照者和宿敌。",
+      "role_in_source": "最重要的对照角色/盟友/宿敌",
+      "downstream_consumers": ["FP004-01", "FP005-01", "FP006-01", "FP007-01", "FP008-02"]
+    },
+    {
+      "name": "吴芮",
+      "source_section": "3.7 吴芮",
+      "source_pages": [10],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "江枫阵营的前国家电网调度员，负责能量调度，是系统命脉与会过载的情感变量。",
+      "role_in_source": "江枫阵营",
+      "downstream_consumers": ["FP004-01", "FP008-02"]
+    },
+    {
+      "name": "苏婉清",
+      "source_section": "3.8 苏婉清",
+      "source_pages": [10, 11],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "江枫阵营的前心理咨询师和火种计划监察主管，拥有读心能力，在安全、隐私与制度伦理之间冲突。",
+      "role_in_source": "江枫阵营",
+      "downstream_consumers": ["FP004-01", "FP008-02"]
+    },
+    {
+      "name": "周瑶",
+      "source_section": "3.9 周瑶",
+      "source_pages": [11, 12],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "叶凡阵营的前地下拳击手和安全屋外勤队长，以力量和速度执行叶凡的统治，也会被江枫的硬骨头刺激。",
+      "role_in_source": "叶凡阵营",
+      "downstream_consumers": ["FP004-01", "FP008-02"]
+    },
+    {
+      "name": "林薇",
+      "source_section": "3.10 林薇",
+      "source_pages": [12, 13],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "叶凡阵营的前外科医生和安全屋医疗主管，拥有透视与耳听能力，把人视作可维护或改造的生物材料。",
+      "role_in_source": "叶凡阵营",
+      "downstream_consumers": ["FP004-01", "FP008-02"]
+    },
+    {
+      "name": "王大伟",
+      "source_section": "3.12 王大伟",
+      "source_pages": [13],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "江枫阵营的前二手车销冠和火种计划商业部长，负责搞笑、外交、资源交易与读者喘息。",
+      "role_in_source": "江枫阵营",
+      "downstream_consumers": ["FP004-01", "FP008-02", "FP009-01"]
+    },
+    {
+      "name": "李彪",
+      "source_section": "3.13 李彪",
+      "source_pages": [13, 14],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "叶凡阵营的安全屋执法队头目，以防御能力和暴力执行压榨，是主角打脸对象。",
+      "role_in_source": "叶凡阵营",
+      "downstream_consumers": ["FP004-01", "FP008-02"]
+    },
+    {
+      "name": "二狗子",
+      "source_section": "3.14 二狗子",
+      "source_pages": [14],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "部署在机器人里的 AI 剪枝算法，与完整算法交换指令；属于江枫阵营的非人侦查单位和反差萌角色。",
+      "role_in_source": "非人/江枫阵营",
+      "downstream_consumers": ["FP004-01", "FP008-02"]
+    },
+    {
+      "name": "老鬼",
+      "source_section": "3.15 老鬼",
+      "source_pages": [14, 15],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "中立游商和情报商，以速度与透视能力提供地图、秘密和第三方平衡。",
+      "role_in_source": "中立/游商",
+      "downstream_consumers": ["FP004-01", "FP008-02"]
+    },
+    {
+      "name": "戚国防",
+      "source_section": "3.17 戚国防",
+      "source_pages": [15, 16],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "约 50 岁的前体制中层干部和精英金字塔领袖，以等级、特权和伪善秩序对抗江枫的人人平等。",
+      "role_in_source": "意识形态敌人",
+      "downstream_consumers": ["FP004-01", "FP008-02"]
+    },
+    {
+      "name": "包万里",
+      "source_section": "3.18 包万里",
+      "source_pages": [16],
+      "classification": "SOURCE_EXPLICIT",
+      "source_profile": "海盗船首领和流动掠夺者，享乐、残忍、短视，是江枫与叶凡共同面对的物理威胁。",
+      "role_in_source": "外部威胁",
+      "downstream_consumers": ["FP004-01", "FP008-02"]
+    }
+  ],
+  "character_contract_gaps": {
+    "source_section": "三、人物体系；6.1 信息分层",
+    "page": "/books/new stage 03 and /books/{book_id}/characters",
+    "action": "Ask FP001-03 to propose the V7 shape from source evidence, then exercise the existing page review and confirmation actions. The test actor may accept a generated candidate, but must not hand-fill or seed the missing structure.",
+    "target_fields": [
+      "char_type enum for non-protagonists",
+      "five_layers_json L0-L3",
+      "knowledge_boundary_json four quadrants",
+      "arc_json",
+      "initial_memories with truth_status",
+      "relation_state 8+3 numeric dimensions",
+      "world/relation binding strength"
+    ],
+    "expected_state": "page-model candidate; formal confirmation follows only through the existing reviewed page action after the generated candidate satisfies the V7 contract",
+    "downstream_consumers": ["FP004-01", "FP005-01", "FP006-01", "FP007-01", "FP008-01", "FP008-02", "FP010-01"],
+    "classification": "PAGE_MODEL_CANDIDATE",
+    "reason": "The bible gives rich biographies and qualitative relationships but not the V7 field shape. FP001-03 is the documented producer for four quadrants, memories, relationship dimensions, and bindings; Section 6.1 must not be copied as a character knowledge quadrant."
+  },
+  "l1a_source_intent": {
+    "source_section": "3.6 叙事钩子与剧情爆发点；5.1 江城市核心矛盾结构；5.3 真相阶梯表",
+    "source_pages": [9, 10, 18, 19],
+    "page": "/books/{book_id}/l1a",
+    "action": "After world and character facts are formal, click the existing conflict traversal action. Review generated candidates; do not type or call an RPC directly.",
+    "target_fields": [
+      "l1a_name",
+      "scene_location",
+      "conflict_background",
+      "escalation_path",
+      "stakes",
+      "irreversible_consequence",
+      "plot_emotion_commit",
+      "arc_requirement",
+      "info_reveal_boundary",
+      "role_arc_json",
+      "world_resistance_refs",
+      "participant_chars_json"
+    ],
+    "expected_state": "PAGE_MODEL_CANDIDATE until creator review and the documented sort/review/lock path completes",
+    "downstream_consumers": ["FP005-01", "FP006-01", "FP007-01", "FP008-01", "FP008-02", "FP009-01", "FP010-01"],
+    "source_explicit": {
+      "participants": ["江枫", "叶凡"],
+      "conflict": "production-and-cooperation civilization versus stockpile-and-control civilization",
+      "escalation_evidence": [
+        "cooperate to turn abandoned vehicles and steel into automated defenses against a zombie tide",
+        "split over slavery and ration hierarchy versus employment, credits, and circular production",
+        "force Ye Fan to choose between repeating closed safety and sharing inventory for an uncertain common future"
+      ]
+    },
+    "model_candidate_boundaries": {
+      "scene_location": "The source gives Jiangcheng, bases, and organizational territories but no precise location for one L1A scene. FP004-01 must propose one as a candidate rather than receiving a hand-filled value.",
+      "single_chapter_scope": "The source describes a long arc and chapter-50/150/200/300 reveals, not the exact first single-chapter scope. The traversal output must bound a candidate rather than the fixture selecting it.",
+      "desired_intensity": "No V7 conflict intensity choice is stated. The model may propose it for page review; the fixture must not preset it."
+    }
+  },
+  "page_input_sequence": [
+    {
+      "step_id": "NB-01",
+      "source_section": "宣传语；一、核心一句话；3.1；5.1",
+      "page": "/books/new",
+      "action": "Open stage 01 and enter only the source material. Let FP001-03 propose 科幻 and any reviewable red-line candidate from the source context; the test uses the existing page review/lock action and does not type a semantic substitute.",
+      "target_fields": ["title", "intent_json.genre_main", "creative_intent", "selling_points_json", "target_words", "chapter_words", "forbid_json"],
+      "expected_state": "frontend draft with editable 1000000/2000 defaults and a model-produced candidate review; absent source red lines must remain a controlled model/page result, not a fixture default",
+      "downstream_consumers": ["FP001-03", "FP001-05"],
+      "classification": "SOURCE_EXPLICIT"
+    },
+    {
+      "step_id": "NB-02",
+      "source_section": "2.1-2.5；四、组织体系；5.2",
+      "page": "/books/new",
+      "action": "Paste world_setting into the existing chat box. Let FP001-03 extract cross-stage candidates; inspect the seven board tabs before locking stage 02.",
+      "target_fields": ["seven world boards", "world candidate fields", "world binding proposals"],
+      "expected_state": "candidate world cards only; no formal facts before final creation",
+      "downstream_consumers": ["FP001-03", "FP002-04", "FP001-07"],
+      "classification": "PAGE_TEST_ACTOR_ACTION"
+    },
+    {
+      "step_id": "NB-03",
+      "source_section": "3.2-3.18",
+      "page": "/books/new",
+      "action": "Paste core and supporting character materials into the existing chat box. Verify that FP001-03 produces the complete V7 candidate from those source profiles, then use the existing stage review/lock action. Do not prefill memories, knowledge quadrants, or relation numbers in the fixture.",
+      "target_fields": ["characters", "five_layers_json", "knowledge_boundary_json", "arc_json", "relation_state", "initial_memories"],
+      "expected_state": "complete page-model character candidate awaiting the existing reviewed stage lock; no direct fixture-to-RPC character payload",
+      "downstream_consumers": ["FP001-03", "FP003-04", "FP001-07"],
+      "classification": "PAGE_MODEL_CANDIDATE"
+    },
+    {
+      "step_id": "NB-04",
+      "source_section": "3.4-3.6；5.1；5.3",
+      "page": "/books/new",
+      "action": "Paste conflict_seed in stage 04. Let FP001-03 derive the initial candidate from the source profiles; do not preset intensity or a single-chapter scope in the fixture.",
+      "target_fields": ["seed_type", "involved_chars", "desired_arc", "desired_intensity"],
+      "expected_state": "conflict intent candidate; not a generated or locked L1A",
+      "downstream_consumers": ["FP001-03", "FP001-07", "FP004-01"],
+      "classification": "PAGE_MODEL_CANDIDATE"
+    },
+    {
+      "step_id": "NB-05",
+      "source_section": "All mapped source sections",
+      "page": "/books/new",
+      "action": "After model candidates are present, use the existing stage review/lock actions and the existing final-confirm button. The test actor confirms a page-visible candidate; it never creates an RPC payload or writes the book directly.",
+      "target_fields": ["stage locks", "creator_confirmed"],
+      "expected_state": "one atomic book creation or controlled rejection with no partial book",
+      "downstream_consumers": ["FP001-02", "FP001-07", "FP001-06"],
+      "classification": "PAGE_MODEL_CANDIDATE"
+    },
+    {
+      "step_id": "WORLD-01",
+      "source_section": "2.1-2.5；四；5.2",
+      "page": "/books/{book_id}/world",
+      "action": "Read the current formal projection, compare all seven boards with world_entries, add or repair only source-backed items through current page controls, save candidate, review it, then confirm through the page.",
+      "target_fields": ["world_state candidates", "world bindings", "version history"],
+      "expected_state": "formal initial world truth before L1A design lock; old versions remain history",
+      "downstream_consumers": ["FP004-01", "FP005-01", "FP007-01", "FP010-01"],
+      "classification": "SOURCE_EXPLICIT"
+    },
+    {
+      "step_id": "CHAR-01",
+      "source_section": "3.2-3.18",
+      "page": "/books/{book_id}/characters",
+      "action": "Read the current projection and compare it with character_profiles. Use the current page generation, save, and confirmation actions for a complete model candidate; do not manufacture missing memory, knowledge, relation, or binding values in the fixture.",
+      "target_fields": ["character candidates", "relation candidates", "initial memories", "world bindings", "version history"],
+      "expected_state": "formal character design after the page confirms a complete model candidate; the fixture supplies only source text",
+      "downstream_consumers": ["FP004-01", "FP005-01", "FP006-01", "FP007-01", "FP008-01", "FP008-02"],
+      "classification": "PAGE_MODEL_CANDIDATE"
+    },
+    {
+      "step_id": "L1A-01",
+      "source_section": "3.6；5.1；5.3",
+      "page": "/books/{book_id}/l1a",
+      "action": "Use the current conflict-traversal control after world and character facts are formal. Review generated candidates and complete the documented sort/review/lock journey when available.",
+      "target_fields": ["L1A candidate fields", "ordering", "creator review", "design lock"],
+      "expected_state": "locked formal L1A only after FP004-01 proposes candidates and the existing sort/review/lock actions complete; the fixture does not choose its exact scene or scope",
+      "downstream_consumers": ["FP005-00", "FP005-01", "FP006-01", "FP007-01"],
+      "classification": "PAGE_MODEL_CANDIDATE"
+    },
+    {
+      "step_id": "PROD-01",
+      "source_section": "No direct source paste; consume the locked design",
+      "page": "/books/{book_id}/production",
+      "action": "Select the locked L1A and use the documented production start and presentation-plan approval actions. Do not paste unused bible content into runtime DTOs.",
+      "target_fields": ["current L1A selection", "presentation plan approval or return"],
+      "expected_state": "candidate chapter plan persisted only after the creator approves the generated presentation plan",
+      "downstream_consumers": ["FP005-01", "FP006-01", "FP006-02", "FP007-01"],
+      "classification": "SOURCE_EXPLICIT"
+    },
+    {
+      "step_id": "DEDUCTION-01",
+      "source_section": "No direct source paste; consume formal facts and the chapter plan",
+      "page": "/books/{book_id}/deduction",
+      "action": "Observe the real multi-agent run and continue to deduction review only after completion. Do not inject the bible as a shared all-character context.",
+      "target_fields": ["deduction progress", "particle records", "candidate plot simulation"],
+      "expected_state": "runtime candidate result with per-character knowledge isolation; no formal write before review",
+      "downstream_consumers": ["FP008-03", "FP008-04", "FP009-01", "FP010-01"],
+      "classification": "SOURCE_EXPLICIT"
+    },
+    {
+      "step_id": "REVIEW-01",
+      "source_section": "No direct source paste; review generated deduction evidence",
+      "page": "/books/{book_id}/deduction-review",
+      "action": "After a real completed deduction result is visible, the test actor uses the documented page approve action. It does not enter a return direction or assess literary quality; the page and backend still enforce the documented state transition.",
+      "target_fields": ["deduction approval", "return direction", "prose trigger"],
+      "expected_state": "locked deduction snapshot or returned L1A attempt",
+      "downstream_consumers": ["FP008-04", "FP009-00", "FP009-01"],
+      "classification": "PAGE_TEST_ACTOR_ACTION"
+    },
+    {
+      "step_id": "AUDIT-01",
+      "source_section": "No direct source paste; compare prose with locked deduction and formal design",
+      "page": "/books/{book_id}/audit",
+      "action": "After real prose and audit evidence are visible, the test actor uses the documented confirm action. It does not make a quality claim or override a P0 fact conflict; the page and backend keep their documented gates.",
+      "target_fields": ["objective audit", "reader/commercial evidence", "editorial decision", "formal commit"],
+      "expected_state": "formal chapter only after documented audit and existing confirm action succeed; unresolved commit rules remain a product blocker rather than an instruction for fixture data",
+      "downstream_consumers": ["FP010", "FP011", "FP012", "FP013"],
+      "classification": "PAGE_TEST_ACTOR_ACTION"
+    }
+  ],
+  "minimum_runnable_journey": {
+    "goal": "Exercise the real source text -> model candidate -> page review -> FP001-07 atomic new-book journey without prebuilding a business payload.",
+    "steps": [
+      "Open /books/new.",
+      "Enter the source-explicit title and creative-origin material.",
+      "Paste the world, character, and conflict materials into the current chat in their corresponding stages.",
+      "Review the page-model extraction: seven world boards, complete character V7 shape, relation dimensions, initial memory candidates, and an initial L1A candidate must come from the workflow rather than this fixture.",
+      "Use the existing reviewed stage locks and final confirm button.",
+      "Verify one FP001-07 atomic success with a current-book context, or a controlled workflow/page rejection with no partial book."
+    ],
+    "expected_result": "The fixture contributes only source text. The product either atomically creates one book from model-produced, page-reviewed data or rejects it without a partial book; it must not convert fixture content into a direct RPC payload.",
+    "currently_runnable": true
+  },
+  "complete_journey": {
+    "goal": "Create one source-backed book and produce 10 consecutive formal chapters through the real product pages.",
+    "prerequisites": [
+      "FP001-03 returns complete, contract-valid candidates from the source material; its output is reviewed with the existing page controls rather than hand-filled by the fixture.",
+      "The active model/prompt binding is available to ZH01, WORLD, CHARACTER, ZH02, and ZH03.",
+      "The source ambiguity in the duplicated 5.1 name is omitted or returned as a controlled candidate diagnostic; it is not auto-corrected into a relation.",
+      "The current page/workflow implementation exposes the documented L1A sort/review/lock, production approval, deduction review, audit confirmation, and formal-commit actions."
+    ],
+    "steps": [
+      "Complete and atomically confirm /books/new.",
+      "Verify and, if necessary, repair formal world items through /books/{book_id}/world.",
+      "Verify and, if necessary, repair formal characters through /books/{book_id}/characters.",
+      "Generate, review, sort, and lock one L1A through /books/{book_id}/l1a.",
+      "Select it and approve a generated presentation plan through /books/{book_id}/production.",
+      "Observe the isolated multi-character run through /books/{book_id}/deduction.",
+      "Approve or return the real result through /books/{book_id}/deduction-review.",
+      "Generate prose, review audit evidence, decide, and formally commit through /books/{book_id}/audit.",
+      "Repeat the documented L1A, production, deduction, prose, audit, and commit journey as required until the same book has formal chapter indexes 1 through 10; do not assume one L1A always contains 10 chapters."
+    ],
+    "currently_runnable": false,
+    "current_runtime_blocks": [
+      "The L1A page explicitly disables variant generation and three-line sorting when the stable workflow contract is unavailable.",
+      "The production page explicitly disables production start, approval, and return actions while their contract is not connected.",
+      "The deduction page disables pause/regenerate controls without a stable contract.",
+      "The deduction-review page disables approve/return controls while orchestration is unavailable.",
+      "The audit page disables release/return controls while audit orchestration is unavailable.",
+      "V7 leaves change_limit comparison semantics and the Chinese word-count rule unresolved; this fixture does not invent either."
+    ]
+  },
+  "model_candidate_boundaries": [
+    {
+      "id": "CR-01",
+      "business_question": "模型应如何把这本书归入 V7 六个主题材之一？",
+      "source_conflict": "文档包含末世、异能、外星线索、工业工程和文明制度竞争，没有自报主题材。",
+      "blocked_result": "必须返回可审阅候选或受控缺口；fixture 不预选值。",
+      "technical_appendix": ["intent_json.genre_main"]
+    },
+    {
+      "id": "CR-03",
+      "business_question": "模型是否能提出可审阅的创作禁区，或明确报告来源未提供？",
+      "source_conflict": "文档写了世界运行成本，但没有创作禁区。",
+      "blocked_result": "防雷红线不能由世界规则冒充，也不能由 fixture 填入默认。",
+      "technical_appendix": ["forbid_json"]
+    },
+    {
+      "id": "CR-04",
+      "business_question": "模型能否从角色材料生成可审阅的知识四象限？",
+      "source_conflict": "6.1 只规定读者可见层级，不是角色个人知识边界。",
+      "blocked_result": "没有候选就不能安全进入信息隔离推演；fixture 不写该结果。",
+      "technical_appendix": ["knowledge_boundary_json"]
+    },
+    {
+      "id": "CR-05",
+      "business_question": "模型能否把传记材料转成可审阅的初始记忆候选？",
+      "source_conflict": "传记事件没有被定义为初始记忆对象，也没有 truth_status。",
+      "blocked_result": "角色正式确认包不应从 fixture 生成虚假初始记忆。",
+      "technical_appendix": ["initial_memories", "memory_type", "truth_status"]
+    },
+    {
+      "id": "CR-06",
+      "business_question": "模型能否把定性关系转换为可审阅的关系维度与绑定强度？",
+      "source_conflict": "文档有合作、利用、敌对和情感牵引，但没有 V7 数值或强/中/弱等级。",
+      "blocked_result": "关系和绑定不得被 fixture 当作已确认正式数据。",
+      "technical_appendix": ["relation_state 8+3", "world_binding.binding_strength"]
+    },
+    {
+      "id": "CR-07",
+      "business_question": "FP004-01 能否基于正式世界与角色提出可物化的首个 L1A 场景？",
+      "source_conflict": "江城市、东半球、安全屋和基地都是宏观范围，文档没有为首个 L1A 指定具体场景。",
+      "blocked_result": "没有候选场景时场景物化不能启动；fixture 不选场景。",
+      "technical_appendix": ["l1a_unit.scene_location", "FP005-01"]
+    },
+    {
+      "id": "CR-08",
+      "business_question": "FP004-01 能否把长线冲突收束为可审阅的首个 L1A 候选？",
+      "source_conflict": "文档描述了跨多章长线，还给出第 50/150/200/300 章揭露点，但没有圈定本 MVP 的第一章。",
+      "blocked_result": "无候选时 L1A 和单章执行方案无法稳定收束；fixture 不指定范围。",
+      "technical_appendix": ["conflict_seed.desired_arc", "desired_intensity", "l1a_unit"]
+    },
+    {
+      "id": "CR-09",
+      "business_question": "5.1 的‘江枫 vs 江枫 vs 戚国防’第二个名字应是谁？",
+      "source_conflict": "原文出现重复姓名，不能自行改成叶凡或其他角色。",
+      "blocked_result": "这条三方意识形态冲突暂不能成为正式关系或 L1A 依据。",
+      "technical_appendix": ["relation_state", "participant_chars_json"]
+    }
+  ],
+  "unconsumed_source_information": [
+    {
+      "source_section": "宣传语、人物金句、网文铁律、写作价值说明",
+      "reason": "These are authoring notes or prose assets, not initial world/character truth and not direct page fields in the current MVP."
+    },
+    {
+      "source_section": "5.3 第 50/150/200/300 章真相阶梯",
+      "reason": "This is a long-range series plan outside one local single-chapter journey. It may inform a page-model proposal after the creator selects the first scope."
+    },
+    {
+      "source_section": "6.1 信息分层（冰山法则）",
+      "reason": "Reader visibility percentages cannot be converted into per-character knowledge quadrants."
+    },
+    {
+      "source_section": "2.1 ‘谁植入锁、为何植入’；2.2 阿特拉斯线索",
+      "reason": "The source deliberately frames this as an unresolved mystery. It must not become universally known formal truth."
+    },
+    {
+      "source_section": "详细等级、次数、晶核换算与装备样例",
+      "reason": "Useful for later world-detail coverage, but not required to prove the minimum seven-board journey and too large to duplicate wholesale in code."
+    },
+    {
+      "source_section": "西半球势力与终局扩散",
+      "reason": "Valid world background, but no current first-L1A consumption path is selected. Keep it out of the single-chapter runtime until a documented page action selects it."
+    }
+  ]
+}

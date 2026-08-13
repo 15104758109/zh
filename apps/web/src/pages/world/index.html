@@ -5,14 +5,38 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>世界设定 - 纵横叙事引擎</title>
 <!-- Tailwind CSS & DaisyUI v4 via CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
-<link href="../common/theme.css" rel="stylesheet">
-<link href="../common/sidebar.css" rel="stylesheet">
-<script src="../common/theme.js"></script>
-<script charset="utf-8" src="./new_book_wizard_data.js"></script>
-<script src="../common/header.js"></script>
+    <link href="/vendor/daisyui-4.12.10-full.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="/vendor/font-fallback.css" />
+<link href="/pages/prototype/common/theme.css" rel="stylesheet">
+<link href="/pages/prototype/common/sidebar.css" rel="stylesheet">
+<script src="/pages/prototype/common/theme.js"></script>
+<script defer src="/pages/prototype/common/sidebar.js"></script>
+<script charset="utf-8" src="/pages/world/assets/world-data.js"></script>
+<script src="/pages/prototype/common/header.js"></script>
+<script src="/pages/prototype/common/book-context.js"></script>
 <style>
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+  /* Never expose prototype business data before the page has a real context. */
+  body:not([data-world-runtime-ready="true"]) > :not(script) { visibility: hidden; }
+  body:not([data-world-runtime-ready="true"])::before {
+    content: '正在读取当前作品…'; position: fixed; inset: 0; z-index: 9999;
+    display: grid; place-items: center; visibility: visible;
+    background: var(--color-base-100, #fff); color: var(--color-base-content, #333);
+    font-size: 13px;
+  }
+  #main-content[data-world-state="loading"] > :not(header):not(#world-page-state-overlay),
+  #main-content[data-world-state="empty"] > :not(header):not(#world-page-state-overlay),
+  #main-content[data-world-state="error"] > :not(header):not(#world-page-state-overlay) {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  #main-content[data-world-state="loading"] ~ #conflict-seed-chat,
+  #main-content[data-world-state="empty"] ~ #conflict-seed-chat,
+  #main-content[data-world-state="error"] ~ #conflict-seed-chat {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
 
   /* 投影 pill */
   .projection-pill {
@@ -40,7 +64,7 @@
 
   /* 张力徽章 */
   .tension-badge {
-    font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700;
+    font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 700;
     letter-spacing: 0.03em; display: inline-flex; align-items: center; gap: 2px;
   }
   .tension-high { background: oklch(97% 0.03 3); color: oklch(52% 0.25 3); border: 1px solid oklch(88% 0.08 3); }
@@ -49,7 +73,7 @@
 
   /* 商业指数徽章 */
   .commercial-badge {
-    font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700;
+    font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 700;
     background: oklch(96% 0.015 240); color: oklch(40% 0.08 240);
     border: 1px solid oklch(88% 0.03 240);
   }
@@ -130,9 +154,7 @@
 
   /* 地图底图网格 */
   .cyber-grid {
-    background-image: radial-gradient(rgba(0,0,0,0.08) 1.5px, transparent 0);
-    background-size: 32px 32px;
-    background-position: 0 0;
+    background-color: var(--color-base-200);
     position: relative;
     overflow: auto;
   }
@@ -185,7 +207,7 @@
   .path-connection {
     position: absolute;
     height: 2px;
-    background: repeating-linear-gradient(to right, transparent, transparent 4px, oklch(62.45% 0.278 3.836 / 40%) 4px, oklch(62.45% 0.278 3.836 / 40%) 8px);
+    background: color-mix(in oklab, var(--color-primary) 42%, transparent);
     transform-origin: 0 50%;
     z-index: 1;
     pointer-events: none;
@@ -271,7 +293,7 @@
     box-shadow: 0 8px 20px rgba(0,0,0,0.06);
   }
   .skeleton-count-pill {
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1;
     padding: 4px 6px;
     border-radius: 999px;
@@ -320,9 +342,7 @@
     min-height: 218px;
     border: 1.5px dashed rgba(0,0,0,0.12);
     border-radius: 20px;
-    background:
-      radial-gradient(circle at 12% 15%, rgba(255,255,255,.9), transparent 26%),
-      linear-gradient(135deg, rgba(255,255,255,.84), rgba(255,255,255,.56));
+    background: var(--color-base-100);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.55), 0 8px 24px rgba(0,0,0,.04);
     padding: 14px;
     transition: border-color .18s, box-shadow .18s, transform .18s, background .18s;
@@ -479,89 +499,14 @@
     color: var(--color-base-content);
   }
 
-  /* 控制面板自定义组件 */
-  .settings-switch {
-    position: relative;
-    width: 36px;
-    height: 20px;
-    border-radius: 10px;
-    background: var(--color-base-300);
-    cursor: pointer;
-    transition: background 0.2s ease;
-    flex-shrink: 0;
-  }
-  .settings-switch::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: white;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-    transition: transform 0.2s ease;
-  }
-  .settings-switch.on {
-    background: var(--color-accent);
-  }
-  .settings-switch.on::after {
-    transform: translateX(16px);
-  }
-  .settings-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 7px 16px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    border: 1px solid var(--color-accent);
-    color: var(--color-accent);
-    background: transparent;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-  .settings-btn:hover {
-    background: var(--color-accent);
-    color: white;
-  }
-
 </style>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="/vendor/tailwindcss-browser-4.js"></script>
 </head>
-<body class="bg-base-200 text-base-content overflow-hidden flex h-screen">
+<body class="ui-page bg-base-200 text-base-content overflow-hidden flex h-screen" data-world-runtime-ready="false">
 <a href="#main-content" class="skip-link">跳到主内容</a>
 
 <!-- SideNavBar -->
-<nav class="sidebar-glass" aria-label="主菜单">
-  <div class="sidebar-brand">
-    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
-    <div class="sidebar-text">
-      <div class="brand-title">纵横</div>
-      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
-    </div>
-  </div>
-  <div class="sidebar-separator" aria-hidden="true"></div>
-  <ul class="menu sidebar-menu" id="sidebarMenu">
-    <li><a href="workbench.html"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
-    <li><a href="world_creator.html" class="active"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
-    <li><a href="production_stage.html"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
-    <li><a href="audit_stage.html"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
-    <li><a href="iteration.html"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
-  </ul>
-  <footer class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-user-avatar">U</div>
-      <span class="sidebar-text sidebar-user-name">用户</span>
-    </div>
-  </footer>
-</nav>
-
-<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
-  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
-</button>
+<nav class="sidebar-glass" aria-label="主菜单" data-shared-sidebar data-sidebar-active="design"></nav>
 
 <!-- Main Content -->
 <main class="main-content" id="main-content">
@@ -573,9 +518,9 @@
       <nav class="flex h-full items-center ml-2">
         <!-- 自定义深色标签组 -->
         <div class="header-tabs">
-          <a href="world_creator.html" class="header-tab active">世界设定</a>
-          <a href="character_settings.html" class="header-tab">角色设定</a>
-          <a href="l1a_settings.html" class="header-tab">L1A 设定</a>
+          <a data-book-segment="world" class="header-tab active" aria-current="page">世界设定</a>
+          <a data-book-segment="characters" class="header-tab">角色设定</a>
+          <a data-book-segment="l1a" class="header-tab">L1A 设定</a>
         </div>
       </nav>
     </div>
@@ -633,7 +578,7 @@
 
   <div class="pt-16 flex-1 flex flex-col overflow-hidden">
     <!-- 世界概况栏 -->
-    <div id="world-context-bar" class="shrink-0 px-6 py-4 border-b border-base-content/8 bg-base-100/70 backdrop-blur-sm">
+    <div id="world-context-bar" class="ui-panel-flat shrink-0 px-6 py-4 border-b border-base-content/8 bg-base-100/70 backdrop-blur-sm">
       <div class="flex items-start justify-between gap-4 mb-3">
         <div class="flex-1 flex items-center gap-3">
           <span class="material-symbols-outlined text-primary text-[24px]">public</span>
@@ -681,21 +626,21 @@
         <button onclick="switchProjection('monsters')" class="projection-pill" id="proj-monsters">怪物</button>
         <button onclick="switchProjection('chronicle')" class="projection-pill" id="proj-chronicle">年表</button>
       </div>
-      <button onclick="openAddItemDrawer()" class="flex items-center gap-1 px-3 py-1.5 bg-primary hover:opacity-90 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-sm shrink-0">
+      <button onclick="openAddItemDrawer()" class="ui-button ui-button-primary ui-button-small flex items-center gap-1 px-3 py-1.5 bg-primary hover:opacity-90 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-sm shrink-0">
         <span class="material-symbols-outlined text-[14px]">add</span> 新增条目
       </button>
     </div>
 
     <div class="world-workspace flex-1">
       <!-- 左侧世界骨架：体检提示落在条目里，不再单独占一个右侧面板 -->
-      <aside id="world-skeleton-panel" class="world-skeleton-panel flex flex-col overflow-hidden">
+      <aside id="world-skeleton-panel" class="world-skeleton-panel ui-card flex flex-col overflow-hidden">
         <div class="px-4 py-3 border-b border-base-content/5 shrink-0">
           <div class="flex items-center justify-between">
             <div>
               <div class="text-[10px] font-black uppercase tracking-[0.12em] text-primary">World Skeleton</div>
               <div class="text-sm font-bold mt-0.5">世界骨架</div>
             </div>
-            <button onclick="openAddItemDrawer()" class="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center hover:opacity-90 cursor-pointer" title="新增条目">
+            <button onclick="openAddItemDrawer()" class="ui-button ui-button-primary ui-icon-button w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center hover:opacity-90 cursor-pointer" title="新增条目">
               <span class="material-symbols-outlined text-[16px]">add</span>
             </button>
           </div>
@@ -705,7 +650,7 @@
       </aside>
 
       <!-- 中间主画布：地图/列表成为画布主按钮 -->
-      <section class="canvas-shell flex flex-col overflow-hidden">
+      <section class="canvas-shell ui-card flex flex-col overflow-hidden">
         <div class="shrink-0 px-4 py-3 border-b border-base-content/5 flex items-center justify-between gap-3 bg-white/45">
           <div class="min-w-0">
             <div class="flex items-center gap-2">
@@ -748,7 +693,7 @@
       </section>
 
       <!-- 右侧未绑定卡池：替代右侧世界体检面板 -->
-      <aside id="resource-dock" class="resource-dock-panel flex flex-col overflow-hidden">
+      <aside id="resource-dock" class="resource-dock-panel ui-card flex flex-col overflow-hidden">
         <div class="px-4 py-3 border-b border-base-content/5 shrink-0">
           <div class="flex items-center justify-between">
             <div>
@@ -804,19 +749,19 @@
   </div>
 
   <div class="px-5 py-3 border-t border-base-content/5 shrink-0 flex gap-2 bg-white/40">
-    <button id="drawer-ai-btn" onclick="aiFillDrawer()" class="px-3 py-2 bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1">
+    <button id="drawer-ai-btn" onclick="aiFillDrawer()" class="ui-button ui-button-quiet ui-button-small flex items-center gap-1">
       <span class="material-symbols-outlined text-[14px]">auto_awesome</span> AI 帮我填
     </button>
-    <button id="btn-drawer-ai-expand" onclick="aiExpandItem()" class="px-3 py-2 bg-secondary/10 border border-secondary/20 hover:bg-secondary/20 text-secondary rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1">
+    <button id="btn-drawer-ai-expand" onclick="aiExpandItem()" class="ui-button ui-button-quiet ui-button-small flex items-center gap-1">
       <span class="material-symbols-outlined text-[14px]">insights</span> ✦ AI帮我展开
     </button>
-    <button onclick="saveDrawerItem()" class="flex-1 py-2 bg-gradient-to-r from-primary to-secondary text-white font-bold text-xs rounded-lg shadow hover:opacity-90 transition-all cursor-pointer">保存设定</button>
+    <button onclick="saveDrawerItem()" class="ui-button ui-button-primary ui-button-small flex-1">保存设定</button>
   </div>
 </div>
 
 <!-- 新建/编辑绑定弹窗 -->
 <div id="bindingModal" onclick="if(event.target===this) closeBindingModal()">
-  <div class="bg-base-200 border border-base-content/5 rounded-box w-[540px] flex flex-col overflow-hidden shadow-2xl p-6">
+  <div class="ui-modal bg-base-200 border border-base-content/5 rounded-box w-[540px] flex flex-col overflow-hidden shadow-2xl p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-sm font-bold text-base-content flex items-center gap-2">
         <span class="material-symbols-outlined text-primary text-[18px]">link</span>
@@ -828,11 +773,11 @@
     </div>
     <div class="flex flex-col gap-3 max-h-[440px] overflow-y-auto pr-1" id="binding-form-content"></div>
     <div class="flex gap-2 mt-4 pt-3 border-t border-base-content/5">
-      <button onclick="aiFillBinding()" class="px-3 py-2 bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1">
+      <button onclick="aiFillBinding()" class="ui-button ui-button-quiet ui-button-small flex items-center gap-1">
         <span class="material-symbols-outlined text-[14px]">auto_awesome</span> AI 帮我填
       </button>
-      <button onclick="closeBindingModal()" class="flex-1 py-2 border border-base-content/10 text-base-content opacity-70 hover:bg-base-content/5 text-xs font-bold rounded-lg transition-all cursor-pointer">取消</button>
-      <button onclick="saveBinding()" class="flex-1 py-2 bg-gradient-to-r from-primary to-secondary text-white font-bold text-xs rounded-lg shadow hover:opacity-90 transition-all cursor-pointer">保存绑定</button>
+      <button onclick="closeBindingModal()" class="ui-button ui-button-quiet ui-button-small flex-1">取消</button>
+      <button onclick="saveBinding()" class="ui-button ui-button-primary ui-button-small flex-1">保存绑定</button>
     </div>
   </div>
 </div>
@@ -849,20 +794,20 @@
         <p id="drop-confirm-text" class="text-[12px] text-base-content opacity-65 mt-1 leading-relaxed"></p>
         <div class="mt-3">
           <label class="field-label">绑定关系</label>
-          <select id="drop-bind-type" class="field-input text-xs"></select>
+          <select id="drop-bind-type" class="ui-select field-input text-xs"></select>
         </div>
       </div>
     </div>
     <div class="flex gap-2 mt-5 pt-3 border-t border-base-content/5">
-      <button onclick="closeDropConfirm()" class="flex-1 py-2 border border-base-content/10 text-base-content opacity-70 hover:bg-base-content/5 text-xs font-bold rounded-lg transition-all cursor-pointer">取消</button>
-      <button onclick="confirmDropBinding()" class="flex-1 py-2 bg-gradient-to-r from-primary to-secondary text-white font-bold text-xs rounded-lg shadow hover:opacity-90 transition-all cursor-pointer">完成绑定</button>
+      <button onclick="closeDropConfirm()" class="ui-button ui-button-quiet ui-button-small flex-1">取消</button>
+      <button onclick="confirmDropBinding()" class="ui-button ui-button-primary ui-button-small flex-1">完成绑定</button>
     </div>
   </div>
 </div>
 
 <!-- AI Proposals Diff 提案弹窗 -->
 <div id="diffModal" onclick="if(event.target===this) closeDiffModal()">
-  <div class="bg-base-100 border border-base-content/5 rounded-box w-[560px] flex flex-col overflow-hidden shadow-2xl p-6">
+  <div class="ui-modal bg-base-100 border border-base-content/5 rounded-box w-[560px] flex flex-col overflow-hidden shadow-2xl p-6">
     <div class="flex items-center justify-between mb-2">
       <h2 class="text-sm font-bold text-base-content flex items-center gap-2">
         <span class="material-symbols-outlined text-primary text-[18px]">auto_awesome</span>
@@ -879,8 +824,8 @@
     </div>
 
     <div class="flex gap-2 mt-5 pt-3 border-t border-base-content/5 justify-end">
-      <button onclick="acceptAllProposals()" class="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all cursor-pointer">全部采纳</button>
-      <button onclick="closeDiffModal()" class="px-4 py-2 border border-base-content/10 text-base-content opacity-70 text-xs font-bold rounded-lg hover:bg-base-content/5 transition-all cursor-pointer">关闭</button>
+      <button onclick="acceptAllProposals()" class="ui-button ui-button-primary ui-button-small">全部采纳</button>
+      <button onclick="closeDiffModal()" class="ui-button ui-button-quiet ui-button-small">关闭</button>
     </div>
   </div>
 </div>
@@ -892,7 +837,7 @@
   </button>
 
   <div class="chat-bubble-panel" id="chat-panel">
-    <div class="p-3 bg-gradient-to-r from-primary to-secondary text-white flex items-center justify-between shrink-0">
+    <div class="p-3 bg-primary border-b border-primary text-primary-content flex items-center justify-between shrink-0">
       <span class="text-xs font-bold flex items-center gap-1">
         <span class="material-symbols-outlined text-[14px]">auto_awesome</span> ✦ 想法收集与冲突种子
       </span>
@@ -911,8 +856,8 @@
     </div>
 
     <div class="p-3 border-t border-base-content/5 bg-base-100 flex gap-2 shrink-0">
-      <input type="text" id="chat-input" onkeydown="if(event.key==='Enter') sendChatIdea()" class="flex-1 bg-base-200 border border-base-content/10 rounded-lg px-3 py-1.5 text-xs outline-none" placeholder="输入想法（例如：丧尸圈养人类）">
-      <button onclick="sendChatIdea()" class="w-8 h-8 bg-primary rounded-lg text-white flex items-center justify-center hover:opacity-90 cursor-pointer">
+      <input type="text" id="chat-input" onkeydown="if(event.key==='Enter') sendChatIdea()" class="ui-field flex-1 bg-base-200 border border-base-content/10 rounded-lg px-3 py-1.5 text-xs outline-none" placeholder="输入想法（例如：丧尸圈养人类）">
+      <button onclick="sendChatIdea()" class="ui-button ui-button-primary ui-icon-button flex items-center justify-center">
         <span class="material-symbols-outlined text-[16px]">send</span>
       </button>
     </div>
@@ -922,13 +867,6 @@
 <div id="toast-container" style="position:fixed;bottom:24px;left:240px;z-index:9999;display:flex;flex-direction:column;gap:8px;"></div>
 
 <script>
-// ============ 侧栏折叠 ============
-function toggleSidebar() {
-  document.body.classList.toggle('sidebar-collapsed');
-  const icon = document.getElementById('sidebarIcon');
-  if (icon) icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
-}
-
 // ============ 板块配置 (V7附录D 对齐) ============
 // 前端 key → DB 列 映射表见 V7_附录D_数据标准修订方案 §D.2.1b
 const BOARDS = {
@@ -1010,144 +948,9 @@ const BIND_TYPE_FIELDS = {
   '_default': ['strength'],
 };
 
-// ============ 数据池 (V7附录D 对齐 world_entry 列名) ============
-// fields 对象 key 已映射为 world_entry 表列名
-// ai 对象为运行时标注，不落库（见附录D §D.4）
-let items = [
-  { id:'r1', board:'rules', title:'以太常数极化衰变律',
-    fields:{ rule_type:'物理法则', description:'以太在受到精神意志干涉时局部矢量发生极化，常数瞬时偏移，是本世界一切"修炼"的物理基础；但每次极化都加速以太总量的不可逆衰减。', apply_scope:'全界', violate_cost:'精神意志过载则遭反噬，重则神魂俱灭' },
-    ai:{ tension:'high', commercial:82, note:'稀缺性驱动的核心冲突源，天然制造资源争夺。', suggestion:'可绑定一个利用衰变漏洞牟利的势力，强化灰色地带张力。' } },
-  { id:'r2', board:'rules', title:'天道雷劫因果律',
-    fields:{ rule_type:'超凡规则', description:'凡突破大境界者必降雷劫，业力越重劫威越盛。', apply_scope:'突破境界的修行者', violate_cost:'渡劫失败则跌落凡尘或形神俱灭' },
-    ai:{ tension:'mid', commercial:65, note:'经典设定，读者认知成本低。', suggestion:'与某势力的渡劫保险商业行为绑定可增加新意。' } },
-
-  { id:'g1', board:'geography', title:'青云山脉', map_x: 26, map_y: 32,
-    fields:{ location_text:'中州', description:'中州第一灵脉所在，终年灵雾缭绕，太一仙门根据地。', danger_level:'低' },
-    ai:{ tension:'low', commercial:55, note:'安全区，适合作主角早期成长地。', suggestion:'缺少威胁性绑定，可关联一个潜伏的怪物增加暗线。' } },
-  { id:'g2', board:'geography', title:'流沙废土', map_x: 62, map_y: 65,
-    fields:{ location_text:'西域边缘', description:'荒芜之地，玄铁矿脉裸露，蚀骨雨频发。', danger_level:'高' },
-    ai:{ tension:'mid', commercial:60, note:'资源与危险并存的经典冒险地。', suggestion:'' } },
-  { id:'g3', board:'geography', title:'万妖古禁', map_x: 78, map_y: 22,
-    fields:{ location_text:'极北深处', description:'极北冰原下的无底巨壑，自古封印大妖。', danger_level:'极高' },
-    ai:{ tension:'high', commercial:88, note:'极高危，中后期剧情爆发点。', suggestion:'' } },
-
-  { id:'res1', board:'resources', title:'下品灵石矿脉',
-    fields:{ usage_text:'修炼通货 / 炼器燃料', description:'基础开采矿床，含微量流金，是修真界硬通货。', scarcity_level:'普遍', cheat_writing:'主角偶然发现一条无主富矿，一夜暴富。' },
-    ai:{ tension:'mid', commercial:70, note:'通货型资源，绑定面广。', suggestion:'被多个势力争夺时张力会显著上升。' } },
-  { id:'res2', board:'resources', title:'太古秘境洞天',
-    fields:{ usage_text:'限时机缘 / 顶级资源副本', description:'每逢甲子开启一次的洞天残篇，内有上古传承。', scarcity_level:'极度罕见', cheat_writing:'秘境内一刻，外界一年，主角闭关速成。' },
-    ai:{ tension:'high', commercial:88, note:'强稀缺+强机缘，爽点密集。', suggestion:'' } },
-
-  { id:'f1', board:'factions', title:'太一仙门',
-    fields:{ leader_name:'掌教·清玄真人', description:'正道领袖，通天级底蕴，门规森严。', hierarchy_text:'掌教→长老→真传→内门→外门', faction_status:'鼎盛' },
-    ai:{ tension:'mid', commercial:68, note:'正派标杆，适合作主角靠山或对立面。', suggestion:'与无极魔宗的敌对关系尚未绑定，建议补全。' } },
-  { id:'f2', board:'factions', title:'无极魔宗',
-    fields:{ leader_name:'宗主·血河老祖', description:'魔道巨擘，行事狠辣，深不可测。', hierarchy_text:'宗主→魔尊→护法→魔徒', faction_status:'崛起' },
-    ai:{ tension:'high', commercial:75, note:'反派势力，冲突天然。', suggestion:'' } },
-  { id:'f3', board:'factions', title:'散修联盟',
-    fields:{ leader_name:'松散推举', description:'无根散修的互利联合，自由交易市的实际控制者。', hierarchy_text:'无严格层级', faction_status:'稳定' },
-    ai:{ tension:'low', commercial:50, note:'中立缓冲势力。', suggestion:'孤立度偏高，建议绑定一处地理据点。' } },
-
-  { id:'p1', board:'professions', title:'丹修体系',
-    fields:{ is_system:true, effect_scope:'苍穹界·炼丹侧', description:'以草木灵药炼制丹药的修行序列，地位崇高。', cheat_writing:'主角一炉九转金丹惊艳全场，引各方哄抢。' },
-    ai:{ tension:'mid', commercial:72, note:'后勤型体系，养成线清晰。', suggestion:'建议绑定药材类资源，形成产业闭环。' },
-    system_tiers:[ {name:'一级·炼气丹师', note:'可炼凝气散等基础丹'}, {name:'二级·筑基丹师', note:'可炼筑基丹'}, {name:'三级·金丹宗师', note:'可炼渡劫金丹'} ] },
-  { id:'p2', board:'professions', title:'灵剑士',
-    fields:{ is_system:false, effect_scope:'苍穹界', description:'以飞剑御敌的攻击型职业，爆发极强。', cheat_writing:'千里取人首级，一剑光寒十九洲。' },
-    ai:{ tension:'mid', commercial:70, note:'高人气输出职业。', suggestion:'' } },
-
-  { id:'m1', board:'monsters', title:'虚空兽潮',
-    fields:{ monster_scale:'洲域级', description:'自边界裂隙周期性涌入的虚空生物洪流，所过之处寸草不生。', counter_text:'星陨级法阵 / 多势力联防' },
-    ai:{ tension:'high', commercial:80, note:'外部灾难，可驱动势力联合主线。', suggestion:'' } },
-  { id:'m2', board:'monsters', title:'蚀骨雨',
-    fields:{ monster_scale:'区域级', description:'废土区特有的腐蚀性酸雨，持续3-5天，金属与血肉俱化。', counter_text:'避雨石窟 / 护体灵罩' },
-    ai:{ tension:'low', commercial:45, note:'环境型威胁，烘托氛围。', suggestion:'孤立条目，建议绑定流沙废土地理。' } },
-
-  { id:'c1', board:'chronicle', title:'开天历元年·灵气复苏',
-    fields:{ event_source:'仙门典籍', description:'沉寂万年的天地灵气骤然复苏，开启当前修炼大世。', event_era:'开天历 1 年' },
-    ai:{ tension:'mid', commercial:60, note:'世界起点事件，奠定时代基调。', suggestion:'' } },
-];
-
-let bindings = [
-  { id:'b1', from:'r1', to:'f3', type:'豁免', strength:0.7, tags:['灰色地带'] },
-  { id:'b2', from:'g2', to:'res1', type:'产出', strength:0.8 },
-  { id:'b3', from:'res1', to:'f1', type:'控制', strength:0.6 },
-  { id:'b4', from:'res2', to:'f1', type:'争夺', strength:0.5, tags:['宗门大比'] },
-  { id:'b5', from:'res2', to:'f2', type:'争夺', strength:0.5, tags:['夺宝'] },
-  { id:'b6', from:'f1', to:'f2', type:'敌对', strength:0.9, tags:['正魔对立'] },
-  { id:'b7', from:'g1', to:'f1', type:'盘踞', strength:1.0 },
-  { id:'b8', from:'p1', to:'f1', type:'效忠', strength:0.7 },
-  { id:'b9', from:'p2', to:'m1', type:'克制', strength:0.6 },
-  { id:'b10', from:'r1', to:'p1', type:'赋能', strength:0.8 },
-];
-
-function applyWizardWorldData() {
-  const source = window.NEW_BOOK_WIZARD_DATA;
-  const step = source && Array.isArray(source.stages)
-    ? source.stages.find(s => s.key === 'world_settings')
-    : null;
-  if (!step || !Array.isArray(step.cards)) return;
-
-  const boardMap = {
-    '规则': 'rules',
-    '地理': 'geography',
-    '资源': 'resources',
-    '势力': 'factions',
-    '职业': 'professions',
-    '职业/超能': 'professions',
-    '怪物': 'monsters',
-    '怪物/灾难': 'monsters',
-    '大事': 'chronicle',
-    '大事记': 'chronicle'
-  };
-  const nextPos = { geography: 0 };
-  const mapBoard = (value) => boardMap[value] || value || 'rules';
-
-  items = step.cards.map((card) => {
-    const board = mapBoard(card.category || card.board_type);
-    const fields = { ...card };
-    delete fields.id;
-    delete fields.category;
-    delete fields.board_type;
-    delete fields.title;
-    delete fields.text;
-    delete fields.bindTo;
-    if (!fields.description) fields.description = card.text || '';
-
-    const item = {
-      id: card.id,
-      board,
-      title: card.title || card.item_name || '未命名设定',
-      fields,
-      ai: {
-        tension: card.ai?.tension || 'mid',
-        commercial: card.ai?.commercial || 60,
-        note: card.ai?.note || '',
-        suggestion: card.ai?.suggestion || ''
-      }
-    };
-
-    if (board === 'geography') {
-      const index = nextPos.geography++;
-      item.map_x = card.map_x ?? Math.min(82, 24 + index * 18);
-      item.map_y = card.map_y ?? Math.min(76, 30 + index * 14);
-    }
-    if (Array.isArray(card.system_tiers)) item.system_tiers = card.system_tiers;
-    return item;
-  });
-
-  const itemIds = new Set(items.map(item => item.id));
-  bindings = (step.bindings || []).map((binding, index) => ({
-    id: binding.id || `wizard-bind-${index + 1}`,
-    from: binding.from,
-    to: binding.to,
-    type: binding.type || '绑定',
-    strength: binding.strength ?? 0.7,
-    tags: binding.tags || []
-  })).filter(binding => itemIds.has(binding.from) && itemIds.has(binding.to));
-}
-
-applyWizardWorldData();
+// Runtime business data is populated only by the scoped V7 version read.
+let items = [];
+let bindings = [];
 
 // 运行时变量
 let currentProjection = 'all';
@@ -1343,7 +1146,7 @@ function renderSkeletonPanel() {
           <span class="material-symbols-outlined text-[16px]" style="color:${b.color}">${b.icon}</span>
           <div class="min-w-0">
             <div class="text-[12px] font-extrabold truncate">${b.label}</div>
-            <div class="text-[9px] opacity-45 font-mono uppercase">${b.en}</div>
+            <div class="text-[10px] opacity-45 font-mono uppercase">${b.en}</div>
           </div>
         </div>
         <span class="skeleton-count-pill">设定数量：${settingVolumeLabel(stats.total)}</span>
@@ -1415,7 +1218,7 @@ function renderMap() {
     badge.style.background = b.color;
     badge.onclick = () => openDetail(it.id);
     const stats = bindingsOf(it.id).length;
-    badge.innerHTML = `<span class="material-symbols-outlined text-[12px]">${b.icon}</span>${esc(it.title)} <span class="text-[9px] opacity-80">已绑 ${stats}</span>`;
+    badge.innerHTML = `<span class="material-symbols-outlined text-[12px]">${b.icon}</span>${esc(it.title)} <span class="text-[10px] opacity-80">已绑 ${stats}</span>`;
     rulesBar.appendChild(badge);
   });
   if (!globItems.length) rulesBar.innerHTML = '<span class="text-[10px] text-base-content opacity-40">暂无全局锚点</span>';
@@ -1501,7 +1304,7 @@ function renderRelationCanvas(container, boardKey) {
       </div>
       <p class="text-[11px] opacity-55 leading-relaxed mt-2">${esc(it.fields.description || it.fields.usage_text || it.fields.leader_name || it.fields.monster_scale || it.ai?.note || '暂无描述')}</p>
       <div class="mt-3 flex flex-col gap-2">
-        ${grouped.length ? grouped.map(g => `<div><div class="text-[9px] font-black uppercase opacity-40 mb-1">${BOARDS[g.key].label}</div><div class="flex flex-wrap gap-1">${g.arr.map(x => `<button onclick="openDetail('${x.item.id}')" class="zone-bind-chip"><span class="material-symbols-outlined text-[12px]" style="color:${BOARDS[x.item.board].color}">${BOARDS[x.item.board].icon}</span>${esc(x.item.title)}<span class="opacity-40">${esc(x.bind.type)}</span></button>`).join('')}</div></div>`).join('') : '<div class="empty-drop-hint">暂无绑定，建议从左侧骨架提示进入补关系。</div>'}
+        ${grouped.length ? grouped.map(g => `<div><div class="text-[10px] font-black uppercase opacity-40 mb-1">${BOARDS[g.key].label}</div><div class="flex flex-wrap gap-1">${g.arr.map(x => `<button onclick="openDetail('${x.item.id}')" class="zone-bind-chip"><span class="material-symbols-outlined text-[12px]" style="color:${BOARDS[x.item.board].color}">${BOARDS[x.item.board].icon}</span>${esc(x.item.title)}<span class="opacity-40">${esc(x.bind.type)}</span></button>`).join('')}</div></div>`).join('') : '<div class="empty-drop-hint">暂无绑定，建议从左侧骨架提示进入补关系。</div>'}
       </div>
     `;
     grid.appendChild(card);
@@ -1533,13 +1336,13 @@ function renderProfessionCanvas(container) {
       </div>
       <p class="text-[11px] opacity-55 leading-relaxed mt-2">${esc(it.fields.description || '职业体系说明待补充')}</p>
       <div class="mt-3">
-        <div class="text-[9px] font-black uppercase opacity-40 mb-1">角色绑定 · 多对多</div>
+        <div class="text-[10px] font-black uppercase opacity-40 mb-1">角色绑定 · 多对多</div>
         <div class="flex flex-wrap gap-1.5">
           ${roles.length ? roles.map(r => `<span class="zone-bind-chip"><span class="material-symbols-outlined text-[12px] text-primary">person</span>${esc(r.name)}<span class="opacity-40">可多职业</span></span>`).join('') : '<div class="empty-drop-hint w-full">暂无角色绑定；角色模块只读引用，可在绑定面板选择角色。</div>'}
         </div>
       </div>
       <div class="mt-3">
-        <div class="text-[9px] font-black uppercase opacity-40 mb-1">世界关系</div>
+        <div class="text-[10px] font-black uppercase opacity-40 mb-1">世界关系</div>
         <div class="flex flex-wrap gap-1.5">
           ${rels.length ? rels.map(x => `<button onclick="openDetail('${x.item.id}')" class="zone-bind-chip"><span class="material-symbols-outlined text-[12px]" style="color:${BOARDS[x.item.board].color}">${BOARDS[x.item.board].icon}</span>${esc(x.item.title)}<span class="opacity-40">${esc(x.bind.type)}</span></button>`).join('') : '<div class="empty-drop-hint w-full">建议绑定规则/资源/势力，形成职业来源和消耗闭环。</div>'}
         </div>
@@ -1648,7 +1451,7 @@ function renderList() {
         groupHtml += `
           <div class="flex items-center justify-between p-2 rounded-lg hover:bg-base-200/50 border border-base-content/5 transition-all text-xs">
             <div class="flex items-center gap-3 flex-1 min-w-0">
-              <input type="checkbox" name="bulk-item" value="${it.id}" onclick="event.stopPropagation()" class="rounded border-base-content/20 text-primary focus:ring-primary">
+              <input type="checkbox" name="bulk-item" value="${it.id}" onclick="event.stopPropagation()" class="ui-checkbox rounded border-base-content/20 text-primary focus:ring-primary">
               <span onclick="openDetail('${it.id}')" class="font-bold truncate cursor-pointer hover:text-primary flex-1">${esc(it.title)}</span>
               <span class="text-[10px] opacity-50 w-24 truncate">${esc(it.fields.rule_type || it.fields.location_text || it.fields.usage_text || '')}</span>
             </div>
@@ -1764,6 +1567,64 @@ function renderDrawerBreadcrumbs() {
   });
 }
 
+// ============ 原型字段表单与抽屉控制 ============
+function normalizeFieldValue(field, value) {
+  if (field.key === 'is_system') {
+    if (value === true || value === 'true' || value === '分级体系') return '分级体系';
+    if (value === false || value === 'false' || value === '单一职业') return '单一职业';
+  }
+  return value == null ? '' : String(value);
+}
+
+function renderFields(board, values = {}) {
+  const fields = BOARD_FIELDS[board] || [];
+  const item = currentItemId ? itemById(currentItemId) : null;
+  const source = { ...(item?.fields || {}), ...(values || {}) };
+  if (source.title == null && item?.title) source.title = item.title;
+  const readOnly = document.body.dataset.worldReadOnly === 'true';
+
+  return `<div class="flex flex-col gap-2 mt-2">${fields.map(field => {
+    const value = normalizeFieldValue(field, field.key === 'title' ? (source.title || item?.title) : source[field.key]);
+    const required = field.required ? ' required' : '';
+    const readOnlyAttrs = readOnly ? (field.type === 'select' ? ' disabled' : ' readonly') : '';
+    const label = `<label class="field-label" for="fld-${field.key}">${esc(field.label)}${field.required ? ' *' : ''}</label>`;
+    if (field.type === 'textarea') {
+      return `<div>${label}<textarea id="fld-${field.key}" class="ui-textarea field-input min-h-[72px] resize-y"${required}${readOnlyAttrs}>${esc(value)}</textarea></div>`;
+    }
+    if (field.type === 'select') {
+      const options = (field.options || []).map(option => `<option value="${esc(option)}"${value === option ? ' selected' : ''}>${esc(option)}</option>`).join('');
+      return `<div>${label}<select id="fld-${field.key}" class="ui-select field-input"${required}${readOnlyAttrs}>${options}</select></div>`;
+    }
+    return `<div>${label}<input id="fld-${field.key}" class="ui-field field-input" type="text" value="${esc(value)}"${required}${readOnlyAttrs}/></div>`;
+  }).join('')}</div>`;
+}
+
+function collectFields(board) {
+  const fields = BOARD_FIELDS[board] || [];
+  return fields.reduce((result, field) => {
+    const element = document.getElementById(`fld-${field.key}`);
+    if (!element) return result;
+    const value = element.value.trim();
+    result[field.key] = field.key === 'is_system'
+      ? value === '分级体系'
+      : value;
+    return result;
+  }, {});
+}
+
+function openDrawer() {
+  document.getElementById('detailDrawer')?.classList.add('open');
+  document.getElementById('drawerBackdrop')?.classList.add('open');
+  document.body.classList.add('overflow-hidden');
+  window.setTimeout(() => document.querySelector('#detailDrawer .field-input:not([disabled])')?.focus(), 0);
+}
+
+function closeDrawer() {
+  document.getElementById('detailDrawer')?.classList.remove('open');
+  document.getElementById('drawerBackdrop')?.classList.remove('open');
+  document.body.classList.remove('overflow-hidden');
+}
+
 // ============ 四段式画像抽屉内容 ============
 function renderDrawerContent() {
   const it = itemById(currentItemId);
@@ -1793,7 +1654,7 @@ function renderDrawerContent() {
       <span class="commercial-badge">商业价值 ${it.ai?.commercial||0}/100</span>
       <span class="bind-chip"><span class="material-symbols-outlined" style="font-size:11px;">link</span>${myBinds.length}个关联</span>
     </div>
-    ${renderFields(it.board, it.fields)}
+    ${renderFields(it.board, { title: it.title, ...(it.fields || {}) })}
   `;
   content.appendChild(identitySection);
 
@@ -1857,7 +1718,7 @@ function renderDrawerContent() {
               <span class="truncate font-medium">${esc(other.title)}</span>
             </div>
             <div class="flex items-center gap-1">
-              ${bd.strength ? `<span class="opacity-40 text-[9px] font-mono">${Math.round(bd.strength*100)}%</span>` : ''}
+              ${bd.strength ? `<span class="opacity-40 text-[10px] font-mono">${Math.round(bd.strength*100)}%</span>` : ''}
               <button onclick="removeBinding('${bd.id}')" class="opacity-0 group-hover:opacity-100 text-error transition-all" title="解绑">
                 <span class="material-symbols-outlined text-[13px]">link_off</span>
               </button>
@@ -1904,8 +1765,8 @@ function renderDrawerContent() {
         </div>
         <p class="text-base-content opacity-75">该物理法则与 <strong>「天道雷劫因果律」</strong> 对境界突破的能量涨落判定公式相反。</p>
         <div class="flex gap-2 justify-end mt-1">
-          <button onclick="pushPivot('r2')" class="px-2 py-0.5 bg-base-content/10 hover:bg-base-content/20 text-base-content font-bold rounded text-[9px]">查看对方</button>
-          <button onclick="aiReconcile('r1', 'r2')" class="px-2 py-0.5 bg-error text-white font-bold rounded text-[9px] hover:opacity-90">AI 调和提案</button>
+          <button onclick="pushPivot('r2')" class="px-2 py-0.5 bg-base-content/10 hover:bg-base-content/20 text-base-content font-bold rounded text-[10px]">查看对方</button>
+          <button onclick="aiReconcile('r1', 'r2')" class="px-2 py-0.5 bg-error text-white font-bold rounded text-[10px] hover:opacity-90">AI 调和提案</button>
         </div>
       </div>
     `;
@@ -1938,7 +1799,7 @@ function openAddItemDrawer() {
   document.getElementById('drawer-breadcrumbs').innerHTML = `<span class="font-bold">快捷创建设定</span>`;
 
   const boardSelect = `<div><label class="field-label">设定分类</label>
-    <select id="fld-board" class="field-input text-xs" onchange="onAddBoardChange(this.value)">
+    <select id="fld-board" class="ui-select field-input text-xs" onchange="onAddBoardChange(this.value)">
       ${BOARD_ORDER.map(k=>`<option value="${k}" ${k===board?'selected':''}>${BOARDS[k].label} · ${BOARDS[k].en}</option>`).join('')}
     </select></div>`;
 
@@ -2035,12 +1896,12 @@ function renderBindingForm() {
     <div class="flex items-center gap-2 p-2.5 rounded-lg bg-base-content/5">
       <span class="material-symbols-outlined text-primary" style="font-size:16px;">${BOARDS[fromBoard].icon}</span>
       <div class="min-w-0">
-        <div class="text-[9px] text-base-content opacity-50 uppercase">源实体 · ${BOARDS[fromBoard].label}</div>
+        <div class="text-[10px] text-base-content opacity-50 uppercase">源实体 · ${BOARDS[fromBoard].label}</div>
         <div class="text-[12px] font-bold truncate">${esc(from.title)}</div>
       </div>
       <span class="material-symbols-outlined text-base-content opacity-30 mx-1">arrow_forward</span>
       <div class="text-[11px] text-base-content opacity-60">目标类别</div>
-      <select id="bind-toboard" class="field-input" style="width:auto;flex:1" onchange="onBindBoardChange(this.value)">
+      <select id="bind-toboard" class="ui-select field-input" style="width:auto;flex:1" onchange="onBindBoardChange(this.value)">
         ${targetBoards.map(tb=>`<option value="${tb}" ${tb===d.toBoard?'selected':''}>${BOARDS[tb].label}</option>`).join('')}
       </select>
     </div>
@@ -2052,7 +1913,7 @@ function renderBindingForm() {
     </div>
 
     <div class="mt-2"><label class="field-label">目标关联对象</label>
-      <select id="bind-to" class="field-input">
+      <select id="bind-to" class="ui-select field-input">
         <option value="">— 选择已有条目 —</option>
         ${candidates.map(c=>`<option value="${c.id}" ${c.id===d.to?'selected':''}>${esc(c.title)}</option>`).join('')}
       </select>
@@ -2066,13 +1927,13 @@ function renderBindingForm() {
       <input type="range" id="bind-strength" min="0" max="100" value="${Math.round(d.strength*100)}" class="w-full accent-primary cursor-pointer" oninput="document.getElementById('bind-strength-val').textContent=this.value+'%'"></div>`;
   }
   if (dynFields.includes('timespan')) {
-    html += `<div class="mt-2"><label class="field-label">发生时限</label><input type="text" id="bind-timespan" class="field-input" value="${esc(d.timespan)}" placeholder="如：开天历 300 年起 持续性"></div>`;
+    html += `<div class="mt-2"><label class="field-label">发生时限</label><input type="text" id="bind-timespan" class="ui-field field-input" value="${esc(d.timespan)}" placeholder="如：开天历 300 年起 持续性"></div>`;
   }
   if (dynFields.includes('unlock')) {
-    html += `<div class="mt-2"><label class="field-label">解锁条件 / 前置事件</label><input type="text" id="bind-unlock" class="field-input" value="${esc(d.unlock)}" placeholder="例如：需完成某突破或声望事件"></div>`;
+    html += `<div class="mt-2"><label class="field-label">解锁条件 / 前置事件</label><input type="text" id="bind-unlock" class="ui-field field-input" value="${esc(d.unlock)}" placeholder="例如：需完成某突破或声望事件"></div>`;
   }
   html += `<div class="mt-2"><label class="field-label">叙事与张力标签</label>
-    <input type="text" id="bind-tags" class="field-input" value="${esc(d.tags.join('、'))}" placeholder="多个标签以顿号分隔，如：冲突爆发点、势力底线"></div>`;
+    <input type="text" id="bind-tags" class="ui-field field-input" value="${esc(d.tags.join('、'))}" placeholder="多个标签以顿号分隔，如：冲突爆发点、势力底线"></div>`;
 
   const preview = estimateBindingImpact(d);
   html += `<div class="p-2.5 rounded-lg mt-3" style="background:oklch(96% 0.015 240);border:1px solid oklch(88% 0.03 240);">
@@ -2109,25 +1970,10 @@ function estimateBindingImpact(d) {
   return { commercial, tension: '★★★ → ' + tStr };
 }
 
-// 绑定时快速新建条目 (占位先行)
+// 绑定时快速新建条目
 function quickCreateTarget() {
-  const tb = bindingDraft.toBoard;
-  const name = prompt('新建「' + BOARDS[tb].label + '」设定名称：');
-  if (!name) return;
-
-  const it = {
-    id: genId('i'), board: tb, name: name.trim(), fields: { name: name.trim() },
-    ai: { tension:'low', commercial:55, note:'快速新建占位，待后续补充字段属性。', suggestion:'补全该设定的属性详情。' }
-  };
-  if (tb === 'geography') {
-    it.x = Math.round(20 + Math.random() * 60);
-    it.y = Math.round(20 + Math.random() * 60);
-  }
-
-  items.push(it);
-  bindingDraft.to = it.id;
-  showToast('已快速创建「' + name + '」占位并自动选中', 'success');
-  renderBindingForm();
+  showToast('快速新建未接入完整候选保存合同，未创建或保存数据。', 'warning');
+  return false;
 }
 
 function saveBinding() {
@@ -2173,14 +2019,14 @@ function renderDiffProposals() {
           <div class="flex items-center gap-1.5">
             <span class="material-symbols-outlined text-[14px]" style="color:${ob.color}">${ob.icon}</span>
             <span class="font-bold text-base-content">${esc(p.title)}</span>
-            <span class="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold">${esc(p.proposalType)}</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold">${esc(p.proposalType)}</span>
           </div>
           <p class="text-base-content opacity-75 leading-relaxed">${esc(p.description)}</p>
         </div>
         <div class="flex flex-col gap-1.5 shrink-0">
-          <button onclick="acceptProposal(${idx})" class="px-2 py-1 bg-primary text-white text-[10px] font-bold rounded">接受</button>
-          <button onclick="editProposal(${idx})" class="px-2 py-1 border border-base-content/10 bg-white hover:bg-base-content/5 text-base-content text-[10px] font-bold rounded">修改</button>
-          <button onclick="discardProposal(${idx})" class="px-2 py-1 text-error hover:bg-error/10 text-[10px] font-bold rounded">放弃</button>
+          <button onclick="acceptProposal(${idx})" class="ui-button ui-button-primary ui-button-small">接受</button>
+          <button onclick="editProposal(${idx})" class="ui-button ui-button-quiet ui-button-small">修改</button>
+          <button onclick="discardProposal(${idx})" class="ui-button ui-button-danger ui-button-small">放弃</button>
         </div>
       </div>
     `;
@@ -2336,44 +2182,8 @@ function sendChatIdea() {
   const input = document.getElementById('chat-input');
   const idea = input.value.trim();
   if (!idea) return;
-
-  // 渲染我的消息
-  appendChatMessage('user', idea);
-  input.value = '';
-
-  // 渲染 AI 解析中
-  const botMessageId = 'bot-temp-' + Date.now();
-  appendChatMessage('bot', '正在从物理、商业、伏笔张力三维度解析中...', botMessageId);
-
-  setTimeout(() => {
-    const botEl = document.getElementById(botMessageId);
-    if (!botEl) return;
-
-    activeProposals = [
-      {
-        board: 'factions',
-        title: '人类圈养所',
-        proposalType: '按用户想法',
-        description: '当怪物（丧尸）具备了高级思维后，建立起的用于收割修行者以太活体能量的集中圈养高墙。',
-        tension: 'high', commercial: 88,
-        suggestion: '此地是经典的反抗战力爆发点。',
-        bindTo: 'm1', bindType: '盘踞'
-      }
-    ];
-
-    botEl.innerHTML = `
-      <p class="mb-1 text-primary font-bold flex items-center gap-1">
-        <span class="material-symbols-outlined text-[12px] animate-pulse">auto_awesome</span> 解析完毕，生成以下提案：
-      </p>
-      <div class="p-2 border border-primary/20 bg-primary/5 rounded-lg text-[10px] mt-1.5">
-        <span class="font-bold">＋ 【势力】 人类圈养所</span>
-        <p class="opacity-80 mt-0.5">${activeProposals[0].description}</p>
-      </div>
-      <button onclick="openDiffModal(); renderDiffProposals();" class="mt-2 text-xs font-bold text-primary hover:underline flex items-center gap-0.5">
-        点击展开并采纳该提案 <span class="material-symbols-outlined text-[12px]">arrow_forward</span>
-      </button>
-    `;
-  }, 1200);
+  showToast('聊天解析尚未接入 V7 世界设定生成流程，未生成或保存数据。', 'warning');
+  return false;
 }
 
 function appendChatMessage(sender, text, id = null) {
@@ -2518,9 +2328,9 @@ function showToast(msg, type = 'info') {
 }
 </script>
 <script>
-// TASK3_WORLD_BRIDGE_ACTIVE
+// V7_WORLD_BRIDGE_MOUNTED
 (function(){
-  if(window.TASK3_WORLD_BRIDGE_ACTIVE)return; window.TASK3_WORLD_BRIDGE_ACTIVE=true;
+  if(window.V7_WORLD_BRIDGE_MOUNTED)return; window.V7_WORLD_BRIDGE_MOUNTED=true;
   function D(){return window.WIZARD_DATA||{};} function esc(s){return String(s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]||c;});}
   function mount(){var d=D(), ws=d.WORLD_SCHEMA; if(!ws||document.getElementById('v7-setting-layer-tabs'))return; var bar=document.getElementById('world-context-bar')||document.getElementById('main-content'); if(!bar)return; var p=document.createElement('section'); p.id='v7-setting-layer-tabs'; p.className='px-6 py-3 border-b border-base-content/10 bg-base-100/80'; p.innerHTML='<div class="flex items-center justify-between gap-3"><div class="flex gap-2"><button class="btn btn-xs btn-primary" data-layer="initial">初始设定</button><button class="btn btn-xs" data-layer="l1a_generated">未来走向</button></div><div id="v7-world-schema-badges" class="flex flex-wrap gap-1 text-[10px]"></div></div><div id="v7-world-layer-summary" class="mt-2 text-[11px] opacity-70">当前显示初始设定。</div><div id="v7-interlock-warning" class="mt-2 hidden text-[11px] text-error font-semibold"></div>'; bar.insertAdjacentElement('afterend',p);
     var badges=document.getElementById('v7-world-schema-badges'); badges.innerHTML=Object.keys(ws.boards||{}).map(function(k){var b=ws.boards[k];return '<span class="badge badge-sm badge-ghost">'+esc(k)+''+'</span>';}).join('');
@@ -2529,6 +2339,442 @@ function showToast(msg, type = 'info') {
     var old=window.openBindingModal; if(typeof old==='function'){window.openBindingModal=function(){old.apply(this,arguments); setTimeout(function(){var box=document.getElementById('binding-form-content'); if(!box)return; var types=ws.BINDING_TYPES; var first=Object.keys(types)[0]; box.insertAdjacentHTML('afterbegin','<div class="p-2 rounded-lg bg-primary/10 text-[11px]">可选绑定：'+esc(Object.keys(types[first]).map(function(k){return k+'→'+types[first][k].join('/')}).join('；'))+'</div>');},0);};}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount); else mount();
+})();
+</script>
+<script>
+/* WORLD_ADAPTER_BRIDGE: bind V7 actions to the mounted prototype; never replace its root. */
+(function () {
+  const endpoint = window.WORLD_WEBHOOK_URL || 'http://127.0.0.1:5678/webhook/9f4adf5e-d40b-4c9d-8f0a-1b849c3ccb2b';
+  const WORLD_READ_TIMEOUT_MS = 12_000;
+  const WORLD_READ_TIMEOUT_MESSAGE = '读取世界设定超时，请检查服务后重试。';
+  const correlation = action => `world:${action}:${Date.now()}`;
+  async function request(action, payload, requestOptions = {}) {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action, correlation_id: correlation(action), ...payload }),
+      signal: requestOptions.signal,
+    });
+    const body = await response.json();
+    if (!response.ok || body?.ok !== true) throw new Error(body?.redacted_error?.message || '世界设定服务暂不可用');
+    return body.result;
+  }
+  const adapter = window.WORLD_PAGE_ADAPTER || {
+    readVersions: (context, requestOptions = {}) => request('read_versions', { local_operator_id: context.localOperatorId, book_id: context.bookId }, requestOptions),
+    generate: ({ localOperatorId, bookId, creatorInput }) => request('generate_candidate', { local_operator_id: localOperatorId, book_id: bookId, creator_input: creatorInput }),
+    saveCandidate: ({ localOperatorId, bookId, ...payload }) => request('save_candidate', { local_operator_id: localOperatorId, book_id: bookId, atoms: payload.atoms, bindings: payload.bindings }),
+    confirm: ({ localOperatorId, bookId, worldCandidateIds = [], bindingCandidateIds = [], deleteWorldIds = [], deleteWorldBindingIds = [] }) => {
+      const rpcPayload = { local_operator_id: localOperatorId, book_id: bookId, idempotency_key: correlation('confirm') };
+      if (worldCandidateIds.length) rpcPayload.world_candidate_ids = worldCandidateIds;
+      if (bindingCandidateIds.length || worldCandidateIds.length) rpcPayload.binding_candidate_ids = bindingCandidateIds;
+      if (deleteWorldIds.length) rpcPayload.delete_world_ids = deleteWorldIds;
+      if (deleteWorldBindingIds.length) rpcPayload.delete_world_binding_ids = deleteWorldBindingIds;
+      return request('confirm', rpcPayload);
+    },
+  };
+  const context = window.ZHBookContext?.readMatchingBookContext?.({ requireRoute: true }) || null;
+  const bridge = { versions: [], selected: null, frozen: false, loading: false };
+  const candidateWriteAvailable = true;
+  const frozenMessage = '设计已锁定，世界设定仅可查看。';
+  const selectedIsReadOnly = () => bridge.frozen || bridge.selected?.state === 'history' || activeSettingLayer() === 'l1a_generated';
+  const canSave = () => candidateWriteAvailable && !selectedIsReadOnly() && !incompleteAffordanceItems(items).length;
+  const canConfirm = () => !bridge.frozen && bridge.selected?.state === 'candidate' && !incompleteAffordanceItems(bridge.snapshotItems).length;
+  function applyFrozenControls() {
+    const mutationHandler = /(editWorldContext|openAddItemDrawer|batchAction|deleteCurrentItem|aiFillDrawer|aiExpandItem|saveDrawerItem|openBindingModal|aiFillBinding|saveBinding|confirmDropBinding|acceptAllProposals|sendChatIdea|removeBinding|aiReconcile|quickCreateTarget|acceptProposal|editProposal)/;
+    document.querySelectorAll('button[onclick]').forEach(control => {
+      if (!mutationHandler.test(control.getAttribute('onclick') || '')) return;
+      control.disabled = bridge.frozen;
+      control.setAttribute('aria-disabled', String(bridge.frozen));
+      if (bridge.frozen) control.title = frozenMessage;
+    });
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) chatInput.disabled = bridge.frozen;
+    document.querySelectorAll('[draggable]').forEach(card => {
+      card.draggable = !bridge.frozen;
+      card.setAttribute('aria-disabled', String(bridge.frozen));
+    });
+  }
+  function revealWorldRuntimeState() { document.body.dataset.worldRuntimeReady = 'true'; }
+  const boardToContract = { rules: ['rule', 'rule'], geography: ['geography', 'geo'], resources: ['resource', 'resource'], factions: ['faction', 'faction'], professions: ['profession', 'job'], monsters: ['monster', 'monster'], chronicle: ['event', 'event'] };
+  const pageState = new URLSearchParams(location.search).get('state');
+  const stateCopy = { empty: ['暂无世界设定', '当前作品尚没有可显示的世界设定版本。'], loading: ['正在读取世界设定', '正在恢复当前作品的世界设定版本。'], error: ['世界设定暂不可用', '读取失败，请恢复连接后重试。'] };
+  function showPageState(state, detailOverride) {
+    const copy = stateCopy[state];
+    if (!copy) return;
+    document.getElementById('world-page-state-overlay')?.remove();
+    const overlay = document.createElement('section');
+    overlay.id = 'world-page-state-overlay';
+    overlay.className = 'ui-state-overlay z-[55]';
+    overlay.setAttribute('role', state === 'error' ? 'alert' : 'status');
+    const card = document.createElement('div');
+    card.className = 'ui-state-panel';
+    const title = document.createElement('h1'); title.className = 'ui-state-title'; title.textContent = copy[0];
+    const detail = document.createElement('p'); detail.className = 'ui-state-detail'; detail.textContent = detailOverride || copy[1];
+    card.append(title, detail);
+    if (state === 'error') {
+      const recovery = document.createElement('button');
+      recovery.type = 'button'; recovery.className = 'ui-button ui-button-primary ui-button-small'; recovery.textContent = '重新读取';
+      recovery.addEventListener('click', () => { const url = new URL(location.href); url.searchParams.delete('state'); location.href = url; });
+      card.append(recovery);
+    }
+    overlay.append(card);
+    const main = document.getElementById('main-content');
+    main.classList.add('relative');
+    main.dataset.worldState = state;
+    main.append(overlay);
+  }
+  function clearPageState() {
+    document.getElementById('world-page-state-overlay')?.remove();
+    delete document.getElementById('main-content')?.dataset.worldState;
+  }
+  if (stateCopy[pageState]) showPageState(pageState);
+  const status = document.createElement('span');
+  status.id = 'world-adapter-status';
+  status.className = 'text-[10px] font-semibold px-2 py-1 rounded bg-warning/10 text-warning';
+  status.setAttribute('aria-live', 'polite');
+  document.getElementById('world-context-bar').querySelector('.flex.items-center.gap-5').append(status);
+  const snapshot = document.createElement('select');
+  snapshot.id = 'world-version-snapshot';
+  snapshot.className = 'select select-xs max-w-[160px]';
+  snapshot.setAttribute('aria-label', '世界设定版本快照');
+  document.getElementById('world-context-bar').querySelector('.flex.items-center.gap-5').append(snapshot);
+  const confirmButton = document.createElement('button');
+  confirmButton.id = 'world-confirm-candidate';
+  confirmButton.type = 'button';
+  confirmButton.className = 'btn btn-xs btn-primary';
+  confirmButton.textContent = '确认候选';
+  confirmButton.disabled = true;
+  document.getElementById('world-context-bar').querySelector('.flex.items-start.justify-between').append(confirmButton);
+
+  function setStatus(message, tone) {
+    status.textContent = message;
+    status.className = `text-[10px] font-semibold px-2 py-1 rounded ${tone || 'bg-warning/10 text-warning'}`;
+  }
+  function versionKey(version) { return version?.snapshot_key || version?.snapshotKey || version?.version_id || version?.versionId || ''; }
+  function applyBookContext(book) {
+    if (!book) return;
+    const intent = book.intent_json && typeof book.intent_json === 'object' ? book.intent_json : {};
+    const description = [intent.summary, intent.core_premise, intent.description, intent.logline].find(value => typeof value === 'string' && value.trim()) || '';
+    document.getElementById('world-name-display').textContent = book.title || '未命名作品';
+    document.getElementById('header-book-name').textContent = book.title || '未命名作品';
+    document.getElementById('world-time-display').textContent = book.stage_code || '';
+    document.getElementById('world-genre-display').textContent = book.genre_main || '';
+    document.getElementById('world-desc-display').textContent = description;
+  }
+  function activeSettingLayer() {
+    return document.body.dataset.settingLayer === 'l1a_generated' ? 'l1a_generated' : 'initial';
+  }
+  function renderSnapshotLayer() {
+    const layer = activeSettingLayer();
+    const sourceItems = Array.isArray(bridge.snapshotItems) ? bridge.snapshotItems : [];
+    const sourceBindings = Array.isArray(bridge.snapshotBindings) ? bridge.snapshotBindings : [];
+    items = sourceItems.filter(item => item.settingLayer === layer);
+    const visibleIds = new Set(items.map(item => item.id));
+    bindings = sourceBindings.filter(binding => binding.settingLayer === layer && visibleIds.has(binding.from) && visibleIds.has(binding.to));
+    recomputeStats();
+    renderCurrentView();
+    applyFrozenControls();
+    const summary = document.getElementById('v7-world-layer-summary');
+    if (!summary) return;
+    if (layer === 'l1a_generated') {
+      const names = (bridge.worldProgressions || []).map(item => item.l1a_name).filter(Boolean);
+      summary.textContent = names.length ? `当前显示未来走向。关联 L1A：${names.join('、')}。` : '当前作品尚无已确认的未来走向。';
+      return;
+    }
+    summary.textContent = '当前显示初始设定。';
+  }
+  const boardLabels = { rules: '规则', geography: '地理', resources: '资源', factions: '势力', professions: '职业', monsters: '怪物', chronicle: '大事' };
+  function normalizedAffordanceDims(value) {
+    const candidates = Array.isArray(value) ? value : [value];
+    return [...new Set(candidates.filter(dimension => typeof dimension === 'string' && dimension.trim() && dimension.trim() !== '待定义').map(dimension => dimension.trim()))];
+  }
+  function resolvedAffordanceDims(item) {
+    const explicit = normalizedAffordanceDims(item?.affordanceDims || item?.ai?.suggestion);
+    if (explicit.length) return explicit;
+    const defaults = window.WIZARD_DATA?.WORLD_SCHEMA?.boards?.[boardLabels[item?.board]]?.default_affordance_dims;
+    return normalizedAffordanceDims(defaults);
+  }
+  function incompleteAffordanceItems(sourceItems) {
+    return (Array.isArray(sourceItems) ? sourceItems : []).filter(item => !resolvedAffordanceDims(item).length);
+  }
+  function affordanceIncompleteMessage(sourceItems) {
+    const names = incompleteAffordanceItems(sourceItems).map(item => item.title || item.name || item.atomKey || '未命名条目');
+    return names.length ? `世界设定「${names.join('、')}」缺少冲突作用维度，不能保存或确认。` : '';
+  }
+  function contractWorld(sourceItems = items, sourceBindings = bindings) {
+    const incompleteMessage = affordanceIncompleteMessage(sourceItems);
+    if (incompleteMessage) throw new Error(incompleteMessage);
+    const atomKeyById = new Map(sourceItems.map(item => [item.id, item.atomKey || item.title || item.name || '']));
+    const atoms = sourceItems.map(item => {
+        const mapping = boardToContract[item.board] || ['rule', 'rule'];
+        return { client_ref: item.id, formal_id: item.formalId || undefined, board_type: mapping[0], atom_type: mapping[1], atom_key: item.atomKey || item.title || item.name || '', atom_value_jsonb: item.fields || {}, affordance_dims: resolvedAffordanceDims(item), source_type: 'manual', setting_layer: 'initial' };
+    });
+    const bindingsPayload = sourceBindings.map(binding => ({ client_ref: binding.id, formal_id: binding.formalId || undefined, from_ref: atomKeyById.get(binding.from) || binding.from, to_ref: atomKeyById.get(binding.to) || binding.to, binding_type: binding.type || '关联', binding_strength: binding.strength >= .8 ? '强' : binding.strength <= .4 ? '弱' : '中', setting_layer: 'initial' }));
+    return { atoms, bindings: bindingsPayload };
+  }
+  function applyVersion(version) {
+    if (!version) return;
+    bridge.selected = version;
+    const content = { atoms: Array.isArray(version.atoms) ? version.atoms : [], bindings: Array.isArray(version.bindings) ? version.bindings : [] };
+    const contractToBoard = { rule: 'rules', geography: 'geography', resource: 'resources', faction: 'factions', profession: 'professions', monster: 'monsters', event: 'chronicle', chronicle: 'chronicle' };
+    const atomIdByLayerKey = new Map();
+    const atomIdByKey = new Map();
+    bridge.snapshotItems = content.atoms.map((item, index) => {
+      const id = item.id || item.client_ref || item.atom_key || `world-${versionKey(version)}-${index}`;
+      const settingLayer = item.setting_layer || 'initial';
+      if (item.atom_key) {
+        atomIdByKey.set(item.atom_key, id);
+        atomIdByLayerKey.set(`${settingLayer}:${item.atom_key}`, id);
+      }
+      return { id, formalId: item.formal_id || (item.is_formal ? item.id : null), atomKey: item.atom_key, settingLayer, board: contractToBoard[item.board_type] || 'rules', title: item.atom_value_jsonb?.title || item.atom_key, name: item.atom_value_jsonb?.title || item.atom_key, fields: item.atom_value_jsonb || {}, affordanceDims: Array.isArray(item.affordance_dims) ? item.affordance_dims : [], ai: { tension: 'mid', commercial: 60, note: '', suggestion: (item.affordance_dims || [])[0] || '' } };
+    });
+    bridge.snapshotBindings = content.bindings.map((binding, index) => {
+      const fromRef = binding.from_ref_id || binding.from_ref;
+      const toRef = binding.to_ref_id || binding.to_ref;
+      const settingLayer = binding.setting_layer || 'initial';
+      return { id: binding.id || `binding-${index}`, formalId: binding.formal_id || (binding.is_formal ? binding.id : null), settingLayer, from: atomIdByLayerKey.get(`${settingLayer}:${fromRef}`) || atomIdByKey.get(fromRef) || fromRef, to: atomIdByLayerKey.get(`${settingLayer}:${toRef}`) || atomIdByKey.get(toRef) || toRef, type: binding.binding_type, strength: binding.binding_strength === '强' || binding.binding_strength === 'strong' ? .9 : binding.binding_strength === '弱' || binding.binding_strength === 'weak' ? .3 : .6 };
+    });
+    renderSnapshotLayer();
+    const labels = { formal: '当前正式版本，可继续编辑', candidate: '候选版本，待确认', history: '历史快照，只读' };
+    const incompleteMessage = version.state === 'candidate' ? affordanceIncompleteMessage(bridge.snapshotItems) : '';
+    setStatus(bridge.frozen ? frozenMessage : incompleteMessage || labels[version.state] || '世界设定版本', bridge.frozen ? 'bg-warning/10 text-warning' : incompleteMessage ? 'bg-error/10 text-error' : version.state === 'formal' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning');
+    document.body.dataset.worldReadOnly = selectedIsReadOnly() ? 'true' : 'false';
+    confirmButton.disabled = !canConfirm();
+    applyFrozenControls();
+  }
+  function refreshSnapshots(result, preferredVersionId) {
+    const returnedVersions = Array.isArray(result?.versions) ? result.versions : [];
+    bridge.versions = returnedVersions.filter(version => ['formal', 'candidate', 'history'].includes(version?.state));
+    bridge.frozen = Boolean(result?.frozen);
+    bridge.worldProgressions = Array.isArray(result?.world_progressions) ? result.world_progressions : [];
+    applyBookContext(result?.book);
+    snapshot.replaceChildren();
+    bridge.versions.forEach(version => {
+      const option = document.createElement('option');
+      option.value = versionKey(version);
+      option.textContent = `v${version.revision} · ${{ formal: '正式', candidate: '候选', history: '历史' }[version.state] || version.state}`;
+      snapshot.append(option);
+    });
+    if (!bridge.versions.length) {
+      bridge.selected = null;
+      confirmButton.disabled = true;
+      setStatus('暂无已保存版本', 'bg-base-200 text-base-content/60');
+      return;
+    }
+    const selectedId = preferredVersionId || result?.current_snapshot_key || result?.currentSnapshotKey || result?.current_version_id || result?.currentVersionId || versionKey(bridge.versions[0]);
+    snapshot.value = selectedId || '';
+    const selected = bridge.versions.find(version => versionKey(version) === selectedId);
+    if (selected) applyVersion(selected);
+    else {
+      bridge.selected = null;
+      confirmButton.disabled = true;
+    }
+  }
+  async function readVersionsWithTimeout() {
+    const controller = new AbortController();
+    let timeoutId;
+    try {
+      const timeout = new Promise((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+          controller.abort();
+          reject(new Error(WORLD_READ_TIMEOUT_MESSAGE));
+        }, WORLD_READ_TIMEOUT_MS);
+      });
+      return await Promise.race([adapter.readVersions(context, { signal: controller.signal }), timeout]);
+    } catch (error) {
+      if (controller.signal.aborted) throw new Error(WORLD_READ_TIMEOUT_MESSAGE);
+      throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  }
+  async function readVersions(preferredVersionId) {
+    revealWorldRuntimeState();
+    if (!context) { setStatus('缺少作品上下文', 'bg-error/10 text-error'); showPageState('empty', '请从作品工作流进入本页以恢复当前作品上下文。'); return; }
+    if (!adapter?.readVersions) { setStatus('世界设定服务未连接', 'bg-error/10 text-error'); showPageState('error', '世界设定读取服务未连接。'); return; }
+    bridge.loading = true;
+    setStatus('正在读取版本…', 'bg-info/10 text-info');
+    showPageState('loading');
+    try {
+      const result = await readVersionsWithTimeout();
+      refreshSnapshots(result, preferredVersionId);
+      if (bridge.versions.length) clearPageState();
+      else showPageState('empty', '当前作品尚没有可显示的世界设定版本。');
+    }
+    catch (error) { const message = error?.message || '读取版本失败，可恢复后重试'; setStatus(message, 'bg-error/10 text-error'); showPageState('error', message); }
+    bridge.loading = false;
+  }
+  async function saveCandidate(draftItems = items, draftBindings = bindings) {
+    if (!context) { setStatus('缺少作品上下文', 'bg-error/10 text-error'); return false; }
+    if (bridge.frozen) {
+      const message = '设计已锁定，世界设定仅可查看。';
+      setStatus(message, 'bg-warning/10 text-warning');
+      showToast(message, 'warning');
+      return false;
+    }
+    if (!candidateWriteAvailable) {
+      const message = '当前候选合同无法保存完整世界设定快照，修改不会保存。';
+      setStatus(message, 'bg-error/10 text-error');
+      showToast(message, 'error');
+      return false;
+    }
+    if (activeSettingLayer() === 'l1a_generated') {
+      const message = '未来走向由 L1A 产生，仅可查看。';
+      setStatus(message, 'bg-warning/10 text-warning');
+      showToast(message, 'warning');
+      return false;
+    }
+    const incompleteMessage = affordanceIncompleteMessage(draftItems);
+    if (incompleteMessage) {
+      setStatus(incompleteMessage, 'bg-error/10 text-error');
+      showToast(incompleteMessage, 'error');
+      return false;
+    }
+    if (!adapter?.saveCandidate || !canSave()) return false;
+    setStatus('正在保存候选…', 'bg-info/10 text-info');
+    try {
+      const payload = contractWorld(draftItems, draftBindings);
+      const result = await adapter.saveCandidate({ ...context, atoms: payload.atoms, bindings: payload.bindings });
+      await readVersions(result?.snapshot_key || result?.snapshotKey || result?.version_id || result?.versionId);
+      showToast('候选修改已保存，尚未确认', 'success');
+      return true;
+    } catch (error) { setStatus(error?.message || '保存候选失败', 'bg-error/10 text-error'); return false; }
+  }
+  async function generateCandidate() {
+    if (!context || !adapter?.generate) { setStatus('生成服务未连接', 'bg-error/10 text-error'); return; }
+    if (bridge.frozen) {
+      const message = '设计已锁定，世界设定仅可查看。';
+      setStatus(message, 'bg-warning/10 text-warning');
+      showToast(message, 'warning');
+      return;
+    }
+    const creatorInput = prompt('请输入本次世界设定生成或校验意图：');
+    if (!creatorInput?.trim()) return;
+    setStatus('正在生成候选…', 'bg-info/10 text-info');
+    try {
+      const result = await adapter.generate({ ...context, creatorInput: creatorInput.trim() });
+      const candidates = result?.candidates;
+      if (!Array.isArray(candidates) || !candidates.length) throw new Error('生成结果未包含候选设定');
+      activeProposals = candidates.map((item, index) => ({ board: ({ rule: 'rules', geography: 'geography', resource: 'resources', faction: 'factions', profession: 'professions', monster: 'monsters', event: 'chronicle', chronicle: 'chronicle' })[item.board_type] || 'rules', title: item.item_name, proposalType: 'AI 候选', description: item.item_content?.description || '', tension: 'mid', commercial: 60, suggestion: (item.affordance_dims || [])[0] || '', affordanceDims: Array.isArray(item.affordance_dims) ? item.affordance_dims : [], id: `proposal-${index}` }));
+      renderDiffProposals();
+      openDiffModal();
+      const conflictCount = Array.isArray(result.validation_conflicts) ? result.validation_conflicts.length : 0;
+      setStatus(conflictCount ? `发现 ${conflictCount} 条冲突建议，候选尚未保存` : '候选仅供审阅，采纳后再保存', 'bg-warning/10 text-warning');
+    } catch (error) { setStatus(error?.message || '生成候选失败', 'bg-error/10 text-error'); }
+  }
+  snapshot.addEventListener('change', () => applyVersion(bridge.versions.find(version => versionKey(version) === snapshot.value)));
+  document.getElementById('v7-setting-layer-tabs')?.addEventListener('click', event => {
+    if (event.target.closest('[data-layer]') && bridge.selected) renderSnapshotLayer();
+  });
+  confirmButton.addEventListener('click', async () => {
+    if (!context || !adapter?.confirm || !canConfirm()) return;
+    setStatus('正在确认候选…', 'bg-info/10 text-info');
+    try { await adapter.confirm({ ...context, worldCandidateIds: bridge.selected.world_candidate_ids || [], bindingCandidateIds: bridge.selected.binding_candidate_ids || [], deleteWorldIds: bridge.selected.delete_world_ids || [], deleteWorldBindingIds: bridge.selected.delete_world_binding_ids || [] }); await readVersions(); showToast('世界设定已确认生效', 'success'); }
+    catch (error) { setStatus(error?.message || '确认失败', 'bg-error/10 text-error'); }
+  });
+  window.saveDrawerItem = async function () {
+    const draftItems = structuredClone(items);
+    if (drawerMode === 'add') {
+      const board = document.getElementById('fld-board').value;
+      const data = collectFields(board);
+      if (!data.title) { showToast('请填写名称', 'error'); return; }
+      draftItems.push({ id: genId('draft'), atomKey: data.title, settingLayer: 'initial', board, title: data.title, name: data.title, fields: data, ai: { tension: 'low', commercial: 50, note: '', suggestion: '待建立绑定关系' } });
+    } else {
+      const index = draftItems.findIndex(item => item.id === currentItemId);
+      const data = index >= 0 ? collectFields(draftItems[index].board) : null;
+      if (!data?.title) { showToast('请填写名称', 'error'); return; }
+      draftItems[index] = { ...draftItems[index], title: data.title, name: data.title, fields: { ...draftItems[index].fields, ...data } };
+    }
+    if (await saveCandidate(draftItems, bindings)) closeDrawer();
+  };
+  window.saveBinding = async function () {
+    syncBindingDraft();
+    const draft = bindingDraft;
+    if (!draft?.to || !draft.type) { showToast('请选择关联目标和类型', 'error'); return; }
+    const draftBindings = [...bindings, { id: genId('draft-binding'), from: draft.from, to: draft.to, type: draft.type, strength: draft.strength, timespan: draft.timespan, unlock: draft.unlock, tags: draft.tags }];
+    if (await saveCandidate(items, draftBindings)) closeBindingModal();
+  };
+  window.deleteCurrentItem = async function () {
+    if (!currentItemId || !confirm('确认将该设定加入待确认删除，并同步移除相关绑定？')) return false;
+    const draftItems = items.filter(item => item.id !== currentItemId);
+    const draftBindings = bindings.filter(binding => binding.from !== currentItemId && binding.to !== currentItemId);
+    if (!(await saveCandidate(draftItems, draftBindings))) return false;
+    closeDrawer();
+    currentItemId = null;
+    showToast('删除已加入候选，确认候选后生效', 'success');
+    return true;
+  };
+  function reportCandidateWriteBlocked() {
+    const message = bridge.frozen ? '设计已锁定，世界设定仅可查看。' : '当前候选合同无法保存完整世界设定快照，操作不会保存。';
+    setStatus(message, bridge.frozen ? 'bg-warning/10 text-warning' : 'bg-error/10 text-error');
+    showToast(message, bridge.frozen ? 'warning' : 'error');
+  }
+  window.confirmDropBinding = async function () {
+    if (!pendingDropBinding) return false;
+    const { geoId, itemId } = pendingDropBinding;
+    const type = document.getElementById('drop-bind-type').value || relationTypeForBoard(itemById(itemId)?.board);
+    const draftBindings = [...bindings, { id: genId('draft-binding'), from: geoId, to: itemId, type, strength: .75, tags: ['拖拽绑定'] }];
+    if (await saveCandidate(items, draftBindings)) closeDropConfirm();
+    return true;
+  };
+  window.removeBinding = async function (bindingId) {
+    const draftBindings = bindings.filter(binding => binding.id !== bindingId);
+    if (!(await saveCandidate(items, draftBindings))) return false;
+    showToast('解绑已加入候选，确认候选后生效', 'success');
+    return true;
+  };
+  window.quickCreateTarget = function () {
+    if (!canSave()) { reportCandidateWriteBlocked(); return false; }
+    const message = '快速新建未接入完整候选保存合同，未创建或保存数据。';
+    setStatus(message, 'bg-warning/10 text-warning');
+    showToast(message, 'warning');
+    return false;
+  };
+  window.acceptProposal = async function (index) {
+    const proposal = activeProposals[index];
+    if (!proposal) return false;
+    const draftItems = structuredClone(items);
+    const draftBindings = structuredClone(bindings);
+    const newItem = { id: genId('draft'), atomKey: proposal.title, settingLayer: 'initial', board: proposal.board, title: proposal.title, name: proposal.title, fields: { title: proposal.title, description: proposal.description }, affordanceDims: proposal.affordanceDims, ai: { tension: proposal.tension, commercial: proposal.commercial, note: 'AI 候选，已由创作者采纳。', suggestion: proposal.suggestion } };
+    draftItems.push(newItem);
+    if (proposal.bindTo && proposal.bindType) draftBindings.push({ id: genId('draft-binding'), from: proposal.bindFrom || currentItemId || newItem.id, to: proposal.bindTo === 'self' ? newItem.id : proposal.bindTo, type: proposal.bindType, strength: .7 });
+    if (!(await saveCandidate(draftItems, draftBindings))) return false;
+    activeProposals.splice(index, 1);
+    renderDiffProposals();
+    if (!activeProposals.length) closeDiffModal();
+    return true;
+  };
+  window.acceptAllProposals = async function () {
+    while (activeProposals.length && await window.acceptProposal(0)) { /* persist each accepted proposal */ }
+  };
+  window.editWorldContext = function () {
+    const message = '作品概况不属于世界设定 RPC，本页不会伪造写回。';
+    setStatus(message, 'bg-warning/10 text-warning');
+    showToast(message, 'warning');
+    return false;
+  };
+  const originalBatchAction = window.batchAction;
+  window.batchAction = async function (action) {
+    if (action === 'delete') {
+      const selectedIds = Array.from(document.querySelectorAll('input[name="bulk-item"]:checked')).map(input => input.value);
+      if (!selectedIds.length) { showToast('未选择任何大纲项', 'warning'); return false; }
+      if (!confirm(`确认将这 ${selectedIds.length} 项设定加入待确认删除？`)) return false;
+      const selectedSet = new Set(selectedIds);
+      const draftItems = items.filter(item => !selectedSet.has(item.id));
+      const draftBindings = bindings.filter(binding => !selectedSet.has(binding.from) && !selectedSet.has(binding.to));
+      return saveCandidate(draftItems, draftBindings);
+    }
+    if (!canSave()) { reportCandidateWriteBlocked(); return false; }
+    return originalBatchAction?.apply(this, arguments);
+  };
+  window.aiFillBinding = function () {
+    const message = '请使用世界设定生成助手取得可审阅的候选。';
+    setStatus(message, 'bg-warning/10 text-warning');
+    showToast(message, 'warning');
+  };
+  window.aiFillDrawer = generateCandidate;
+  window.triggerGlobalAI = generateCandidate;
+  void readVersions();
 })();
 </script>
 </body>

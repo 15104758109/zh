@@ -4,6 +4,8 @@
     {
       "parameters": {
         "path": "43a4c891-b0b8-42c1-bd0d-aa85a824b14e",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
@@ -21,23 +23,28 @@
         "modelId": {
           "__rl": true,
           "mode": "list",
-          "value": ""
+          "value": "={{ $('Require Active Model Binding').first().json.runtime.model_name }}",
+          "cachedResultName": "CURRENT_EFFECTIVE_MODEL"
         },
         "responses": {
           "values": [
             {
-              "content": "你将基于以下原则生成一个候选人物，并为其绑定设定资源。\n1.剧情冲突需求。\n2.性格与价值冲突、角色张力需求。\n3.读者与呈现情绪、氛围实现需求。\n4.性别、魅力、年龄等维度与感情线丰富。"
+              "content": "={{ $(\"Require Active Model Binding\").first().json.runtime.prompt_text + \"\\nINPUT=\" + JSON.stringify({ l1a_unit_candidates: $(\"Require Active Model Binding\").first().json.context.l1a_unit_candidates, existing_characters: $(\"Require Active Model Binding\").first().json.context.existing_characters, world_state: $(\"Require Active Model Binding\").first().json.context.world_state, intent_json: $(\"Require Active Model Binding\").first().json.context.intent_json }) + \"\\n\\n输出约束：候选不是正式事实，不能写入数据库。只输出一个严格 JSON 对象。输出前必须确认 JSON.parse 可以解析。不得输出 Markdown、解释、注释或 JSON 外文本。每个角色只保留一个名为 five_layers_json 的对象；它的四个直接子对象按 L0、L1、L2、L3 命名，且每一层的值都是对象；不得把任何层放到 five_layers_json 外，不得输出额外闭合花括号。char_type 只能是 protagonist、supporting、ensemble、antagonist。每个 relations 项必须包含 from_ref、to_ref、trust、intimacy、power_balance、dependence、hostility、common_goal、secret_known、emotional_bond、relation_type、relation_hierarchy、change_event_json；from_ref 和 to_ref 只能引用本次 characters 数组中的 client_ref，不得使用 existing_characters 的 id 或 UUID。同一无向角色对只能输出一个 relations 项，不得同时输出 A→B 与 B→A。trust、intimacy、power_balance、dependence、emotional_bond 必须是 -100 到 100 的整数；hostility、common_goal、secret_known 必须是 0 到 100 的整数。change_event_json 必须是对象，且 description、event、summary 至少有一个非空字符串。最终输出合同覆盖 runtime.prompt_text 中任何旧输出格式：顶层只允许 characters、relations、initial_memories 三个数组。每个 characters 项必须包含 client_ref、char_name、char_type、five_layers_json、knowledge_boundary_json、arc_json；five_layers_json 的 L0、L1、L2、L3 均为对象；knowledge_boundary_json 的 knows、unknown、false_belief、reasonable_suspect 均为数组；arc_json 必须为对象，且要包含 direction（成长、堕落、错位、稳定之一）和非空 stakes。每个 initial_memories 项必须有 char_ref、memory_type、truth_status、memory_content；memory_type 只能是 event、emotion、knowledge、relationship，truth_status 只能是 true、misremembered、false。不得使用 candidates、char_id_hint、generation_rationale，也不得输出其它顶层字段。\" }}"
             }
           ]
         },
         "builtInTools": {},
-        "options": {}
+        "options": {
+          "baseURL": "={{ $('Require Active Model Binding').first().json.runtime.provider_base_url }}",
+          "temperature": "={{ $('Require Active Model Binding').first().json.runtime.temperature }}",
+          "responseFormat": "json_object"
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.3,
       "position": [
-        224,
-        0
+        660,
+        -120
       ],
       "id": "62400ffa-b505-4f64-a5aa-da21b5027d36",
       "name": "FP003-04 角色设定生成助手",
@@ -46,39 +53,61 @@
           "id": "ktkbgOI2RQI4Y8QK",
           "name": "OpenAI account"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+        "jsCode": "const request = $json.body ?? $json;\nconst uuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;\nconst key = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;\nconst correlation = typeof request?.correlation_id === 'string' ? request.correlation_id : 'unavailable';\nconst fail = (message) => [{ json: { valid: false, response: { ok: false, correlation_id: correlation, error: { code: 'INVALID_REQUEST', message } } } }];\nconst isObject = (value) => value && typeof value === 'object' && !Array.isArray(value);\nconst nonBlank = (value) => typeof value === 'string' && value.trim() !== '';\nconst initialMemoryTypes = new Set(['event', 'emotion', 'knowledge', 'relationship']);\nconst initialMemoryTruthStatuses = new Set(['true', 'misremembered', 'false']);\nconst ids = (value) => Array.isArray(value) && value.every((item) => typeof item === 'string' && uuid.test(item));\nconst candidateValid = (candidate) => {\n  if (!isObject(candidate) || !Array.isArray(candidate.characters) || !candidate.characters.length || !Array.isArray(candidate.relations) || !Array.isArray(candidate.initial_memories)) return false;\n  const refs = new Set();\n  const types = new Set(['protagonist', 'supporting', 'ensemble', 'antagonist']);\n  for (const character of candidate.characters) {\n    if (!isObject(character) || !nonBlank(character.client_ref) || refs.has(character.client_ref) || !nonBlank(character.char_name) || !types.has(character.char_type) || !isObject(character.five_layers_json) || !['L0', 'L1', 'L2', 'L3'].every((layer) => isObject(character.five_layers_json[layer])) || !isObject(character.knowledge_boundary_json) || !['knows', 'unknown', 'false_belief', 'reasonable_suspect'].every((field) => Array.isArray(character.knowledge_boundary_json[field])) || !isObject(character.arc_json)) return false;\n    refs.add(character.client_ref);\n  }\n  const signed = ['trust', 'intimacy', 'power_balance', 'dependence', 'emotional_bond'];\n  const percentage = ['hostility', 'common_goal', 'secret_known'];\n  return candidate.relations.every((relation) => isObject(relation) && refs.has(relation.from_ref) && refs.has(relation.to_ref) && relation.from_ref !== relation.to_ref && nonBlank(relation.relation_type) && nonBlank(relation.relation_hierarchy) && signed.every((field) => Number.isInteger(relation[field]) && relation[field] >= -100 && relation[field] <= 100) && percentage.every((field) => Number.isInteger(relation[field]) && relation[field] >= 0 && relation[field] <= 100) && isObject(relation.change_event_json) && ['description', 'event', 'summary'].some((field) => nonBlank(relation.change_event_json[field]))) && candidate.initial_memories.every((memory) => isObject(memory) && refs.has(memory.char_ref) && initialMemoryTypes.has(memory.memory_type) && initialMemoryTruthStatuses.has(memory.truth_status) && nonBlank(memory.memory_content));\n};\nif (!isObject(request) || !uuid.test(request.local_operator_id ?? '') || !uuid.test(request.book_id ?? '') || !key.test(request.correlation_id ?? '')) return fail('The request identifiers are invalid.');\nif (request.action === 'generate_candidate' || request.action === 'read_versions') {\n  const allowed = new Set(['action', 'correlation_id', 'local_operator_id', 'book_id']);\n  if (Object.keys(request).some((field) => !allowed.has(field))) return fail('This request accepts only the request identifiers.');\n  return [{ json: { valid: true, request } }];\n}\nif (request.action === 'save_candidate') {\n  const allowed = new Set(['action', 'correlation_id', 'local_operator_id', 'book_id', 'candidate', 'bindings']);\n  if (!candidateValid(request.candidate) || !Array.isArray(request.bindings) || request.bindings.length || Object.keys(request).some((field) => !allowed.has(field))) return fail('Candidate saving requires complete character and relation candidates; bindings need a stable selectable world source.');\n  return [{ json: { valid: true, request } }];\n}\nif (request.action === 'confirm') {\n  const allowed = new Set(['action', 'correlation_id', 'local_operator_id', 'book_id', 'idempotency_key', 'character_candidate_ids', 'relation_candidate_ids', 'binding_candidate_ids', 'initial_memories']);\n  const memories = request.initial_memories;\n  const memoriesValid = memories === undefined || (Array.isArray(memories) && memories.every((memory) => isObject(memory) && uuid.test(memory.char_id ?? '') && initialMemoryTypes.has(memory.memory_type) && initialMemoryTruthStatuses.has(memory.truth_status) && nonBlank(memory.memory_content)));\n  if (!key.test(request.idempotency_key ?? '') || !Array.isArray(request.character_candidate_ids) || !request.character_candidate_ids.length || !ids(request.character_candidate_ids) || (request.relation_candidate_ids !== undefined && !ids(request.relation_candidate_ids)) || (request.binding_candidate_ids !== undefined && !ids(request.binding_candidate_ids)) || !memoriesValid || Object.keys(request).some((field) => !allowed.has(field))) return fail('Confirmation must provide stable candidate IDs and an idempotency key.');\n  const rpc_request = { local_operator_id: request.local_operator_id, book_id: request.book_id, idempotency_key: request.idempotency_key, character_candidate_ids: request.character_candidate_ids, ...(request.relation_candidate_ids === undefined ? {} : { relation_candidate_ids: request.relation_candidate_ids }), ...(request.binding_candidate_ids === undefined ? {} : { binding_candidate_ids: request.binding_candidate_ids }), ...(request.initial_memories === undefined ? {} : { initial_memories: request.initial_memories }) };\n  return [{ json: { valid: true, request, rpc_request } }];\n}\nreturn fail('Unsupported character settings action.');"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        528,
+        72,
         0
       ],
-      "id": "d606a8d8-8b67-41d0-8d86-713c9fa9de1e",
-      "name": "Code in JavaScript"
+      "id": "characters-validate",
+      "name": "Validate Character Command"
     },
     {
       "parameters": {
-        "operation": "select",
-        "schema": {
-          "__rl": true,
-          "mode": "list",
-          "value": "public"
-        },
-        "table": {
-          "__rl": true,
-          "mode": "list",
-          "value": ""
+        "conditions": {
+          "options": {
+            "caseSensitive": true
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        256,
+        0
+      ],
+      "id": "characters-valid-route",
+      "name": "Valid Request?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH request AS (\n  SELECT $1::jsonb AS value\n), book_scope AS (\n  SELECT b.id, b.intent_json, b.forbid_json, public.v7_design_editable(b.id) AS design_editable\n  FROM public.book_project AS b\n  JOIN request AS r\n    ON b.id = (r.value->>'book_id')::uuid\n   AND b.local_operator_id = (r.value->>'local_operator_id')::uuid\n), runtime AS (\n  SELECT jsonb_build_object(\n    'node_code', b.node_code,\n    'model_config_id', b.model_config_id,\n    'model_config_version', b.model_config_version,\n    'prompt_config_id', b.prompt_config_id,\n    'prompt_version', b.prompt_version,\n    'template_type', b.template_type,\n    'temperature', b.temperature,\n    'prompt_text', b.prompt_text,\n    'prompt_status', b.prompt_status,\n    'model_name', b.model_name,\n    'provider_base_url', b.provider_base_url,\n    'api_key_ref', b.api_key_ref,\n    'routing_config_jsonb', b.routing_config_jsonb,\n    'parameters_jsonb', b.parameters_jsonb\n  ) AS binding\n  FROM public.v_prompt_runtime_binding AS b\n  JOIN request AS r\n    ON b.local_operator_id = (r.value->>'local_operator_id')::uuid\n  WHERE b.node_code = 'FP003-04'\n    AND b.prompt_status = 'active'\n    AND NULLIF(btrim(b.model_name), '') IS NOT NULL\n    AND NULLIF(btrim(b.provider_base_url), '') IS NOT NULL\n    AND NULLIF(btrim(b.prompt_text), '') IS NOT NULL\n    AND NULLIF(btrim(b.api_key_ref), '') IS NOT NULL\n  ORDER BY b.model_config_version DESC, b.prompt_version DESC\n  LIMIT 1\n)\nSELECT jsonb_build_object(\n  'book_exists', EXISTS (SELECT 1 FROM book_scope),\n  'design_editable', COALESCE((SELECT design_editable FROM book_scope), false),\n  'intent_json', COALESCE((SELECT intent_json FROM book_scope), '{}'::jsonb),\n  'forbid_json', COALESCE((SELECT forbid_json FROM book_scope), '{}'::jsonb),\n  'l1a_unit_candidates', COALESCE((\n    SELECT jsonb_agg(jsonb_build_object(\n      'id', id,\n      'l1a_name', l1a_name,\n      'conflict_background', conflict_background,\n      'escalation_path', escalation_path,\n      'stakes', stakes,\n      'irreversible_consequence', irreversible_consequence,\n      'plot_emotion_commit', plot_emotion_commit,\n      'arc_requirement', arc_requirement,\n      'info_reveal_boundary', info_reveal_boundary,\n      'role_arc_json', role_arc_json\n    ) ORDER BY l1a_index)\n    FROM public.l1a_unit\n    JOIN request AS r ON l1a_unit.book_id = (r.value->>'book_id')::uuid\n    WHERE l1a_unit.status = 'candidate'\n      AND l1a_unit.is_valid\n      AND NOT l1a_unit.is_shadow\n  ), '[]'::jsonb),\n  'world_state', COALESCE((\n    SELECT jsonb_agg(jsonb_build_object(\n      'atom_key', atom_key,\n      'atom_type', atom_type,\n      'atom_value_jsonb', atom_value_jsonb,\n      'affordance_dims', affordance_dims\n    ) ORDER BY atom_key)\n    FROM public.world_state\n    JOIN request AS r ON world_state.book_id = (r.value->>'book_id')::uuid\n    WHERE world_state.is_active\n      AND world_state.is_formal\n      AND world_state.is_valid\n      AND NOT world_state.is_shadow\n  ), '[]'::jsonb),\n  'existing_characters', COALESCE((\n    SELECT jsonb_agg(jsonb_build_object(\n      'id', id,\n      'char_name', char_name,\n      'char_type', char_type,\n      'five_layers_json', five_layers_json,\n      'knowledge_boundary_json', knowledge_boundary_json,\n      'arc_json', arc_json\n    ) ORDER BY char_name)\n    FROM public.character\n    JOIN request AS r ON character.book_id = (r.value->>'book_id')::uuid\n    WHERE character.is_active\n      AND character.is_formal\n      AND character.is_valid\n      AND NOT character.is_shadow\n  ), '[]'::jsonb),\n  'runtime', COALESCE((SELECT binding FROM runtime), '{}'::jsonb)\n) AS context;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.request)] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        48,
+        460,
         0
       ],
       "id": "e8d86faa-42a5-4ed9-9792-5f1da5c4d03b",
@@ -88,16 +117,150 @@
           "id": "kitjw53XlibTPzxM",
           "name": "zh-database"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
+        "jsCode": "const request = $('Validate Character Command').first().json.request;\nconst context = $json.context ?? {};\nconst runtime = context.runtime ?? {};\nconst fail = (code, message) => [{ json: { valid: false, response: { ok: false, correlation_id: request?.correlation_id ?? 'unavailable', error: { code, message } } } }];\nif (context.book_exists !== true) return fail('SCOPE_REJECTED', 'The selected book is unavailable.');\nif (context.design_editable !== true) return fail('DESIGN_LOCKED', 'Character settings are read-only after L1A sorting is confirmed.');\nconst configured = typeof runtime.model_name === 'string' && runtime.model_name.trim() !== ''\n  && typeof runtime.provider_base_url === 'string' && runtime.provider_base_url.trim() !== ''\n  && typeof runtime.prompt_text === 'string' && runtime.prompt_text.trim() !== ''\n  && typeof runtime.api_key_ref === 'string' && runtime.api_key_ref.trim() !== '';\nif (!configured) return fail('CONFIG_CONTRACT_BLOCKED', 'An active FP003-04 model and prompt binding is required.');\nreturn [{ json: { valid: true, request, runtime, context } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ],
+      "id": "characters-runtime-config",
+      "name": "Require Active Model Binding"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        0
+      ],
+      "id": "characters-runtime-config-route",
+      "name": "Runtime Configuration Available?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Validate Character Command').first().json.request.action }}",
+              "rightValue": "generate_candidate",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "id": "characters-action-route",
+      "name": "Generate Candidate?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Require Active Model Binding').first().json.request;\nconst text = $json.output_text ?? $json.output?.[0]?.content?.[0]?.text ?? $json.message?.content ?? $json.content ?? $json.text;\nconst fail = () => [{ json: { response: { ok: false, correlation_id: request?.correlation_id ?? 'unavailable', error: { code: 'INTERNAL_ERROR', message: '角色候选格式不完整，请重新生成。' } } } }];\nconst isObject = (value) => value && typeof value === 'object' && !Array.isArray(value);\nconst nonBlank = (value) => typeof value === 'string' && value.trim() !== '';\nconst characterTypes = new Set(['protagonist', 'supporting', 'ensemble', 'antagonist']);\nconst initialMemoryTypes = new Set(['event', 'emotion', 'knowledge', 'relationship']);\nconst initialMemoryTruthStatuses = new Set(['true', 'misremembered', 'false']);\nconst signedDimensions = ['trust', 'intimacy', 'power_balance', 'dependence', 'emotional_bond'];\nconst percentageDimensions = ['hostility', 'common_goal', 'secret_known'];\ntry {\n  const candidate = JSON.parse(text);\n  const arrays = ['characters', 'relations', 'initial_memories'];\n  if (!isObject(candidate) || !arrays.every((key) => Array.isArray(candidate[key])) || candidate.characters.length === 0) throw new Error('shape');\n  const refs = new Set();\n  for (const character of candidate.characters) {\n    if (!isObject(character) || !nonBlank(character.client_ref) || refs.has(character.client_ref) || !nonBlank(character.char_name) || !characterTypes.has(character.char_type) || !isObject(character.five_layers_json) || !['L0', 'L1', 'L2', 'L3'].every((key) => isObject(character.five_layers_json[key])) || !isObject(character.knowledge_boundary_json) || !['knows', 'unknown', 'false_belief', 'reasonable_suspect'].every((key) => Array.isArray(character.knowledge_boundary_json[key])) || !isObject(character.arc_json) || (character.gender !== undefined && typeof character.gender !== 'string')) throw new Error('character');\n    refs.add(character.client_ref);\n  }\n  const relations = [];\n  const relationPairs = new Set();\n  for (const relation of candidate.relations) {\n    if (!isObject(relation) || !refs.has(relation.from_ref) || !refs.has(relation.to_ref) || relation.from_ref === relation.to_ref || !nonBlank(relation.relation_type) || !nonBlank(relation.relation_hierarchy) || !signedDimensions.every((key) => Number.isInteger(relation[key]) && relation[key] >= -100 && relation[key] <= 100) || !percentageDimensions.every((key) => Number.isInteger(relation[key]) && relation[key] >= 0 && relation[key] <= 100)) throw new Error('relation');\n    const pairKey = JSON.stringify([relation.from_ref, relation.to_ref].sort());\n    if (relationPairs.has(pairKey)) throw new Error('relation_duplicate_pair');\n    relationPairs.add(pairKey);\n    const eventInput = relation.change_event_json ?? relation.change_event;\n    const changeEvent = typeof eventInput === 'string' && eventInput.trim() ? { event: eventInput.trim() } : eventInput;\n    if (!isObject(changeEvent) || !['description', 'event', 'summary'].some((key) => nonBlank(changeEvent[key]))) throw new Error('relation_event');\n    const normalized = { ...relation, change_event_json: changeEvent };\n    delete normalized.change_event;\n    relations.push(normalized);\n  }\n  for (const memory of candidate.initial_memories) {\n    if (!isObject(memory) || !refs.has(memory.char_ref) || !initialMemoryTypes.has(memory.memory_type) || !initialMemoryTruthStatuses.has(memory.truth_status) || !nonBlank(memory.memory_content)) throw new Error('memory');\n  }\n  const normalizedCandidate = { ...candidate, relations };\n  return [{ json: { response: { ok: true, correlation_id: request.correlation_id, result: { status: 'candidate', candidate: normalizedCandidate } } } }];\n} catch {\n  return fail();\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        -120
+      ],
+      "id": "characters-candidate-payload",
+      "name": "Validate Candidate Payload"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.response?.ok === true && $json.response?.result?.status === 'candidate' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        -120
+      ],
+      "id": "characters-candidate-route",
+      "name": "Valid Candidate?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH request AS (SELECT $1::jsonb AS value),\ncharacter_payload AS (\n  SELECT item.value AS character,\n    COALESCE(NULLIF(item.value->>'char_code', ''), item.value->>'client_ref') AS char_code\n  FROM request, jsonb_array_elements(CASE WHEN request.value->>'action' = 'save_candidate' THEN request.value->'candidate'->'characters' ELSE '[]'::jsonb END) AS item(value)\n),\nexisting_characters AS (\n  SELECT current.id, current.char_code\n  FROM api.v_character_candidate_write AS current\n  JOIN request AS request_scope\n    ON current.book_id = (request_scope.value->>'book_id')::uuid\n   AND current.local_operator_id = (request_scope.value->>'local_operator_id')::uuid\n  JOIN character_payload AS payload\n    ON payload.char_code = current.char_code\n),\ncharacter_input AS (\n  SELECT payload.character, payload.char_code, existing_character.id AS existing_character_id,\n    COALESCE(existing_character.id, gen_random_uuid()) AS id\n  FROM character_payload AS payload\n  LEFT JOIN existing_characters AS existing_character\n    ON existing_character.char_code = payload.char_code\n),\ncharacter_update AS (\n  UPDATE api.v_character_candidate_write AS current\n  SET char_name = input.character->>'char_name',\n      five_layers_json = input.character->'five_layers_json',\n      knowledge_boundary_json = input.character->'knowledge_boundary_json',\n      arc_json = input.character->'arc_json',\n      is_active = true,\n      char_type = input.character->>'char_type',\n      char_code = input.char_code,\n      gender = NULLIF(input.character->>'gender', '')\n  FROM character_input AS input\n  WHERE current.id = input.id\n    AND input.existing_character_id IS NOT NULL\n  RETURNING current.id\n),\ncharacter_insert AS (\n  INSERT INTO api.v_character_candidate_write (id, book_id, char_name, five_layers_json, knowledge_boundary_json, arc_json, is_active, char_type, char_code, gender, local_operator_id)\n  SELECT input.id, (request.value->>'book_id')::uuid, input.character->>'char_name', input.character->'five_layers_json', input.character->'knowledge_boundary_json', input.character->'arc_json', true, input.character->>'char_type', input.char_code, NULLIF(input.character->>'gender', ''), (request.value->>'local_operator_id')::uuid\n  FROM request CROSS JOIN character_input AS input\n  WHERE input.existing_character_id IS NULL\n  RETURNING id\n),\ncharacter_write AS (\n  SELECT id FROM character_update\n  UNION ALL\n  SELECT id FROM character_insert\n),\nrelation_payload AS (\n  SELECT item.value AS relation\n  FROM request, jsonb_array_elements(CASE WHEN request.value->>'action' = 'save_candidate' THEN request.value->'candidate'->'relations' ELSE '[]'::jsonb END) AS item(value)\n),\nrelation_input AS (\n  SELECT payload.relation,\n    (SELECT id FROM character_input WHERE character->>'client_ref' = payload.relation->>'from_ref') AS char_a_id,\n    (SELECT id FROM character_input WHERE character->>'client_ref' = payload.relation->>'to_ref') AS char_b_id\n  FROM relation_payload AS payload\n),\nexisting_relations AS (\n  SELECT current.id, current.char_a_id, current.char_b_id\n  FROM api.v_relation_candidate_write AS current\n  JOIN request AS request_scope\n    ON current.book_id = (request_scope.value->>'book_id')::uuid\n   AND current.local_operator_id = (request_scope.value->>'local_operator_id')::uuid\n  JOIN relation_input AS input\n    ON input.char_a_id = current.char_a_id\n   AND input.char_b_id = current.char_b_id\n),\nrelation_update AS (\n  UPDATE api.v_relation_candidate_write AS current\n  SET char_a_id = input.char_a_id,\n      char_b_id = input.char_b_id,\n      trust = (input.relation->>'trust')::integer,\n      intimacy = (input.relation->>'intimacy')::integer,\n      power_balance = (input.relation->>'power_balance')::integer,\n      dependence = (input.relation->>'dependence')::integer,\n      hostility = (input.relation->>'hostility')::integer,\n      common_goal = (input.relation->>'common_goal')::integer,\n      secret_known = (input.relation->>'secret_known')::integer,\n      emotional_bond = (input.relation->>'emotional_bond')::integer,\n      relation_type = input.relation->>'relation_type',\n      relation_hierarchy = input.relation->>'relation_hierarchy',\n      change_event_json = input.relation->'change_event_json'\n  FROM relation_input AS input\n  JOIN existing_relations AS existing_relation\n    ON existing_relation.char_a_id = input.char_a_id\n   AND existing_relation.char_b_id = input.char_b_id\n  WHERE current.id = existing_relation.id\n  RETURNING current.id\n),\nrelation_insert AS (\n  INSERT INTO api.v_relation_candidate_write (id, book_id, char_a_id, char_b_id, trust, intimacy, power_balance, dependence, hostility, common_goal, secret_known, emotional_bond, relation_type, relation_hierarchy, change_event_json, local_operator_id)\n  SELECT gen_random_uuid(), (request.value->>'book_id')::uuid, input.char_a_id, input.char_b_id,\n    (input.relation->>'trust')::integer, (input.relation->>'intimacy')::integer, (input.relation->>'power_balance')::integer, (input.relation->>'dependence')::integer, (input.relation->>'hostility')::integer, (input.relation->>'common_goal')::integer, (input.relation->>'secret_known')::integer, (input.relation->>'emotional_bond')::integer,\n    input.relation->>'relation_type', input.relation->>'relation_hierarchy', input.relation->'change_event_json', (request.value->>'local_operator_id')::uuid\n  FROM request CROSS JOIN relation_input AS input\n  LEFT JOIN existing_relations AS existing_relation\n    ON existing_relation.char_a_id = input.char_a_id\n   AND existing_relation.char_b_id = input.char_b_id\n  WHERE existing_relation.id IS NULL\n  RETURNING id\n),\nrelation_write AS (\n  SELECT id FROM relation_update\n  UNION ALL\n  SELECT id FROM relation_insert\n),\nsave_response AS (\n  SELECT jsonb_build_object('ok', true, 'correlation_id', request.value->>'correlation_id', 'result', jsonb_build_object('status', 'candidate', 'character_candidate_ids', COALESCE((SELECT jsonb_agg(id) FROM character_write), '[]'::jsonb), 'relation_candidate_ids', COALESCE((SELECT jsonb_agg(id) FROM relation_write), '[]'::jsonb), 'client_ref_map', COALESCE((SELECT jsonb_object_agg(character->>'client_ref', id) FROM character_input), '{}'::jsonb))) AS response\n  FROM request WHERE request.value->>'action' = 'save_candidate'\n),\nversion_response AS (\n  SELECT jsonb_build_object('ok', true, 'correlation_id', request.value->>'correlation_id', 'result', jsonb_build_object(\n    'frozen', NOT public.v7_design_editable((request.value->>'book_id')::uuid),\n    'candidate', jsonb_build_object('state', 'candidate', 'characters', COALESCE((SELECT jsonb_agg(to_jsonb(c)) FROM public.character c JOIN public.book_project bp ON bp.id = c.book_id WHERE c.book_id = (request.value->>'book_id')::uuid AND bp.local_operator_id = (request.value->>'local_operator_id')::uuid AND c.status = 'candidate' AND NOT c.is_formal AND c.is_valid AND NOT c.is_shadow), '[]'::jsonb), 'relations', COALESCE((SELECT jsonb_agg(to_jsonb(r)) FROM public.relation_state r JOIN public.book_project bp ON bp.id = r.book_id WHERE r.book_id = (request.value->>'book_id')::uuid AND bp.local_operator_id = (request.value->>'local_operator_id')::uuid AND NOT r.is_formal AND r.is_valid AND NOT r.is_shadow), '[]'::jsonb), 'initial_memories', '[]'::jsonb),\n    'formal', jsonb_build_object('state', 'formal', 'characters', COALESCE((SELECT jsonb_agg(to_jsonb(c)) FROM public.character c JOIN public.book_project bp ON bp.id = c.book_id WHERE c.book_id = (request.value->>'book_id')::uuid AND bp.local_operator_id = (request.value->>'local_operator_id')::uuid AND c.is_formal AND c.is_valid AND NOT c.is_shadow), '[]'::jsonb), 'relations', COALESCE((SELECT jsonb_agg(to_jsonb(r)) FROM public.relation_state r JOIN public.book_project bp ON bp.id = r.book_id WHERE r.book_id = (request.value->>'book_id')::uuid AND bp.local_operator_id = (request.value->>'local_operator_id')::uuid AND r.is_formal AND r.is_valid AND NOT r.is_shadow), '[]'::jsonb), 'initial_memories', COALESCE((SELECT jsonb_agg(to_jsonb(m)) FROM public.character_memory AS m JOIN public.character AS c ON c.id = m.char_id JOIN public.book_project AS bp ON bp.id = m.book_id WHERE m.book_id = (request.value->>'book_id')::uuid AND bp.local_operator_id = (request.value->>'local_operator_id')::uuid AND c.book_id = m.book_id AND c.is_formal AND c.is_valid AND NOT c.is_shadow AND m.is_valid AND NOT m.is_shadow), '[]'::jsonb)))) AS response\n  FROM request WHERE request.value->>'action' = 'read_versions'\n),\nconfirm_response AS (SELECT public.rpc_commit_character_settings(request.value - 'action' - 'correlation_id') AS response FROM request WHERE request.value->>'action' = 'confirm')\nSELECT response FROM save_response UNION ALL SELECT response FROM version_response UNION ALL SELECT response FROM confirm_response;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.request)] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1224,
+        0
+      ],
+      "id": "characters-rpc",
+      "name": "Commit Character Settings RPC",
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response ?? { ok: false, correlation_id: $('Validate Character Command').first().json.request?.correlation_id ?? 'unavailable', error: { code: 'INTERNAL_ERROR', message: '角色设定服务暂时无法完成，请稍后重试。' } } }}",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        736,
+        1440,
         0
       ],
       "id": "cb6bd3c1-4c08-4141-a151-d951cab31620",
@@ -110,18 +273,54 @@
       "main": [
         [
           {
-            "node": "读世界设定和已有角色",
+            "node": "Validate Character Command",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "FP003-04 角色设定生成助手": {
+    "Validate Character Command": {
       "main": [
         [
           {
-            "node": "Code in JavaScript",
+            "node": "Valid Request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Request?": {
+      "main": [
+        [
+          {
+            "node": "Generate Candidate?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Candidate?": {
+      "main": [
+        [
+          {
+            "node": "读世界设定和已有角色",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Commit Character Settings RPC",
             "type": "main",
             "index": 0
           }
@@ -132,15 +331,105 @@
       "main": [
         [
           {
-            "node": "FP003-04 角色设定生成助手",
+            "node": "Require Active Model Binding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Code in JavaScript": {
+    "Require Active Model Binding": {
       "main": [
+        [
+          {
+            "node": "Runtime Configuration Available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Runtime Configuration Available?": {
+      "main": [
+        [
+          {
+            "node": "FP003-04 角色设定生成助手",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP003-04 角色设定生成助手": {
+      "main": [
+        [
+          {
+            "node": "Validate Candidate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Candidate Payload": {
+      "main": [
+        [
+          {
+            "node": "Valid Candidate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Candidate?": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Commit Character Settings RPC": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Respond to Webhook",

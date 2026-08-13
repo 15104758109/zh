@@ -3,14 +3,15 @@
   "nodes": [
     {
       "parameters": {
-        "path": "/generate_l1a",
-        "responseMode": "lastNode",
+        "httpMethod": "POST",
+        "path": "generate_l1a",
+        "responseMode": "responseNode",
         "options": {}
       },
       "id": "0ec48a29-f3f6-4ad8-a1e5-910736393217",
-      "name": "Webhook：/generate_l1a",
+      "name": "Webhook: Generate L1A",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         0,
         0
@@ -19,218 +20,135 @@
     },
     {
       "parameters": {
-        "operation": "query",
-        "additionalFields": {}
-      },
-      "id": "428c4551-57b7-4b85-a4f8-20f2344c6e06",
-      "name": "RPC：获取运行锁 rpc_acquire_run_lock",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [
-        336,
-        -224
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "query",
-        "additionalFields": {}
-      },
-      "id": "c5d49ae6-0d7d-4d80-ad82-1a387d6015c6",
-      "name": "读取书籍/世界/角色基础快照 PostgreSQL View / RPC",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [
-        336,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "query",
-        "additionalFields": {}
-      },
-      "id": "a7576dfb-f0df-4569-ab36-a5d0e1fd42d1",
-      "name": "读取 conflict_seed source_type = initial",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [
-        336,
-        240
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "kitjw53XlibTPzxM",
-          "name": "zh-database"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// 校验 LLM 输出的 JSON 格式是否符合 L1A 结构\nconst rawText = items[0].json.output || '';\ntry {\n  const l1aCandidates = JSON.parse(rawText);\n  return l1aCandidates.map(item => ({\n    json: {\n      ...item,\n      isValid: !!(item.conflict_seed_id && item.conflict_type && item.description)\n    }\n  }));\n} catch (e) {\n  return [{ json: { error: 'Invalid JSON format', raw: rawText, isValid: false } }];\n}"
+        "jsCode": "const request = $input.first().json.body ?? $input.first().json;\nconst correlation_id = typeof request?.correlation_id === 'string' ? request.correlation_id : 'unavailable';\nconst uuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;\nconst token = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;\nconst object = request && typeof request === 'object' && !Array.isArray(request);\nconst common = object && uuid.test(request.local_operator_id ?? '') && uuid.test(request.book_id ?? '') && token.test(request.correlation_id ?? '');\nconst exact = (fields) => object && Object.keys(request).length === fields.length && Object.keys(request).every((key) => fields.includes(key));\nconst read = common && request.action === 'read' && exact(['action', 'local_operator_id', 'book_id', 'correlation_id']);\nconst generate = common && request.action === 'generate' && token.test(request.idempotency_key ?? '') && exact(['action', 'local_operator_id', 'book_id', 'correlation_id', 'idempotency_key']);\nreturn [{ json: read || generate ? { request } : { ok: false, correlation_id, redacted_error: { code: 'INVALID_REQUEST', message: 'The L1A request could not be accepted.' } } }];"
       },
       "id": "e19786bb-39d3-4977-a304-84b7677f38e3",
-      "name": "JSON修复与候选结构校验",
+      "name": "Validate Generate Request",
       "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
-        944,
+        224,
         0
       ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// 修复商业筛选后输出的 JSON 结果\nconst rawText = items[0].json.output || '';\ntry {\n  const candidates = JSON.parse(rawText);\n  return candidates.map(item => ({ json: item }));\n} catch (e) {\n  return [{ json: { error: 'Invalid JSON format', raw: rawText } }];\n}"
-      },
-      "id": "e0ece32d-9575-4438-a6ea-4b9dbdcacd37",
-      "name": "JSON修复",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        1440,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// 修复支线剧情补充后输出的 JSON 结果\nconst rawText = items[0].json.output || '';\ntry {\n  const candidates = JSON.parse(rawText);\n  return candidates.map(item => ({ json: item }));\n} catch (e) {\n  return [{ json: { error: 'Invalid JSON format', raw: rawText } }];\n}"
-      },
-      "id": "3ee2fcf1-9566-498e-a0fc-a1c669e3d7ad",
-      "name": "JSON修复 (2)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        2208,
-        128
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "query",
-        "additionalFields": {}
-      },
-      "id": "323e7cf9-a595-4153-a676-892970c74a76",
-      "name": "写库：conflict_seed source_type = l1a_generated",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [
-        1952,
-        -272
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "kitjw53XlibTPzxM",
-          "name": "zh-database"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "query",
-        "additionalFields": {}
-      },
-      "id": "9794d2f9-f892-4a26-a953-381f4590a2bb",
-      "name": "RPC：释放运行锁",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [
-        1952,
-        -432
-      ]
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "id": "77368431-bc45-422a-a2d8-15f8125cd63b",
-      "name": "Respond：L1A生成完成",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [
-        2224,
-        -272
-      ]
-    },
-    {
-      "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "=你是 L1A 冲突生成器。结合冲突种子、角色四层模型及世界可供性，生成满足商业与情绪要求的 L1A 单元数据。\n\n## 输入数据\n选定的冲突种子：\n相关角色档案（含当前状态与四层模型L0-L3）：\n相关世界设定条目：\n全局商业/情绪控制线：\n## 生成步骤（四维度遍历）\n步骤1：角色驱动分析\n基于参与角色的L1驱动层（欲望/恐惧）和L3关系层，推演他们会如何自发推动或卷入此冲突。\n注意：分析必须来自角色四层模型字段，不得凭空设定角色动机。\n步骤2：世界阻力分析\n提取对此冲突构成的环境限制、规则代价和资源门槛。\n输出：阻力清单，每项含引用\n步骤3：商业情绪分析\n评估此冲突的情绪烈度和爽点结构。\n检查：是否透支了未来高潮预算？\n必须声明本L1A刻意保留的底牌。\n步骤4：导演收束定稿\n将上述三种力量交汇，生成最终L1A结构。\n明确区分情节承诺和情绪承诺。\n"
-            }
-          ]
-        },
-        "builtInTools": {},
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
-      "position": [
-        1136,
-        0
-      ],
-      "id": "dd579a68-c1fc-445d-9834-6a0a84b3b0a7",
-      "name": "商业筛选 过滤低价值、重复、难持续候选",
-      "credentials": {
-        "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
-        }
-      }
     },
     {
       "parameters": {
         "conditions": {
-          "number": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "value1": "={{ $json.length }}",
-              "operation": "largerEqual",
-              "value2": "=需求数量=总字数/章节字数/3"
+              "leftValue": "={{ $json.request ? 'ok' : 'error' }}",
+              "rightValue": "ok",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         }
       },
       "id": "c78ed7fc-2a2a-4402-ae75-d99f1c2f9d5e",
-      "name": "IF：候选数量>需求数量",
+      "name": "Valid Generate Request?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
-        1696,
+        432,
         0
       ]
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS request\n), scoped AS (\n  SELECT\n    i.request,\n    p.id,\n    p.local_operator_id,\n    p.title,\n    p.genre_main,\n    p.intent_json,\n    p.forbid_json,\n    p.target_words,\n    p.chapter_words,\n    p.stage_code,\n    p.run_status,\n    p.current_l1a_id,\n    NOT EXISTS (\n      SELECT 1\n      FROM public.l1a_unit AS locked_l1a\n      WHERE locked_l1a.book_id = p.id\n        AND locked_l1a.is_locked\n        AND locked_l1a.is_valid\n        AND NOT locked_l1a.is_shadow\n    ) AS design_editable\n  FROM input AS i\n  LEFT JOIN public.book_project AS p\n    ON p.id = (i.request->>'book_id')::uuid\n   AND p.local_operator_id = (i.request->>'local_operator_id')::uuid\n), resolved AS (\n  SELECT\n    s.*,\n    CASE WHEN s.request->>'action' = 'generate' THEN COALESCE((\n      SELECT jsonb_build_object(\n        'node_code', binding.node_code,\n        'model_config_id', binding.model_config_id,\n        'model_config_version', binding.model_config_version,\n        'prompt_config_id', binding.prompt_config_id,\n        'prompt_version', binding.prompt_version,\n        'template_type', binding.template_type,\n        'temperature', binding.temperature,\n        'prompt_text', binding.prompt_text,\n        'prompt_status', binding.prompt_status,\n        'model_name', binding.model_name,\n        'provider_base_url', binding.provider_base_url,\n        'api_key_ref', binding.api_key_ref,\n        'routing_config_jsonb', binding.routing_config_jsonb,\n        'parameters_jsonb', binding.parameters_jsonb\n      )\n      FROM public.v_prompt_runtime_binding AS binding\n      WHERE binding.local_operator_id = s.local_operator_id\n        AND binding.node_code = 'FP004-01'\n        AND binding.prompt_status = 'active'\n        AND NULLIF(btrim(binding.model_name), '') IS NOT NULL\n        AND NULLIF(btrim(binding.provider_base_url), '') IS NOT NULL\n        AND NULLIF(btrim(binding.prompt_text), '') IS NOT NULL\n        AND NULLIF(btrim(binding.api_key_ref), '') IS NOT NULL\n      ORDER BY binding.model_config_version DESC, binding.prompt_version DESC\n      LIMIT 1\n    ), '{}'::jsonb) ELSE '{}'::jsonb END AS binding,\n    CASE WHEN s.request->>'action' = 'generate' THEN public.rpc_get_effective_skills(jsonb_build_object(\n      'local_operator_id', s.request->>'local_operator_id',\n      'book_id', s.request->>'book_id',\n      'read_mode', 'effective',\n      'skill_category', '题材组合',\n      'genre_main', s.genre_main\n    )) ELSE jsonb_build_object('ok', true, 'skills', '[]'::jsonb) END AS skills_response\n  FROM scoped AS s\n)\nSELECT CASE\n  WHEN r.id IS NULL THEN jsonb_build_object(\n    'ok', false,\n    'correlation_id', r.request->>'correlation_id',\n    'redacted_error', jsonb_build_object('code', 'SCOPE_REJECTED', 'message', 'The selected book is unavailable.')\n  )\n  WHEN r.request->>'action' = 'read' THEN jsonb_build_object(\n    'ok', true,\n    'correlation_id', r.request->>'correlation_id',\n    'result', jsonb_build_object(\n      'book', jsonb_build_object(\n        'id', r.id,\n        'title', r.title,\n        'genre_main', r.genre_main,\n        'intent_json', COALESCE(r.intent_json, '{}'::jsonb),\n        'forbid_json', COALESCE(r.forbid_json, '{}'::jsonb),\n        'target_words', r.target_words,\n        'chapter_words', r.chapter_words,\n        'stage_code', r.stage_code,\n        'run_status', r.run_status,\n        'current_l1a_id', r.current_l1a_id,\n        'design_editable', r.design_editable\n      ),\n      'l1as', COALESCE((\n        SELECT jsonb_agg(jsonb_build_object(\n          'id', l.id,\n          'l1a_index', l.l1a_index,\n          'l1a_name', l.l1a_name,\n          'conflict_background', l.conflict_background,\n          'escalation_path', l.escalation_path,\n          'stakes', l.stakes,\n          'irreversible_consequence', l.irreversible_consequence,\n          'plot_emotion_commit', l.plot_emotion_commit,\n          'arc_requirement', l.arc_requirement,\n          'info_reveal_boundary', l.info_reveal_boundary,\n          'role_arc_json', l.role_arc_json,\n          'status', l.status,\n          'source_type', l.source_type,\n          'confirmation_status', l.confirmation_status,\n          'is_formal', l.is_formal,\n          'is_locked', l.is_locked,\n          'mid_goals', l.mid_goals,\n          'world_progress_json', l.world_progress_json,\n          'future_value_reserved', l.future_value_reserved,\n          'future_setting_seeds', l.future_setting_seeds,\n          'world_resistance_refs', l.world_resistance_refs,\n          'jinzhan', l.jinzhan,\n          'payoff', l.payoff,\n          'emotion_type', l.emotion_type,\n          'has_explicit_hook', l.has_explicit_hook,\n          'consequences', l.consequences,\n          'escalation', l.escalation,\n          'related_hook', l.related_hook,\n          'role_arcs', l.role_arcs,\n          'participant_chars_json', l.participant_chars_json,\n          'three_line_json', l.three_line_json,\n          'return_direction', l.return_direction\n        ) ORDER BY l.l1a_index, l.created_at)\n        FROM public.l1a_unit AS l\n        WHERE l.book_id = r.id\n          AND l.is_valid\n          AND NOT l.is_shadow\n      ), '[]'::jsonb),\n      'characters', COALESCE((\n        SELECT jsonb_agg(jsonb_build_object(\n          'id', c.id,\n          'char_name', c.char_name,\n          'char_type', c.char_type,\n          'gender', c.gender,\n          'arc_json', c.arc_json,\n          'is_active', c.is_active,\n          'is_formal', c.is_formal\n        ) ORDER BY c.char_name)\n        FROM public.character AS c\n        WHERE c.book_id = r.id\n          AND c.is_valid\n          AND NOT c.is_shadow\n      ), '[]'::jsonb),\n      'chapters', COALESCE((\n        SELECT jsonb_agg(jsonb_build_object(\n          'id', ch.id,\n          'l1a_unit_id', ch.l1a_unit_id,\n          'chapter_index', ch.chapter_index,\n          'title', ch.title,\n          'status', ch.status,\n          'run_status', ch.run_status,\n          'is_finalized', ch.is_finalized,\n          'confirmation_status', ch.confirmation_status,\n          'word_count', ch.word_count,\n          'formal_summary', ch.formal_summary,\n          'updated_at', ch.updated_at\n        ) ORDER BY ch.l1a_unit_id, ch.chapter_index)\n        FROM public.chapter AS ch\n        WHERE ch.book_id = r.id\n          AND ch.is_valid\n          AND NOT ch.is_shadow\n      ), '[]'::jsonb),\n      'sort_draft', CASE WHEN r.design_editable THEN (\n        SELECT log.result->'result'\n        FROM public.product_request_log AS log\n        WHERE log.operation = 'fp004_02_sort_l1a'\n          AND log.local_operator_id = r.local_operator_id\n          AND log.book_id = r.id\n          AND log.result->>'ok' = 'true'\n          AND log.result->'result'->>'design_fingerprint' = public.v7_formal_design_fingerprint(r.id)\n          AND log.result->'result'->>'candidate_fingerprint' = (\n            SELECT encode(digest(convert_to(COALESCE(\n              jsonb_agg(to_jsonb(candidate) - 'created_at' - 'updated_at' ORDER BY candidate.id),\n              '[]'::jsonb\n            )::text, 'UTF8'), 'sha256'), 'hex')\n            FROM public.l1a_unit AS candidate\n            WHERE candidate.book_id = r.id\n              AND NOT candidate.is_formal\n              AND candidate.is_valid\n              AND NOT candidate.is_shadow\n              AND NOT candidate.is_locked\n          )\n        ORDER BY log.created_at DESC\n        LIMIT 1\n      ) END\n    )\n  )\n  ELSE jsonb_build_object(\n    'ok', true,\n    'correlation_id', r.request->>'correlation_id',\n    'context', jsonb_build_object(\n      'design_editable', r.design_editable,\n      'book', jsonb_build_object(\n        'id', r.id,\n        'title', r.title,\n        'genre_main', r.genre_main,\n        'intent_json', COALESCE(r.intent_json, '{}'::jsonb),\n        'forbid_json', COALESCE(r.forbid_json, '{}'::jsonb),\n        'target_words', r.target_words,\n        'chapter_words', r.chapter_words\n      ),\n      'initial_l1as', COALESCE((\n        SELECT jsonb_agg(jsonb_build_object(\n          'id', initial_l1a.id,\n          'l1a_name', initial_l1a.l1a_name,\n          'conflict_background', initial_l1a.conflict_background,\n          'escalation_path', initial_l1a.escalation_path,\n          'stakes', initial_l1a.stakes,\n          'irreversible_consequence', initial_l1a.irreversible_consequence,\n          'plot_emotion_commit', initial_l1a.plot_emotion_commit,\n          'arc_requirement', initial_l1a.arc_requirement,\n          'info_reveal_boundary', initial_l1a.info_reveal_boundary,\n          'role_arc_json', initial_l1a.role_arc_json\n        ) ORDER BY initial_l1a.l1a_index, initial_l1a.created_at)\n        FROM public.l1a_unit AS initial_l1a\n        WHERE initial_l1a.book_id = r.id\n          AND initial_l1a.source_type = 'initial'\n          AND initial_l1a.is_valid\n          AND NOT initial_l1a.is_shadow\n      ), '[]'::jsonb),\n      'world_states', COALESCE((\n        SELECT jsonb_agg(jsonb_build_object(\n          'id', world.id,\n          'board_type', world.board_type,\n          'atom_type', world.atom_type,\n          'atom_key', world.atom_key,\n          'atom_value_jsonb', world.atom_value_jsonb,\n          'affordance_dims', world.affordance_dims,\n          'setting_layer', world.setting_layer,\n          'violate_cost_json', world.violate_cost_json,\n          'chain_change_json', world.chain_change_json\n        ) ORDER BY world.setting_layer, world.board_type, world.atom_key)\n        FROM public.world_state AS world\n        WHERE world.book_id = r.id\n          AND world.is_active\n          AND world.is_formal\n          AND world.is_valid\n          AND NOT world.is_shadow\n      ), '[]'::jsonb),\n      'characters', COALESCE((\n        SELECT jsonb_agg(jsonb_build_object(\n          'id', character.id,\n          'char_name', character.char_name,\n          'char_type', character.char_type,\n          'five_layers_json', character.five_layers_json,\n          'knowledge_boundary_json', character.knowledge_boundary_json,\n          'arc_json', character.arc_json\n        ) ORDER BY character.char_name)\n        FROM public.character AS character\n        WHERE character.book_id = r.id\n          AND character.is_active\n          AND character.is_formal\n          AND character.is_valid\n          AND NOT character.is_shadow\n      ), '[]'::jsonb),\n      'open_bridges', COALESCE((\n        SELECT jsonb_agg(jsonb_build_object(\n          'id', asset.id,\n          'asset_name', asset.asset_name,\n          'asset_description', asset.asset_description,\n          'hook_category', asset.hook_category,\n          'countdown_deadline', asset.countdown_deadline,\n          'fulfillment_window', asset.fulfillment_window,\n          'evidence_json', asset.evidence_json,\n          'value_anchor', asset.value_anchor,\n          'current_effect_json', asset.current_effect_json\n        ) ORDER BY asset.created_at)\n        FROM public.narrative_asset AS asset\n        WHERE asset.book_id = r.id\n          AND asset.asset_type = 'open_bridge'\n          AND asset.is_formal\n          AND asset.is_valid\n          AND NOT asset.is_shadow\n      ), '[]'::jsonb),\n      'genre_skills', COALESCE(r.skills_response->'skills', '[]'::jsonb),\n      'skills_response', r.skills_response,\n      'binding', r.binding\n    )\n  )\nEND AS response\nFROM resolved AS r;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.request)] }}"
+        }
+      },
+      "id": "c5d49ae6-0d7d-4d80-ad82-1a387d6015c6",
+      "name": "Read FP016 L1A Binding",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        656,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Validate Generate Request').first().json.request;\nconst correlation_id = request?.correlation_id ?? 'unavailable';\nconst parse = (value) => {\n  if (typeof value !== 'string') return value;\n  try { return JSON.parse(value); } catch { return null; }\n};\nconst response = parse($input.first().json.response);\nconst fail = (code, message) => [{ json: { ok: false, correlation_id, redacted_error: { code, message } } }];\nconst error = response?.redacted_error ?? response?.error;\nif (request?.action === 'read') {\n  if (response?.ok === true && response?.result && typeof response.result === 'object') return [{ json: { ...response, correlation_id: response.correlation_id ?? correlation_id } }];\n  return fail(error?.code ?? 'READ_FAILED', error?.message ?? 'The L1A view could not be loaded.');\n}\nif (response?.ok !== true || !response.context || typeof response.context !== 'object') return fail(error?.code ?? 'CONTEXT_UNAVAILABLE', error?.message ?? 'The L1A generation context could not be loaded.');\nconst context = response.context;\nif (context.design_editable !== true) return fail('L1A_LOCKED', 'L1A candidates cannot be generated after sorting is confirmed.');\nif (!Array.isArray(context.initial_l1as) || context.initial_l1as.length === 0 || !Array.isArray(context.world_states) || context.world_states.length === 0 || !Array.isArray(context.characters) || context.characters.length === 0) return fail('UPSTREAM_INCOMPLETE', 'Initial L1A, formal characters, and formal world settings are required before traversal.');\nconst skill_error = context.skills_response?.redacted_error ?? context.skills_response?.error;\nif (context.skills_response?.ok !== true) return fail(skill_error?.code ?? 'SKILL_UNAVAILABLE', skill_error?.message ?? 'The approved genre skills could not be loaded.');\nconst binding = context.binding ?? {};\nconst configured = typeof binding.model_name === 'string' && binding.model_name.trim() !== '' && typeof binding.provider_base_url === 'string' && binding.provider_base_url.trim() !== '' && typeof binding.prompt_text === 'string' && binding.prompt_text.trim() !== '' && typeof binding.api_key_ref === 'string' && binding.api_key_ref.trim() !== '';\nif (!configured) return fail('CONFIG_CONTRACT_BLOCKED', 'An active FP004-01 model and prompt binding is required.');\nconst reference_catalog = {\n  characters: context.characters.map((item, index) => ({ ref: `C${String(index + 1).padStart(3, '0')}`, id: item?.id, char_name: item?.char_name })),\n  worlds: context.world_states.map((item, index) => ({ ref: `W${String(index + 1).padStart(3, '0')}`, atom_key: item?.atom_key })),\n};\nconst uuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;\nconst refs_ready = reference_catalog.characters.every((item) => uuid.test(item.id ?? '') && typeof item.char_name === 'string' && item.char_name.trim() !== '') && new Set(reference_catalog.characters.map((item) => item.id)).size === reference_catalog.characters.length && reference_catalog.worlds.every((item) => typeof item.atom_key === 'string' && item.atom_key.trim() !== '') && new Set(reference_catalog.worlds.map((item) => item.atom_key)).size === reference_catalog.worlds.length;\nif (!refs_ready) return fail('UPSTREAM_INCOMPLETE', 'Formal character and world references must be stable before traversal.');\nreturn [{ json: { request, context, runtime_binding: binding, reference_catalog } }];"
+      },
+      "id": "a7576dfb-f0df-4569-ab36-a5d0e1fd42d1",
+      "name": "Require FP016 L1A Binding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "content": "=你是L1A灵感变体生成器。为L1A生成多个创意变体。\n每个变体必须与原始L1A在以下至少1个维度有显著差异：\n1. 角色弧反向（正向→负向 或 负向→正向）\n2. 情绪节奏变化（燃→虐 或 虐→燃）\n3. 冲突维度切换（技术→制度 或 制度→哲学）\n4. 叙事手法替换（伏笔法→悬念法）\n5. 赌注升级或降级\n\n## 约束\n\n- 变体必须保持与同project其他L1A的兼容性\n- 变体的冲突四要素（赌注/后果/升级/兑现）必须完整\n- 如有inspiration_hint，变体必须融入用户意图\n- 检查是否存在设定外的内容，与原设定冲突或导致其他设定失效的内容。可继承的需要声明写库，不可使用的退回标记后修改。"
+              "leftValue": "={{ $json.request?.action === 'generate' && $json.context ? 'ok' : 'error' }}",
+              "rightValue": "ok",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
-          ]
-        },
-        "builtInTools": {},
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "428c4551-57b7-4b85-a4f8-20f2344c6e06",
+      "name": "FP016 Binding Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (()=>{const base=$json.runtime_binding.provider_base_url;return /\\/chat\\/completions$/i.test(base)?base:/\\/v[0-9]+(?:beta)?$/i.test(base)?`${base}/chat/completions`:`${base}/v1/chat/completions`;})() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (()=>{const content=$json.runtime_binding.prompt_text + '\\n\\nFP004-01 V7 runtime contract: manually generate traversal L1A candidates only. This runtime DTO contract overrides any older illustrative output example above. Use only the scoped formal data below. Do not change the initial L1A, world facts, characters, or any confirmed/locked state.\\nReturn only a bare JSON array. Every item must contain non-empty l1a_name, scene_location, conflict_background, escalation_path, stakes, irreversible_consequence; separate non-empty object values for plot_emotion_commit, arc_requirement, and info_reveal_boundary; a non-empty role_arc_entries array; a world_resistance_refs array; and a non-empty unique participant_char_refs array. Each role_arc_entries item must contain exactly char_ref, direction, and boolean conflict_with_L0. Each world_resistance_refs item must contain exactly world_ref. Use only the Cxxx and Wxxx references supplied below and copy each reference exactly. Never output, construct, shorten, combine, or alter a UUID or atom_key. Optional fields may only be is_patch, mid_goals, world_progress_json, narrative_techniques, future_value_reserved, future_setting_seeds, jinzhan, payoff, emotion_type, has_explicit_hook, consequences, escalation, related_hook, three_line_json, or l1a_index. Do not output Markdown, an envelope, l1a_candidates, commercial_check, role_arc_json, participant_chars_json, scenes_json, role_arcs, top-level L0_deltas, top-level conflict_with_L0, status, source_type, IDs for new L1A records, or any unlisted key.\\n\\nUse target_words and chapter_words only to assess whole-book coverage; never lower completeness gates to hit a numeric target.\\n\\nREFERENCE_CATALOG=' + JSON.stringify({ characters: $json.context.characters.map((item, index) => ({ char_ref: $json.reference_catalog.characters[index].ref, char_name: item.char_name, char_type: item.char_type, five_layers_json: item.five_layers_json, knowledge_boundary_json: item.knowledge_boundary_json, arc_json: item.arc_json })), worlds: $json.context.world_states.map((item, index) => ({ world_ref: $json.reference_catalog.worlds[index].ref, world_label: item.atom_key, board_type: item.board_type, atom_type: item.atom_type, atom_value_jsonb: item.atom_value_jsonb, affordance_dims: item.affordance_dims, setting_layer: item.setting_layer, violate_cost_json: item.violate_cost_json, chain_change_json: item.chain_change_json })) }) + '\\n\\nINPUT=' + JSON.stringify({ book: $json.context.book, initial_l1as: $json.context.initial_l1as, open_bridges: $json.context.open_bridges, genre_skills: $json.context.genre_skills });return JSON.stringify({model:$json.runtime_binding.model_name,messages:[{role:'user',content}],temperature:$json.runtime_binding.temperature,stream:false});})() }}",
         "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
+      "id": "67cde73a-d79f-4e66-b957-ca680fa3333c",
+      "name": "FP004-01 Conflict Traversal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        1920,
-        128
+        1312,
+        0
       ],
-      "id": "c5454ae0-1f50-4299-a7af-ac9dc21ca5af",
-      "name": "支线剧情补充 差异化、高价值变体、防雷同处理",
+      "onError": "continueErrorOutput",
       "credentials": {
         "openAiApi": {
           "id": "ktkbgOI2RQI4Y8QK",
@@ -240,6 +158,141 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "={{ (()=>{const base=$('Require FP016 L1A Binding').first().json.runtime_binding.provider_base_url;return /\\/chat\\/completions$/i.test(base)?base:/\\/v[0-9]+(?:beta)?$/i.test(base)?`${base}/chat/completions`:`${base}/v1/chat/completions`;})() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (()=>{const source=$('Require FP016 L1A Binding').first().json;const generated=$json.choices?.[0]?.message?.content ?? $json.output_text ?? $json.output?.[0]?.content?.[0]?.text ?? $json.output ?? $json.message?.content ?? $json.content ?? $json.text ?? '';const content=source.runtime_binding.prompt_text + '\\n\\nFP004-01 V7 commercial and emotion validation pass: review the generated bare array for low-value duplicates, sustainable conflict, emotion variety, climax-budget overuse, and an explicit future_value_reserved promise. Return only one corrected bare JSON array using the same runtime DTO fields. Every candidate must keep separate non-empty plot_emotion_commit, arc_requirement, and info_reveal_boundary objects; non-empty role_arc_entries; non-empty unique participant_char_refs; and world_resistance_refs. Each role_arc_entries item must contain exactly char_ref, direction, and boolean conflict_with_L0. Each world_resistance_refs item must contain exactly world_ref. Every Cxxx/Wxxx value must exist exactly in REFERENCE_CATALOG. Do not guess or alter references, UUIDs, or atom keys. Do not invent facts, ids, statuses, or fields. If any candidate cannot satisfy the complete contract, return an empty array for the whole batch instead of returning a partial batch. Do not output an envelope, l1a_candidates, commercial_check, role_arc_json, participant_chars_json, scenes_json, role_arcs, top-level L0_deltas, top-level conflict_with_L0, or any unlisted key.\\n\\nREFERENCE_CATALOG=' + JSON.stringify({ character_refs: source.reference_catalog.characters.map((item) => item.ref), world_refs: source.reference_catalog.worlds.map((item) => item.ref) }) + '\\n\\nGENERATED=' + (typeof generated === 'string' ? generated : JSON.stringify(generated));return JSON.stringify({model:source.runtime_binding.model_name,messages:[{role:'user',content}],temperature:source.runtime_binding.temperature,stream:false});})() }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1536,
+        0
+      ],
+      "id": "dd579a68-c1fc-445d-9834-6a0a84b3b0a7",
+      "name": "FP004-01 Commercial and Emotion Filter",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Require FP016 L1A Binding').first().json;\nconst request = source.request;\nconst input = $input.first().json;\nconst raw = input.choices?.[0]?.message?.content ?? input.output_text ?? input.output?.[0]?.content?.[0]?.text ?? input.output ?? input.message?.content ?? input.content ?? input.text ?? '';\nconst text = (value) => typeof value === 'string' && value.trim() !== '';\nconst object = (value) => value && typeof value === 'object' && !Array.isArray(value);\nconst uuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;\nconst character_ref_map = new Map((source.reference_catalog?.characters ?? []).map((item) => [item.ref, item.id]));\nconst character_name_map = new Map((source.reference_catalog?.characters ?? []).map((item) => [item.ref, item.char_name]));\nconst world_ref_map = new Map((source.reference_catalog?.worlds ?? []).map((item) => [item.ref, item.atom_key]));\nconst character_ids = new Set(character_ref_map.values());\nconst world_keys = new Set(world_ref_map.values());\nconst required_text = ['l1a_name', 'scene_location', 'conflict_background', 'escalation_path', 'stakes', 'irreversible_consequence'];\nconst required_object = ['plot_emotion_commit', 'arc_requirement', 'info_reveal_boundary'];\nconst optional = ['l1a_index', 'is_patch', 'mid_goals', 'world_progress_json', 'narrative_techniques', 'future_value_reserved', 'future_setting_seeds', 'jinzhan', 'payoff', 'emotion_type', 'has_explicit_hook', 'consequences', 'escalation', 'related_hook', 'three_line_json'];\nconst model_allowed = new Set([...required_text, ...required_object, 'role_arc_entries', 'world_resistance_refs', 'participant_char_refs', ...optional]);\nconst role_entry_keys = new Set(['char_ref', 'direction', 'conflict_with_L0']);\nconst model_valid = (candidate) => object(candidate) && Object.keys(candidate).every((key) => model_allowed.has(key)) && required_text.every((key) => text(candidate[key])) && required_object.every((key) => object(candidate[key]) && Object.keys(candidate[key]).length > 0) && Array.isArray(candidate.role_arc_entries) && candidate.role_arc_entries.length > 0 && new Set(candidate.role_arc_entries.map((entry) => entry?.char_ref)).size === candidate.role_arc_entries.length && candidate.role_arc_entries.every((entry) => object(entry) && Object.keys(entry).length === role_entry_keys.size && Object.keys(entry).every((key) => role_entry_keys.has(key)) && text(entry.char_ref) && character_ref_map.has(entry.char_ref) && text(entry.direction) && typeof entry.conflict_with_L0 === 'boolean') && Array.isArray(candidate.participant_char_refs) && candidate.participant_char_refs.length > 0 && new Set(candidate.participant_char_refs).size === candidate.participant_char_refs.length && candidate.participant_char_refs.every((ref) => text(ref) && character_ref_map.has(ref)) && Array.isArray(candidate.world_resistance_refs) && candidate.world_resistance_refs.every((reference) => object(reference) && Object.keys(reference).length === 1 && text(reference.world_ref) && world_ref_map.has(reference.world_ref)) && (candidate.l1a_index === undefined || (Number.isInteger(candidate.l1a_index) && candidate.l1a_index >= 0)) && (candidate.is_patch === undefined || typeof candidate.is_patch === 'boolean') && (candidate.has_explicit_hook === undefined || typeof candidate.has_explicit_hook === 'boolean');\nconst runtime_ref_exact = /^[CW]\\d{3}$/;\nconst runtime_ref_pattern = /\\b[CW]\\d{3}\\b/g;\nconst canonicalize_runtime_refs = (value) => {\n  if (typeof value === 'string') {\n    if (character_ref_map.has(value)) return character_ref_map.get(value);\n    if (world_ref_map.has(value)) return world_ref_map.get(value);\n    let unknown_ref = false;\n    const canonical_text = value.replace(runtime_ref_pattern, (ref) => {\n      if (character_name_map.has(ref)) return character_name_map.get(ref);\n      if (world_ref_map.has(ref)) return world_ref_map.get(ref);\n      unknown_ref = true;\n      return ref;\n    });\n    if (unknown_ref) throw new Error('runtime_ref');\n    return canonical_text;\n  }\n  if (Array.isArray(value)) return value.map(canonicalize_runtime_refs);\n  if (!object(value)) return value;\n  const mapped_entries = Object.entries(value).map(([key, nested]) => {\n    const mapped_key = character_ref_map.get(key) ?? world_ref_map.get(key) ?? key;\n    if (runtime_ref_exact.test(key) && mapped_key === key) throw new Error('runtime_ref');\n    return [mapped_key, canonicalize_runtime_refs(nested)];\n  });\n  if (new Set(mapped_entries.map(([key]) => key)).size !== mapped_entries.length) throw new Error('runtime_ref');\n  return Object.fromEntries(mapped_entries);\n};\nconst canonicalize = (candidate) => {\n  const { role_arc_entries, participant_char_refs, world_resistance_refs, ...fields } = candidate;\n  const canonical_fields = canonicalize_runtime_refs(fields);\n  return {\n    ...canonical_fields,\n    role_arc_json: Object.fromEntries(role_arc_entries.map((entry) => [character_ref_map.get(entry.char_ref), entry.direction])),\n    world_resistance_refs: world_resistance_refs.map((reference) => ({ atom_key: world_ref_map.get(reference.world_ref) })),\n    participant_chars_json: participant_char_refs.map((ref) => character_ref_map.get(ref)),\n    role_arcs: role_arc_entries.map((entry) => ({ char_id: character_ref_map.get(entry.char_ref), direction: entry.direction, conflict_with_L0: entry.conflict_with_L0 })),\n  };\n};\nconst canonical_allowed = new Set([...required_text, ...required_object, 'role_arc_json', 'world_resistance_refs', 'participant_chars_json', 'role_arcs', ...optional]);\nconst canonical_valid = (candidate) => object(candidate) && Object.keys(candidate).every((key) => canonical_allowed.has(key)) && required_text.every((key) => text(candidate[key])) && required_object.every((key) => object(candidate[key]) && Object.keys(candidate[key]).length > 0) && object(candidate.role_arc_json) && Object.keys(candidate.role_arc_json).length > 0 && Object.keys(candidate.role_arc_json).every((id) => uuid.test(id) && character_ids.has(id)) && Array.isArray(candidate.world_resistance_refs) && candidate.world_resistance_refs.every((reference) => object(reference) && Object.keys(reference).length === 1 && text(reference.atom_key) && world_keys.has(reference.atom_key)) && Array.isArray(candidate.participant_chars_json) && candidate.participant_chars_json.length > 0 && new Set(candidate.participant_chars_json).size === candidate.participant_chars_json.length && candidate.participant_chars_json.every((id) => typeof id === 'string' && uuid.test(id) && character_ids.has(id)) && Array.isArray(candidate.role_arcs) && candidate.role_arcs.every((entry) => object(entry) && uuid.test(entry.char_id ?? '') && character_ids.has(entry.char_id) && text(entry.direction) && typeof entry.conflict_with_L0 === 'boolean') && !/\\b[CW]\\d{3}\\b/.test(JSON.stringify(candidate));\ntry {\n  const parsed = Array.isArray(raw) || object(raw) ? raw : JSON.parse(String(raw).replace(/^\\s*\\u0060\\u0060\\u0060json\\s*|\\s*\\u0060\\u0060\\u0060\\s*$/g, '').trim());\n  const model_candidates = Array.isArray(parsed) ? parsed : parsed?.candidates;\n  if (!Array.isArray(model_candidates) || model_candidates.length === 0 || character_ref_map.size === 0 || world_ref_map.size === 0 || !model_candidates.every(model_valid)) throw new Error('candidate');\n  const candidates = model_candidates.map(canonicalize);\n  if (!candidates.every(canonical_valid)) throw new Error('canonical');\n  return [{ json: { internal_request: { local_operator_id: request.local_operator_id, book_id: request.book_id, correlation_id: request.correlation_id, idempotency_key: request.idempotency_key, candidates } } }];\n} catch {\n  return [{ json: { ok: false, correlation_id: request?.correlation_id ?? 'unavailable', redacted_error: { code: 'CANDIDATE_INCOMPLETE', message: 'Generated L1A candidates did not satisfy the required traversal contract.' } } }];\n}"
+      },
+      "id": "e0ece32d-9575-4438-a6ea-4b9dbdcacd37",
+      "name": "Parse Canonical L1A Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.internal_request ? 'ok' : 'error' }}",
+              "rightValue": "ok",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "c5454ae0-1f50-4299-a7af-ac9dc21ca5af",
+      "name": "Canonical Candidates Parsed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT public.rpc_generate_l1a_conflicts($1::jsonb) AS response;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.internal_request)] }}"
+        }
+      },
+      "id": "57616f7f-eac1-41c4-afb0-bf3c742d17ec",
+      "name": "Generate L1A RPC",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1984,
+        -96
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const correlation_id = $('Validate Generate Request').first().json.request?.correlation_id ?? 'unavailable';\nconst raw = $input.first().json.response;\nlet response = raw;\nif (typeof raw === 'string') {\n  try { response = JSON.parse(raw); } catch { response = null; }\n}\nif (response?.ok === true) return [{ json: { ...response, correlation_id: response.correlation_id ?? correlation_id } }];\nconst error = response?.redacted_error ?? response?.error;\nreturn [{ json: { ok: false, correlation_id, redacted_error: { code: error?.code ?? 'WRITE_FAILED', message: error?.message ?? 'L1A candidates were not saved.' } } }];"
+      },
+      "id": "3ee2fcf1-9566-498e-a0fc-a1c669e3d7ad",
+      "name": "Canonical Generate Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Validate Generate Request').first().json.request;\nconst correlation_id = request?.correlation_id ?? 'unavailable';\nconst read = request?.action === 'read';\nreturn [{ json: { ok: false, correlation_id, redacted_error: { code: read ? 'READ_FAILED' : 'CONTEXT_UNAVAILABLE', message: read ? 'The L1A view could not be loaded.' : 'The L1A generation context could not be loaded.' } } }];"
+      },
+      "id": "9794d2f9-f892-4a26-a953-381f4590a2bb",
+      "name": "FP016 Binding Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const correlation_id = $('Require FP016 L1A Binding').first().json.request?.correlation_id ?? 'unavailable';\nreturn [{ json: { ok: false, correlation_id, redacted_error: { code: 'GENERATION_FAILED', message: 'L1A candidates could not be generated.' } } }];"
+      },
+      "id": "323e7cf9-a595-4153-a676-892970c74a76",
+      "name": "Generate Model Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "select",
         "schema": {
           "__rl": true,
           "mode": "list",
@@ -254,273 +307,258 @@
       "type": "n8n-nodes-base.postgresTool",
       "typeVersion": 2.6,
       "position": [
-        768,
-        160
+        1312,
+        192
       ],
       "id": "adacdec3-6595-4bcc-87ec-22a5569d8c48",
-      "name": "读库题材技能",
+      "name": "Approved Genre Skill Tool (preloaded)",
       "credentials": {
         "postgres": {
           "id": "kitjw53XlibTPzxM",
           "name": "zh-database"
         }
-      }
+      },
+      "disabled": true
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "=你是 L1A 冲突生成器。结合冲突种子、角色四层模型及世界可供性，生成满足商业与情绪要求的 L1A 单元数据。\n\n## 输入数据\n选定的冲突种子：\n相关角色档案（含当前状态与四层模型L0-L3）：\n相关世界设定条目：\n全局商业/情绪控制线：\n## 生成步骤（四维度遍历）\n步骤1：角色驱动分析\n基于参与角色的L1驱动层（欲望/恐惧）和L3关系层，推演他们会如何自发推动或卷入此冲突。\n注意：分析必须来自角色四层模型字段，不得凭空设定角色动机。\n步骤2：世界阻力分析\n提取对此冲突构成的环境限制、规则代价和资源门槛。\n输出：阻力清单，每项含引用\n步骤3：商业情绪分析\n评估此冲突的情绪烈度和爽点结构。\n检查：是否透支了未来高潮预算？\n必须声明本L1A刻意保留的底牌。\n步骤4：导演收束定稿\n将上述三种力量交汇，生成最终L1A结构。\n明确区分情节承诺和情绪承诺。\n"
-            }
-          ]
-        },
-        "builtInTools": {},
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
         "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
+      "id": "77368431-bc45-422a-a2d8-15f8125cd63b",
+      "name": "Respond: L1A Generation",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
       "position": [
-        624,
+        2656,
         0
-      ],
-      "id": "67cde73a-d79f-4e66-b957-ca680fa3333c",
-      "name": "FP004-01 三维施压(技术/制度/哲学)",
-      "credentials": {
-        "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "query",
-        "additionalFields": {}
-      },
-      "id": "57616f7f-eac1-41c4-afb0-bf3c742d17ec",
-      "name": "写库候选态，待排序",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [
-        1936,
-        -112
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "kitjw53XlibTPzxM",
-          "name": "zh-database"
-        }
-      }
+      ]
     }
   ],
-  "pinData": {},
   "connections": {
-    "Webhook：/generate_l1a": {
+    "Webhook: Generate L1A": {
       "main": [
         [
           {
-            "node": "RPC：获取运行锁 rpc_acquire_run_lock",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "读取书籍/世界/角色基础快照 PostgreSQL View / RPC",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "读取 conflict_seed source_type = initial",
+            "node": "Validate Generate Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "读取书籍/世界/角色基础快照 PostgreSQL View / RPC": {
+    "Validate Generate Request": {
       "main": [
         [
           {
-            "node": "FP004-01 三维施压(技术/制度/哲学)",
+            "node": "Valid Generate Request?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "JSON修复 (2)": {
+    "Valid Generate Request?": {
       "main": [
         [
           {
-            "node": "FP004-01 三维施压(技术/制度/哲学)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "写库：conflict_seed source_type = l1a_generated": {
-      "main": [
-        [
-          {
-            "node": "Respond：L1A生成完成",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "RPC：释放运行锁": {
-      "main": [
-        [
-          {
-            "node": "Respond：L1A生成完成",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "RPC：获取运行锁 rpc_acquire_run_lock": {
-      "main": [
-        [
-          {
-            "node": "FP004-01 三维施压(技术/制度/哲学)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "读取 conflict_seed source_type = initial": {
-      "main": [
-        [
-          {
-            "node": "FP004-01 三维施压(技术/制度/哲学)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "JSON修复与候选结构校验": {
-      "main": [
-        [
-          {
-            "node": "商业筛选 过滤低价值、重复、难持续候选",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "JSON修复": {
-      "main": [
-        [
-          {
-            "node": "IF：候选数量>需求数量",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "商业筛选 过滤低价值、重复、难持续候选": {
-      "main": [
-        [
-          {
-            "node": "JSON修复",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "IF：候选数量>需求数量": {
-      "main": [
-        [
-          {
-            "node": "写库候选态，待排序",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "写库：conflict_seed source_type = l1a_generated",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "RPC：释放运行锁",
+            "node": "Read FP016 L1A Binding",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "支线剧情补充 差异化、高价值变体、防雷同处理",
+            "node": "Respond: L1A Generation",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "支线剧情补充 差异化、高价值变体、防雷同处理": {
+    "Read FP016 L1A Binding": {
       "main": [
         [
           {
-            "node": "JSON修复 (2)",
+            "node": "Require FP016 L1A Binding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FP016 Binding Error",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "读库题材技能": {
+    "Require FP016 L1A Binding": {
+      "main": [
+        [
+          {
+            "node": "FP016 Binding Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP016 Binding Ready?": {
+      "main": [
+        [
+          {
+            "node": "FP004-01 Conflict Traversal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: L1A Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP004-01 Conflict Traversal": {
+      "main": [
+        [
+          {
+            "node": "FP004-01 Commercial and Emotion Filter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Model Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP004-01 Commercial and Emotion Filter": {
+      "main": [
+        [
+          {
+            "node": "Parse Canonical L1A Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Model Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Canonical L1A Candidates": {
+      "main": [
+        [
+          {
+            "node": "Canonical Candidates Parsed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Canonical Candidates Parsed?": {
+      "main": [
+        [
+          {
+            "node": "Generate L1A RPC",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: L1A Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate L1A RPC": {
+      "main": [
+        [
+          {
+            "node": "Canonical Generate Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Canonical Generate Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Canonical Generate Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: L1A Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP016 Binding Error": {
+      "main": [
+        [
+          {
+            "node": "Respond: L1A Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Model Error": {
+      "main": [
+        [
+          {
+            "node": "Respond: L1A Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved Genre Skill Tool (preloaded)": {
       "ai_tool": [
         [
           {
-            "node": "FP004-01 三维施压(技术/制度/哲学)",
+            "node": "FP004-01 Conflict Traversal",
             "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "FP004-01 三维施压(技术/制度/哲学)": {
-      "main": [
-        [
-          {
-            "node": "JSON修复与候选结构校验",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "写库候选态，待排序": {
-      "main": [
-        [
-          {
-            "node": "Respond：L1A生成完成",
-            "type": "main",
             "index": 0
           }
         ]
       ]
     }
   },
+  "pinData": {},
   "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "6fb6638d-af7e-44dd-bf34-8f769f01237a",
+  "versionId": "c91e7f6a-57dd-4eea-9413-e72de0098a31",
   "meta": {
     "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"
   },

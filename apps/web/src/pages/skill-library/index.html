@@ -1,0 +1,2078 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>叙事技能字典 - 纵横Narrative-Engine</title>
+    <link rel="stylesheet" href="/vendor/font-fallback.css">
+    
+    <!-- ★ DaisyUI v5 CDN ★ -->
+        <!-- Tailwind CSS & DaisyUI v4 via CDN -->
+    <link href="/vendor/daisyui-4.12.10-full.css" rel="stylesheet" type="text/css" />
+    <script src="/vendor/tailwindcss-browser-4.js"></script>
+
+    <link href="../prototype/common/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="../prototype/common/sidebar.css">
+    <script src="../prototype/common/theme.js"></script>
+    <script defer src="../prototype/common/sidebar.js"></script>
+    <script src="../new-book/new_book_wizard_data.js"></script>
+    <script src="../prototype/common/header.js"></script>
+    
+    <style>
+        /* 继承自全局 theme.css 共享主题样式 */
+            /* 顶栏随侧栏折叠隐藏 */
+        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
+        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
+        .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
+        .header-tab:hover { opacity: 0.85; }
+        .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+</style>
+</head>
+<body class="ui-page h-screen w-full overflow-hidden flex bg-base-200 selection:bg-primary/30 selection:text-base-content">
+<a href="#main-content" class="skip-link">跳到主内容</a>
+<!-- Shared SideNavBar -->
+<nav class="sidebar-glass" aria-label="主菜单" data-shared-sidebar data-sidebar-active="workbench"></nav>
+
+<!-- Main Content Wrapper -->
+<main class="main-content" id="main-content">
+
+    <!-- TopNavBar -->
+        <!-- TopNavBar -->
+        <!-- TopNavBar -->
+    <header class="header-glass h-16 fixed top-0 right-0 z-[60] flex justify-between items-center px-6 bg-base-100">
+        <div class="flex items-center gap-4 h-full">
+            <nav class="flex h-full items-center ml-2">
+                <!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
+                                <div class="header-tabs">
+                    <a href="/workbench" class="header-tab">模型设置</a>
+                    <a href="/skill_library.html" class="header-tab active" aria-current="page">技能设置</a>
+                </div>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- 当前书籍标识 -->
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-content/10 text-[11px] font-medium text-base-content/80">
+                <span class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></span>
+                <span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+                <span id="header-book-name"></span>
+            </div>
+            <button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
+                <span class="material-symbols-outlined text-[20px]">notifications</span>
+            </button>
+            
+            <!-- 快捷设置齿轮与弹窗 -->
+            <div class="relative flex items-center">
+                <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                </button>
+                <!-- Quick Settings Popover -->
+                        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
+                    <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
+                </div>
+                <div class="flex flex-col gap-2 mb-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
+                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
+                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
+                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-base-content/5">
+                    <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        应用当前配置
+                    </button>
+                </div>
+            </div>
+
+            <div class="h-8 w-[1px] bg-base-content/5 mx-1"></div>
+            
+        </div>
+    </header>
+
+    <!-- Canvas Area -->
+    <div class="flex-1 flex flex-col overflow-hidden pt-16">
+        <!-- One-level Category Buttons -->
+        <div class="w-full border-b border-base-content/10 bg-base-200 p-4 flex justify-center z-20 shadow-sm relative">
+            <div class="grid grid-cols-4 gap-4 w-full max-w-7xl" id="category-button-grid">
+                <button onclick="switchCategory('theme-combos')" class="category-btn btn btn-outline btn-primary w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group bg-primary/5 shadow-[0_4px_12px_rgba(79,133,229,0.1)]" data-category="theme-combos">
+                    <span class="material-symbols-outlined text-[32px] group-hover:scale-110 transition-transform">category</span>
+                    <div class="text-left">
+                        <div class="text-sm font-bold leading-tight">题材组合</div>
+                        <div class="text-[10px] opacity-60" id="count-theme-combos">54条 商业套路</div>
+                    </div>
+                </button>
+                <button onclick="switchCategory('chapter-expansion')" class="category-btn btn btn-ghost w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group text-base-content opacity-60 hover:text-base-content border border-transparent hover:border-transparent bg-transparent" data-category="chapter-expansion">
+                    <span class="material-symbols-outlined text-[32px] group-hover:scale-110 transition-transform">route</span>
+                    <div class="text-left">
+                        <div class="text-sm font-bold leading-tight">章节展开</div>
+                        <div class="text-[10px] opacity-60" id="count-chapter-expansion">8条 剧情弧结构</div>
+                    </div>
+                </button>
+                <button onclick="switchCategory('art-presentation')" class="category-btn btn btn-ghost w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group text-base-content opacity-60 hover:text-base-content border border-transparent hover:border-transparent bg-transparent" data-category="art-presentation">
+                    <span class="material-symbols-outlined text-[32px] group-hover:scale-110 transition-transform">palette</span>
+                    <div class="text-left">
+                        <div class="text-sm font-bold leading-tight">艺术呈现</div>
+                        <div class="text-[10px] opacity-60" id="count-art-presentation">6条 视觉意象</div>
+                    </div>
+                </button>
+                <button onclick="switchCategory('camera-language')" class="category-btn btn btn-ghost w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group text-base-content opacity-60 hover:text-base-content border border-transparent hover:border-transparent bg-transparent" data-category="camera-language">
+                    <span class="material-symbols-outlined text-[32px] group-hover:scale-110 transition-transform">movie_creation</span>
+                    <div class="text-left">
+                        <div class="text-sm font-bold leading-tight">镜头语言</div>
+                        <div class="text-[10px] opacity-60" id="count-camera-language">4条 叙事运镜</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <section class="flex-1 flex flex-col bg-base-200 relative z-10 overflow-hidden">
+            <!-- Filter & Action Bar -->
+            <div class="px-6 py-4 border-b border-base-content/10 flex flex-col gap-3 bg-base-200 shrink-0 shadow-sm">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <!-- Dropdown Filter & Search (Left side) -->
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-3">
+                            <label class="text-xs text-base-content opacity-70 font-semibold uppercase tracking-wider">题材/分类筛选:</label>
+                            <select id="genre-filter-select" onchange="handleGenreFilterChange(this.value)" class="select select-bordered bg-base-100 text-xs rounded-box px-3 py-1.5 text-base-content focus:outline-none focus:border-primary cursor-pointer min-w-[140px] font-medium transition-colors select-sm">
+                                <!-- Dynamic options -->
+                            </select>
+                        </div>
+                        
+                        <!-- Search Box (Moved here to align with dropdown) -->
+                        <label class="ui-search-field">
+                            <span class="material-symbols-outlined text-[16px] opacity-50">search</span>
+                            <input type="text" id="search-input" oninput="handleSearch()" placeholder="搜索技巧..." class="ui-search-field__input w-40">
+                        </label>
+                    </div>
+                    
+                    <!-- Actions (Right side) -->
+                    <div class="flex items-center gap-3">
+                        <!-- Join Group for Import/Export -->
+                        <div class="join">
+                            <button onclick="triggerImport()" class="btn btn-sm join-item" title="导入技能 JSON">
+                                <span class="material-symbols-outlined text-[16px]">upload</span>导入
+                            </button>
+                            <input type="file" id="import-file-input" accept=".json,.csv,application/json,text/csv" class="hidden" onchange="importSkills(event)">
+                            
+                            <button onclick="exportSkills()" class="btn btn-sm join-item" title="导出 CSV">
+                                <span class="material-symbols-outlined text-[16px]">download</span>导出
+                            </button>
+                        </div>
+
+                        <!-- Accent glow style add button -->
+                        <button onclick="openSkillFormModal('add')" class="btn btn-accent-glow btn-sm ui-button ui-button-success ui-button-small text-xs font-bold flex items-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px]">add</span>新增技能
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Grid Scroll Area -->
+            <div class="flex-1 overflow-y-auto p-6" id="cards-container">
+                <!-- Cards will render here -->
+            </div>
+            <div id="pagination-controls" class="hidden shrink-0 border-t border-base-content/10 bg-base-200 px-6 py-3" aria-label="分页">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 text-xs text-base-content opacity-70">
+                        <span id="pagination-summary"></span>
+                        <select id="page-size-select" class="select select-bordered select-xs bg-base-100 text-xs" onchange="changePageSize(this.value)" aria-label="每页条数">
+                            <option value="10">10</option>
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                        </select>
+                        <span>条/页</span>
+                    </div>
+                    <div class="join" aria-label="分页操作">
+                        <button id="previous-page-button" type="button" class="btn btn-xs join-item" onclick="changeSkillPage(-1)" title="上一页" aria-label="上一页">
+                            <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+                        </button>
+                        <span id="pagination-indicator" class="join-item inline-flex min-w-[72px] items-center justify-center border border-base-content/10 bg-base-100 px-2 text-xs"></span>
+                        <button id="next-page-button" type="button" class="btn btn-xs join-item" onclick="changeSkillPage(1)" title="下一页" aria-label="下一页">
+                            <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Backdrop Overlay for Drawer -->
+    <div id="drawerBackdrop" class="fixed inset-0 bg-black/40 z-[90] hidden transition-opacity duration-300 opacity-0" onclick="closeDrawer()"></div>
+
+    <!-- Sliding Details Drawer -->
+    <div id="detailDrawer" class="ui-card fixed top-0 right-0 h-full w-[440px] z-[100] bg-base-200 border-l border-base-content/10 shadow-2xl transition-all duration-300 transform translate-x-full flex flex-col" style="background-color: var(--color-base-200) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;">
+        <!-- Drawer Header -->
+        <div class="p-6 border-b border-base-content/5 flex items-center justify-between bg-white/2">
+            <div class="flex items-center gap-3">
+                <span id="drawerRating" class="px-3 py-1 text-sm rounded font-bold rating-badge">S</span>
+                <h2 id="drawerTitle" class="text-base font-bold text-base-content truncate max-w-[180px]">末世+囤货</h2>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button id="drawerDeleteBtn" class="text-base-content opacity-70 hover:text-error transition-colors p-1.5 rounded-full hover:bg-base-content/5 cursor-pointer flex items-center justify-center" title="删除">
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                </button>
+                <button class="text-base-content opacity-70 hover:text-base-content transition-colors p-1.5 rounded-full hover:bg-base-content/5 cursor-pointer flex items-center justify-center" onclick="closeDrawer()">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Drawer Content -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <!-- Parameter List -->
+            <div class="space-y-4" id="drawerDetailFields">
+                <!-- Rendered dynamically -->
+            </div>
+
+            <!-- Conflict Section -->
+            <div class="space-y-1">
+                <div class="flex items-center gap-1.5 text-base-content opacity-50 font-bold uppercase tracking-wider">
+                    <span class="material-symbols-outlined text-[14px]">swords</span>
+                    <span class="text-[11px] block">冲突写法 (Conflicts)</span>
+                </div>
+                <textarea id="drawerConflictText" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3"></textarea>
+            </div>
+
+            <!-- Warning/Taboo Section (High Visibility - Moved to bottom) -->
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[14px] text-warning">gavel</span>
+                    <span class="ui-badge ui-badge-warning uppercase tracking-wider">避坑红线 (Taboos)</span>
+                </div>
+                <textarea id="drawerTabooText" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3"></textarea>
+            </div>
+        </div>
+
+        <!-- Drawer Footer -->
+        <div class="p-6 border-t border-base-content/5 bg-white/2">
+            <div id="drawerReadOnlyFooter" class="text-center">
+                <span class="text-[11px] text-base-content opacity-50 font-mono tracking-wider flex items-center justify-center gap-1">
+                    <span class="material-symbols-outlined text-[12px]">info</span>
+                    <span id="drawerReadOnlyMessage">系统基准与自定义叙事参考</span>
+                </span>
+            </div>
+            <div id="drawerEditableActions" class="hidden items-center justify-between gap-3">
+                <button id="drawerAiAnalysisBtn" type="button" class="btn btn-sm btn-ghost text-xs text-primary font-bold flex items-center gap-1 p-1.5 opacity-40" disabled aria-disabled="true" title="技能评价流程尚未启用">
+                    <span class="material-symbols-outlined text-[16px]">psychology</span>
+                    AI分析与优化
+                </button>
+                <button id="drawerSaveBtn" type="button" class="btn btn-primary btn-sm ui-button ui-button-primary ui-button-small" onclick="saveDrawerSkill()">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add / Edit Skill Modal -->
+<div id="skillFormModal" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 hidden transition-all duration-300">
+    <div id="modalBox" class="ui-modal w-[500px] flex flex-row overflow-hidden p-6 relative transition-all duration-300">
+        <!-- Close Button -->
+        <button onclick="closeSkillFormModal()" class="ui-icon-button ui-button-quiet absolute top-4 right-4 z-10" aria-label="关闭技能表单">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+        
+        <!-- Left Side: Form Area -->
+        <div class="flex-1 flex flex-col max-w-[452px]">
+            <h2 class="text-base font-bold text-base-content mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-[20px]" id="modalIcon">add_box</span>
+                <span id="modalTitle">新增技能</span>
+            </h2>
+            
+            <form id="skill-form" onsubmit="event.preventDefault(); submitSkillForm();" class="flex flex-col gap-4 overflow-y-auto max-h-[420px] pr-1">
+                <!-- Hidden inputs -->
+                <input type="hidden" id="form-item-id">
+                
+                <!-- Common fields -->
+                <div class="flex gap-4">
+                    <div class="flex-1 flex flex-col gap-1.5">
+                        <label class="text-xs text-base-content opacity-70 font-medium">名称 / 标题</label>
+                        <input type="text" id="form-title" placeholder="如：科幻 + 末世" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    </div>
+                    <div class="w-24 flex flex-col gap-1.5">
+                        <label class="text-xs text-base-content opacity-70 font-medium">推荐评级</label>
+                        <select id="form-rating" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary cursor-pointer w-full">
+                            <option value="SS">SS</option>
+                            <option value="S" selected>S</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                        </select>
+                    </div>
+                </div>
+    
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium" id="form-tag-label">主分类/标签</label>
+                    <input type="text" id="form-tag" placeholder="如：科幻" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                
+                <!-- Dynamic fields container -->
+                <div id="modalFormFields" class="flex flex-col gap-4">
+                    <!-- Dynamic rendering by category -->
+                </div>
+    
+                <!-- Common taboos and conflicts -->
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">避坑红线 (Taboos)</label>
+                    <textarea id="form-taboo" rows="2" placeholder="如：严禁主角圣母心逃避冲突..." required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full resize-none"></textarea>
+                </div>
+                <div class="flex flex-col gap-1.5 mt-3">
+                    <label class="text-xs text-base-content opacity-70 font-medium">冲突写法 (Conflicts)</label>
+                    <textarea id="form-conflict" rows="2" placeholder="如：制造末世规则下的道德两难与资源博弈..." required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full resize-none"></textarea>
+                </div>
+            </form>
+            
+            <div class="flex justify-end items-center mt-6 pt-4 border-t border-base-content/5">
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeSkillFormModal()" class="ui-button ui-button-quiet ui-button-small">
+                        取消
+                    </button>
+                    <button id="modalCreateBtn" type="button" onclick="submitSkillForm()" class="ui-button ui-button-primary ui-button-small">
+                        创建技能
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Side: AI Advice Panel (Initially hidden & 0 width) -->
+        <div id="aiAdvicePanel" class="w-0 opacity-0 hidden transition-all duration-300 flex-col pl-6 ml-6 border-l border-base-content/10 max-h-[500px]">
+            <h3 class="text-sm font-bold text-base-content mb-4 flex items-center gap-1.5 shrink-0">
+                <span class="material-symbols-outlined text-warning text-[18px]">auto_awesome</span>
+                AI 实时分析与策略建议
+            </h3>
+            <div class="flex-1 flex flex-col gap-3 min-w-[280px] overflow-hidden">
+                <div id="aiLoading" class="hidden flex flex-col items-center justify-center py-20 gap-3 flex-1">
+                    <span class="loading loading-spinner loading-md text-primary"></span>
+                    <p class="text-xs text-base-content opacity-60 font-medium animate-pulse">正在提取因果，诊断技巧结构中...</p>
+                </div>
+                <div id="aiResultArea" class="flex-1 flex flex-col gap-2 overflow-hidden">
+                    <textarea id="aiAdviceText" class="textarea textarea-bordered w-full flex-1 text-xs leading-relaxed font-sans bg-base-100/50 resize-none focus:outline-none" readonly placeholder="这里将为您呈现基于当前表单填写的技巧结构、冲突强度和避坑红线的AI优化诊断报告。"></textarea>
+                    <div class="flex items-center justify-between text-[10px] text-base-content opacity-40 px-1 shrink-0">
+                        <span>诊断等级: S级叙事模型</span>
+                        <span>推演时间: ~1.2s</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeCategory = 'theme-combos';
+    let activeGenreFilter = '全部';
+    let searchQuery = '';
+    window.skillData = {};
+    window.activeItem = null; // Currently open drawer item
+
+    const DATA_VERSION = 'v4_all_combos_split';
+
+    // The approved dataset remains above as a provenance anchor; runtime data comes from the skill RPC only.
+    function initSkills() {
+        window.skillData = {
+            'theme-combos': [],
+            'chapter-expansion': [],
+            'art-presentation': [],
+            'camera-language': []
+        };
+        updateCountsDisplay();
+    }
+
+    function saveSkillsToStorage() {
+        updateCountsDisplay();
+    }
+    function updateCountsDisplay() {
+        const countTheme = document.getElementById('count-theme-combos');
+        const countChapter = document.getElementById('count-chapter-expansion');
+        const countArt = document.getElementById('count-art-presentation');
+        const countCamera = document.getElementById('count-camera-language');
+
+        if (countTheme) countTheme.innerText = `${window.skillData['theme-combos'].length}条 商业套路`;
+        if (countChapter) countChapter.innerText = `${window.skillData['chapter-expansion'].length}条 剧情弧结构`;
+        if (countArt) countArt.innerText = `${window.skillData['art-presentation'].length}条 视觉意象`;
+        if (countCamera) countCamera.innerText = `${window.skillData['camera-language'].length}条 叙事运镜`;
+    }
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', () => {
+        initSkills();
+        switchCategory('theme-combos');
+        
+        // Drawer Delete listener
+        document.getElementById('drawerDeleteBtn').onclick = () => {
+            if (window.activeItem) {
+                deleteSkill(window.activeItem.id);
+            }
+        };
+    });
+
+    // Toggle categories
+    window.switchCategory = function(catId) {
+        activeCategory = catId;
+        activeGenreFilter = '全部';
+        searchQuery = '';
+        document.getElementById('search-input').value = '';
+        
+        // Update button styles
+        const btns = document.querySelectorAll('.category-btn');
+        btns.forEach(btn => {
+            const dataCat = btn.getAttribute('data-category');
+            if (dataCat === catId) {
+                btn.className = "category-btn btn btn-outline btn-primary w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group bg-primary/5 shadow-[0_4px_12px_rgba(79,133,229,0.1)]";
+            } else {
+                btn.className = "category-btn btn btn-ghost w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group text-base-content opacity-60 hover:text-base-content border border-transparent hover:border-transparent bg-transparent";
+            }
+        });
+
+        // Redraw filter select
+        renderFilterSelect();
+        // Redraw card grid
+        renderCardGrid();
+        // Close drawer in case it was open
+        closeDrawer();
+    };
+
+    // Render filter dropdown
+    function renderFilterSelect() {
+        const select = document.getElementById('genre-filter-select');
+        if (!select) return;
+        select.innerHTML = '';
+
+        let choices = [];
+        if (activeCategory === 'theme-combos') {
+            choices = ['全部', '科幻', '玄幻', '言情', '武侠', '恐怖', '同人'];
+        } else if (activeCategory === 'chapter-expansion') {
+            choices = ['全部', '战斗', '推进', '升级', '经营', '日常'];
+        } else if (activeCategory === 'art-presentation') {
+            choices = ['全部', '喜悦', '悲伤', '愤怒', '恐惧', '信任/亲近', '安宁'];
+        } else if (activeCategory === 'camera-language') {
+            choices = ['全部', '宏大', '压迫', '孤独', '回忆'];
+        }
+
+        choices.forEach(ch => {
+            const opt = document.createElement('option');
+            opt.value = ch;
+            opt.innerText = ch;
+            opt.className = "bg-base-100 text-base-content";
+            if (ch === activeGenreFilter) {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        });
+    }
+
+    // Filter change handler
+    window.handleGenreFilterChange = function(val) {
+        activeGenreFilter = val;
+        renderCardGrid();
+    };
+
+    // Render cards list
+    function renderCardGrid() {
+        const container = document.getElementById('cards-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const data = window.skillData[activeCategory] || [];
+        
+        // Filter by select and search query
+        const filtered = data.filter(item => {
+            const matchPill = (activeGenreFilter === '全部' || item.tag === activeGenreFilter);
+            
+            let matchSearch = true;
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                const titleStr = (item.title || '').toLowerCase();
+                const tagStr = (item.tag || '').toLowerCase();
+                const subStr = (item.subGenres || '').toLowerCase();
+                const logicStr = (item.logic || item.arc || item.imagery || item.movement || '').toLowerCase();
+                const essenceStr = (item.essence || item.keyPoint || item.strategy || '').toLowerCase();
+                
+                matchSearch = titleStr.includes(q) || tagStr.includes(q) || subStr.includes(q) || logicStr.includes(q) || essenceStr.includes(q);
+            }
+            
+            return matchPill && matchSearch;
+        });
+
+        if (filtered.length === 0) {
+            // Render empty state
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-20 text-center space-y-4 max-w-md mx-auto">
+                    <div class="w-16 h-16 rounded-full bg-base-content/5 flex items-center justify-center text-base-content opacity-50 border border-base-content/5">
+                        <span class="material-symbols-outlined text-[32px]">query_stats</span>
+                    </div>
+                    <div class="space-y-1">
+                        <h3 class="text-sm font-bold text-base-content">未找到相关叙事技巧</h3>
+                        <p class="text-xs text-base-content opacity-50 leading-relaxed">系统未能匹配当前筛选条件下的技巧卡片，您可以尝试更换关键字或重置筛选。</p>
+                    </div>
+                    <button onclick="resetFilter()" class="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded-lg border border-primary/20 transition-all">
+                        重置筛选条件
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        // Render card grid layout
+        const grid = document.createElement('div');
+        grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6";
+        
+        filtered.forEach(item => {
+            const card = document.createElement('div');
+            card.id = `card-${item.id}`;
+            card.className = "card bg-base-100 shadow-sm border border-base-content/10 p-5 flex flex-col gap-4 relative skill-card cursor-pointer hover:border-primary transition-all";
+            card.onclick = () => openDrawer(item);
+
+            let badgeClass = 'badge-b';
+            if (item.rating === 'SS') badgeClass = 'badge-ss';
+            else if (item.rating === 'S') badgeClass = 'badge-s';
+            else if (item.rating === 'A') badgeClass = 'badge-a';
+            else if (item.rating === 'B') badgeClass = 'badge-b';
+            else if (item.rating === 'C') badgeClass = 'badge-c';
+
+            // Custom cards body depending on category
+            let bodyHTML = '';
+            if (activeCategory === 'theme-combos') {
+                bodyHTML = `
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
+                            <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                    </div>
+                    <div class="space-y-0.5 mt-2">
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${item.essence}">本质: ${item.essence}</p>
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${item.logic}">公式: ${item.logic}</p>
+                    </div>
+                `;
+            } else if (activeCategory === 'chapter-expansion') {
+                bodyHTML = `
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
+                            <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                    </div>
+                    <div class="space-y-0.5 mt-2">
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed">关键: ${item.keyPoint}</p>
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${item.arc}">节拍: ${item.arc}</p>
+                    </div>
+                `;
+            } else if (activeCategory === 'art-presentation') {
+                bodyHTML = `
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
+                            <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                    </div>
+                    <div class="space-y-0.5 mt-2">
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed">策略: ${item.strategy}</p>
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${item.imagery}">意象: ${item.imagery}</p>
+                    </div>
+                `;
+            } else if (activeCategory === 'camera-language') {
+                bodyHTML = `
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
+                            <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
+                        </div>
+                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                    </div>
+                    <div class="space-y-0.5 mt-2">
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed">策略: ${item.strategy}</p>
+                        <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${item.movement}">手法: ${item.movement}</p>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = bodyHTML;
+            grid.appendChild(card);
+            
+            // Re-apply active class if this card is active
+            if (window.activeItem && window.activeItem.id === item.id) {
+                card.classList.add('active-card');
+            }
+        });
+
+        container.appendChild(grid);
+    }
+
+    // Reset filter
+    window.resetFilter = function() {
+        activeGenreFilter = '全部';
+        searchQuery = '';
+        document.getElementById('search-input').value = '';
+        renderFilterSelect();
+        renderCardGrid();
+    };
+
+    // Handle Search input
+    window.handleSearch = function() {
+        searchQuery = document.getElementById('search-input').value;
+        renderCardGrid();
+    };
+
+    // Open detailed drawer
+    window.openDrawer = function(item) {
+        window.activeItem = item;
+        
+        // Toggle active border class on card
+        const cards = document.querySelectorAll('.skill-card');
+        cards.forEach(c => c.classList.remove('active-card'));
+        const selectedCard = document.getElementById(`card-${item.id}`);
+        if (selectedCard) selectedCard.classList.add('active-card');
+
+        const drawer = document.getElementById('detailDrawer');
+        const backdrop = document.getElementById('drawerBackdrop');
+        const dRating = document.getElementById('drawerRating');
+        const dTitle = document.getElementById('drawerTitle');
+        const dFields = document.getElementById('drawerDetailFields');
+        const dConflict = document.getElementById('drawerConflictText');
+        const dTaboo = document.getElementById('drawerTabooText');
+
+        if (!drawer || !dFields) return;
+
+        // Set Title & Rating
+        dTitle.innerText = item.title;
+        dRating.innerText = item.rating;
+        let ratingClass = 'badge-b';
+        if (item.rating === 'SS' || item.rating === 'SS') ratingClass = 'badge-ssr';
+        else if (item.rating === 'SS') ratingClass = 'badge-ss';
+        else if (item.rating === 'S') ratingClass = 'badge-s';
+        else if (item.rating === 'A') ratingClass = 'badge-a';
+        else if (item.rating === 'B') ratingClass = 'badge-b';
+        else if (item.rating === 'C') ratingClass = 'badge-c';
+        dRating.className = `px-3 py-1 text-sm rounded font-bold rating-badge ${ratingClass}`;
+
+        // Populate fields based on Category
+        let fieldsHTML = '';
+        if (activeCategory === 'theme-combos') {
+            fieldsHTML = `
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">副标签组合</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="2">${item.subGenres || item.title}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">组合逻辑公式</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.logic}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">核心爽点来源</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.attraction}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">底层情绪本质</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.essence}</textarea>
+                </div>
+            `;
+        } else if (activeCategory === 'chapter-expansion') {
+            fieldsHTML = `
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">适用场景</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="2">${item.scene}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">情绪节拍弧</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.arc}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">关键执行细节</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.keyPoint}</textarea>
+                </div>
+            `;
+        } else if (activeCategory === 'art-presentation') {
+            fieldsHTML = `
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">核心意象 (视/听)</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.imagery}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">感官细节 (嗅/味/触)</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.sensory}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">叙事表达策略</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.strategy}</textarea>
+                </div>
+            `;
+        } else if (activeCategory === 'camera-language') {
+            fieldsHTML = `
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">运镜手法与运动</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.movement}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">画面意蕴与感官</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.sensory}</textarea>
+                </div>
+                <div class="space-y-1">
+                    <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">情绪策略</span>
+                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.strategy}</textarea>
+                </div>
+            `;
+        }
+
+        dFields.innerHTML = fieldsHTML;
+
+        // Set Taboos / Conflicts
+        if (dTaboo) dTaboo.value = item.taboo || '暂无红线要求';
+        if (dConflict) dConflict.value = item.conflict || '暂无冲突写法';
+
+        // Slide in drawer
+        drawer.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+        setTimeout(() => backdrop.classList.add('opacity-100'), 10);
+    };
+
+    // Close drawer
+    window.closeDrawer = function() {
+        window.activeItem = null;
+        const drawer = document.getElementById('detailDrawer');
+        const backdrop = document.getElementById('drawerBackdrop');
+        if (!drawer || !backdrop) return;
+
+        drawer.classList.add('translate-x-full');
+        backdrop.classList.remove('opacity-100');
+        setTimeout(() => backdrop.classList.add('hidden'), 300);
+
+        // Remove active class on cards
+        const cards = document.querySelectorAll('.skill-card');
+        cards.forEach(c => c.classList.remove('active-card'));
+    };
+
+    // --- Modal CRUD Logic ---
+    function applySkillFormComponents(modal) {
+        modal.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach((field) => {
+            field.classList.add(field.tagName === 'TEXTAREA' ? 'ui-textarea' : field.tagName === 'SELECT' ? 'ui-select' : 'ui-field');
+        });
+        modal.querySelector('#modalCreateBtn')?.classList.add('ui-button', 'ui-button-primary', 'ui-button-small');
+        modal.querySelector('button[onclick="closeSkillFormModal()"]:not([aria-label])')?.classList.add('ui-button', 'ui-button-quiet', 'ui-button-small');
+    }
+
+    window.openSkillFormModal = function(mode, itemId) {
+        window.modalMode = mode;
+        window.modalItemId = itemId;
+        
+        const modal = document.getElementById('skillFormModal');
+        const mTitle = document.getElementById('modalTitle');
+        const mIcon = document.getElementById('modalIcon');
+        const formFieldsContainer = document.getElementById('modalFormFields');
+        
+        if (!modal || !formFieldsContainer) return;
+        
+        // Reset form
+        document.getElementById('skill-form').reset();
+        document.getElementById('form-item-id').value = itemId || '';
+        formFieldsContainer.innerHTML = '';
+        
+        // Update tag input label/placeholder based on category
+        const tagLabel = document.getElementById('form-tag-label');
+        const tagInput = document.getElementById('form-tag');
+        if (activeCategory === 'theme-combos') {
+            tagLabel.innerText = "主分类 (科幻/玄幻/言情/武侠/恐怖/同人)";
+            tagInput.placeholder = "如：科幻";
+        } else if (activeCategory === 'chapter-expansion') {
+            tagLabel.innerText = "适用动作/节拍类别";
+            tagInput.placeholder = "如：战斗 / 升级";
+        } else if (activeCategory === 'art-presentation') {
+            tagLabel.innerText = "主控情绪";
+            tagInput.placeholder = "如：喜悦 / 悲伤";
+        } else if (activeCategory === 'camera-language') {
+            tagLabel.innerText = "镜头意蕴";
+            tagInput.placeholder = "如：宏大 / 压迫";
+        }
+
+        // Render dynamic fields based on active category
+        let dynamicHTML = '';
+        if (activeCategory === 'theme-combos') {
+            dynamicHTML = `
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">副题材/标签组合</label>
+                    <input type="text" id="form-subgenres" placeholder="如：末世+囤货" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">组合逻辑公式</label>
+                    <input type="text" id="form-logic" placeholder="如：资源稀缺 → 囤积快感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">核心爽点来源</label>
+                    <input type="text" id="form-attraction" placeholder="如：安全感 / 信息差优势" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">底层情绪本质</label>
+                    <input type="text" id="form-essence" placeholder="如：绝对掌控感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+            `;
+        } else if (activeCategory === 'chapter-expansion') {
+            dynamicHTML = `
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">适用场景</label>
+                    <input type="text" id="form-scene" placeholder="如：打脸 / 战斗 / 对抗场景" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">情绪节拍弧</label>
+                    <input type="text" id="form-arc" placeholder="如：压抑 → 加码 → 反击" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">关键执行细节</label>
+                    <input type="text" id="form-keypoint" placeholder="如：加码阶段情绪必须拉满" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+            `;
+        } else if (activeCategory === 'art-presentation') {
+            dynamicHTML = `
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">核心意象 (视/听)</label>
+                    <input type="text" id="form-imagery" placeholder="如：灰蓝冷雨、暗沉铁窗" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">感官细节 (嗅/味/触)</label>
+                    <input type="text" id="form-sensory" placeholder="如：冷茶苦涩、发霉潮湿的气味" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">叙事表达策略</label>
+                    <input type="text" id="form-strategy" placeholder="如：多用未完结的短句，或以死物代替哭诉" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+            `;
+        } else if (activeCategory === 'camera-language') {
+            dynamicHTML = `
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">运镜手法与运动</label>
+                    <input type="text" id="form-movement" placeholder="如：长焦镜头极限压缩空间感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">画面意蕴与感官</label>
+                    <input type="text" id="form-sensory" placeholder="如：面部局部特写、背后的模糊高墙" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs text-base-content opacity-70 font-medium">情绪策略</label>
+                    <input type="text" id="form-strategy" placeholder="如：通过物理空间距离的压缩，渲染逃无可逃的心理" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                </div>
+            `;
+        }
+        
+        formFieldsContainer.innerHTML = dynamicHTML;
+
+        // Set Title & Mode
+        if (mode === 'add') {
+            mTitle.innerText = "新增叙事技巧";
+            mIcon.innerText = "add_box";
+        } else {
+            mTitle.innerText = "编辑叙事技巧";
+            mIcon.innerText = "edit_square";
+            
+            // Populate fields for Edit mode
+            const item = window.skillData[activeCategory].find(i => i.id === itemId);
+            if (item) {
+                document.getElementById('form-title').value = item.title || '';
+                document.getElementById('form-rating').value = item.rating || 'S';
+                document.getElementById('form-tag').value = item.tag || '';
+                document.getElementById('form-taboo').value = item.taboo || '';
+                document.getElementById('form-conflict').value = item.conflict || '';
+                
+                if (activeCategory === 'theme-combos') {
+                    document.getElementById('form-subgenres').value = item.subGenres || '';
+                    document.getElementById('form-logic').value = item.logic || '';
+                    document.getElementById('form-attraction').value = item.attraction || '';
+                    document.getElementById('form-essence').value = item.essence || '';
+                } else if (activeCategory === 'chapter-expansion') {
+                    document.getElementById('form-scene').value = item.scene || '';
+                    document.getElementById('form-arc').value = item.arc || '';
+                    document.getElementById('form-keypoint').value = item.keyPoint || '';
+                } else if (activeCategory === 'art-presentation') {
+                    document.getElementById('form-imagery').value = item.imagery || '';
+                    document.getElementById('form-sensory').value = item.sensory || '';
+                    document.getElementById('form-strategy').value = item.strategy || '';
+                } else if (activeCategory === 'camera-language') {
+                    document.getElementById('form-movement').value = item.movement || '';
+                    document.getElementById('form-sensory').value = item.sensory || '';
+                    document.getElementById('form-strategy').value = item.strategy || '';
+                }
+            }
+        }
+        applySkillFormComponents(modal);
+        modal.classList.remove('hidden');
+    };
+
+    window.triggerAIAnalysis = function() {
+        const title = document.getElementById('form-title').value.trim() || '未命名技巧';
+        const tag = document.getElementById('form-tag').value.trim() || '未设主分类';
+        const taboo = document.getElementById('form-taboo').value.trim();
+        const conflict = document.getElementById('form-conflict').value.trim();
+
+        const mBox = document.getElementById('modalBox');
+        const aiPanel = document.getElementById('aiAdvicePanel');
+        const aiLoading = document.getElementById('aiLoading');
+        const aiResultArea = document.getElementById('aiResultArea');
+        const aiAdviceText = document.getElementById('aiAdviceText');
+
+        if (!mBox || !aiPanel || !aiLoading || !aiResultArea || !aiAdviceText) return;
+
+        // Expand modal and show AI panel
+        mBox.classList.remove('w-[500px]');
+        mBox.classList.add('w-[860px]');
+        aiPanel.classList.remove('hidden', 'w-0', 'opacity-0');
+        aiPanel.classList.add('flex', 'w-[320px]', 'opacity-100');
+
+        // Show Loading State
+        aiResultArea.classList.add('hidden');
+        aiLoading.classList.remove('hidden');
+        aiAdviceText.value = '';
+
+        // Simulate AI diagnostic calculation
+        setTimeout(() => {
+            aiLoading.classList.add('hidden');
+            aiResultArea.classList.remove('hidden');
+
+            // Generate smart narrative diagnostic advice
+            let adviceContent = `【叙事因果与逻辑诊断】\n`;
+            adviceContent += `● 技巧主题：${title}\n`;
+            adviceContent += `● 题材映射：${tag} 主分类\n`;
+            adviceContent += `● 逻辑完备性：优秀 (92分)\n\n`;
+            
+            adviceContent += `【AI 诊断分析建议】\n`;
+            adviceContent += `1. 爽点升级与动力源强化：\n`;
+            adviceContent += `   当前填写的冲突表达中，拉合机制较明显。建议在后续的写作中，将避坑红线落实至第一个剧情切片。在爽点发生前，强制加入一次小挫败，以形成更强的前置回弹力。\n\n`;
+            
+            adviceContent += `2. 冲突写法诊断：\n`;
+            if (conflict) {
+                adviceContent += `   当前填写的冲突是: "${conflict.substring(0, 40)}${conflict.length > 40 ? '...' : ''}"。\n`;
+                adviceContent += `   优化方案：此冲突设计能提供不错的悬念阻尼。若配合镜头语言中的特写与场景意境渲染（如冷暖色调的急速逆转），戏剧性张力可提高30%。\n\n`;
+            } else {
+                adviceContent += `   （表单内冲突尚未填写）若要达成高张力拉锯，建议至少预置一项“规则层面的两难选择”来阻碍主角。\n\n`;
+            }
+            
+            adviceContent += `3. 避坑红线审计：\n`;
+            if (taboo) {
+                adviceContent += `   当前避坑设计是: "${taboo.substring(0, 40)}${taboo.length > 40 ? '...' : ''}"。\n`;
+                adviceContent += `   AI警告：避坑红线逻辑极为严密。需确保主角的核心动机（如安全性、复仇等）始终高于外部利益链条，不可偏废。\n\n`;
+            } else {
+                adviceContent += `   （避坑红线尚未输入）请严格遵守长篇小说稳定性，冻结目标边界，不可发生降智桥段。\n\n`;
+            }
+            
+            adviceContent += `【推荐辅助运镜与手法】\n`;
+            adviceContent += `- 推荐使用：大景深移轴镜头 + 慢动作长镜头，定格并放大核心爽点发生时的情绪张力面。`;
+
+            // Typewriter effect simulation (fast typing)
+            let i = 0;
+            const timer = setInterval(() => {
+                if (i < adviceContent.length) {
+                    aiAdviceText.value += adviceContent.substring(i, i + 2);
+                    aiAdviceText.scrollTop = aiAdviceText.scrollHeight;
+                    i += 2;
+                } else {
+                    aiAdviceText.value = adviceContent; // safety catch
+                    clearInterval(timer);
+                }
+            }, 10);
+
+        }, 1200);
+    };
+
+    window.closeSkillFormModal = function() {
+        const modal = document.getElementById('skillFormModal');
+        if (modal) modal.classList.add('hidden');
+
+        // Reset AI Advice Panel status
+        const mBox = document.getElementById('modalBox');
+        const aiPanel = document.getElementById('aiAdvicePanel');
+        if (mBox && aiPanel) {
+            mBox.classList.remove('w-[860px]');
+            mBox.classList.add('w-[500px]');
+            aiPanel.classList.add('w-0', 'opacity-0', 'hidden');
+            aiPanel.classList.remove('w-[320px]', 'opacity-100', 'flex');
+        }
+    };
+
+    window.submitSkillForm = function() {
+        const title = document.getElementById('form-title').value.trim();
+        const rating = document.getElementById('form-rating').value;
+        const tag = document.getElementById('form-tag').value.trim();
+        const taboo = document.getElementById('form-taboo').value.trim();
+        const conflict = document.getElementById('form-conflict').value.trim();
+        
+        if (!title || !tag || !conflict || !taboo) {
+            alert('请完整填写必填字段');
+            return;
+        }
+
+        // Gather dynamic fields
+        let updateObj = { rating, title, tag, conflict };
+        
+        if (activeCategory === 'theme-combos') {
+            updateObj.subGenres = document.getElementById('form-subgenres').value.trim();
+            updateObj.logic = document.getElementById('form-logic').value.trim();
+            updateObj.attraction = document.getElementById('form-attraction').value.trim();
+            updateObj.essence = document.getElementById('form-essence').value.trim();
+        } else if (activeCategory === 'chapter-expansion') {
+            updateObj.scene = document.getElementById('form-scene').value.trim();
+            updateObj.arc = document.getElementById('form-arc').value.trim();
+            updateObj.keyPoint = document.getElementById('form-keypoint').value.trim();
+        } else if (activeCategory === 'art-presentation') {
+            updateObj.imagery = document.getElementById('form-imagery').value.trim();
+            updateObj.sensory = document.getElementById('form-sensory').value.trim();
+            updateObj.strategy = document.getElementById('form-strategy').value.trim();
+        } else if (activeCategory === 'camera-language') {
+            updateObj.movement = document.getElementById('form-movement').value.trim();
+            updateObj.sensory = document.getElementById('form-sensory').value.trim();
+            updateObj.strategy = document.getElementById('form-strategy').value.trim();
+        }
+
+        if (window.modalMode === 'add') {
+            // Generate id
+            updateObj.id = `${activeCategory.substring(0, 2)}-${Math.random().toString(36).substr(2, 9)}`;
+            window.skillData[activeCategory].push(updateObj);
+            showToast('新增技能成功');
+        } else {
+            // Update mode
+            updateObj.id = window.modalItemId;
+            const index = window.skillData[activeCategory].findIndex(i => i.id === window.modalItemId);
+            if (index !== -1) {
+                window.skillData[activeCategory][index] = updateObj;
+                showToast('保存修改成功');
+                // Refresh active drawer if open
+                if (window.activeItem && window.activeItem.id === window.modalItemId) {
+                    openDrawer(updateObj);
+                }
+            }
+        }
+
+        saveSkillsToStorage();
+        renderCardGrid();
+        closeSkillFormModal();
+    };
+
+    // Delete skill
+    window.deleteSkill = function(itemId) {
+        if (!confirm('确定要删除这条技巧技能吗？删除后将无法恢复。')) return;
+
+        const index = window.skillData[activeCategory].findIndex(i => i.id === itemId);
+        if (index !== -1) {
+            window.skillData[activeCategory].splice(index, 1);
+            saveSkillsToStorage();
+            renderCardGrid();
+            closeDrawer();
+            showToast('技能删除成功');
+        }
+    };
+
+    // --- File Import / Export Logic ---
+    window.exportSkills = function() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(window.skillData, null, 4));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `narrative_skills_${activeCategory}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showToast('导出技能配置文件成功');
+    };
+
+    window.triggerImport = function() {
+        const fileInput = document.getElementById('import-file-input');
+        if (fileInput) fileInput.click();
+    };
+
+    window.importSkills = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                
+                // Validate top-level categories keys
+                const requiredCategories = ['theme-combos', 'chapter-expansion', 'art-presentation', 'camera-language'];
+                const hasValidKeys = requiredCategories.every(k => Array.isArray(imported[k]));
+                
+                if (hasValidKeys) {
+                    // Overwrite/merge
+                    window.skillData = imported;
+                    saveSkillsToStorage();
+                    renderCardGrid();
+                    showToast('导入技能文件成功');
+                } else {
+                    // Try to merge if imported only single category array or format is slightly different
+                    let mergedCount = 0;
+                    requiredCategories.forEach(cat => {
+                        if (Array.isArray(imported[cat])) {
+                            window.skillData[cat] = imported[cat];
+                            mergedCount++;
+                        }
+                    });
+                    if (mergedCount > 0) {
+                        saveSkillsToStorage();
+                        renderCardGrid();
+                        showToast(`成功导入并更新了 ${mergedCount} 个分类列表`);
+                    } else {
+                        alert('导入失败：JSON数据格式不正确，缺少有效的分类列表');
+                    }
+                }
+            } catch(err) {
+                console.error("Failed to parse JSON file", err);
+                alert('解析导入的JSON文件失败，请确保文件格式正确。');
+            }
+            // Clear input so same file can be uploaded again
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    };
+
+    // Premium Toast system
+    window.showToast = function(message) {
+        const existing = document.getElementById('premium-toast');
+        if (existing) existing.remove();
+        
+        const toast = document.createElement('div');
+        toast.id = 'premium-toast';
+        toast.className = 'fixed top-6 left-1/2 transform -translate-x-1/2 z-[200] px-5 py-3 rounded-box border border-base-content/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-2.5 transition-all duration-300 translate-y-[-20px] opacity-0 bg-base-100/85 backdrop-blur-md';
+        
+        toast.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-success shadow-[0_0_8px_rgba(78,222,163,0.6)] animate-ping"></span>
+            <span class="w-2 h-2 absolute rounded-full bg-success shadow-[0_0_8px_rgba(78,222,163,0.6)]"></span>
+            <span class="text-xs font-semibold text-base-content tracking-wide ml-1.5">${message}</span>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.remove('translate-y-[-20px]', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+        }, 10);
+        
+        setTimeout(() => {
+            toast.classList.remove('translate-y-0', 'opacity-100');
+            toast.classList.add('translate-y-[-20px]', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 2500);
+    };
+
+
+    
+    // Close quick settings when clicking outside
+
+</script>
+</main>
+
+<script>
+(() => {
+    const categoryKeys = ['theme-combos', 'chapter-expansion', 'art-presentation', 'camera-language'];
+    const categoryNames = {
+        'theme-combos': '题材组合',
+        'chapter-expansion': '章节展开',
+        'art-presentation': '艺术呈现',
+        'camera-language': '镜头语言'
+    };
+    const primaryGenres = ['科幻', '玄幻', '言情', '武侠', '恐怖', '同人'];
+    const unavailable = '当前稳定数据合同未返回此字段';
+    const skillErrorMessages = {
+        BUILTIN_READ_ONLY: '系统内置技能只读，不能编辑、停用、删除或导入覆盖。',
+        RPC_UNAVAILABLE: '技能数据服务暂不可用，请稍后重试。',
+        SKILL_INCOMPLETE: '请完整填写技能的必填内容后再保存。',
+        SKILL_PRIMARY_GENRE_REJECTED: '题材组合主类只能使用科幻、玄幻、言情、武侠、恐怖或同人；其他类型词请作为副标签。',
+        ACTIVE_SKILL_UNAVAILABLE: '现有系统内置技能未覆盖该主类，不能用不匹配的题材技能代替。',
+        SKILL_SLUG_EXISTS: '该技能稳定身份已存在，不能重复创建。',
+        SKILL_IDENTITY_IMMUTABLE: '编辑技能必须保留原有稳定身份。',
+        SKILL_SCOPE_REJECTED: '该个人技能不属于当前本地操作者，不能操作。',
+        SKILL_PREFERENCE_REFERENCE: '该技能仍被作品偏好引用，不能删除。',
+        SKILL_VECTOR_REFERENCE: '该技能仍被向量索引记录引用，不能删除。',
+        SKILL_HISTORY_REFERENCE: '该技能仍被治理记录引用，不能删除。',
+        SKILL_CHAPTER_REFERENCE: '该技能已被章节引用，不能删除。',
+        SKILL_IMPORT_INCOMPLETE: '导入文件缺少稳定身份或完整可覆盖内容。',
+        SKILL_IMPORT_IDENTITY_REJECTED: '导入内容的稳定身份无效、重复，或不对应现有个人技能。'
+    };
+    const state = {
+        context: null,
+        skills: [],
+        loading: true,
+        error: '',
+        busy: false,
+        page: 1,
+        pageSize: 20
+    };
+    let prototypeOpenForm = null;
+
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    const uuid = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+    const token = prefix => `${prefix}:${Date.now()}:${crypto.randomUUID()}`;
+    const field = id => document.getElementById(id)?.value.trim() || '';
+
+    async function request(payload, requestOptions = {}) {
+        const response = await fetch('/api/skill-library', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', accept: 'application/json' },
+            body: JSON.stringify(payload),
+            signal: requestOptions.signal
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.ok !== true) {
+            const rpcError = result?.redacted_error || result?.error || {};
+            const code = rpcError.code || 'RPC_UNAVAILABLE';
+            const error = new Error(skillErrorMessages[code] || rpcError.message || skillErrorMessages.RPC_UNAVAILABLE);
+            error.code = code;
+            throw error;
+        }
+        return result;
+    }
+
+    function readStoredContext() {
+        try {
+            const value = JSON.parse(localStorage.getItem('current_book_context') || 'null');
+            if (value && uuid(value.local_operator_id)) {
+                return {
+                    local_operator_id: value.local_operator_id,
+                    current_book_id: uuid(value.current_book_id) ? value.current_book_id : ''
+                };
+            }
+        } catch (error) {
+            console.warn('Invalid current_book_context', error);
+        }
+        return null;
+    }
+
+    async function ensureContext() {
+        const stored = readStoredContext();
+        const result = await request({ action: 'operator' });
+        const operatorId = result.local_operator_id || result.result?.local_operator_id || '';
+        if (!uuid(operatorId)) throw new Error('本地操作者身份不可用。');
+        localStorage.setItem('zhreplan.local_operator_id.v1', operatorId);
+
+        const storedBookBelongsToOperator = Boolean(
+            stored?.current_book_id &&
+            stored.local_operator_id.toLowerCase() === operatorId.toLowerCase()
+        );
+        if (!storedBookBelongsToOperator) {
+            if (stored?.current_book_id) localStorage.removeItem('current_book_context');
+            return { local_operator_id: operatorId, current_book_id: '' };
+        }
+        return { local_operator_id: operatorId, current_book_id: stored.current_book_id };
+    }
+
+    function normalizeSkill(row) {
+        const category = categoryKeys.find(key => categoryNames[key] === row.skill_category) || 'theme-combos';
+        const genre = row.genre_main?.primary || '';
+        const scene = row.applicable_scene?.scene || '';
+        const title = row.skill_name || '未命名技能';
+        const filterTag = category === 'theme-combos'
+            ? genre
+            : category === 'chapter-expansion'
+                ? scene
+                : row.skill_tags_jsonb?.[0] || title.split('·')[1] || '';
+        const combo = row.combo_logic || {};
+        const arc = row.arc_structure || {};
+        return {
+            id: row.skill_id || row.skill_version_id,
+            versionId: row.skill_version_id || '',
+            title,
+            rating: row.ai_rating || '—',
+            tag: filterTag,
+            filterTag,
+            subGenres: combo.sub_genres || unavailable,
+            logic: combo.logic || unavailable,
+            attraction: row.fun_source || unavailable,
+            essence: row.essence || unavailable,
+            scene: scene || unavailable,
+            arc: arc.arc || unavailable,
+            keyPoint: arc.key_point || unavailable,
+            imagery: row.skill_config_jsonb?.imagery || unavailable,
+            sensory: row.skill_config_jsonb?.sensory || unavailable,
+            strategy: row.skill_config_jsonb?.strategy || unavailable,
+            movement: row.skill_config_jsonb?.movement || unavailable,
+            taboo: row.constraint_fields?.taboo || unavailable,
+            conflict: row.constraint_fields?.conflict || unavailable,
+            sourceType: row.source_type || 'system_builtin',
+            version: row.version || 1,
+            stableSlug: row.stable_slug || '',
+            lifecycleStatus: row.lifecycle_status || 'active',
+            // 技能库始终读取全局管理库存，不展示或操作某本书的偏好。
+            preferenceStatus: null,
+            ownerLocalOperatorId: row.owner_local_operator_id || '',
+            category,
+            rpc: row
+        };
+    }
+
+    function groupSkills(rows) {
+        const grouped = Object.fromEntries(categoryKeys.map(key => [key, []]));
+        rows.map(normalizeSkill).forEach(item => grouped[item.category].push(item));
+        window.skillData = grouped;
+        state.skills = rows.map(normalizeSkill);
+    }
+
+    function updateCounts() {
+        categoryKeys.forEach(key => {
+            const count = document.getElementById(`count-${key}`);
+            if (count) count.textContent = `${window.skillData[key]?.length || 0}条 ${key === 'theme-combos' ? '商业套路' : key === 'chapter-expansion' ? '剧情弧结构' : key === 'art-presentation' ? '视觉意象' : '叙事运镜'}`;
+        });
+    }
+
+    function setPaginationVisible(visible) {
+        const controls = document.getElementById('pagination-controls');
+        if (controls) controls.classList.toggle('hidden', !visible);
+    }
+
+    function renderStatus(message, kind = 'muted') {
+        const container = document.getElementById('cards-container');
+        if (!container) return;
+        setPaginationVisible(false);
+        const classes = kind === 'error' ? 'text-error' : kind === 'ready' ? 'text-success' : 'text-base-content opacity-60';
+        const icon = kind === 'error' ? '!' : kind === 'ready' ? '✓' : '…';
+        container.innerHTML = `<div class="flex min-h-[260px] items-center justify-center"><div class="max-w-md text-center space-y-2"><span class="text-[34px] opacity-50" aria-hidden="true">${icon}</span><p class="text-sm font-semibold ${classes}">${escapeHtml(message)}</p></div></div>`;
+    }
+
+    function choicesFor(category) {
+        const defaults = category === 'theme-combos'
+            ? ['全部', ...primaryGenres]
+            : category === 'chapter-expansion'
+                ? ['全部', '打脸', '战斗', '悬疑', '升级', '经营流', '高频爽点']
+                : category === 'art-presentation'
+                    ? ['全部', '喜悦', '悲伤', '愤怒', '恐惧', '信任/亲近', '安宁']
+                    : ['全部', '宏大', '压迫', '孤独', '回忆'];
+        if (category === 'theme-combos') return defaults;
+        const customTags = state.skills
+            .filter(item => item.category === category && item.sourceType === 'user_managed' && item.filterTag && item.filterTag !== unavailable)
+            .map(item => item.filterTag);
+        return [...new Set([...defaults, ...customTags])];
+    }
+
+    function renderFilters() {
+        const select = document.getElementById('genre-filter-select');
+        if (!select) return;
+        const choices = choicesFor(window.activeCategory || 'theme-combos');
+        select.innerHTML = choices.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('');
+        select.value = choices.includes(window.activeGenreFilter) ? window.activeGenreFilter : '全部';
+        window.activeGenreFilter = select.value;
+    }
+
+    function matchesFilter(item) {
+        const filter = window.activeGenreFilter || '全部';
+        const query = (window.searchQuery || '').trim().toLowerCase();
+        const categoryMatch = filter === '全部' || item.filterTag.includes(filter) || item.tag === filter;
+        const searchable = [item.title, item.tag, item.subGenres, item.logic, item.attraction, item.essence, item.scene, item.arc, item.strategy].join(' ').toLowerCase();
+        return categoryMatch && (!query || searchable.includes(query));
+    }
+
+    function renderPagination(total) {
+        const pageSize = state.pageSize;
+        const pageCount = Math.max(1, Math.ceil(total / pageSize));
+        state.page = Math.min(Math.max(1, state.page), pageCount);
+        const first = total ? (state.page - 1) * pageSize + 1 : 0;
+        const last = Math.min(total, state.page * pageSize);
+        const controls = document.getElementById('pagination-controls');
+        const summary = document.getElementById('pagination-summary');
+        const indicator = document.getElementById('pagination-indicator');
+        const size = document.getElementById('page-size-select');
+        const previous = document.getElementById('previous-page-button');
+        const next = document.getElementById('next-page-button');
+        if (!controls || !summary || !indicator || !size || !previous || !next) return;
+        controls.classList.remove('hidden');
+        summary.textContent = `${first}-${last} / ${total}`;
+        indicator.textContent = `${state.page} / ${pageCount}`;
+        size.value = String(pageSize);
+        previous.disabled = state.page === 1;
+        next.disabled = state.page === pageCount;
+    }
+
+    window.changePageSize = function(value) {
+        const pageSize = Number(value);
+        if (![10, 20, 50].includes(pageSize)) return;
+        state.pageSize = pageSize;
+        state.page = 1;
+        renderGrid();
+    };
+
+    window.changeSkillPage = function(delta) {
+        const total = (window.skillData[window.activeCategory || 'theme-combos'] || []).filter(matchesFilter).length;
+        const pageCount = Math.max(1, Math.ceil(total / state.pageSize));
+        state.page = Math.min(pageCount, Math.max(1, state.page + Number(delta || 0)));
+        renderGrid();
+    };
+
+    function renderGrid() {
+        const container = document.getElementById('cards-container');
+        if (!container) return;
+        if (state.loading) return renderStatus('正在读取可管理技能…');
+        if (state.error) return renderStatus(state.error, 'error');
+        const category = window.activeCategory || 'theme-combos';
+        const data = (window.skillData[category] || []).filter(matchesFilter);
+        if (!data.length) return renderStatus('当前筛选条件下没有可用技能。');
+        renderPagination(data.length);
+        const start = (state.page - 1) * state.pageSize;
+        const pageItems = data.slice(start, start + state.pageSize);
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6';
+        pageItems.forEach(item => {
+            const card = document.createElement('div');
+            card.id = `card-${item.id}`;
+            card.className = 'card bg-base-100 shadow-sm border border-base-content/10 p-5 flex flex-col gap-4 relative skill-card cursor-pointer hover:border-primary transition-all';
+            const badge = item.rating === 'SS' ? 'badge-ss' : item.rating === 'S' ? 'badge-s' : item.rating === 'A' ? 'badge-a' : item.rating === 'B' ? 'badge-b' : item.rating === 'C' ? 'badge-c' : 'badge-ghost';
+            const source = item.sourceType === 'user_managed' ? `用户管理 v${item.version}` : `系统内置 v${item.version}`;
+            const status = item.lifecycleStatus;
+            const summaryA = category === 'theme-combos' ? `本质: ${item.essence}` : category === 'chapter-expansion' ? `关键: ${item.keyPoint}` : `策略: ${item.strategy}`;
+            const summaryB = category === 'theme-combos' ? `公式: ${item.logic}` : category === 'chapter-expansion' ? `节拍: ${item.arc}` : category === 'art-presentation' ? `意象: ${item.imagery}` : `手法: ${item.movement}`;
+            card.innerHTML = `<div class="flex items-center justify-between gap-2"><div class="flex items-center gap-2 truncate"><h3 class="text-sm font-bold text-base-content truncate">${escapeHtml(item.title)}</h3><span class="badge ${badge} badge-sm font-bold shrink-0">${escapeHtml(item.rating)}</span></div></div><div class="flex items-center justify-between gap-2"><span class="badge badge-outline badge-sm text-[10px]">${escapeHtml(source)}</span><span class="text-[10px] text-base-content opacity-50 truncate">${escapeHtml(item.tag || '未分类')} · ${escapeHtml(status)}</span></div><div class="space-y-0.5 mt-2"><p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${escapeHtml(summaryA)}">${escapeHtml(summaryA)}</p><p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${escapeHtml(summaryB)}">${escapeHtml(summaryB)}</p></div>`;
+            card.addEventListener('click', () => window.openDrawer(item));
+            grid.appendChild(card);
+        });
+        container.replaceChildren(grid);
+    }
+
+    function drawerValue(value, editable) {
+        if (editable && value === unavailable) return '';
+        return String(value ?? '');
+    }
+
+    function drawerTextInput(id, label, value, editable) {
+        const readonly = editable ? '' : ' readonly aria-readonly="true"';
+        const stateClass = editable ? 'bg-base-100 focus:border-primary' : 'bg-base-100/30 cursor-default';
+        return `<div class="space-y-1"><label for="${id}" class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">${label}</label><input id="${id}" type="text" value="${escapeHtml(drawerValue(value, editable))}" class="input input-bordered w-full text-xs ${stateClass}"${readonly}></div>`;
+    }
+
+    function drawerTextarea(id, label, value, editable, rows = 3) {
+        const readonly = editable ? '' : ' readonly aria-readonly="true"';
+        const stateClass = editable ? 'bg-base-100 focus:border-primary' : 'bg-base-100/30 cursor-default';
+        return `<div class="space-y-1"><label for="${id}" class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">${label}</label><textarea id="${id}" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans resize-none ${stateClass}" rows="${rows}"${readonly}>${escapeHtml(drawerValue(value, editable))}</textarea></div>`;
+    }
+
+    function drawerRatingSelect(value, editable) {
+        const rating = ['SS', 'S', 'A', 'B', 'C'].includes(String(value)) ? String(value) : 'S';
+        const options = ['SS', 'S', 'A', 'B', 'C']
+            .map(option => `<option value="${option}"${option === rating ? ' selected' : ''}>${option}</option>`)
+            .join('');
+        return `<div class="space-y-1 w-24"><label for="drawer-rating" class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">推荐评级</label><select id="drawer-rating" class="select select-bordered w-full text-xs ${editable ? 'bg-base-100 focus:border-primary' : 'bg-base-100/30 cursor-default'}"${editable ? '' : ' disabled aria-readonly="true"'}>${options}</select></div>`;
+    }
+
+    function drawerMetadata(label, value, rows = 2) {
+        return `<div class="space-y-1"><span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">${label}</span><textarea class="textarea textarea-bordered w-full text-xs bg-base-100/30 resize-none cursor-default" readonly rows="${rows}">${escapeHtml(value)}</textarea></div>`;
+    }
+
+    function drawerTagDefinition(category) {
+        if (category === 'theme-combos') return { label: '主分类', placeholder: '如：科幻' };
+        if (category === 'chapter-expansion') return { label: '适用动作/节拍类别', placeholder: '如：战斗 / 升级' };
+        if (category === 'art-presentation') return { label: '主控情绪', placeholder: '如：喜悦 / 悲伤' };
+        return { label: '镜头意蕴', placeholder: '如：宏大 / 压迫' };
+    }
+
+    function drawerCategoryFields(item, editable) {
+        if (item.category === 'theme-combos') {
+            return [
+                drawerTextarea('drawer-subgenres', '副标签组合', item.subGenres, editable, 2),
+                drawerTextarea('drawer-logic', '组合逻辑公式', item.logic, editable, 3),
+                drawerTextarea('drawer-attraction', '核心爽点来源', item.attraction, editable, 3),
+                drawerTextarea('drawer-essence', '高光爽点内核', item.essence, editable, 3)
+            ].join('');
+        }
+        if (item.category === 'chapter-expansion') {
+            return [
+                drawerTextarea('drawer-scene', '适用场景', item.scene, editable, 2),
+                drawerTextarea('drawer-arc', '情绪节拍弧', item.arc, editable, 3),
+                drawerTextarea('drawer-keypoint', '关键执行细节', item.keyPoint, editable, 3)
+            ].join('');
+        }
+        if (item.category === 'art-presentation') {
+            return [
+                drawerTextarea('drawer-imagery', '核心意象（视/听）', item.imagery, editable, 3),
+                drawerTextarea('drawer-sensory', '感官细节（嗅/味/触）', item.sensory, editable, 3),
+                drawerTextarea('drawer-strategy', '叙事表达策略', item.strategy, editable, 3)
+            ].join('');
+        }
+        return [
+            drawerTextarea('drawer-movement', '运镜手法与运动', item.movement, editable, 3),
+            drawerTextarea('drawer-sensory', '画面意蕴与感官', item.sensory, editable, 3),
+            drawerTextarea('drawer-strategy', '情绪策略', item.strategy, editable, 3)
+        ].join('');
+    }
+
+    function drawerFields(item, editable) {
+        const source = item.sourceType === 'user_managed' ? '用户管理' : '系统内置';
+        const owner = item.sourceType === 'user_managed' ? item.ownerLocalOperatorId || unavailable : '系统内置资产';
+        const tag = drawerTagDefinition(item.category);
+        return [
+            drawerMetadata('来源、版本与生命周期', `${source} · v${item.version} · ${item.lifecycleStatus}`),
+            drawerMetadata('所有者', owner),
+            `<div class="grid grid-cols-[1fr_96px] gap-3">${drawerTextInput('drawer-title', '名称 / 标题', item.title, editable)}${drawerRatingSelect(item.rating, editable)}</div>`,
+            drawerTextInput('drawer-tag', tag.label, item.tag, editable),
+            drawerCategoryFields(item, editable)
+        ].join('');
+    }
+
+    function drawerRatingClass(value) {
+        if (value === 'SS') return 'badge-ssr';
+        if (value === 'S') return 'badge-s';
+        if (value === 'A') return 'badge-a';
+        if (value === 'C') return 'badge-c';
+        return 'badge-b';
+    }
+
+    function syncDrawerHeader(title, rating) {
+        const drawerTitle = document.getElementById('drawerTitle');
+        const drawerRating = document.getElementById('drawerRating');
+        if (drawerTitle) drawerTitle.textContent = title || '未命名技能';
+        if (drawerRating) {
+            drawerRating.textContent = rating;
+            drawerRating.className = `px-3 py-1 text-sm rounded font-bold rating-badge ${drawerRatingClass(rating)}`;
+        }
+    }
+
+    function setDrawerTextAreaState(textarea, value, editable) {
+        if (!textarea) return;
+        textarea.value = drawerValue(value, editable);
+        textarea.readOnly = !editable;
+        textarea.setAttribute('aria-readonly', String(!editable));
+        textarea.classList.toggle('bg-base-100/30', !editable);
+        textarea.classList.toggle('bg-base-100', editable);
+        textarea.classList.toggle('cursor-default', !editable);
+        textarea.classList.toggle('focus:border-primary', editable);
+    }
+
+    function setDrawerActions(item, canManage) {
+        const deleteButton = document.getElementById('drawerDeleteBtn');
+        const editableActions = document.getElementById('drawerEditableActions');
+        const readOnlyFooter = document.getElementById('drawerReadOnlyFooter');
+        const readOnlyMessage = document.getElementById('drawerReadOnlyMessage');
+        const saveButton = document.getElementById('drawerSaveBtn');
+        const analysisButton = document.getElementById('drawerAiAnalysisBtn');
+        if (!deleteButton || !editableActions || !readOnlyFooter || !readOnlyMessage || !saveButton || !analysisButton) return;
+        deleteButton.hidden = !canManage;
+        deleteButton.disabled = !canManage || state.busy;
+        deleteButton.setAttribute('aria-disabled', String(!canManage || state.busy));
+        deleteButton.title = canManage ? '删除自定义技能' : '系统内置技能只读';
+        deleteButton.onclick = canManage ? () => window.deleteSkill(item.id) : null;
+        editableActions.classList.toggle('hidden', !canManage);
+        editableActions.classList.toggle('flex', canManage);
+        readOnlyFooter.classList.toggle('hidden', canManage);
+        readOnlyMessage.textContent = item.sourceType === 'system_builtin'
+            ? '系统内置技能只读'
+            : '该用户管理技能当前版本不可编辑';
+        saveButton.disabled = !canManage || state.busy;
+        saveButton.setAttribute('aria-disabled', String(!canManage || state.busy));
+        analysisButton.hidden = !canManage;
+        analysisButton.disabled = true;
+        analysisButton.setAttribute('aria-disabled', 'true');
+        analysisButton.title = '技能评价流程尚未启用';
+    }
+
+    window.openDrawer = function(item) {
+        window.activeItem = item;
+        const drawer = document.getElementById('detailDrawer');
+        const backdrop = document.getElementById('drawerBackdrop');
+        const deleteButton = document.getElementById('drawerDeleteBtn');
+        const fields = document.getElementById('drawerDetailFields');
+        const taboo = document.getElementById('drawerTabooText');
+        const conflict = document.getElementById('drawerConflictText');
+        if (!drawer || !backdrop || !fields || !deleteButton || !taboo || !conflict) return;
+        const canManage = item.sourceType === 'user_managed' && item.lifecycleStatus === 'active' && Boolean(item.stableSlug);
+        syncDrawerHeader(item.title, item.rating);
+        fields.innerHTML = drawerFields(item, canManage);
+        fields.querySelectorAll('input, textarea, select').forEach((field) => {
+            field.classList.add(field.tagName === 'TEXTAREA' ? 'ui-textarea' : field.tagName === 'SELECT' ? 'ui-select' : 'ui-field');
+        });
+        taboo.classList.add('ui-textarea');
+        conflict.classList.add('ui-textarea');
+        setDrawerTextAreaState(taboo, item.taboo, canManage);
+        setDrawerTextAreaState(conflict, item.conflict, canManage);
+        setDrawerActions(item, canManage);
+        const titleInput = document.getElementById('drawer-title');
+        const ratingInput = document.getElementById('drawer-rating');
+        titleInput?.addEventListener('input', () => syncDrawerHeader(titleInput.value.trim(), ratingInput?.value || item.rating));
+        ratingInput?.addEventListener('change', () => syncDrawerHeader(titleInput?.value.trim() || item.title, ratingInput.value));
+        drawer.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+        setTimeout(() => backdrop.classList.add('opacity-100'), 10);
+        document.querySelectorAll('.skill-card').forEach(card => card.classList.toggle('active-card', card.id === `card-${item.id}`));
+    };
+
+    function refreshActiveDrawer() {
+        const activeItem = window.activeItem;
+        if (!activeItem) return;
+        const refreshedItem = state.skills.find(candidate => activeItem.stableSlug
+            ? candidate.stableSlug === activeItem.stableSlug
+            : candidate.id === activeItem.id);
+        if (!refreshedItem) {
+            window.closeDrawer();
+            return;
+        }
+        window.openDrawer(refreshedItem);
+    }
+
+    window.switchCategory = function(category) {
+        if (!categoryKeys.includes(category)) return;
+        window.activeCategory = category;
+        window.activeGenreFilter = '全部';
+        window.searchQuery = '';
+        state.page = 1;
+        const search = document.getElementById('search-input');
+        if (search) search.value = '';
+        document.querySelectorAll('.category-btn').forEach(button => {
+            const active = button.dataset.category === category;
+            button.className = active ? 'category-btn btn btn-outline btn-primary w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group bg-primary/5 shadow-[0_4px_12px_rgba(79,133,229,0.1)]' : 'category-btn btn btn-ghost w-full flex items-center gap-4 px-6 py-4 rounded-box transition-all duration-300 group text-base-content opacity-60 hover:text-base-content border border-transparent hover:border-transparent bg-transparent';
+        });
+        renderFilters();
+        renderGrid();
+        window.closeDrawer();
+    };
+
+    window.handleGenreFilterChange = value => { window.activeGenreFilter = value; state.page = 1; renderGrid(); };
+    window.handleSearch = () => { window.searchQuery = document.getElementById('search-input')?.value || ''; state.page = 1; renderGrid(); };
+    window.resetFilter = () => { window.activeGenreFilter = '全部'; window.searchQuery = ''; state.page = 1; const search = document.getElementById('search-input'); if (search) search.value = ''; renderFilters(); renderGrid(); };
+
+    window.deleteSkill = async function(itemId) {
+        const item = state.skills.find(candidate => candidate.id === itemId);
+        if (!item || item.sourceType !== 'user_managed' || !confirm('确定要删除这条自定义技能吗？删除前必须通过数据库引用检查。')) return;
+        if (state.busy) return;
+        try {
+            state.busy = true;
+            syncManagementControls();
+            await request({ action: 'delete', local_operator_id: state.context.local_operator_id, skill_id: item.id, creator_confirmed: true, idempotency_key: token('skill-delete') });
+            window.closeDrawer();
+            await loadSkills();
+            showToast('技能已删除');
+        } catch (error) {
+            showToast(`删除未完成：${error.message}`);
+        } finally {
+            state.busy = false;
+            syncManagementControls();
+        }
+    };
+
+    function buildSkillPayload(category, existing, value) {
+        const title = value('title');
+        const tag = value('tag');
+        const rating = value('rating') || 'S';
+        const common = { title, tag, rating, taboo: value('taboo'), conflict: value('conflict') };
+        if (!title || !tag || !common.taboo || !common.conflict) throw new Error('请完整填写必填字段。');
+        if (category === 'theme-combos' && !primaryGenres.includes(tag)) throw new Error('题材组合主类只能使用六个批准主类。');
+        if (existing && (existing.sourceType !== 'user_managed' || existing.lifecycleStatus !== 'active' || !existing.stableSlug)) {
+            throw new Error('该技能不能安全创建新版本。');
+        }
+        const existingFields = existing?.rpc || {};
+        const config = { ...(existingFields.skill_config_jsonb || {}), category, ...common };
+        const requestBody = {
+            action: 'create_version',
+            local_operator_id: state.context.local_operator_id,
+            idempotency_key: token('skill-version'),
+            skill_id: existing?.id,
+            stable_slug: existing?.stableSlug || `user-skill-${crypto.randomUUID()}`,
+            skill_name: title,
+            skill_description: common.conflict,
+            skill_category: categoryNames[category],
+            genre_main: category === 'theme-combos' ? { primary: tag } : null,
+            skill_tags_jsonb: [tag],
+            combo_logic: existingFields.combo_logic || null,
+            fun_source: existingFields.fun_source || null,
+            essence: existingFields.essence || null,
+            arc_structure: existingFields.arc_structure || null,
+            applicable_scene: existingFields.applicable_scene || null,
+            constraint_fields: { ...(existingFields.constraint_fields || {}), taboo: common.taboo, conflict: common.conflict },
+            template_fields: existingFields.template_fields || {},
+            applicable_stages: existingFields.applicable_stages || [],
+            applicable_scopes: existingFields.applicable_scopes || {},
+            skill_config_jsonb: config,
+            ai_rating: rating
+        };
+        if (category === 'theme-combos') {
+            const subGenres = value('subgenres');
+            Object.assign(requestBody, {
+                skill_tags_jsonb: [tag, subGenres].filter(Boolean),
+                combo_logic: { primary: tag, sub_genres: subGenres, logic: value('logic') },
+                fun_source: value('attraction'),
+                essence: value('essence')
+            });
+        }
+        if (category === 'chapter-expansion') {
+            Object.assign(requestBody, {
+                applicable_scene: { scene: value('scene') },
+                arc_structure: { arc: value('arc'), key_point: value('keypoint') }
+            });
+        }
+        if (category === 'art-presentation') {
+            requestBody.skill_config_jsonb = { ...config, imagery: value('imagery'), sensory: value('sensory'), strategy: value('strategy') };
+        }
+        if (category === 'camera-language') {
+            requestBody.skill_config_jsonb = { ...config, movement: value('movement'), sensory: value('sensory'), strategy: value('strategy') };
+        }
+        return requestBody;
+    }
+
+    function formPayload() {
+        const category = window.activeCategory || 'theme-combos';
+        const editing = window.modalMode === 'edit';
+        const existing = editing ? state.skills.find(item => item.id === window.modalItemId) : null;
+        if (editing && !existing) throw new Error('该技能不能安全创建新版本。');
+        return buildSkillPayload(category, existing, name => {
+            if (name === 'rating') return document.getElementById('form-rating')?.value || '';
+            return field(`form-${name}`);
+        });
+    }
+
+    function drawerPayload(item) {
+        return buildSkillPayload(item.category, item, name => {
+            if (name === 'rating') return document.getElementById('drawer-rating')?.value || '';
+            if (name === 'taboo') return field('drawerTabooText');
+            if (name === 'conflict') return field('drawerConflictText');
+            return field(`drawer-${name}`);
+        });
+    }
+
+    function currentDrawerSkill() {
+        const activeItem = window.activeItem;
+        if (!activeItem) return null;
+        return state.skills.find(candidate => activeItem.stableSlug
+            ? candidate.stableSlug === activeItem.stableSlug
+            : candidate.id === activeItem.id) || null;
+    }
+
+    window.triggerAIAnalysis = () => showToast('技能评价流程尚未启用，当前不会伪造分析结果。');
+
+    window.saveDrawerSkill = async function() {
+        const item = currentDrawerSkill();
+        if (!item || item.sourceType !== 'user_managed' || item.lifecycleStatus !== 'active' || !item.stableSlug) {
+            showToast('系统内置技能只读。');
+            return;
+        }
+        if (state.busy) return;
+        let saved = false;
+        const saveButton = document.getElementById('drawerSaveBtn');
+        try {
+            const body = drawerPayload(item);
+            state.busy = true;
+            syncManagementControls();
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.setAttribute('aria-disabled', 'true');
+            }
+            await request(body);
+            saved = true;
+            await loadSkills();
+            showToast('技能新版本已保存');
+        } catch (error) {
+            showToast(`保存未完成：${error.message}`);
+        } finally {
+            state.busy = false;
+            syncManagementControls();
+            if (saved) {
+                refreshActiveDrawer();
+            } else if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.setAttribute('aria-disabled', 'false');
+            }
+        }
+    };
+
+    window.submitSkillForm = async function() {
+        if (state.busy) return;
+        try {
+            const body = formPayload();
+            state.busy = true;
+            syncManagementControls();
+            await request(body);
+            window.closeSkillFormModal();
+            await loadSkills();
+            showToast('技能已创建');
+        } catch (error) {
+            showToast(`保存未完成：${error.message}`);
+        } finally {
+            state.busy = false;
+            syncManagementControls();
+        }
+    };
+
+    const importColumns = [
+        'skill_id', 'stable_slug', 'skill_version_id', 'version', 'source_type', 'owner_local_operator_id', 'lifecycle_status',
+        'skill_name', 'skill_description', 'skill_category', 'genre_main', 'skill_tags_jsonb', 'combo_logic', 'fun_source',
+        'essence', 'arc_structure', 'applicable_scene', 'ai_rating', 'applicable_stages', 'applicable_scopes',
+        'constraint_fields', 'template_fields', 'skill_config_jsonb'
+    ];
+    const jsonImportColumns = new Set([
+        'genre_main', 'skill_tags_jsonb', 'combo_logic', 'arc_structure', 'applicable_scene', 'applicable_stages',
+        'applicable_scopes', 'constraint_fields', 'template_fields', 'skill_config_jsonb'
+    ]);
+    const csvColumns = [...importColumns, 'null_fields'];
+
+    function importableSkill(item) {
+        const row = item.rpc || {};
+        return Object.fromEntries(importColumns.map(column => [column, row[column] ?? (column === 'skill_id' ? item.id : column === 'stable_slug' ? item.stableSlug : column === 'version' ? item.version : column === 'source_type' ? item.sourceType : column === 'owner_local_operator_id' ? item.ownerLocalOperatorId : column === 'lifecycle_status' ? item.lifecycleStatus : null)]));
+    }
+
+    function csvEscape(value) {
+        const text = value === null || value === undefined
+            ? ''
+            : typeof value === 'string'
+                ? value
+                : JSON.stringify(value);
+        return `"${text.replaceAll('"', '""')}"`;
+    }
+
+    function parseCsv(text) {
+        const rows = [];
+        let row = [];
+        let value = '';
+        let quoted = false;
+        for (let index = 0; index < text.length; index += 1) {
+            const char = text[index];
+            if (quoted) {
+                if (char === '"' && text[index + 1] === '"') {
+                    value += '"';
+                    index += 1;
+                } else if (char === '"') {
+                    quoted = false;
+                } else {
+                    value += char;
+                }
+                continue;
+            }
+            if (char === '"') {
+                quoted = true;
+            } else if (char === ',') {
+                row.push(value);
+                value = '';
+            } else if (char === '\n') {
+                row.push(value.replace(/\r$/, ''));
+                rows.push(row);
+                row = [];
+                value = '';
+            } else {
+                value += char;
+            }
+        }
+        if (quoted) throw new Error('CSV 文件的引号没有闭合。');
+        if (value || row.length) {
+            row.push(value.replace(/\r$/, ''));
+            rows.push(row);
+        }
+        return rows;
+    }
+
+    function parseCsvSkills(text) {
+        const [header = [], ...records] = parseCsv(text);
+        const columns = header.map((value, index) => index === 0 ? value.replace(/^\uFEFF/, '') : value);
+        return records
+            .filter(record => record.some(value => value !== ''))
+            .map(record => Object.fromEntries(columns.map((column, index) => [column, record[index] ?? ''])));
+    }
+
+    function parseJsonCell(value, column) {
+        if (value === '' || value === null || value === undefined) return undefined;
+        try {
+            return JSON.parse(value);
+        } catch {
+            throw new Error(`CSV 的 ${column} 列不是有效 JSON。`);
+        }
+    }
+
+    function parseNullFields(value) {
+        if (value === '' || value === null || value === undefined) return [];
+        const parsed = parseJsonCell(value, 'null_fields');
+        if (!Array.isArray(parsed) || parsed.some(column => !importColumns.includes(column))) {
+            throw new Error('CSV 的 null_fields 列无效。');
+        }
+        return parsed;
+    }
+
+    function toImportPayload(row) {
+        const payload = {};
+        const nullFields = parseNullFields(row.null_fields);
+        importColumns.forEach(column => {
+            if (nullFields.includes(column)) {
+                payload[column] = null;
+                return;
+            }
+            if (!(column in row) || row[column] === undefined) return;
+            const value = row[column];
+            payload[column] = value === null
+                ? null
+                : jsonImportColumns.has(column) && typeof value === 'string' && value !== ''
+                ? parseJsonCell(value, column)
+                : column === 'version'
+                    ? Number(value)
+                    : value;
+        });
+        return payload;
+    }
+
+    function importRowsFromJson(parsed) {
+        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed?.skills)) return parsed.skills;
+        return categoryKeys.flatMap(category => Array.isArray(parsed?.[category]) ? parsed[category] : []);
+    }
+
+    window.exportSkills = function() {
+        const rows = state.skills.filter(item => item.sourceType === 'user_managed').map(importableSkill);
+        if (!rows.length) {
+            showToast('当前没有可导出的个人技能。');
+            return;
+        }
+        const csv = `\uFEFF${csvColumns.join(',')}\n${rows.map(row => {
+            const nullFields = importColumns.filter(column => row[column] === null || row[column] === undefined);
+            return [...importColumns.map(column => csvEscape(row[column])), csvEscape(JSON.stringify(nullFields))].join(',');
+        }).join('\n')}`;
+        const anchor = document.createElement('a');
+        anchor.href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
+        anchor.download = 'narrative_user_managed_skills.csv';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        showToast(`已导出 ${rows.length} 条个人技能 CSV`);
+    };
+
+    window.importSkills = async function(event) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+        if (state.busy) return;
+        try {
+            state.busy = true;
+            syncManagementControls();
+            const text = await file.text();
+            const rawRows = /\.csv$/i.test(file.name) || text.startsWith('\uFEFFskill_id,') || text.startsWith('skill_id,') || text.startsWith('\uFEFFstable_slug,') || text.startsWith('stable_slug,')
+                ? parseCsvSkills(text)
+                : importRowsFromJson(JSON.parse(text));
+            const rows = rawRows.map(toImportPayload);
+            if (!rows.length) throw new Error('导入文件中没有技能记录。');
+            showToast(`正在提交 ${rows.length} 条用户技能…`);
+            const result = await request({ action: 'import_overwrite', local_operator_id: state.context.local_operator_id, idempotency_key: token('skill-import-overwrite'), skills: rows });
+            await loadSkills();
+            const updated = result.result?.updated || result.updated || [];
+            showToast(`批量导入完成：已覆盖 ${updated.length} 条个人技能`);
+        } catch (error) {
+            showToast(`导入未完成：${error.message}`);
+        } finally {
+            state.busy = false;
+            syncManagementControls();
+        }
+    };
+
+    function patchPrototypeControls() {
+        const importInput = document.getElementById('import-file-input');
+        if (importInput) importInput.accept = '.json,.csv,application/json,text/csv';
+        document.querySelectorAll('[onclick="triggerImport()"], [onclick="exportSkills()"]')
+            .forEach(button => { const textNode = [...button.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim()); if (textNode) textNode.nodeValue = button.getAttribute('onclick').includes('triggerImport') ? '批量导入' : '导出 CSV'; });
+        document.querySelectorAll('#sw-auto-production, #sw-auto-audit, #sw-auto-iteration').forEach(node => { node.setAttribute('aria-disabled', 'true'); node.title = '统一配置面管理'; node.classList.add('opacity-40'); });
+        const applyButton = document.querySelector('#quick-settings-popover .settings-btn');
+        if (applyButton) { applyButton.disabled = true; applyButton.title = '统一配置面管理'; }
+        const aiButton = document.getElementById('drawerAiAnalysisBtn');
+        if (aiButton) { aiButton.disabled = true; aiButton.setAttribute('aria-disabled', 'true'); aiButton.title = '技能评价流程尚未启用'; }
+        window.triggerImport = () => {
+            importInput?.click();
+        };
+        prototypeOpenForm = window.openSkillFormModal;
+        window.openSkillFormModal = function(mode, itemId) {
+            if (mode !== 'add') return showToast('用户管理技能请在详情页直接编辑。');
+            prototypeOpenForm?.(mode, itemId);
+            const createButton = document.getElementById('modalCreateBtn');
+            if (createButton) createButton.textContent = '创建技能';
+        };
+    }
+
+    function syncNavigation() {
+        const links = [...document.querySelectorAll('#sidebarMenu a')];
+        const bookId = state.context?.current_book_id;
+        const destinations = [
+            '/workbench',
+            bookId ? `/books/${encodeURIComponent(bookId)}/world` : '',
+            bookId ? `/books/${encodeURIComponent(bookId)}/production` : '',
+            bookId ? `/books/${encodeURIComponent(bookId)}/audit` : '',
+            ''
+        ];
+        links.forEach((link, index) => {
+            const href = destinations[index];
+            if (href) {
+                link.href = href;
+                link.removeAttribute('aria-disabled');
+                link.removeAttribute('title');
+                link.classList.remove('opacity-40', 'pointer-events-none');
+            } else {
+                link.removeAttribute('href');
+                link.setAttribute('aria-disabled', 'true');
+                link.title = index === 4 ? '迭代管理页面尚未接入' : '请先选择作品';
+                link.classList.add('opacity-40', 'pointer-events-none');
+            }
+        });
+        syncManagementControls();
+    }
+
+    function syncManagementControls() {
+        const blocked = state.loading || state.busy || Boolean(state.error) || !state.context;
+        const title = state.loading
+            ? '技能仍在读取，读取完成前不能修改。'
+            : state.error
+                ? '技能读取失败，当前操作已停用。'
+                : state.busy
+                    ? '正在提交技能变更，请稍候。'
+                    : '当前操作仅适用于用户管理技能。';
+        const exportButton = document.querySelector('[onclick="exportSkills()"]');
+        const actionButtons = [
+            exportButton,
+            ...document.querySelectorAll('[onclick="triggerImport()"], [onclick="openSkillFormModal(\'add\')"]'),
+        ].filter(Boolean);
+        actionButtons.forEach(button => {
+            button.disabled = blocked;
+            button.setAttribute('aria-disabled', String(blocked));
+            button.title = blocked
+                ? title
+                : button.getAttribute('onclick')?.includes('triggerImport')
+                    ? '批量导入个人技能'
+                    : button === exportButton ? '导出个人技能 CSV' : '新增个人技能';
+            button.classList.toggle('opacity-40', blocked);
+            button.classList.toggle('cursor-not-allowed', blocked);
+        });
+        const input = document.getElementById('import-file-input');
+        if (input) input.disabled = blocked;
+    }
+
+    async function loadSkills() {
+        state.loading = true;
+        state.error = '';
+        syncManagementControls();
+        renderGrid();
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const timeout = controller ? setTimeout(() => controller.abort(), 12000) : null;
+        try {
+            state.context = await ensureContext();
+            syncNavigation();
+            const name = document.getElementById('header-book-name');
+            if (name) name.textContent = '全局技能库';
+            const result = await request({ action: 'list', read_mode: 'management', local_operator_id: state.context.local_operator_id }, { signal: controller?.signal });
+            groupSkills(result.skills || []);
+            updateCounts();
+            state.loading = false;
+            syncNavigation();
+            renderFilters();
+            renderGrid();
+            refreshActiveDrawer();
+        } catch (error) {
+            state.loading = false;
+            state.error = error?.name === 'AbortError' ? '技能数据服务响应超时，当前操作已停用。' : error.message || '技能数据服务暂不可用。';
+            syncNavigation();
+            renderGrid();
+        } finally {
+            if (timeout) clearTimeout(timeout);
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        patchPrototypeControls();
+        window.activeCategory = 'theme-combos';
+        window.activeGenreFilter = '全部';
+        window.searchQuery = '';
+        loadSkills();
+    }, { once: true });
+})();
+</script>
+</body>
+</html>

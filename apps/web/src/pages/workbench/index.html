@@ -5,21 +5,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>纵横 Narrative-Engine - 总控设置</title>
+    <link rel="stylesheet" href="/vendor/font-fallback.css">
     <!-- ★ DaisyUI v5 CDN ★ -->
         <!-- Tailwind CSS & DaisyUI v4 via CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="/vendor/daisyui-4.12.10-full.css" rel="stylesheet" type="text/css" />
+    <script src="/vendor/tailwindcss-browser-4.js"></script>
     <!-- 项目自定义样式 -->
-    <link href="../common/theme.css" rel="stylesheet">
-    <link rel="stylesheet" href="../common/sidebar.css">
-    <script src="../common/theme.js"></script>
-    <script src="./new_book_wizard_data.js"></script>
-    <script src="../common/header.js"></script>
+    <link href="/pages/prototype/common/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="/pages/prototype/common/sidebar.css">
+    <script src="/pages/prototype/common/theme.js"></script>
+    <script defer src="/pages/prototype/common/sidebar.js"></script>
+    <script src="/pages/new-book/new_book_wizard_data.js"></script>
+    <script src="/pages/prototype/common/header.js"></script>
 
 
 
 <style>
 .material-symbols-outlined{font-size:18px}
+        /* The shared sidebar makes this page a flex item; let the workbench consume the remaining desktop width. */
+        .main-content { flex: 1 1 auto; min-width: 0; }
+        .node-path { fill: none; stroke: color-mix(in oklab, var(--color-base-content) 18%, transparent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+        .node-path.active { stroke: var(--color-primary); stroke-width: 2; }
         /* 顶栏随侧栏折叠隐藏 */
         .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
         body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
@@ -27,43 +33,11 @@
         .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
         .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
-        .settings-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-base-300); cursor: pointer; transition: background 0.2s ease; flex-shrink: 0; }
-        .settings-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.2s ease; }
-        .settings-switch.on { background: var(--color-accent); }
-        .settings-switch.on::after { transform: translateX(16px); }
-        .settings-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; cursor: pointer; transition: all 0.15s ease; }
-        .settings-btn:hover { background: var(--color-accent); color: white; }
-
 </style>
 </head>
-<body class="flex h-screen bg-base-200 selection:bg-primary/30 selection:text-base-content">
-<a href="#main-content" class="skip-link">跳到主内容</a>
-<nav class="sidebar-glass" aria-label="主菜单">
-  <div class="sidebar-brand">
-    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
-    <div class="sidebar-text">
-      <div class="brand-title">纵横</div>
-      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
-    </div>
-  </div>
-  <div class="sidebar-separator" aria-hidden="true"></div>
-  <ul class="menu sidebar-menu" id="sidebarMenu">
-    <li><a href="workbench.html" aria-label="总控设置面板" class="active"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
-    <li><a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
-    <li><a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
-    <li><a href="audit_stage.html" aria-label="审计阶段：正文审计、主编裁决"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
-    <li><a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
-  </ul>
-  <footer class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-user-avatar">U</div>
-      <span class="sidebar-text sidebar-user-name">用户</span>
-    </div>
-  </footer>
-</nav>
-<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
-  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
-</button>
+<body class="ui-page flex h-screen bg-base-200 selection:bg-primary/30 selection:text-base-content">
+<a href="#main" class="skip-link">跳到主内容</a>
+<nav class="sidebar-glass" aria-label="主菜单" data-shared-sidebar data-sidebar-active="workbench"></nav>
 <!-- Main Content Area -->
 <main class="main-content" id="main">
     <!-- TopNavBar -->
@@ -74,8 +48,8 @@
             <nav class="flex h-full items-center ml-2">
                 <!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
                                 <div class="header-tabs">
-                    <a href="workbench.html" class="header-tab active">模型设置</a>
-                    <a href="skill_library.html" class="header-tab">技能设置</a>
+                    <a href="/workbench" class="header-tab active" aria-current="page">模型设置</a>
+                    <a href="/skill_library.html" class="header-tab">技能设置</a>
                 </div>
             </nav>
         </div>
@@ -131,62 +105,46 @@
     <!-- Scrollable Main Container -->
     <div class="flex-1 overflow-y-auto pt-20 p-4 flex flex-col gap-4">
         <!-- Book Info Banner -->
-        <div class="bg-base-100 border border-base-content/5 rounded-box p-4 flex items-center justify-between shadow-sm relative z-10 shrink-0">
+        <div class="ui-card bg-base-100 border border-base-content/5 rounded-box p-4 flex items-center justify-between shadow-sm relative z-10 shrink-0">
             <div class="absolute left-0 top-0 w-64 h-full bg-gradient-to-r from-[#4f85e5]/10 to-transparent pointer-events-none rounded-box"></div>
             <div class="flex items-center gap-4 relative z-10 shrink-0">
                 <div class="w-16 h-20 rounded shadow-md relative overflow-hidden flex flex-col justify-end p-1.5 border border-base-content/10" style="background: linear-gradient(135deg, #f6d365, #ffb347, #84fab0);">
-                    <div class="text-[6px] font-bold text-base-content leading-tight uppercase mix-blend-overlay">Aetheric<br>Chronicles</div>
+                    <div class="text-[6px] font-bold text-base-content leading-tight uppercase mix-blend-overlay">当前<br>作品</div>
                 </div>
                 <div class="flex flex-col">
                     <div class="flex items-center gap-2 mb-1">
-                        <span id="currentBookGenre" class="badge badge-accent badge-sm font-bold">科幻/赛博</span>
-                        <span id="currentBookState" class="text-base-content opacity-70 text-[11px]">剧情段规划定稿前</span>
+                        <span id="currentBookGenre" class="badge badge-accent badge-sm font-bold">等待有效投影</span>
+                        <span id="currentBookState" class="text-base-content opacity-70 text-[11px]">尚无 current_book_context</span>
                     </div>
 
                     <div class="relative" id="bookDropdownContainer">
-                        <div class="flex items-center gap-2 cursor-pointer group" onclick="document.getElementById('bookDropdown').classList.toggle('hidden')">
-                            <h1 id="currentBookTitle" class="text-xl font-bold text-base-content group-hover:text-primary transition-colors">Aetheric Chronicles</h1>
+                        <div class="flex items-center gap-2 cursor-not-allowed group opacity-70" aria-disabled="true" tabindex="-1" title="当前接口尚未提供作品列表；请从作品页面选择后再回到总控设置。">
+                            <h1 id="currentBookTitle" class="text-xl font-bold text-base-content group-hover:text-primary transition-colors">未选择本地作品</h1>
                             <span class="material-symbols-outlined text-[18px] shrink-0" style="color: var(--color-primary, oklch(var(--p))) !important;">expand_more</span>
                         </div>
 
                         <!-- 下拉列表 -->
                         <div id="bookDropdown" class="absolute top-6 left-0 mt-2 w-64 bg-base-100 border border-base-content/5 rounded-lg shadow-xl hidden z-50 overflow-hidden">
-                            <div class="p-2 border-b border-base-content/5">
-                                <input type="text" placeholder="搜索书籍..." class="w-full bg-base-100 border border-base-content/5 text-sm rounded px-2 py-1.5 text-base-content focus:outline-none focus:border-primary/30">
-                            </div>
-                            <div class="max-h-48 overflow-y-auto">
-                                <div class="book-option p-2 hover:bg-base-200 cursor-pointer flex items-center gap-3 transition-colors" data-title="Aetheric Chronicles" data-genre="科幻/赛博" data-state="剧情段规划定稿前" data-progress="78%" data-chapter="第42章: 觉醒" data-words="1.2M" data-ai="94" data-l1a="24" onclick="selectBook(this)">
-                                    <div class="w-8 h-10 rounded bg-gradient-to-br from-info to-indigo-600 flex-shrink-0"></div>
-                                    <div class="flex-1 min-w-0"><div class="text-xs font-bold text-base-content truncate">Aetheric Chronicles</div><div class="text-[10px] text-base-content opacity-70">更新于 2 小时前</div></div>
-                                </div>
-                                <div class="book-option p-2 hover:bg-base-200 cursor-pointer flex items-center gap-3 transition-colors" data-title="剑域神座" data-genre="东方玄幻" data-state="生产中" data-progress="92%" data-chapter="第128章: 剑开天门" data-words="2.5M" data-ai="88" data-l1a="85" onclick="selectBook(this)">
-                                    <div class="w-8 h-10 rounded bg-gradient-to-br from-error to-orange-600 flex-shrink-0"></div>
-                                    <div class="flex-1 min-w-0"><div class="text-xs font-bold text-base-content truncate">剑域神座</div><div class="text-[10px] text-base-content opacity-70">更新于 1 天前</div></div>
-                                </div>
-                                <div class="book-option p-2 hover:bg-base-200 cursor-pointer flex items-center gap-3 transition-colors" data-title="深渊降临" data-genre="悬疑惊悚" data-state="设计阶段" data-progress="15%" data-chapter="序章: 门外的声音" data-words="50K" data-ai="98" data-l1a="12" onclick="selectBook(this)">
-                                    <div class="w-8 h-10 rounded bg-gradient-to-br from-secondary to-gray-800 flex-shrink-0"></div>
-                                    <div class="flex-1 min-w-0"><div class="text-xs font-bold text-base-content truncate">深渊降临</div><div class="text-[10px] text-base-content opacity-70">更新于 5 分钟前</div></div>
-                                </div>
-                            </div>
+                            <div class="p-3 text-[11px] text-base-content opacity-60 leading-relaxed">当前接口尚未提供作品列表。请从作品页面选择作品后回到这里。</div>
                         </div>
                     </div>
 
                     <div class="mt-2 flex items-center gap-3">
                         <div class="w-40 h-1.5 bg-base-content/10 rounded-full overflow-hidden relative">
-                            <div id="currentBookProgressBar" class="h-full bg-base-content rounded-full transition-all duration-500" style="width: 78%;"></div>
+                            <div id="currentBookProgressBar" class="h-full bg-base-content rounded-full transition-all duration-500" style="width: 0%;"></div>
                         </div>
-                        <span id="currentBookProgressText" class="text-base-content opacity-70 text-xs font-mono transition-all">78%</span>
+                        <span id="currentBookProgressText" class="text-base-content opacity-70 text-xs font-mono transition-all">-</span>
                     </div>
                 </div>
             </div>
 
             <div class="flex items-center gap-6 relative z-10 shrink-0">
-                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">最新章节</span><span id="currentBookChapter" class="text-xs font-bold text-warning transition-all">第42章: 觉醒</span><span class="text-base-content opacity-50 text-[9px]">更新于 2 小时前</span></div>
-                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">资产数量</span><span id="currentBookAi" class="text-lg font-bold text-success transition-all">94%</span></div>
-                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">总字数</span><span id="currentBookWords" class="text-lg font-bold text-base-content transition-all">1.2M</span></div>
-                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">剧情段规划完成度</span><div class="flex items-baseline gap-1"><span id="currentBookL1a" class="text-xl font-bold text-primary transition-all">24</span><span class="text-base-content opacity-50 text-xs font-mono">/ 100</span></div></div>
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">最新章节</span><span id="currentBookChapter" class="text-xs font-bold text-warning transition-all">-</span><span id="currentBookChapterSummary" class="text-base-content opacity-50 text-[9px] max-w-32 truncate">等待有效投影</span></div>
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">资产数量</span><span id="currentBookAi" class="text-lg font-bold text-success transition-all">-</span></div>
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">总字数</span><span id="currentBookWords" class="text-lg font-bold text-base-content transition-all">-</span></div>
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">剧情段规划完成度</span><div class="flex items-baseline gap-1"><span id="currentBookL1a" class="text-xl font-bold text-primary transition-all">-</span><span id="currentBookL1aTarget" class="text-base-content opacity-50 text-xs font-mono">待有效投影</span></div></div>
                 <!-- 五彩按钮 -->
-                <button onclick="openNewBookModal()" class="px-6 py-2.5 rounded-lg text-base-content text-base font-bold flex items-center gap-1.5 btn-rainbow-glow mr-16">
+                <button onclick="openNewBookModal()" class="btn btn-neutral btn-sm ui-button ui-button-dark ui-button-small h-10 px-5 text-sm font-bold flex items-center gap-1.5 mr-16">
                     <span class="material-symbols-outlined text-[18px]">add</span>新建书籍
                 </button>
             </div>
@@ -195,7 +153,7 @@
 <!-- Workspace: Canvas and Config -->
 <div class="flex-1 flex gap-4 min-h-[500px]">
 <!-- Left Canvas Container -->
-<div class="flex-1 bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden relative">
+<div class="ui-card flex-1 bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden relative">
 <div class="h-12 border-b border-base-content/5 flex items-center justify-between px-4 shrink-0 bg-base-100">
 <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-text-dark"></span><span id="canvasHeaderTitle" class="text-base font-bold text-base-content opacity-70">生产流程节点设置</span></div>
 <div class="flex items-center gap-2"><div class="relative" id="stageDropdownContainer">
@@ -215,108 +173,284 @@
 <div id="canvasViewport" class="flex-1 min-h-[480px] relative overflow-hidden bg-base-200 rounded-box" style="cursor: grab;">
 <div id="canvasContent" class="absolute bg-grid transform-gpu origin-top-left" style="width: 10000px; height: 10000px; left: 0; top: 0; transform: translate(0px, 0px) scale(1);">
 <svg class="absolute inset-0 w-full h-full pointer-events-none">
-<defs><linearGradient id="active-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-3="#4f85e5" stop-opacity="0.2" /><stop offset="100%" stop-3="#4f85e5" stop-opacity="0.8" /></linearGradient></defs>
-<!-- Connectors -->
-<path d="M 220 280 C 280 280, 280 160, 340 160" class="node-path" data-source="node-l1a" data-target="node-deconstruct" />
-<path d="M 220 280 C 280 280, 280 280, 340 280" class="node-path active" stroke="url(#active-line)" stroke-width="2" data-source="node-l1a" data-target="node-simulate" />
-<path d="M 220 280 C 280 280, 280 400, 340 400" class="node-path" data-source="node-l1a" data-target="node-prose" />
-
-<path d="M 530 160 C 580 160, 580 220, 640 220" class="node-path" data-source="node-deconstruct" data-target="node-audit" />
-<path d="M 530 280 C 580 280, 580 220, 640 220" class="node-path active" stroke="url(#active-line)" stroke-width="2" data-source="node-simulate" data-target="node-audit" />
-<path d="M 530 400 C 580 400, 580 220, 640 220" class="node-path" data-source="node-prose" data-target="node-audit" />
-
-<path d="M 790 220 C 830 220, 830 340, 860 340" class="node-path" data-source="node-audit" data-target="node-commit" />
+<defs><linearGradient id="active-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.2" /><stop offset="100%" stop-color="var(--color-primary)" stop-opacity="0.8" /></linearGradient></defs>
+<!-- V7 stage-local connectors. Dashed paths end at gates, controlled writes, or a reference-only card. -->
+<!-- 设计：创作意图 → 世界/角色候选 → 冲突遍历 → 排序 → 创作者锁定。 -->
+<path d="M 230 120 C 330 120, 410 120, 500 120" class="node-path" data-source="node-fp001-03" data-target="node-ind-design" />
+<path d="M 460 140 C 475 140, 485 140, 500 140" class="node-path" stroke-dasharray="4 5" data-source="node-fp001-05" data-target="node-ind-design" />
+<path d="M 690 125 C 705 125, 715 125, 730 125" class="node-path" stroke-dasharray="4 5" data-source="node-ind-design" data-target="node-ind-world-audit" />
+<path d="M 595 170 C 535 205, 430 230, 365 250" class="node-path" data-source="node-ind-design" data-target="node-l1a" />
+<path d="M 230 310 C 245 310, 255 310, 270 310" class="node-path" data-source="node-ind-character" data-target="node-l1a" />
+<path d="M 460 310 C 475 310, 485 310, 500 310" class="node-path" data-source="node-l1a" data-target="node-fp004-02" />
+<path d="M 730 330 C 715 330, 705 330, 690 330" class="node-path" stroke-dasharray="4 5" data-source="node-ind-l1a-var" data-target="node-fp004-02" />
+<path d="M 595 350 C 595 380, 595 410, 595 450" class="node-path" stroke-dasharray="4 5" data-source="node-fp004-02" data-target="node-fp004-lock" />
+<!-- 生产：物化 → 策略 → 创作者确认 → 执行方案 → 裁剪/长任务 → 检查点入库。 -->
+<path d="M 230 125 C 245 125, 255 125, 270 125" class="node-path" data-source="node-fp005-01" data-target="node-fp006-01" />
+<path d="M 460 125 C 475 125, 485 125, 500 125" class="node-path" stroke-dasharray="4 5" data-source="node-fp006-01" data-target="node-fp006-confirm" />
+<path d="M 690 125 C 705 125, 715 125, 730 125" class="node-path" data-source="node-fp006-confirm" data-target="node-deconstruct" />
+<path d="M 825 175 C 730 245, 510 290, 365 290" class="node-path" data-source="node-deconstruct" data-target="node-fp008-01" />
+<path d="M 460 345 C 475 345, 485 345, 500 345" class="node-path" data-source="node-fp008-01" data-target="node-simulate" />
+<path d="M 690 345 C 705 345, 715 345, 730 345" class="node-path" stroke-dasharray="4 5" data-source="node-simulate" data-target="node-fp008-checkpoint" />
+<path d="M 920 345 C 935 345, 945 345, 960 345" class="node-path" stroke-dasharray="4 5" data-source="node-fp008-checkpoint" data-target="node-fp008-store" />
+<!-- 审计与入库：文学呈现后并行审计，主编裁决后进入退回链或受控入库。 -->
+<path d="M 210 105 C 230 105, 235 105, 245 105" class="node-path" data-source="node-prose" data-target="node-audit" />
+<path d="M 210 130 C 315 100, 405 105, 470 105" class="node-path" data-source="node-prose" data-target="node-fp011-01" />
+<path d="M 210 145 C 440 100, 600 105, 695 105" class="node-path" data-source="node-prose" data-target="node-fp011-02" />
+<path d="M 340 190 C 395 230, 420 250, 435 250" class="node-path" data-source="node-audit" data-target="node-commit" />
+<path d="M 565 190 C 535 225, 500 250, 435 250" class="node-path" data-source="node-fp011-01" data-target="node-commit" />
+<path d="M 790 190 C 690 225, 560 250, 435 250" class="node-path" data-source="node-fp011-02" data-target="node-commit" />
+<path d="M 435 350 C 350 400, 205 440, 115 440" class="node-path" stroke-dasharray="4 5" data-source="node-commit" data-target="node-fp012-reject" />
+<path d="M 210 490 C 225 490, 230 490, 245 490" class="node-path" stroke-dasharray="4 5" data-source="node-fp012-reject" data-target="node-fp012-archive" />
+<path d="M 435 490 C 500 435, 540 350, 570 350" class="node-path" stroke-dasharray="4 5" data-source="node-fp012-archive" data-target="node-fp012-03" />
+<path d="M 530 320 C 625 320, 710 320, 800 320" class="node-path" data-source="node-commit" data-target="node-fp013-01" />
+<path d="M 895 350 C 895 380, 895 410, 895 440" class="node-path" stroke-dasharray="4 5" data-source="node-fp013-01" data-target="node-fp013-store" />
+<!-- 迭代：已有 pool 样本 → 归因 → 候选提示词实验；不会自动覆盖 active。 -->
+<path d="M 325 245 C 365 245, 395 245, 440 245" class="node-path" stroke-dasharray="4 5" data-source="node-fp014-pool" data-target="node-fp014-01" />
+<path d="M 630 245 C 670 245, 700 245, 740 245" class="node-path" data-source="node-fp014-01" data-target="node-ind-prompt" />
 </svg>
 <!-- Nodes -->
-<div id="node-l1a" class="workflow-node absolute left-[40px] top-[250px] w-[180px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
+<div id="node-l1a" data-workbench-stage="design" data-node-code="FP004-01" data-relation-text="从已正式世界与角色设定生成剧情段候选；排序与锁定由后续受控步骤处理。" class="workflow-node absolute left-[270px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
         <span class="material-symbols-outlined text-[14px]">verified</span>剧情段规划
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">定义跨章节上位约束，锁定情节、情绪与卖点承诺。确保叙事目标的一致性。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP004-01 · 可绑定</div>
 </div>
 
-<div id="node-deconstruct" class="workflow-node absolute left-[340px] top-[130px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
+<div id="node-deconstruct" data-workbench-stage="production" data-node-code="FP007-01" data-relation-text="读取已物化场景条件和章节方案，产出可执行颗粒；不改变上游正式事实。" class="workflow-node absolute left-[730px] top-[70px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
         <span class="material-symbols-outlined text-[14px]">view_list</span>章节任务拆解
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">承接剧情段颗粒化拆解，锁定本章硬约束与禁止越界项。为后续推演提供边界。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP007-01 · 可绑定</div>
 </div>
 
-<div id="node-simulate" class="workflow-node absolute left-[340px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
+<div id="node-simulate" data-workbench-stage="production" data-node-code="FP008-02" data-relation-text="只在角色隔离任务包内推演；预算到顶由运行时暂停，不由页面补造结果。" class="workflow-node absolute left-[500px] top-[290px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
         <span class="material-symbols-outlined text-[14px]">hub</span>角色受限推演
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">导演与角色代理受限博弈，在约束中生长可信、自然的达成路径。执行角色主观隔离与动机推演。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP008-02 · 可绑定</div>
 </div>
 
-<div id="node-audit" class="workflow-node absolute left-[640px] top-[190px] w-[150px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
+<div id="node-prose" data-workbench-stage="audit" data-node-code="FP009-01" data-relation-text="将已锁定推演事实呈现为候选正文；只改表达，不改因果与设定。" class="workflow-node absolute left-[20px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
+        <span class="material-symbols-outlined text-[14px]">edit_note</span>文学呈现
+    </div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">把已锁定的推演事实写成候选正文，不改写上游事实与因果。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP009-01 · 可绑定</div>
+</div>
+
+<div id="node-audit" data-workbench-stage="audit" data-node-code="FP010-01" data-relation-text="输出客观审计 DTO 和 P0 结论；P0 不能被体验建议覆盖。" class="workflow-node absolute left-[245px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
         <span class="material-symbols-outlined text-[14px]">fact_check</span>逻辑体检
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">客观设定校验 + 叙事逻辑体检，识别并拦截虚空造物、人物崩坏、信息越权等逻辑硬伤。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP010-01 · 可绑定</div>
 </div>
 
-<div id="node-commit" class="workflow-node absolute left-[640px] top-[310px] w-[150px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
+<div id="node-commit" data-workbench-stage="audit" data-node-code="FP012-01" data-relation-text="主编裁决只产出 Y/N 与修文方向；人工确认、影子归档和正式入库由后续受控关系完成。" class="workflow-node absolute left-[340px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">save</span>编辑决策与确认入库
+        <span class="material-symbols-outlined text-[14px]">save</span>主编裁决
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
-    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">提供上帝视角评价，授权伏笔植入，在不改变事实与因果链的前提下执行文风润色并入库。</div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">输出是否通过与修文方向；人工确认、影子归档和正式入库仍由受控步骤执行。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP012-01 · 可绑定</div>
 </div>
 
-<!-- Independent Nodes (Hidden by default) -->
-<!-- Row 1 -->
-<div id="node-ind-rating" class="independent-node workflow-node absolute left-[80px] top-[160px] w-[180px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+<!-- V7 stage cards: each bindable card carries exactly one FP node code. -->
+<div id="node-fp001-03" data-workbench-stage="design" data-node-code="FP001-03" data-relation-text="开书对话补全创作意图，并与商业评分并行返回；候选是否确认始终由创作者决定。" class="workflow-node absolute left-[40px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">forum</span>开书对话与设计生成</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">围绕创作原点补齐候选设计，不替代创作者确认。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP001-03 · 可绑定</div>
+</div>
+
+<div id="node-fp001-05" data-workbench-stage="design" data-node-code="FP001-05" data-relation-text="与开书对话并行给出商业评分、阶段分析和冲突建议；分数不是闸门。" class="workflow-node absolute left-[270px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">insights</span>商业评分与阶段分析</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">提供商业参考和跨阶段冲突建议，不阻断创作决策。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP001-05 · 可绑定</div>
+</div>
+
+<div id="node-fp004-02" data-workbench-stage="design" data-node-code="FP004-02" data-runtime-state="pending" data-relation-text="对候选剧情段执行 LLM 排序；模型和 Prompt 可在统一配置面绑定，确认锁定仍由 FP004-04 受控处理。当前运行流程合同待接入，不能从页面启动。" class="workflow-node absolute left-[500px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">sort</span>三线排序</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">对候选剧情段执行排序建议；可绑定模型和 Prompt，但当前运行流程合同待接入，不能从页面启动。</div>
+    <div class="text-[9px] text-warning font-mono">FP004-02 · LLM · 可绑定 / 运行合同待接入</div>
+</div>
+
+<div id="node-fp005-01" data-workbench-stage="production" data-node-code="FP005-01" data-runtime-state="pending" data-relation-text="从已锁定设计事实生成场景条件包；模型和 Prompt 可在统一配置面绑定。当前运行流程合同待接入，页面不会伪造可运行配置，也不能从页面启动。" class="workflow-node absolute left-[40px] top-[70px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">inventory_2</span>场景条件物化</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">生成可用场景条件包，禁止暴露未来态和越权信息；可绑定模型和 Prompt，但当前不能从页面启动。</div>
+    <div class="text-[9px] text-warning font-mono">FP005-01 · LLM · 可绑定 / 运行合同待接入</div>
+</div>
+
+<div id="node-fp006-01" data-workbench-stage="production" data-node-code="FP006-01" data-relation-text="基于完整场景包生成章节方案候选；用户技能是可选偏好，不形成硬前置。" class="workflow-node absolute left-[270px] top-[70px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">article</span>章节方案生成</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">基于场景条件和基础技能生成待审阅的章节方案候选。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP006-01 · 可绑定</div>
+</div>
+
+<div id="node-fp008-01" data-workbench-stage="production" data-node-code="FP008-01" data-runtime-state="pending" data-relation-text="将执行方案拆为角色隔离任务包；模型和 Prompt 可在统一配置面绑定。当前运行流程合同待接入，不能从页面启动。" class="workflow-node absolute left-[270px] top-[290px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">account_tree</span>角色任务分发</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">把执行方案拆为每个角色的隔离任务包，不向角色泄露全量信息；可绑定模型和 Prompt，但当前不能从页面启动。</div>
+    <div class="text-[9px] text-warning font-mono">FP008-01 · LLM · 可绑定 / 运行合同待接入</div>
+</div>
+
+<div id="node-fp011-01" data-workbench-stage="audit" data-node-code="FP011-01" data-relation-text="面向读者体验提供建议；它不能覆盖客观审计的 P0 结论。" class="workflow-node absolute left-[470px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">psychology</span>读者体验建议</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">按画像或通用模式提出体验建议，不改变正文状态。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP011-01 · 可绑定</div>
+</div>
+
+<div id="node-fp011-02" data-workbench-stage="audit" data-node-code="FP011-02" data-relation-text="提供商业体验建议；建议可采纳或拒绝，不形成硬阻断。" class="workflow-node absolute left-[695px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">storefront</span>商业体验建议</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">提出商业体验建议，不能改变 P0 或代替主编裁决。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP011-02 · 可绑定</div>
+</div>
+
+<div id="node-fp012-03" data-workbench-stage="audit" data-node-code="FP012-03" data-relation-text="只在第二次拒绝且归档完成后比较两版影子，产出差距 DTO。" class="workflow-node absolute left-[570px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">compare_arrows</span>影子版本差距分析</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">比较归档影子版本，报告差距但不覆盖任何版本。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP012-03 · 可绑定</div>
+</div>
+
+<div id="node-fp013-01" data-workbench-stage="audit" data-node-code="FP013-01" data-relation-text="候选正文可获得增强建议；增强写入因 change_limit 未定义而停用。" class="workflow-node absolute left-[800px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">auto_fix_high</span>文风增强</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">生成增强候选与摘要；不会直接写入正式正文。</div>
+    <div class="text-[9px] text-warning font-mono">FP013-01 · 可绑定 / 增强写入停用</div>
+</div>
+
+<div id="node-fp014-01" data-workbench-stage="iteration" data-node-code="FP014-01" data-relation-text="对已有 pool 样本做数据债、提示词债或技能债归因；不会自动把失败送入 pool。" class="workflow-node absolute left-[440px] top-[160px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">troubleshoot</span>异常样本分析</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">对已有失败样本做三维归因，形成待审阅的优化建议。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP014-01 · 可绑定</div>
+</div>
+
+<!-- V7 stage ownership is declared with data-workbench-stage. Only FP015-02 is independent. -->
+<div id="node-ind-rating" data-workbench-stage="independent" data-reference-only="true" data-relation-text="FP015-02 是停用的参考流程；可查看其关系，不能建立模型或 Prompt 绑定。" class="independent-node workflow-node absolute left-[80px] top-[160px] w-[180px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
         <span class="material-symbols-outlined text-[14px]">trending_up</span>技能评级及优化
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">对套路与技能组合进行商业化评级评估，提供针对性的内容升级与结构优化建议。</div>
+    <div class="text-[9px] text-warning font-mono">FP015-02 · reference-only</div>
 </div>
 
-<div id="node-ind-design" class="independent-node workflow-node absolute left-[320px] top-[160px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+<div id="node-ind-design" data-workbench-stage="design" data-node-code="FP002-04" data-relation-text="从当前作品意图生成世界设定候选；确认和正式化仍走设计阶段的受控流程。" class="workflow-node absolute left-[500px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
         <span class="material-symbols-outlined text-[14px]">lightbulb</span>世界设定生成助手
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">根据选定题材与核心爽点，自动设计符合商业化要求的世界设定基础架构与编年史。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP002-04 · 可绑定</div>
 </div>
 
-<div id="node-ind-world-audit" class="independent-node workflow-node absolute left-[560px] top-[160px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+<div id="node-ind-world-audit" data-workbench-stage="design" data-contract-state="relation" data-relation-text="世界生成与校验共享 FP002-04 的同一份模型和 Prompt 绑定；这里仅说明关系，不能创建第二份绑定。" class="workflow-node absolute left-[730px] top-[50px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
         <span class="material-symbols-outlined text-[14px]">fact_check</span>世界设定校验助手
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
-    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">对世界设定的物理法则、社会结构及因果链进行多维度一致性校验，防止设定冲突。</div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">与世界生成共用同一 FP002-04 配置，只展示校验关系。</div>
+    <div class="text-[9px] text-warning font-mono">FP002-04 · 关系说明</div>
 </div>
 
-<!-- Row 2 -->
-<div id="node-ind-character" class="independent-node workflow-node absolute left-[80px] top-[300px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+<div id="node-ind-character" data-workbench-stage="design" data-node-code="FP003-04" data-relation-text="基于已确认世界候选生成角色候选；角色正式化和关系写入由受控步骤完成。" class="workflow-node absolute left-[40px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
         <span class="material-symbols-outlined text-[14px]">person_add</span>角色生成助手
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">一键配置角色基本属性、心理状态及核心动机，构建具备高成长空间的角色人设。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP003-04 · 可绑定</div>
 </div>
 
-<div id="node-ind-l1a-var" class="independent-node workflow-node absolute left-[320px] top-[300px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+<div id="node-ind-l1a-var" data-workbench-stage="design" data-node-code="FP004-05" data-relation-text="为来源剧情段追加独立变体候选；采纳前不进入排序集，也不覆盖来源。" class="workflow-node absolute left-[730px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
         <span class="material-symbols-outlined text-[14px]">alt_route</span>剧情段变体生成助手
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">基于核心剧情段大纲智能派生出多条不同的情节变体与世界线走向，提供备选脑洞。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP004-05 · 可绑定</div>
 </div>
 
-<div id="node-ind-prompt" class="independent-node workflow-node absolute left-[560px] top-[300px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+<div id="node-ind-prompt" data-workbench-stage="iteration" data-node-code="FP014-02" data-relation-text="对已归因的失败样本执行候选 Prompt 实验；实验结果不能直接覆盖 active Prompt。" class="workflow-node absolute left-[740px] top-[160px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
         <span class="material-symbols-outlined text-[14px]">terminal</span>提示词生成助手
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">优化与润色大模型推演所使用的系统提示词，提高推演的准确度与情节流畅性.</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP014-02 · 可绑定</div>
+</div>
+
+<!-- Read-only relationship cards make gates and controlled writes visible without turning them into model bindings. -->
+<div id="node-fp004-lock" data-workbench-stage="design" data-contract-state="relation" data-relation-text="FP004-04 由创作者确认后原子锁定剧情段；它不是模型节点，也不能绑定 Prompt 或模板。" class="workflow-node absolute left-[500px] top-[450px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">lock</span>创作者确认并锁定</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">排序候选经创作者确认后才冻结为正式剧情段承诺。</div>
+    <div class="text-[9px] text-warning font-mono">FP004-04 · 受控写入关系</div>
+</div>
+
+<div id="node-fp006-confirm" data-workbench-stage="production" data-contract-state="relation" data-relation-text="FP006-02 是创作者确认章节方案的闸门；页面只展示前置关系，不能配置模型。" class="workflow-node absolute left-[500px] top-[70px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">how_to_reg</span>章节方案确认</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">创作者确认后，执行方案才可进入后续颗粒拆解。</div>
+    <div class="text-[9px] text-warning font-mono">FP006-02 · 人工闸门</div>
+</div>
+
+<div id="node-fp008-checkpoint" data-workbench-stage="production" data-node-code="FP008-03" data-relation-text="对整段 L1A 推演结果独立执行运行时 P0 预检；通过后自动暂存，阻断后从首颗粒重新推演。" class="workflow-node absolute left-[730px] top-[290px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">rule</span>推演运行时预检</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">独立检查运行时 P0 风险；不产出 FP010 审计结论，未通过自动从首颗粒重新推演。</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP008-03 · 可绑定</div>
+</div>
+
+<div id="node-fp008-store" data-workbench-stage="production" data-contract-state="relation" data-relation-text="FP008-04 是推演快照受控写入；页面不直接写数据库。" class="workflow-node absolute left-[960px] top-[290px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">database</span>推演快照入库</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">保存合法检查点，供后续文学呈现读取。</div>
+    <div class="text-[9px] text-warning font-mono">FP008-04 · 受控写入</div>
+</div>
+
+<div id="node-fp012-reject" data-workbench-stage="audit" data-contract-state="relation" data-relation-text="FP012-02 是创作者退回闸门；主编裁决不会直接改写正文或归档。" class="workflow-node absolute left-[20px] top-[440px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">assignment_return</span>退回与人工确认</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">创作者决定是否采纳退回链，不由模型代替判断。</div>
+    <div class="text-[9px] text-warning font-mono">FP012-02 · 人工闸门</div>
+</div>
+
+<div id="node-fp012-archive" data-workbench-stage="audit" data-contract-state="relation" data-relation-text="FP012-04 归档旧候选并创建后继候选版本；它是受控写入，不是模型绑定。" class="workflow-node absolute left-[245px] top-[440px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">archive</span>影子归档与后继候选</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">退回链先产生后继版本，正文重写不能写回旧版本。</div>
+    <div class="text-[9px] text-warning font-mono">FP012-04 · 受控写入</div>
+</div>
+
+<div id="node-fp013-store" data-workbench-stage="audit" data-contract-state="relation" data-relation-text="FP013-02 是正式入库闸门；文风增强写入仍受 change_limit 口径限制。" class="workflow-node absolute left-[800px] top-[440px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">save</span>正式入库</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">只在受控条件满足后写正式正文与前情提要。</div>
+    <div class="text-[9px] text-warning font-mono">FP013-02 · 受控写入</div>
+</div>
+
+<div id="node-fp014-pool" data-workbench-stage="iteration" data-contract-state="relation" data-relation-text="失败样本必须由受控接口产生；当前不根据普通失败自动写入 pool。" class="workflow-node absolute left-[150px] top-[160px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">inventory</span>已入池失败样本</div>
+    <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
+    <div class="text-[10px] text-base-content opacity-70 leading-relaxed">仅展示已受控入池的分析输入，自动入池当前停用。</div>
+    <div class="text-[9px] text-warning font-mono">关系输入 · 不可绑定</div>
 </div>
 </div>
 </div>
@@ -325,42 +459,42 @@
 <div class="w-[300px] bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden shrink-0">
 <div class="h-12 border-b border-base-content/5 flex items-center px-4 shrink-0"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-base-content opacity-70">tune</span><span id="rightPanelTitle" class="text-base font-bold text-base-content opacity-70">角色受限推演</span></div></div>
 <div class="p-4 flex flex-col gap-4 flex-1 overflow-y-auto">
+<p id="workbenchRuntimeState" class="ui-inline-status ui-inline-status--loading" role="status" aria-live="polite">正在读取本地工作台状态…</p>
 <div class="flex flex-col gap-2 flex-1">
     <label class="text-[11px] text-base-content opacity-70 font-medium flex items-center gap-1">
         <span class="material-symbols-outlined text-[12px] text-primary">description</span>
         <span>提示词编辑器 (双击进行编辑)</span>
     </label>
-    <div id="promptEditor" class="textarea textarea-bordered bg-base-100 p-4 flex-1 min-h-[220px] overflow-y-auto font-mono text-[11px] text-base-content opacity-80 leading-relaxed shadow-sm cursor-pointer transition-all duration-200 hover:border-primary/30 outline-none" title="双击进行编辑">
+    <div id="promptEditor" class="textarea textarea-bordered ui-textarea bg-base-100 p-4 flex-1 min-h-[220px] overflow-y-auto font-mono text-[11px] text-base-content opacity-80 leading-relaxed shadow-sm cursor-pointer transition-all duration-200 hover:border-primary/30 outline-none" title="双击进行编辑">
         <!-- Loaded dynamically by JS -->
     </div>
 </div>
 <div class="flex flex-col gap-2 mt-auto pt-4 border-t border-base-content/5">
 <label class="text-[11px] text-base-content opacity-70 font-medium">模型的模板</label>
 <div class="relative">
-<select id="workbenchTemplateSelect" onchange="onWorkbenchTemplateChange(this.value)" class="w-full bg-base-100 border border-base-content/5 text-sm text-base-content opacity-85 rounded-md px-3 py-2 appearance-none outline-none focus:border-primary/30 cursor-pointer">
+<select id="workbenchTemplateSelect" onchange="onWorkbenchTemplateChange(this.value)" class="ui-select w-full text-sm cursor-pointer">
 <option>感性文字</option>
 <option>简单逻辑</option>
 <option>重复指令</option>
 <option>复杂任务</option>
 <option>客观公正</option>
 </select>
-<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-base-content opacity-70 pointer-events-none text-[16px]">expand_more</span>
 </div>
 <!-- Model Details Card -->
 <div id="templateDetails" class="mt-2 text-[11px] text-base-content opacity-70 space-y-1.5 p-1 font-medium transition-all duration-200">
-    <div class="flex justify-between"><span class="text-base-content opacity-50">模型名称:</span><span id="detailModelName" class="text-base-content opacity-85 font-mono text-right truncate max-w-[170px]">Logic-Runner-Lite-8B</span></div>
-    <div class="flex justify-between"><span class="text-base-content opacity-50">运营商:</span><span id="detailProviderName" class="text-base-content opacity-85 text-right truncate max-w-[170px]">Narrative AI Core</span></div>
-    <div class="flex justify-between"><span class="text-base-content opacity-50">温度:</span><span id="detailTemperature" class="text-base-content opacity-85 font-mono text-right">0.7</span></div>
+    <div class="flex justify-between"><span class="text-base-content opacity-50">模型名称:</span><span id="detailModelName" data-full-text class="text-base-content opacity-85 font-mono text-right truncate max-w-[170px]">未配置</span></div>
+    <div class="flex justify-between"><span class="text-base-content opacity-50">运营商:</span><span id="detailProviderName" data-full-text class="text-base-content opacity-85 text-right truncate max-w-[170px]">未配置</span></div>
+    <div class="flex justify-between"><span class="text-base-content opacity-50">温度:</span><span id="detailTemperature" class="text-base-content opacity-85 font-mono text-right">-</span></div>
 </div>
 </div></div>
 <div class="p-4 pt-0">
-    <button class="open-modal-btn w-full py-2.5 bg-neutral hover:bg-neutral/90 text-neutral-content text-xs font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[14px]">tune</span>模型设置</button>
+    <button class="open-modal-btn ui-button ui-button-dark ui-button-block ui-button-small"><span class="material-symbols-outlined text-[14px]">tune</span>模型设置</button>
 </div>
 </div></div></div>
 
 <!-- Modal -->
 <div id="modelSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral/60 hidden">
-<div class="bg-base-200 border border-base-content/5 rounded-box w-[700px] h-[550px] flex overflow-hidden shadow-2xl">
+<div class="ui-modal ui-modal-wide p-0 w-[700px] h-[580px] max-h-[calc(100vh-32px)] flex overflow-hidden">
 <div class="w-40 bg-base-100 border-r border-base-content/5 flex flex-col">
 <div class="p-4 text-sm font-bold text-base-content opacity-70 border-b border-base-content/5">模板分类</div>
 <div id="modalCategoryList" class="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
@@ -368,19 +502,17 @@
 </div>
 </div>
 <div class="flex-1 p-6 flex flex-col gap-4 bg-base-100 relative shadow-sm border border-base-content/5">
-<button id="closeModalBtn" class="absolute top-4 right-4 text-base-content opacity-70 hover:text-base-content"><span class="material-symbols-outlined text-[20px]">close</span></button>
+<button id="closeModalBtn" class="ui-icon-button ui-button-quiet absolute top-4 right-4" aria-label="关闭模型设置"><span class="material-symbols-outlined text-[20px]">close</span></button>
 <h2 class="text-base font-bold text-base-content mb-1">模型配置<span id="modalConfigTitle" class="hidden">简单逻辑</span></h2>
-<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">运营商名称</label><input type="text" id="modalProviderInput" class="bg-base-100 border border-base-content/5 rounded px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary/30" value="Narrative AI Core" /></div>
-<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">连接地址 (Base URL)</label><input type="text" id="modalBaseUrlInput" class="bg-base-100 border border-base-content/5 rounded px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary/30" value="https://api.narrative-engine.ai/v1" /></div>
-<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">API Key</label><div class="relative"><input type="password" id="modalApiKeyInput" class="w-full bg-base-100 border border-base-content/5 rounded px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary/30" value="R3_SANITIZED_VALUE_00001" /><button id="toggleEyeBtn" class="absolute right-3 top-1/2 -translate-y-1/2 text-base-content opacity-70 hover:text-base-content"><span class="material-symbols-outlined text-[14px]">visibility</span></button></div></div>
+<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">运营商名称</label><input type="text" id="modalProviderInput" class="ui-field" value="" /></div>
+<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">连接地址 (Base URL)</label><input type="text" id="modalBaseUrlInput" class="ui-field" value="" /></div>
+<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">API Key</label><div class="relative"><input type="password" id="modalApiKeyInput" class="ui-field w-full" value="" /><button id="toggleEyeBtn" class="ui-icon-button ui-button-quiet absolute right-2 top-1/2 -translate-y-1/2" aria-label="显示或隐藏 API Key"><span class="material-symbols-outlined text-[14px]">visibility</span></button></div></div>
 <div class="flex flex-col gap-1.5">
     <label class="text-[11px] text-base-content opacity-70">选择模型</label>
     <div class="flex gap-2">
-        <select id="modalModelSelect" class="flex-1 bg-base-100 border border-base-content/5 rounded px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary/30">
-            <option value="Logic-Runner-Lite-8B">Logic-Runner-Lite-8B</option>
-            <option value="Prose-Master-72B">Prose-Master-72B</option>
-        </select>
-        <button id="fetchModelsBtn" onclick="fetchModelList(event)" class="btn btn-outline btn-primary btn-sm flex items-center gap-1 shrink-0">
+        <input id="modalModelSelect" list="modalModelChoices" class="ui-field flex-1" autocomplete="off" />
+        <datalist id="modalModelChoices"></datalist>
+        <button id="fetchModelsBtn" onclick="fetchModelList(event)" class="ui-button ui-button-quiet ui-button-small shrink-0">
             <span class="material-symbols-outlined text-[14px]" id="fetchIcon">sync</span>
             <span id="fetchText">获取清单</span>
         </button>
@@ -400,18 +532,18 @@
             <label class="text-[11px] text-base-content opacity-70">温度设置 (Temperature)</label>
             <span id="tempValDisplay" class="text-[11px] text-base-content opacity-80 font-mono">0.7</span>
         </div>
-        <input id="modalTempRange" type="range" min="0.2" max="1.2" step="0.05" value="0.7" oninput="document.getElementById('tempValDisplay').innerText=this.value" class="w-full accent-primary h-1 bg-base-300 rounded-lg appearance-none cursor-pointer" />
+        <input id="modalTempRange" type="range" min="0" max="2" step="0.1" value="0.7" oninput="document.getElementById('tempValDisplay').innerText=this.value" class="w-full accent-primary h-1 bg-base-300 rounded-lg appearance-none cursor-pointer" />
         <div class="flex justify-between text-[9px] text-base-content opacity-50 px-0.5">
-            <span>0.2 (严格)</span>
+            <span>0 (严格)</span>
             <span class="text-base-content opacity-60 font-semibold">建议区间 (0.5 - 0.9)</span>
-            <span>1.2 (发散)</span>
+            <span>2 (发散)</span>
         </div>
     </div>
     <!-- Reasoning Strength (right col) -->
     <div class="w-[180px] flex flex-col gap-1.5 shrink-0">
         <label class="text-[11px] text-base-content opacity-70">推理强度 (Reasoning)</label>
         <div class="relative">
-            <select id="modalReasoningSelect" class="w-full bg-base-100 border border-base-content/5 text-sm text-base-content opacity-85 rounded-md px-3 py-1.5 appearance-none outline-none focus:border-primary/30 cursor-pointer">
+            <select id="modalReasoningSelect" class="ui-select w-full appearance-none">
                 <option value="none">无推理 (None)</option>
                 <option value="low">低强度 (Low)</option>
                 <option value="medium">中强度 (Medium)</option>
@@ -422,14 +554,14 @@
     </div>
 </div>
 <div class="flex justify-end gap-3 mt-auto pt-4 border-t border-base-content/5">
-<button onclick="testConnection(event)" class="btn btn-sm btn-outline btn-accent flex items-center gap-1">
+<button id="testConnectionBtn" onclick="testConnection(event)" class="ui-button ui-button-quiet ui-button-small">
     <span class="material-symbols-outlined text-[14px]" id="testIcon">bolt</span>
     <span id="testText">测试连接</span>
 </button>
-<button onclick="saveModalConfiguration()" class="btn btn-sm btn-primary">保存配置</button>
+<button id="saveModelConfigurationBtn" onclick="saveModalConfiguration()" class="ui-button ui-button-primary ui-button-small">保存配置</button>
 </div></div></div></div>
 
-<script>
+<script type="text/plain" data-prototype-mock="disabled">
 document.addEventListener('DOMContentLoaded', () => {
     const nodes = document.querySelectorAll('.workflow-node');
     const paths = document.querySelectorAll('.node-path');
@@ -450,7 +582,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'node-ind-l1a-var': '复杂任务',
         'node-ind-prompt': '客观公正'
     };
-    window.nodeTemplateMap = JSON.parse(localStorage.getItem('nodeTemplateMap')) || defaultNodeTemplateMap;
+    // The runtime adapter owns active bindings; prototype cache is never a configuration source.
+    window.nodeTemplateMap = {};
 
     // Function to dynamically update coin count of the active node on the canvas based on selected template reasoning strength
     window.updateActiveNodeCoins = function(data) {
@@ -513,11 +646,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Trigger change to update detail card and coin icons
                 window.onWorkbenchTemplateChange(configuredTemplate);
             }
-
-            // Sync node prompt
-            if (window.loadNodePrompt) {
-                window.loadNodePrompt(node.id);
-            }
         });
     });
     const modal = document.getElementById('modelSettingsModal');
@@ -532,7 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "感性文字": {
             provider: "Narrative AI Core",
             baseUrl: "https://api.narrative-engine.ai/v1",
-            apiKey: "R3_SANITIZED_VALUE_00002",
+            apiKey: "",
             model: "Prose-Master-72B",
             temperature: "1.0",
             reasoning: "low"
@@ -540,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "简单逻辑": {
             provider: "Narrative AI Core",
             baseUrl: "https://api.narrative-engine.ai/v1",
-            apiKey: "R3_SANITIZED_VALUE_00003",
+            apiKey: "",
             model: "Logic-Runner-Lite-8B",
             temperature: "0.7",
             reasoning: "medium"
@@ -548,7 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "重复指令": {
             provider: "Narrative AI Core",
             baseUrl: "https://api.narrative-engine.ai/v1",
-            apiKey: "R3_SANITIZED_VALUE_00004",
+            apiKey: "",
             model: "Logic-Runner-Lite-8B",
             temperature: "0.3",
             reasoning: "none"
@@ -556,7 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "复杂任务": {
             provider: "Global-Intelligence API",
             baseUrl: "https://api.global-intel.ai/v1",
-            apiKey: "sk-intel-xxxxxxxxxxx",
+            apiKey: "",
             model: "Prose-Master-72B",
             temperature: "0.5",
             reasoning: "high"
@@ -564,14 +692,15 @@ document.addEventListener('DOMContentLoaded', () => {
         "客观公正": {
             provider: "Local Host Service",
             baseUrl: "http://localhost:11434/v1",
-            apiKey: "sk-local-xxxxxxxxxxx",
+            apiKey: "",
             model: "Logic-Runner-Lite-8B",
             temperature: "0.2",
             reasoning: "medium"
         }
     };
 
-    window.templatesData = JSON.parse(localStorage.getItem('templatesData')) || defaultTemplatesData;
+    // Do not hydrate the modal from mock models or locally cached credentials.
+    window.templatesData = {};
     window.activeModalCategory = '简单逻辑';
 
     // Sync main page display card
@@ -785,7 +914,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.templatesData[val] = {
                 provider: "Narrative AI Core",
                 baseUrl: "https://api.narrative-engine.ai/v1",
-                apiKey: "R3_SANITIZED_VALUE_00005",
+                apiKey: "",
                 model: "Logic-Runner-Lite-8B",
                 temperature: "0.7",
                 reasoning: "medium"
@@ -902,78 +1031,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2500);
     };
 
-    // Prompt Editor Double Click Edit & Confirm Save
-    const promptEditor = document.getElementById('promptEditor');
-    let originalPromptContent = '';
-    let isPromptEditing = false;
-
-    const defaultNodePrompts = {
-        'node-l1a': '执行跨章节上位约束设定。锁定剧情大纲、情绪线与商业卖点承诺。<br><br>- 确保大纲主线连贯，无逻辑跳跃。<br>- 设定各阶段的情绪波峰与波谷，避免读者阅读疲劳。<br>- 明确各关键节点的卖点与爽点兑现机制。',
-        'node-deconstruct': '根据剧情段规划，对本章节进行颗粒化任务拆解。<br><br>- 明确本章的主线剧情推进目标。<br>- 锁定本章的硬性约束（时间、地点、参与人物）。<br>- 规定禁止越界项（如主角不得在此处暴露真实身份等）。',
-        'node-simulate': '执行角色受限推演。模拟角色在极端约束下的真实反应。<br><br>- 禁止脱离人设，确保角色决策符合背景逻辑。<br>- 导演代理需不断施压，促使角色在冲突中完成叙事目标。<br>- 记录所有关键动作与对话流，作为正文生成的逻辑依据。',
-        'node-prose': '将角色受限推演的动作与对话流转化为叙事正文。<br><br>- 控制视点越界，保持沉浸式叙事体验。<br>- 自动对齐作者特有的风格化文风与语调。<br>- 保证节奏紧凑，环境描写与动作细节比例协调。',
-        'node-audit': '对生成的正文执行多维度客观逻辑校验与体检。<br><br>- 识别并拦截虚空造物、凭空出现道具等硬伤。<br>- 校验角色前后行为逻辑，拦截突然性的人物崩坏。<br>- 查验是否有不合设定的信息泄露或越权知晓行为。',
-        'node-commit': '进入确认入库前，执行最后的编辑决策与文风润色。<br><br>- 提供上帝视角评价，指导伏笔与钩子的埋设。<br>- 在不改变核心事实与因果链的前提下执行文风微调。<br>- 确认入库并更新后续章节的上下文记忆库。',
-        'node-ind-rating': '评估技能与题材组合的商业化潜力并输出评级。<br><br>- 分析核心爽点对目标读者群的吸引力。<br>- 诊断组合逻辑公式是否通顺，是否存在逻辑断层。<br>- 提供具体的避坑修改建议与战力平衡优化策略。',
-        'node-ind-design': '根据选定的商业套路与题材，辅助策划并自动生成世界设定的基础框架与核心法则。<br><br>- 构建地理环境、势力分布及超凡阶梯层级。<br>- 设计合理的底层社会结构与核心生存法则。<br>- 预设3个以上的地标性核心奇观与上古背景历史故事。',
-        'node-ind-world-audit': '对当前的世界设定（地理、历史、超凡体系、社会规则）进行一致性校验。<br><br>- 检查是否存在逻辑硬伤或因果链断层。<br>- 校验超凡力量体系是否符合能量守恒或等价交换原则。<br>- 拦截与常识或已有核心设定发生物理冲突的设定漏洞。',
-        'node-ind-character': '构建符合商业网文逻辑的立体角色人设与成长线。<br><br>- 定义主角的外在伪装身份与隐藏的核心权能。<br>- 锁定主角的底层情绪动机，确保其行为具有强合理性。<br>- 自动生成主角与配角/反派的冲突与羁绊对立图谱。',
-        'node-ind-l1a-var': '基于剧情段大纲，智能派生并演变出3个备选的变体剧情走向。<br><br>- 变体一（激进线）：引入突发意外，使主角面临更大的冲突与危机。<br>- 变体二（智斗线）：主角通过巧妙的伏笔和智斗手段达成目标。<br>- 变体三（颠覆线）：剧情发生反转，推翻前期的读者预期。',
-        'node-ind-prompt': '优化和生成供大模型推演使用的系统与角色提示词。<br><br>- 将用户的自然语言指令转化为高结构化的System Prompt。<br>- 引入明确的约束条件（如禁止脱离人设、禁止圣母、严格控制节奏）。<br>- 自动生成符合角色视角的对话推演指引。'
-    };
-
-    window.loadNodePrompt = function(nodeId) {
-        if (!promptEditor) return;
-        const saved = localStorage.getItem('node_prompt_' + nodeId);
-        if (saved) {
-            promptEditor.innerHTML = saved;
-        } else {
-            promptEditor.innerHTML = defaultNodePrompts[nodeId] || defaultNodePrompts['node-simulate'];
-        }
-    };
-
-    if (promptEditor) {
-        // Initialize active node prompt
-        window.loadNodePrompt(window.activeNodeId || 'node-simulate');
-
-        promptEditor.addEventListener('dblclick', () => {
-            if (isPromptEditing) return;
-            isPromptEditing = true;
-            originalPromptContent = promptEditor.innerHTML;
-            promptEditor.contentEditable = 'true';
-            promptEditor.focus();
-            promptEditor.classList.remove('border-base-content/5');
-            promptEditor.classList.add('border-primary', 'ring-2', 'ring-primary/20', 'bg-base-100');
-        });
-
-        promptEditor.addEventListener('blur', () => {
-            if (!isPromptEditing) return;
-
-            const currentContent = promptEditor.innerHTML;
-            if (currentContent !== originalPromptContent) {
-                if (confirm('提示词内容已修改，是否保存修改？')) {
-                    const nodeId = window.activeNodeId || 'node-simulate';
-                    localStorage.setItem('node_prompt_' + nodeId, currentContent);
-                    window.showToast('提示词已保存');
-                } else {
-                    promptEditor.innerHTML = originalPromptContent;
-                }
-            }
-
-            promptEditor.contentEditable = 'false';
-            promptEditor.classList.remove('border-primary', 'ring-2', 'ring-primary/20', 'bg-base-100');
-            promptEditor.classList.add('border-base-content/10');
-            isPromptEditing = false;
-        });
-
-        promptEditor.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && isPromptEditing) {
-                promptEditor.innerHTML = originalPromptContent;
-                promptEditor.blur();
-            }
-        });
-    }
-
     // Modal listeners
     openBtns.forEach(btn => btn.addEventListener('click', () => {
         modal.classList.remove('hidden');
@@ -1013,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-    <script>
+    <script type="text/plain" data-prototype-mock="disabled">
 // Book selection logic
 
     window.selectBook = function(opt) {
@@ -1270,11 +1327,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const isActive = genre === selectedMainGenre;
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = `px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-                isActive
-                    ? 'bg-primary/20 text-primary border-primary shadow-[0_0_10px_rgba(79,133,229,0.25)]'
-                    : 'bg-base-100 text-base-content opacity-70 border-base-content/5 hover:border-gray-500'
-            }`;
+            btn.className = 'ui-choice-chip';
+            btn.setAttribute('aria-pressed', String(isActive));
             btn.innerText = genre;
             btn.onclick = () => {
                 selectedMainGenre = genre;
@@ -1346,13 +1400,11 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (affinity === 'B') affClass = 'text-info';
             else affClass = 'text-base-content opacity-50';
 
-            const tagSpan = document.createElement('span');
-            tagSpan.className = `px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-all border flex items-center gap-1 ${
-                isSelected
-                    ? 'bg-primary/20 text-primary border-primary shadow-[0_0_8px_rgba(79,133,229,0.25)]'
-                    : 'bg-base-100/60 text-base-content opacity-70 border-base-content/5 hover:border-white/20'
-            }`;
-            tagSpan.innerHTML = `<span>${tag}</span><span class="text-[9px] px-1 bg-base-content/5 rounded font-mono ${affClass}">${affinity}</span>`;
+            const tagSpan = document.createElement('button');
+            tagSpan.type = 'button';
+            tagSpan.className = 'ui-choice-chip';
+            tagSpan.setAttribute('aria-pressed', String(isSelected));
+            tagSpan.innerHTML = `<span>${tag}</span><span class="ui-badge ${affClass}">${affinity}</span>`;
             tagSpan.onclick = () => {
                 if (isSelected) {
                     selectedSubGenres = selectedSubGenres.filter(t => t !== tag);
@@ -1407,8 +1459,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     <!-- New Book Modal HTML -->
     <div id="newBookModal" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral/60 backdrop-blur-sm hidden">
-        <div class="bg-base-200 border border-base-content/5 rounded-box w-[550px] flex flex-col overflow-hidden shadow-2xl p-6 relative">
-            <button onclick="closeNewBookModal()" class="absolute top-4 right-4 text-base-content opacity-70 hover:text-base-content transition-colors">
+        <div class="ui-modal w-[550px] flex flex-col overflow-hidden p-6 relative">
+            <button onclick="closeNewBookModal()" class="ui-icon-button ui-button-quiet absolute top-4 right-4" aria-label="关闭新书构思弹窗">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
 
@@ -1421,14 +1473,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <!-- Book Title -->
                 <div class="flex flex-col gap-1.5">
                     <label class="text-xs text-base-content opacity-70 font-medium">书名</label>
-                    <input type="text" id="modalBookTitle" placeholder="如：科幻末日生存指南" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-2 text-sm text-base-content focus:outline-none focus:border-primary/30 placeholder-gray-600 w-full" />
+                    <input type="text" id="modalBookTitle" placeholder="如：科幻末日生存指南" class="ui-field" />
                 </div>
 
                 <!-- Target Words -->
                 <div class="flex flex-col gap-1.5">
                     <label class="text-xs text-base-content opacity-70 font-medium">目标字数</label>
                     <div class="flex items-center gap-2">
-                        <input type="number" id="modalTargetWords" value="100" placeholder="如 100" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-2 text-sm text-base-content focus:outline-none focus:border-primary/30 font-mono flex-1" />
+                        <input type="number" id="modalTargetWords" value="100" placeholder="如 100" class="ui-field flex-1" />
                         <span class="text-xs text-base-content opacity-70 font-bold">万字</span>
                     </div>
                 </div>
@@ -1444,17 +1496,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 <!-- Sub Genre / Tags -->
                 <div class="flex flex-col gap-2">
                     <label class="text-xs text-base-content opacity-70 font-medium">副题材 / 标签 (多选)</label>
-                    <div class="flex flex-wrap gap-2 bg-base-100 border border-base-content/5 rounded-lg p-3 min-h-[80px]" id="subGenreContainer">
+                    <div class="ui-data-cell flex flex-wrap gap-2 min-h-[80px]" id="subGenreContainer">
                         <span class="text-xs text-base-content opacity-50 self-center w-full text-center">请先选择主题材</span>
                     </div>
                 </div>
             </div>
 
             <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-base-content/5">
-                <button onclick="closeNewBookModal()" class="px-5 py-2 bg-transparent text-base-content opacity-70 hover:text-base-content border border-base-content/5 hover:bg-base-content/5 text-sm font-medium rounded-lg transition-colors">
+                <button onclick="closeNewBookModal()" class="ui-button ui-button-quiet ui-button-small">
                     取消
                 </button>
-                <button onclick="createNewBook()" class="px-6 py-2 bg-gradient-to-r from-primary to-[#3d71d1] hover:brightness-110 text-base-content text-sm font-bold rounded-lg shadow-lg transition-all">
+                <button onclick="createNewBook()" class="ui-button ui-button-primary ui-button-small">
                     创建并进入设计
                 </button>
             </div>
@@ -1479,11 +1531,5 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     </div>
 </main>
-<script>
-window.toggleSidebar = function() {
-  document.body.classList.toggle('sidebar-collapsed');
-  const icon = document.getElementById('sidebarIcon');
-  if (icon) icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
-};
-</script>
+<script type="module" src="/pages/workbench/workbench-runtime.mjs"></script>
 </body></html>

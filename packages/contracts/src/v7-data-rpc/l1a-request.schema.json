@@ -1,17 +1,57 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:zhreplan:contract:v7-l1a-request:1",
+  "$id": "urn:zhreplan:contract:rpc-generate-l1a-conflicts:2",
   "type": "object",
-  "additionalProperties": true,
-  "required": ["local_operator_id", "book_id", "correlation_id", "idempotency_key"],
+  "additionalProperties": false,
+  "required": ["local_operator_id", "book_id", "idempotency_key", "candidates"],
   "properties": {
     "local_operator_id": { "type": "string", "format": "uuid" },
     "book_id": { "type": "string", "format": "uuid" },
-    "correlation_id": { "type": "string", "minLength": 1 },
-    "idempotency_key": { "type": "string" },
-    "generated_candidates": { "type": "array" },
-    "l1a_ids": { "type": "array" },
-    "future_world_atoms": { "type": "array" },
-    "future_world_bindings": { "type": "array" }
+    "correlation_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "idempotency_key": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/candidate" }
+    }
+  },
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "l1a_name", "scene_location", "conflict_background", "escalation_path", "stakes",
+        "irreversible_consequence", "plot_emotion_commit", "arc_requirement",
+        "info_reveal_boundary", "role_arc_json", "world_resistance_refs",
+        "participant_chars_json"
+      ],
+      "properties": {
+        "l1a_name": { "type": "string", "minLength": 1 },
+        "scene_location": { "type": "string", "minLength": 1 },
+        "conflict_background": { "type": "string", "minLength": 1 },
+        "escalation_path": { "type": "string", "minLength": 1 },
+        "stakes": { "type": "string", "minLength": 1 },
+        "irreversible_consequence": { "type": "string", "minLength": 1 },
+        "plot_emotion_commit": { "type": "object", "minProperties": 1 },
+        "arc_requirement": { "type": "object", "minProperties": 1 },
+        "info_reveal_boundary": { "type": "object", "minProperties": 1 },
+        "role_arc_json": { "type": "object", "minProperties": 1 },
+        "world_resistance_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["atom_key"],
+            "properties": { "atom_key": { "type": "string", "minLength": 1 } }
+          }
+        },
+        "participant_chars_json": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "format": "uuid" }
+        }
+      }
+    }
   }
 }

@@ -3,6 +3,29 @@
   "$id": "https://zhreplan.local/contracts/new-book/create-book-preview/1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["status", "missing_fields"],
-  "properties": { "status": { "const": "preview" }, "missing_fields": { "type": "array", "items": { "type": "string" } } }
+  "required": ["status", "missing_fields", "correlation_id"],
+  "properties": {
+    "status": { "const": "preview" },
+    "missing_fields": { "type": "array", "items": { "type": "string" } },
+    "chat_message": { "type": "string" },
+    "lock_respected": { "type": "boolean" },
+    "incremental_updates": { "type": "object" },
+    "stage_completion": { "type": "object" },
+    "commercial_potential": { "$ref": "#/$defs/commercialPotential" },
+    "correlation_id": { "type": "string", "minLength": 1, "maxLength": 128 }
+  },
+  "$defs": {
+    "commercialPotential": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shangye", "shangye_dimensions", "shangye_deduction_reasons", "stage_analysis", "cross_stage_conflicts"],
+      "properties": {
+        "shangye": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "shangye_dimensions": { "type": "object" },
+        "shangye_deduction_reasons": { "type": "object" },
+        "stage_analysis": { "type": "array" },
+        "cross_stage_conflicts": { "type": "array" }
+      }
+    }
+  }
 }

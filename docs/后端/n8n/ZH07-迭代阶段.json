@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = items[0].json;\nlet output = {};\ntry {\n  const text = input.output || input.text;\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    output = JSON.parse(jsonMatch[0]);\n  } else {\n    output = JSON.parse(text);\n  }\n} catch (e) {\n  output = { has_value: false, error: 'Failed to parse JSON' };\n}\nreturn { json: { ...input, ...output } };"
+        "jsCode": "const input = items[0].json;\nlet output = {};\nconst repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\ntry {\n  output = parseSingleJson(input.output ?? input.text);\n} catch (e) {\n  output = { has_value: false, error: 'Failed to parse JSON' };\n}\nreturn { json: { ...input, ...output } };"
       },
       "id": "c6c2d6ec-6729-45c2-aec5-172ddb722690",
       "name": "JSON修复",
@@ -73,13 +73,15 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM prompt_config WHERE is_active = true ORDER BY version_no DESC LIMIT 1;",
-        "additionalFields": {}
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS request\n), normalized AS (\n  SELECT\n    request,\n    CASE\n      WHEN COALESCE(request #>> '{scope,local_operator_id}', request->>'local_operator_id') ~* '^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$'\n      THEN COALESCE(request #>> '{scope,local_operator_id}', request->>'local_operator_id')::uuid\n    END AS local_operator_id\n  FROM input\n), binding AS (\n  SELECT to_jsonb(b) - 'local_operator_id' AS runtime_binding\n  FROM public.v_prompt_runtime_binding AS b\n  JOIN normalized AS n\n    ON b.local_operator_id = n.local_operator_id\n  WHERE b.node_code = 'FP014-01'\n    AND b.prompt_status = 'active'\n    AND NULLIF(btrim(b.model_name), '') IS NOT NULL\n    AND NULLIF(btrim(b.provider_base_url), '') IS NOT NULL\n    AND NULLIF(btrim(b.prompt_text), '') IS NOT NULL\n    AND NULLIF(btrim(b.api_key_ref), '') IS NOT NULL\n  LIMIT 1\n)\nSELECT jsonb_build_object(\n  'request', n.request,\n  'runtime_binding', COALESCE((SELECT runtime_binding FROM binding), '{}'::jsonb),\n  'config_ready', EXISTS (SELECT 1 FROM binding),\n  'redacted_error', CASE\n    WHEN EXISTS (SELECT 1 FROM binding) THEN NULL\n    ELSE jsonb_build_object(\n      'code', 'CONFIG_CONTRACT_BLOCKED',\n      'message', 'An active FP014-01 model and prompt binding is required before sample analysis can start.'\n    )\n  END\n) AS context\nFROM normalized AS n;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.body ?? $json)] }}"
+        }
       },
       "id": "edc8bfa7-a94e-4d73-a788-2077aa895460",
       "name": "读取当前版本",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.6,
       "position": [
         864,
         0
@@ -89,18 +91,21 @@
           "id": "kitjw53XlibTPzxM",
           "name": "zh-database"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM iteration_log WHERE result_status = 'pending' ORDER BY id DESC LIMIT 1;",
-        "additionalFields": {}
+        "query": "SELECT public.rpc_record_iteration_sample($1::jsonb) AS result,\n       'ITERATION_RETRY_CONTRACT_UNRESOLVED'::text AS hold_code;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.body ?? $json)] }}"
+        }
       },
       "id": "addca57e-631d-4a05-a1e6-9cc1df81bc55",
       "name": "读取待处理日志",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.6,
       "position": [
         704,
         0
@@ -115,13 +120,15 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM prompt_config WHERE is_active = true ORDER BY version_no DESC LIMIT 1;",
-        "additionalFields": {}
+        "query": "SELECT public.rpc_classify_iteration_sample($1::jsonb) AS result;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.rpc_classify_iteration_sample ?? $json)] }}"
+        }
       },
       "id": "69af7619-db6c-48c9-a2a1-33eae6b22576",
       "name": "标记丢弃样本",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.6,
       "position": [
         1760,
         224
@@ -137,19 +144,22 @@
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "deepseek-v4-flash-free",
+          "value": "={{ (() => { const binding = $('读取当前版本').first().json.context.runtime_binding; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP014-01 requires an active runtime binding.'); return binding; })().model_name }}",
           "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+          "cachedResultName": "CURRENT_EFFECTIVE_MODEL"
         },
         "responses": {
           "values": [
             {
-              "content": "=你是迭代样本分析器。请严密分析失败样本，执行精准的三维技术归因，并给出可供工程人员一键采纳的修复补丁建议。\n\n输入数据\n失败前状态（快照数据）：{{ 失败前状态_JSON }}\n\n使用的提示词版本：{{ 失败前提示词_JSON }}\n\n大模型原始输出：{{ 大模型原始输出_JSON }}\n\n退回原因/系统警报：{{ 阻断原因_TEXT }}\n\n失败节点代码：{{ 失败节点代码 }}\n\n分析步骤\n步骤1：事实冲突比对\n将「大模型原始输出」与「失败前状态」及「失败前提示词」进行点对点的数据硬撞，进行客观事实定位：\n\n找出输出具体违反了哪一条规则约束（必须精准引用提示词中的具体规则条文）。\n\n找出输出具体忽略了哪一个前置触发条件（必须精准引用失败前状态快照中的具体数据字段）。\n\n步骤2：三维技术归因（先精准分类，再对症修补）\n📊 数据债（Data Issue）\n输入的数据本身存在逻辑矛盾、状态漂移、虚空调用或严重缺失，导致模型在底层逻辑链上无法自圆其说。\n典型表现：角色四层模型中的 L0 根源与 L1 情绪字段相互冲突、世界设定包中错误引用了不存在的道具代码、或角色的实时信息边界未进行正确的裁剪。\n\n📝 提示词债（Prompt Issue）\n提示词中的指令要求不够明确、边界约束未加锁、或者多步骤之间的执行顺序存在逻辑歧义，导致模型在生成时产生自由发挥的越权幻觉。\n典型表现：字段定义模糊、缺乏特级阻断的绝对禁止项、未强调差分输出规范。\n\n🛠️ 技能债（Skill Issue）\n模型调用的剧情套路技能过时，或者大纲分配的商业、情绪硬性指标过于极端，超出了当前模型或套路库的承载上限，导致最终呈现输出变形。\n典型表现：套路库（skill_library）中的固有剧情套路无法完美匹配当前的实时情绪波段或戏剧意图类型。\n\n步骤3：优化补丁生成\n针对排查出的“核心技术欠账（primary_debt）”，针对性地输出对应的修复方案：\n\n若属于数据债：明确指出具体需要精细化修改的数据字段、角色档案或世界设定条目。\n\n若属于提示词债：直接在指定字段输出重写优化后的 优化后提示词片段（确保工程人员可一键复制采纳）。\n\n若属于技能债：给出更新、微调或替换套路库（skill_library）中哪一个套路类目或规则属性的具体建议。\n\n输出格式\nJSON\n{\n  \"失败节点\": \"{{ 失败节点代码 }}\",\n  \"分析摘要\": \"对本次失败样本的一句话核心技术归因说明\",\n  \"技术归因分类\": {\n    \"是否为数据缺陷\": false,\n    \"是否为提示词缺陷\": true,\n    \"是否为技能缺陷\": false,\n    \"核心技术欠账\": \"数据|提示词|能力\"\n  },\n  \"冲突依据\": [\n    {\n      \"发现的冲突点\": \"输出中具体表现出的冲突事实或逻辑越界\",\n      \"背离的数据字段\": \"哪一个输入快照字段与最终输出发生了事实背离\",\n      \"违反的提示词条文\": \"被模型违反的提示词条文原文（必须直接引用）\"\n    }\n  ],\n  \"补丁候选方案\": {\n    \"数据修复建议\": \"若是否为数据缺陷=true：建议如何精细化修改四层模型、角色档案或世界设定，否则填无\",\n    \"提示词修复建议\": \"若是否为提示词缺陷=true：精准指出应当修改或加锁原提示词的哪一部分，否则填无\",\n    \"技能修复建议\": \"若是否为技能缺陷=true：建议如何更新或扩充套路库中的特定剧情套路，否则填无\"\n  },\n  \"优化后提示词片段\": \"若核心技术欠账=提示词：直接提供完成修复、可供工程人员一键复制采纳的提示词代码片段；否则填无\"\n}\n输出校验规则\n技术归因分类.核心技术欠账 的取值必须在 数据 | 提示词 | 能力 三者中严格选一。\n\n若 核心技术欠账 锁定了某一具体技术欠账分类，对应的 是否为*_缺陷 标志位必须强制设置为 true。\n\n若 是否为提示词缺陷 判定为 true，必须在 优化后提示词片段 字段中提供立即可用、逻辑加锁后的修改后提示词片段（绝对不可填无或输出 null）。\n\n冲突依据 列表必须至少包含 1 项，且必须精准引用具体的输入数据字段或条文原文，严禁使用纯主观臆测来推断模型的“内心想法”。\n\n违反的提示词条文 必须强行引用「使用提示词版本」中的原文约束内容（即使为了排版允许进行标准缩略引用，也必须保留其核心控制语义）。"
+              "content": "={{ (() => { const binding = $('读取当前版本').first().json.context.runtime_binding; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP014-01 requires an active runtime binding.'); return binding; })().prompt_text + '\\nINPUT=' + JSON.stringify($json) }}"
             }
           ]
         },
         "builtInTools": {},
-        "options": {}
+        "options": {
+          "baseURL": "={{ (() => { const binding = $('读取当前版本').first().json.context.runtime_binding; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP014-01 requires an active runtime binding.'); return binding; })().provider_base_url }}",
+          "temperature": "={{ (() => { const binding = $('读取当前版本').first().json.context.runtime_binding; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP014-01 requires an active runtime binding.'); return binding; })().temperature }}"
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 2.3,
@@ -168,7 +178,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = items[0].json;\nlet output = {};\ntry {\n  const text = input.output || input.text;\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    output = JSON.parse(jsonMatch[0]);\n  } else {\n    output = JSON.parse(text);\n  }\n} catch (e) {\n  output = { has_value: false, error: 'Failed to parse JSON' };\n}\nreturn { json: { ...input, ...output } };"
+        "jsCode": "const input = items[0].json;\nlet output = {};\nconst repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\ntry {\n  output = parseSingleJson(input.output ?? input.text);\n} catch (e) {\n  output = { has_value: false, error: 'Failed to parse JSON' };\n}\nreturn { json: { ...input, ...output } };"
       },
       "id": "18bbc0eb-09ba-46a4-8d26-a1def1dff52a",
       "name": "JSON修复1",
@@ -194,7 +204,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = items[0].json;\nlet output = {};\ntry {\n  const text = input.output || input.text;\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    output = JSON.parse(jsonMatch[0]);\n  } else {\n    output = JSON.parse(text);\n  }\n} catch (e) {\n  output = { has_value: false, error: 'Failed to parse JSON' };\n}\nreturn { json: { ...input, ...output } };"
+        "jsCode": "const input = items[0].json;\nlet output = {};\nconst repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\ntry {\n  output = parseSingleJson(input.output ?? input.text);\n} catch (e) {\n  output = { has_value: false, error: 'Failed to parse JSON' };\n}\nreturn { json: { ...input, ...output } };"
       },
       "id": "cc80c71d-b34b-47a3-887e-c8c20bcd2e8f",
       "name": "JSON修复2",
@@ -264,14 +274,14 @@
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "deepseek-v4-flash-free",
+          "value": "={{ (() => { throw new Error('CONFIG_CONTRACT_BLOCKED: FP014-02 has no active prompt runtime binding.'); })() }}",
           "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+          "cachedResultName": "CONFIG_CONTRACT_BLOCKED"
         },
         "responses": {
           "values": [
             {
-              "content": "你将了解旧节点的所在的流程节点及工作任务，根据调整建议在不感染其他目的的前提下精确定位问题区域进行微调，生成新版本提示词内容。"
+              "content": "={{ (() => { throw new Error('CONFIG_CONTRACT_BLOCKED: FP014-02 has no active prompt runtime binding.'); })() }}"
             }
           ]
         },
@@ -297,14 +307,14 @@
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "deepseek-v4-flash-free",
+          "value": "={{ (() => { throw new Error('CONFIG_CONTRACT_BLOCKED: FP014-02 has no active prompt runtime binding.'); })() }}",
           "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+          "cachedResultName": "CONFIG_CONTRACT_BLOCKED"
         },
         "responses": {
           "values": [
             {
-              "content": "你将了解旧节点的所在的流程节点及工作任务，根据调整建议在不感染其他目的的前提下精确定位问题区域进行微调，生成新版本提示词内容。"
+              "content": "={{ (() => { throw new Error('CONFIG_CONTRACT_BLOCKED: FP014-02 has no active prompt runtime binding.'); })() }}"
             }
           ]
         },
@@ -329,13 +339,15 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO prompt_iteration_log (original_prompt, revised_prompt, status, compare_report) VALUES ('{{ $json.prompt_content }}', '{{ $json.revised_prompt }}', 'failed', '{{ $json.compare_report }}');",
-        "additionalFields": {}
+        "query": "SELECT public.rpc_classify_iteration_sample($1::jsonb) AS result;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.rpc_classify_iteration_sample ?? $json)] }}"
+        }
       },
       "id": "7779426f-0881-4d92-a1c9-1fc5026b4ff9",
       "name": "写入失败原因",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.6,
       "position": [
         3248,
         0
@@ -389,8 +401,8 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "",
-                    "rightValue": "",
+                    "leftValue": "={{ String($json.topology_ready === true) }}",
+                    "rightValue": "true",
                     "operator": {
                       "type": "string",
                       "operation": "equals"
@@ -416,16 +428,10 @@
     },
     {
       "parameters": {
-        "operation": "update",
-        "schema": {
-          "__rl": true,
-          "mode": "list",
-          "value": "public"
-        },
-        "table": {
-          "__rl": true,
-          "mode": "list",
-          "value": ""
+        "operation": "executeQuery",
+        "query": "SELECT public.rpc_classify_iteration_sample($1::jsonb) AS result;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.rpc_classify_iteration_sample ?? $json)] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
@@ -534,13 +540,15 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO prompt_iteration_log (original_prompt, revised_prompt, status, compare_report) VALUES ('{{ $json.prompt_content }}', '{{ $json.revised_prompt }}', 'failed', '{{ $json.compare_report }}');",
-        "additionalFields": {}
+        "query": "SELECT public.rpc_promote_prompt_config($1::jsonb) AS result;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.rpc_promote_prompt_config ?? $json)] }}"
+        }
       },
       "id": "a19815e7-d31f-4ec1-bffa-2f9d754f2118",
       "name": "FP014-04更新提示词",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.6,
       "position": [
         3248,
         -160
@@ -554,16 +562,10 @@
     },
     {
       "parameters": {
-        "operation": "update",
-        "schema": {
-          "__rl": true,
-          "mode": "list",
-          "value": "public"
-        },
-        "table": {
-          "__rl": true,
-          "mode": "list",
-          "value": ""
+        "operation": "executeQuery",
+        "query": "SELECT public.rpc_save_prompt_candidate($1::jsonb) AS result;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.rpc_save_prompt_candidate ?? $json)] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",

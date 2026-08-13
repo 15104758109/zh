@@ -1,7 +1,6 @@
 // ============ 顶栏公共脚本 ============
 // 使用方式：在 <head> 引入 <script src="../common/header.js"></script>
-// 依赖：页面必须先引入 ./new_book_wizard_data.js
-//       顶栏必须有以下元素：
+// 顶栏必须有以下元素：
 //         <span id="header-book-name"></span>
 //         <div id="sw-auto-production" class="settings-switch" data-key="auto_production"></div>
 //         <div id="sw-auto-audit" class="settings-switch" data-key="auto_audit"></div>
@@ -10,55 +9,71 @@
 //         <div id="quick-settings-popover"></div>
 
 (function () {
-  // 快捷设置弹窗 toggle
-  window.toggleQuickSettings = function (event) {
-    event.stopPropagation();
-    const popover = document.getElementById('quick-settings-popover');
-    if (popover) popover.classList.toggle('hidden');
+  const UUID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
+  // FP016-01 makes Workbench the only configuration surface. Its mounted
+  // runtime replaces this handler after loading the effective projection.
+  window.toggleAutoSwitch = function () {
+    return false;
   };
 
-  // 点击空白处关闭弹窗
-  document.addEventListener('click', function (event) {
-    const popover = document.getElementById('quick-settings-popover');
-    const btn = document.getElementById('quick-settings-btn');
-    if (popover && !popover.classList.contains('hidden')) {
-      if (!popover.contains(event.target) && event.target !== btn && (!btn || !btn.contains(event.target))) {
-        popover.classList.add('hidden');
-      }
+  function routeBookId() {
+    const match = window.location.pathname.match(/^\/books\/([^/]+)\//);
+    if (!match) return null;
+    try {
+      const bookId = decodeURIComponent(match[1]);
+      return UUID_PATTERN.test(bookId) ? bookId.toLowerCase() : null;
+    } catch {
+      return null;
     }
-  });
+  }
 
-  // 自动化开关切换：回写到 NEW_BOOK_WIZARD_DATA.book
-  window.toggleAutoSwitch = function (key, el) {
-    if (!window.NEW_BOOK_WIZARD_DATA) return;
-    const book = window.NEW_BOOK_WIZARD_DATA.book;
-    book[key] = !book[key];
-    el.classList.toggle('on', book[key]);
-  };
+  function syncRouteBookContext() {
+    const bookId = routeBookId();
+    if (!bookId) return null;
+    let operatorId = "";
+    try {
+      operatorId = localStorage.getItem("zhreplan.local_operator_id.v1") || "";
+    } catch {
+      return null;
+    }
+    if (!UUID_PATTERN.test(operatorId)) return null;
+    try {
+      const current = JSON.parse(localStorage.getItem("current_book_context") || "null");
+      if (current?.local_operator_id?.toLowerCase() !== operatorId.toLowerCase()
+        || current?.current_book_id?.toLowerCase() !== bookId) return null;
+    } catch {
+      return null;
+    }
+    return bookId;
+  }
 
-  // 从 NEW_BOOK_WIZARD_DATA 初始化顶栏
-  function initFromBookData() {
-    const data = window.NEW_BOOK_WIZARD_DATA;
-    if (!data) return;
-    const book = data.book;
+  window.syncRouteBookContext = syncRouteBookContext;
+
+  function initReadOnlyHeader() {
+    const routeBook = syncRouteBookContext();
     const bookNameEl = document.getElementById('header-book-name');
-    if (bookNameEl) bookNameEl.textContent = book.bookName || book.title;
-    const switchMap = {
-      auto_production: 'sw-auto-production',
-      auto_audit: 'sw-auto-audit',
-      auto_iteration: 'sw-auto-iteration'
-    };
-    for (const [key, id] of Object.entries(switchMap)) {
+    if (bookNameEl && !bookNameEl.textContent.trim()) {
+      bookNameEl.textContent = routeBook ? `作品 ${routeBook.slice(0, 8)}` : '未选择作品';
+    }
+
+    if (window.location.pathname === '/workbench' || window.location.pathname === '/workbench/') return;
+    for (const id of ['sw-auto-production', 'sw-auto-audit', 'sw-auto-iteration']) {
       const el = document.getElementById(id);
       if (!el) continue;
-      if (book[key]) el.classList.add('on');
-      else el.classList.remove('on');
+      el.classList.remove('on');
+      el.inert = true;
+      el.tabIndex = -1;
+      el.style.pointerEvents = 'none';
+      el.setAttribute('aria-disabled', 'true');
+      el.setAttribute('title', '请在工作台统一配置');
     }
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initFromBookData);
+    document.addEventListener('DOMContentLoaded', initReadOnlyHeader);
   } else {
-    initFromBookData();
+    initReadOnlyHeader();
   }
+  window.addEventListener('load', initReadOnlyHeader, { once: true });
 })();

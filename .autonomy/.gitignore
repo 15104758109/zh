@@ -1,6 +1,0 @@
-events.jsonl
-orchestrator.lock
-orchestrator.lock.*
-quarantine/
-reports/
-*.tmp

@@ -1,14 +1,16 @@
-﻿<!DOCTYPE html><html lang="zh-CN" data-theme="garden" style="width:100%;height:100%;overflow:hidden;position:relative;"><head>
+<!DOCTYPE html><html lang="zh-CN" data-theme="garden" style="width:100%;height:100%;overflow:hidden;position:relative;"><head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
-<title>Character Settings - Cyber-Tech Narrative Engine</title>
-<!-- Tailwind CSS & DaisyUI v4 via CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
-    <link href="../common/theme.css" rel="stylesheet">
-    <link href="../common/sidebar.css" rel="stylesheet">
-    <script src="../common/theme.js"></script>
-    <script charset="utf-8" src="./new_book_wizard_data.js"></script>
-    <script src="../common/header.js"></script>
+<title>角色设定 - 纵横叙事引擎</title>
+<link rel="stylesheet" href="/vendor/font-fallback.css">
+        <!-- Tailwind CSS & DaisyUI v4 via CDN -->
+    <link href="/vendor/daisyui-4.12.10-full.css" rel="stylesheet" type="text/css" />
+    <link href="/pages/prototype/common/theme.css" rel="stylesheet">
+    <link href="/pages/prototype/common/sidebar.css" rel="stylesheet">
+    <script src="/pages/prototype/common/theme.js"></script>
+    <script defer src="/pages/prototype/common/sidebar.js"></script>
+    <script src="/pages/prototype/common/header.js"></script>
+    <script src="/pages/prototype/common/book-context.js"></script>
 
 
 
@@ -27,13 +29,6 @@
         .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
         .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
-        .settings-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-base-300); cursor: pointer; transition: background 0.2s ease; flex-shrink: 0; }
-        .settings-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.2s ease; }
-        .settings-switch.on { background: var(--color-accent); }
-        .settings-switch.on::after { transform: translateX(16px); }
-        .settings-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; cursor: pointer; transition: all 0.15s ease; }
-        .settings-btn:hover { background: var(--color-accent); color: white; }
-
         /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -117,43 +112,14 @@
             border: 2px solid white;
         }
     </style>
-<style data-stitch-cursor="">*{cursor:crosshair!important}[contenteditable="true"]:focus,.cursor-text:focus{cursor:text!important}</style>
-<style data-stitch-scroll-lock="">html,body{overflow:hidden!important}</style>
-<style data-stitch-cursor="">*{cursor:crosshair!important}[contenteditable="true"]:focus,.cursor-text:focus{cursor:text!important}</style>
-<style data-stitch-scroll-lock="">html,body{overflow:hidden!important}</style>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="/vendor/tailwindcss-browser-4.js"></script>
 </head>
-<body class="h-screen w-full overflow-hidden flex bg-base-200 selection:bg-primary/30 selection:text-base-content">
+<body class="ui-page h-screen w-full overflow-hidden flex bg-base-200 selection:bg-primary/30 selection:text-base-content">
 <a href="#main-content" class="skip-link">跳到主内容</a>
 
 <!-- SideNavBar -->
 <!-- SideNavBar -->
-<nav class="sidebar-glass" aria-label="主菜单">
-  <div class="sidebar-brand">
-    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
-    <div class="sidebar-text">
-      <div class="brand-title">纵横</div>
-      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
-    </div>
-  </div>
-  <div class="sidebar-separator" aria-hidden="true"></div>
-  <ul class="menu sidebar-menu" id="sidebarMenu">
-    <li><a href="workbench.html" aria-label="总控设置面板"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
-    <li><a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段" class="active"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
-    <li><a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
-    <li><a href="audit_stage.html" aria-label="审计阶段：正文审计、主编裁决"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
-    <li><a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
-  </ul>
-  <footer class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-user-avatar">U</div>
-      <span class="sidebar-text sidebar-user-name">用户</span>
-    </div>
-  </footer>
-</nav>
-<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
-  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
-</button>
+<nav class="sidebar-glass" aria-label="主菜单" data-shared-sidebar data-sidebar-active="design"></nav>
 
 <!-- Main Content Wrapper -->
 <div class="main-content" id="main-content">
@@ -167,9 +133,9 @@
             <nav class="flex h-full items-center ml-2">
                 <!-- 自定义深色标签组 -->
                 <div class="header-tabs">
-                    <a href="world_creator.html" class="header-tab">世界设定</a>
-                    <a href="character_settings.html" class="header-tab active">角色设定</a>
-                    <a href="l1a_settings.html" class="header-tab">L1A 设定</a>
+                    <a data-book-segment="world" class="header-tab">世界设定</a>
+                    <a data-book-segment="characters" class="header-tab active" aria-current="page">角色设定</a>
+                    <a data-book-segment="l1a" class="header-tab">L1A 设定</a>
                 </div>
             </nav>
         </div>
@@ -232,11 +198,13 @@
             <span class="material-symbols-outlined text-primary">groups</span>
             核心角色阵列
         </h2>
-        <div class="flex items-center bg-base-100 rounded border border-base-content/10 p-3">
-            <button class="px-4 py-xs rounded bg-base-300 text-base-content font-label-caps text-label-caps shadow-sm border border-base-content/10 flex items-center gap-1.5">
+        <div class="ui-segmented flex items-center bg-base-100 rounded border border-base-content/10 p-3">
+            <span id="character-runtime-status" class="mr-2 text-[10px] text-base-content opacity-60" role="status">角色候选服务未就绪</span>
+            <button id="character-snapshot-current" type="button" title="读取正式角色快照" class="ui-button ui-button-small px-4 py-xs rounded bg-base-300 text-base-content font-label-caps text-label-caps shadow-sm border border-base-content/10 flex items-center gap-1.5 disabled:opacity-50">
 <span class="material-symbols-outlined text-[14px]">visibility</span> 当前设定</button>
-            <button class="px-4 py-xs rounded text-base-content opacity-60 hover:text-base-content font-label-caps text-label-caps flex items-center gap-1.5 transition-colors">
+            <button id="character-snapshot-future" type="button" title="读取候选角色快照" class="ui-button ui-button-small ui-button-quiet px-4 py-xs rounded text-base-content opacity-60 hover:text-base-content font-label-caps text-label-caps flex items-center gap-1.5 transition-colors disabled:opacity-50">
 <span class="material-symbols-outlined text-[14px]">casino</span>未来设定</button>
+            <button id="character-confirm-candidate" type="button" disabled aria-disabled="true" title="先生成并保存完整候选" style="cursor:not-allowed;opacity:.45" class="ui-button ui-button-primary ui-button-small ml-2 px-3 py-xs rounded bg-primary text-primary-content font-label-caps text-label-caps disabled:opacity-40">确认候选</button>
         </div>
     </div>
 
@@ -254,7 +222,7 @@
 <!-- Left Column: Basic Info + Relationship -->
 <div class="flex flex-col w-[540px] shrink-0 gap-6">
 <!-- Basic Info -->
-<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box p-6 flex flex-col relative overflow-hidden">
+<div class="ui-card bg-base-100 shadow-sm border border-base-content/10 rounded-box p-6 flex flex-col relative overflow-hidden">
 <div id="char-identity-badge" class="absolute top-0 right-0 bg-secondary/10 text-secondary px-3 py-1 rounded-bl-lg font-label-caps text-label-caps border-b border-l border-secondary/30">核心主角</div>
 <h2 class="font-headline-md text-headline-md text-base-content mb-6 border-b border-base-content/10 pb-2 flex items-center gap-2">
 <span class="material-symbols-outlined text-secondary">person</span> 角色信息
@@ -266,19 +234,19 @@
 </div>
 <div class="flex justify-between items-center bg-base-200/50 p-3 rounded-lg border border-base-content/10">
 <span class="text-base-content opacity-60 font-code-sm">所属势力</span>
-<select id="char-sect-select" onchange="updateCharSect(this.value)" class="bg-base-100 border border-base-content/10 rounded px-2 py-1 text-xs text-base-content outline-none cursor-pointer">
+<select id="char-sect-select" onchange="updateCharSect(this.value)" disabled aria-disabled="true" title="候选写入合同尚未提供。" class="ui-select bg-base-100 border border-base-content/10 rounded px-2 py-1 text-xs text-base-content outline-none cursor-pointer disabled:opacity-50">
 </select>
 </div>
 <div class="flex justify-between items-center bg-base-200/50 p-3 rounded-lg border border-base-content/10">
 <span class="text-base-content opacity-60 font-code-sm">职业</span>
-<select id="char-job-select" onchange="updateCharJob(this.value)" class="bg-base-100 border border-base-content/10 rounded px-2 py-1 text-xs text-base-content outline-none cursor-pointer">
+<select id="char-job-select" onchange="updateCharJob(this.value)" disabled aria-disabled="true" title="候选写入合同尚未提供。" class="ui-select bg-base-100 border border-base-content/10 rounded px-2 py-1 text-xs text-base-content outline-none cursor-pointer disabled:opacity-50">
 </select>
 </div>
 <div class="flex flex-col gap-1.5 bg-base-200/50 p-3 rounded-lg border border-base-content/10 w-full">
     <div class="flex justify-between items-center w-full relative">
         <span class="text-base-content opacity-60 font-code-sm">资源</span>
         <div class="relative inline-block text-left" id="resource-select-container">
-            <button type="button" onclick="toggleResourceDropdown(event)" class="bg-base-100 border border-base-content/10 rounded px-2 py-1 text-[11px] text-base-content outline-none cursor-pointer flex items-center gap-1 hover:border-white/20 transition-all">
+            <button type="button" onclick="toggleResourceDropdown(event)" disabled aria-disabled="true" title="候选写入合同尚未提供。" class="bg-base-100 border border-base-content/10 rounded px-2 py-1 text-[11px] text-base-content outline-none cursor-pointer flex items-center gap-1 hover:border-white/20 transition-all disabled:opacity-50">
                 <span id="selected-resource-count-text">选择资源</span>
                 <span class="material-symbols-outlined text-[12px] pointer-events-none">arrow_drop_down</span>
             </button>
@@ -322,7 +290,7 @@
     </div>
     <div class="flex items-start gap-2">
       <span class="opacity-50 shrink-0">·</span>
-      <span><b class="opacity-80">本质分歧：</b><span id="cs-divergence" class="opacity-70">待遍历检查角色对立关系后自动推导</span></span>
+      <span><b id="cs-divergence-label" class="opacity-80">本质分歧：</b><span id="cs-divergence" class="opacity-70">待遍历检查角色对立关系后自动推导</span></span>
     </div>
   </div>
   <div class="mt-2 pt-2 border-t border-base-content/5 flex items-center gap-1.5 text-[10px] opacity-40">
@@ -342,10 +310,10 @@
 </div>
 </div>
 <!-- Relationship Matrix: 关系 Radar -->
-<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box p-6 flex flex-col">
+<div class="ui-card bg-base-100 shadow-sm border border-base-content/10 rounded-box p-6 flex flex-col">
 <h2 class="font-headline-sm text-headline-sm text-base-content mb-3 flex items-center gap-2">
 <span class="material-symbols-outlined text-primary">hub</span> 关系维度
-<select id="rel-char-selector" onchange="selectRadarChar(this.value)" class="ml-auto bg-base-200 border border-base-content/10 rounded px-2 py-0.5 text-xs text-base-content font-code-sm outline-none cursor-pointer">
+<select id="rel-char-selector" onchange="selectRadarChar(this.value)" disabled aria-disabled="true" title="候选关系尚无稳定读取合同。" class="ui-select ml-auto bg-base-200 border border-base-content/10 rounded px-2 py-0.5 text-xs text-base-content font-code-sm outline-none cursor-pointer disabled:opacity-50">
 <option value="李逍遥">李逍遥</option>
 <option value="赵灵儿">赵灵儿</option>
 <option value="血灵老祖">血灵老祖</option>
@@ -358,7 +326,7 @@
 <div class="relative w-full max-w-[220px]" style="margin:0 auto;">
 <canvas id="relation-radar" class="w-full" style="height:auto;aspect-ratio:11/10;"></canvas>
 </div>
-<div class="flex flex-wrap gap-3 justify-center text-xs mt-2 opacity-80">
+<div id="v7-relation-radar-meta" class="flex flex-wrap gap-3 justify-center text-xs mt-2 opacity-80">
 <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-primary"></span>量化关系</span>
 <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-secondary"></span>结构关系</span>
 </div>
@@ -368,14 +336,14 @@
 <!-- Right Column: Character Layers -->
 <div class="flex-1 flex flex-col gap-6">
 <!-- L0: 哲学前提 -->
-<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box overflow-hidden">
-<div class="flex items-center px-5 py-3.5 cursor-pointer hover:brightness-110 transition-colors bg-tertiary/10" onclick="toggleDrawer('drawer-l0')">
+<div class="ui-accordion">
+<button type="button" class="ui-accordion__trigger" data-drawer-toggle="drawer-l0" aria-controls="drawer-l0" aria-expanded="true" onclick="toggleDrawer('drawer-l0')">
 <span class="material-symbols-outlined text-[18px] text-tertiary">psychology</span>
 <span class="text-sm font-bold text-base-content flex-1 text-center">L0 · 哲学前提</span>
 <span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-l0-icon">expand_more</span>
-</div>
+</button>
 <div id="drawer-l0" class="px-5 pb-5">
-<table class="w-full text-left border-collapse text-sm">
+<table class="ui-table w-full text-left border-collapse text-sm">
 <thead class="text-base-content opacity-60 text-xs">
 <tr><th class="pb-2 border-b border-base-content/10">维度</th><th class="pb-2 border-b border-base-content/10 text-center">极左</th><th class="pb-2 border-b border-base-content/10 text-center">值</th><th class="pb-2 border-b border-base-content/10 text-center">极右</th><th class="pb-2 border-b border-base-content/10">状态</th></tr>
 </thead>
@@ -396,12 +364,12 @@
 </div>
 </div>
 <!-- L1: 驱动层 -->
-<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box overflow-hidden">
-<div class="flex items-center px-5 py-3.5 cursor-pointer hover:brightness-110 transition-colors bg-primary/10" onclick="toggleDrawer('drawer-l1')">
+<div class="ui-accordion">
+<button type="button" class="ui-accordion__trigger" data-drawer-toggle="drawer-l1" aria-controls="drawer-l1" aria-expanded="false" onclick="toggleDrawer('drawer-l1')">
 <span class="material-symbols-outlined text-[18px] text-primary">bolt</span>
 <span class="text-sm font-bold text-base-content flex-1 text-center">L1 · 驱动层</span>
 <span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-l1-icon">expand_more</span>
-</div>
+</button>
 <div id="drawer-l1" class="px-5 pb-5">
 <div class="grid grid-cols-2 gap-2 text-xs">
 <div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">内驱动</span><span id="l1-innerDrive" class="text-base-content"></span></div>
@@ -414,12 +382,12 @@
 </div>
 </div>
 <!-- L2: 关系层 -->
-<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box overflow-hidden">
-<div class="flex items-center px-5 py-3.5 cursor-pointer hover:brightness-110 transition-colors bg-secondary/10" onclick="toggleDrawer('drawer-l2')">
+<div id="v7-l2-relation-state" class="ui-accordion">
+<button type="button" class="ui-accordion__trigger" data-drawer-toggle="drawer-l2" aria-controls="drawer-l2" aria-expanded="false" onclick="toggleDrawer('drawer-l2')">
 <span class="material-symbols-outlined text-[18px] text-secondary">group</span>
 <span class="text-sm font-bold text-base-content flex-1 text-center">L2 · 关系层</span>
 <span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-l2-icon">expand_more</span>
-</div>
+</button>
 <div id="drawer-l2" class="px-5 pb-5">
 <div class="space-y-2 text-xs">
 <div class="bg-primary/5 p-2 rounded border border-primary/20">
@@ -444,12 +412,12 @@
 </div>
 </div>
 <!-- L3: 事件记忆层 -->
-<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box overflow-hidden">
-<div class="flex items-center px-5 py-3.5 cursor-pointer hover:brightness-110 transition-colors bg-base-100/50" onclick="toggleDrawer('drawer-l3')">
+<div class="ui-accordion">
+<button type="button" class="ui-accordion__trigger" data-drawer-toggle="drawer-l3" aria-controls="drawer-l3" aria-expanded="false" onclick="toggleDrawer('drawer-l3')">
 <span class="material-symbols-outlined text-[18px] text-base-content opacity-60">history_edu</span>
 <span class="text-sm font-bold text-base-content flex-1 text-center">L3 · 事件记忆层</span>
 <span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-l3-icon">expand_more</span>
-</div>
+</button>
 <div id="drawer-l3" class="px-5 pb-5">
 <div class="space-y-1.5 text-xs">
 <div class="bg-base-200/50 p-2.5 rounded-lg border border-base-content/10"><span class="text-base-content opacity-60 block mb-0.5">关键事件</span><span id="l3-keyEvent" class="text-base-content"></span></div>
@@ -459,15 +427,15 @@
 </div>
 </div>
 </div>
-<!-- 对话偏好 -->
-<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box overflow-hidden">
-<div class="flex items-center px-5 py-3.5 cursor-pointer hover:brightness-110 transition-colors bg-base-100/30" onclick="toggleDrawer('drawer-dialogue')">
+<!-- 对话偏好 / 候选知识边界 -->
+<div id="v7-knowledge-boundary" class="ui-accordion">
+<button type="button" class="ui-accordion__trigger" data-drawer-toggle="drawer-dialogue" aria-controls="drawer-dialogue" aria-expanded="false" onclick="toggleDrawer('drawer-dialogue')">
 <span class="material-symbols-outlined text-[18px] text-primary">chat_bubble</span>
 <span class="text-sm font-bold text-base-content flex-1 text-center">对话偏好</span>
 <span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-dialogue-icon">expand_more</span>
-</div>
+</button>
 <div id="drawer-dialogue" class="px-5 pb-5">
-<table class="w-full text-left border-collapse text-xs">
+<table class="ui-table w-full text-left border-collapse text-xs">
 <thead class="text-base-content opacity-60">
 <tr><th class="pb-2 border-b border-base-content/10">功能类型</th><th class="pb-2 border-b border-base-content/10">说明</th></tr>
 </thead>
@@ -485,14 +453,14 @@
 </div>
 </div>
 <!-- Bottom Section: Experiment Lab -->
-<div class="bg-base-100 shadow-sm border border-base-content/10 rounded-box p-6 shrink-0 flex flex-col mt-auto">
+<div class="ui-card bg-base-100 shadow-sm border border-base-content/10 rounded-box p-6 shrink-0 flex flex-col mt-auto">
 <div class="flex justify-between items-center mb-4">
 <h2 class="font-headline-sm text-headline-sm text-base-content flex items-center gap-2">
 <span class="material-symbols-outlined text-secondary">science</span> 行为实验
                         </h2>
 <div class="flex gap-2 w-1/2">
-<input class="flex-1 bg-base-200 border border-base-content/10 rounded px-3 py-1.5 text-base-content font-body-md focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all" placeholder="输入一个触发事件 (如: 发现掌门是内鬼)" type="text">
-<button class="bg-primary text-primary-content px-4 py-1.5 rounded font-label-caps text-label-caps font-bold hover:bg-primary-fixed transition-colors flex items-center gap-1 whitespace-nowrap">
+<input id="character-behavior-input" disabled aria-disabled="true" title="行为实验不属于 FP003 已批准范围。" class="ui-field flex-1 bg-base-200 border border-base-content/10 rounded px-3 py-1.5 text-base-content font-body-md focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all disabled:opacity-50" placeholder="输入一个触发事件 (如: 发现掌门是内鬼)" type="text">
+<button id="character-behavior-start" type="button" disabled aria-disabled="true" title="行为实验不属于 FP003 已批准范围。" class="ui-button ui-button-primary ui-button-small flex items-center gap-1 whitespace-nowrap disabled:opacity-40">
 <span class="material-symbols-outlined text-sm">play_arrow</span> 开始实验
                             </button>
 </div>
@@ -561,6 +529,7 @@
         allDrawers.forEach(function(did){
             const el = document.getElementById(did);
             const icon = document.getElementById(did + '-icon');
+            const trigger = document.querySelector('[data-drawer-toggle="' + did + '"]');
             if (!el || !icon) return;
             if (did === id && !isOpen) {
                 el.style.maxHeight = el.scrollHeight + 'px';
@@ -568,12 +537,14 @@
                 el.style.paddingTop = '';
                 el.style.paddingBottom = '';
                 icon.style.transform = 'rotate(0deg)';
+                trigger?.setAttribute('aria-expanded', 'true');
             } else {
                 el.style.maxHeight = '0px';
                 el.style.overflow = 'hidden';
                 el.style.paddingTop = '0';
                 el.style.paddingBottom = '0';
                 icon.style.transform = 'rotate(-90deg)';
+                trigger?.setAttribute('aria-expanded', 'false');
             }
         });
     }
@@ -583,299 +554,25 @@
     // ===================================================
 
     // 默认出场角色数据列表
-    window.characterSettings = [
-        {
-            name: "李逍遥",
-            identity: "核心主角",
-            gender: "男性",
-            stress: 7,
-            resource: "三尺青锋剑",
-            personalities: ["冷静孤傲", "坚韧不拔"],
-            bindLaw: "rules:灵气赤字",
-            sect: "青云门",
-            status: "活跃，想当大将军",
-            desc: "青云门弟子。性格沉稳冷酷，在灵气枯竭的末法时代，为寻求宗门生路而独自负剑下山。",
-            l0: {
-                dilemma: { val: "自由意志", desc: "誓要打破宿命枷锁" },
-                valueOrder: { val: "情义为先", desc: "视同门生死高于一切权力" },
-                belief: { val: "人性本善", desc: "相信万物皆有灵，恶人亦可渡" }
-            },
-            l1: {
-                innerDrive: "追寻父母失踪的真相",
-                outerDrive: "振兴衰落的青云门",
-                desire: "御剑乘风的绝对自由",
-                fear: "眼睁睁看着身边重要之人离去",
-                shame: "曾因实力弱小无法保护外门同门",
-                obsession: "查明覆灭山村的幕后黑手"
-            },
-            l2: {
-                worldBinding: "绑定规则：灵气赤字。在此法则下施展剑招会加倍消耗心神。"
-            },
-            l3: {
-                relations: {
-                    "赵灵儿": { trust: 9, depend: 8, hostility: 0, evidence: "十年前仙灵岛赠药之恩，与一路上同生共死的羁绊。" },
-                    "血灵老祖": { trust: 0, depend: 0, hostility: 10, evidence: "此魔屠戮青云门外门弟子，是不共戴天之仇。" }
-                }
-            },
-            knowledge: {
-                confirmed: ["赵灵儿是女娲后裔", "拜月教在暗中收集五灵珠"],
-                unknown: ["父母失踪前去过的无底深渊位置"],
-                wrong: ["误以为血灵老祖是整起事件的元凶（实际只是牵线木偶）"],
-                doubt: ["合理怀疑门派内部长老有内奸"]
-            },
-            memory: {
-                source: ["童年在余杭客栈度过的无忧时光"],
-                active: ["在青云山深处遭遇神秘黑衣人袭杀"],
-                conflict: ["赵灵儿失踪前留下的绝笔信与其之前誓言不符"],
-                support: ["酒剑仙在醉酒时传授的御剑术真诀"]
-            }
-        },
-        {
-            name: "赵灵儿",
-            identity: "重要配角",
-            gender: "女性",
-            stress: 4,
-            resource: "女娲神杖",
-            personalities: ["机警过人", "热烈坦率"],
-            bindLaw: "geography:仙灵岛",
-            sect: "仙灵岛",
-            status: "活跃，想当大将军",
-            desc: "身世神秘的少女，居住在仙灵岛。生性善良，却肩负着沉重的宿命。",
-            l0: {
-                dilemma: { val: "宿命论", desc: "默默承受女娲后裔拯救苍生的宿命" },
-                valueOrder: { val: "情义为先", desc: "为了保护逍遥哥哥和子民愿意牺牲自己" },
-                belief: { val: "人性本善", desc: "认为众生皆苦，不忍看任何生灵涂炭" }
-            },
-            l1: {
-                innerDrive: "寻找自己身世的起源",
-                outerDrive: "履行女娲后裔庇佑子民的责任",
-                desire: "像普通少女一样和逍遥过平静生活",
-                fear: "宿命反噬导致爱人受到伤害",
-                shame: "无法控制体内暴走的神力",
-                obsession: "镇压即将苏醒的上古水魔兽"
-            },
-            l2: {
-                worldBinding: "绑定地理：仙灵岛。在仙灵岛水脉加持下，神力恢复速度加倍。"
-            },
-            l3: {
-                relations: {
-                    "李逍遥": { trust: 10, depend: 9, hostility: 0, evidence: "余杭相遇并蒙他相救，认定他是此生唯一的依靠。" },
-                    "血灵老祖": { trust: 0, depend: 0, hostility: 10, evidence: "屠杀仙灵岛众人，乃是彻头彻尾的仇人。" }
-                }
-            },
-            knowledge: {
-                confirmed: ["五灵珠中水灵珠在母亲留下的神像中"],
-                unknown: ["母亲当年的真实死因"],
-                wrong: ["曾以为苗疆子民都痛恨女娲一脉"],
-                doubt: ["合理怀疑姥姥的伤势是中毒而非自然衰老"]
-            },
-            memory: {
-                source: ["姥姥在水月宫传授道法的岁月"],
-                active: ["被迫逃离仙灵岛时的漫天火光"],
-                conflict: ["苗疆长老对女娲的态度前后矛盾"],
-                support: ["体内流淌的女娲神血是最终的力量源泉"]
-            }
-        },
-        {
-            name: "血灵老祖",
-            identity: "反派敌对",
-            gender: "非人类",
-            stress: 9,
-            resource: "万魂血煞幡",
-            personalities: ["腹黑深沉", "冷静孤傲"],
-            bindLaw: "rules:因果契约",
-            sect: "万魔窟",
-            status: "活跃，想当大将军",
-            desc: "血煞教长老，修炼血系功法的魔头。行事狠辣，为了复活魔尊不择手段。",
-            l0: {
-                dilemma: { val: "宿命论", desc: "认为天道不公，唯有杀戮方是魔道真理" },
-                valueOrder: { val: "权力至上", desc: "力量才是一切，弱者只配作为血食" },
-                belief: { val: "人性本恶", desc: "世人皆虚伪自私，唯有魔道坦荡" }
-            },
-            l1: {
-                innerDrive: "突破血海神功的最高境界",
-                outerDrive: "奉命复活魔尊",
-                desire: "掌控整界生灵的生死大权",
-                fear: "寿元将尽且神魂俱灭",
-                shame: "百年前被青云门祖师一剑削去半身",
-                obsession: "用十万修士精血炼制万魂幡"
-            },
-            l2: {
-                worldBinding: "绑定规则：因果契约。利用因果律诅咒对其仇敌施加持续的血毒伤害。"
-            },
-            l3: {
-                relations: {
-                    "李逍遥": { trust: 0, depend: 0, hostility: 10, evidence: "此子屡次破坏本座血祭大典，必将其抽魂炼魄。" },
-                    "赵灵儿": { trust: 0, depend: 0, hostility: 9, evidence: "她是复活魔尊必不可少的祭品，极其防备其血脉觉醒。" }
-                }
-            },
-            knowledge: {
-                confirmed: ["青云门护山大阵的阵眼所在"],
-                unknown: ["魔尊主魂目前被封印的具体维度"],
-                wrong: ["以为自己掌握了血煞教的绝对控制权"],
-                doubt: ["合理怀疑旁人对自己忠诚的真实程度"]
-            },
-            memory: {
-                source: ["在万尸谷中吞噬腐尸苟活的魔道起点"],
-                active: ["正在密室中凝聚十万怨魂"],
-                conflict: ["教主赐予的圣药中似乎隐藏着微小蛊虫"],
-                support: ["与魔界意志沟通得到的毁灭印记"]
-            }
-        }
-    ];
+    // Runtime characters are supplied only by the approved page service.
+    window.characterSettings = [];
 
-    function wizardCharacterSettings() {
-        const source = window.NEW_BOOK_WIZARD_DATA;
-        const stages = source && Array.isArray(source.stages) ? source.stages : [];
-        const charStep = stages.find(s => s.key === "characters");
-        const worldStep = stages.find(s => s.key === "world_settings");
-        if (!charStep || !Array.isArray(charStep.characters)) return null;
-
-        const cards = worldStep && Array.isArray(worldStep.cards) ? worldStep.cards : [];
-        const titleById = (id) => {
-            const card = cards.find(c => c.id === id);
-            return card ? (card.title || card.item_name || id) : id;
-        };
-        const roleLabel = (char) => {
-            if (char.role) return char.role;
-            if (char.char_type === "protagonist") return "核心主角";
-            if (char.char_type === "antagonist") return "反派敌对";
-            if (char.char_type === "support") return "重要配角";
-            return "常驻NPC";
-        };
-        const genderLabel = (gender) => String(gender || "").includes("♀") ? "女性" : (String(gender || "").includes("♂") ? "男性" : "非人类");
-
-        return charStep.characters.map((char) => {
-            const resources = (char.bindRes || []).map(titleById);
-            const forces = (char.bindForce || []).map(titleById);
-            const jobs = (char.bindJob || []).map(titleById);
-            const relations = {};
-            (charStep.characters || []).forEach((other) => {
-                if (other.id !== char.id) relations[other.name] = { trust: 5, depend: 5, hostility: 0, evidence: "由新书向导角色关系初始化。" };
-            });
-            return {
-                id: char.id,
-                name: char.name || "未命名角色",
-                identity: roleLabel(char),
-                gender: genderLabel(char.gender),
-                age: char.age || "",
-                stress: Math.max(1, Math.min(10, Math.round(((char.arc && char.arc.progress) || 50) / 10))),
-                resource: resources.join(", "),
-                bindJob: jobs,
-                bindForce: forces,
-                sect: forces[0] || "未绑定势力",
-                status: (char.arc && char.arc.direction) || "活跃",
-                desc: char.background || char.bio || "暂无简介",
-                personalities: char.traitTags || [],
-                bindLaw: resources[0] ? `resources:${resources[0]}` : "",
-                worldBinding: [
-                    resources.length ? `资源：${resources.join("、")}` : "",
-                    jobs.length ? `职业：${jobs.join("、")}` : "",
-                    forces.length ? `势力：${forces.join("、")}` : ""
-                ].filter(Boolean).join("；") || "暂无绑定。",
-                l0: {
-                    dilemma: { val: "自由意志", desc: (char.arc && char.arc.oneSentence) || "由角色弧光推导" },
-                    valueOrder: { val: "情义为先", desc: (char.arc && char.arc.desire) || "由角色目标推导" },
-                    belief: { val: "人性本善", desc: "由角色哲学层初始化" }
-                },
-                l1: {
-                    innerDrive: (char.arc && char.arc.desire) || "暂无内驱动",
-                    outerDrive: forces.length ? `受${forces.join("、")}牵引` : "暂无外驱动",
-                    desire: (char.arc && char.arc.desire) || "暂无欲望",
-                    fear: "失去关键绑定资源",
-                    shame: "未能完成角色承诺",
-                    obsession: char.bio || (char.arc && char.arc.arcDesc) || "暂无执念"
-                },
-                l3: { relations },
-                memory: {
-                    active: [(char.arc && char.arc.arcDesc) || "暂无关键事件"],
-                    source: [char.background || "暂无记忆片段"],
-                    conflict: [(char.arc && char.arc.oneSentence) || "暂无明确触发点"],
-                    support: ["由新书向导同步"]
-                },
-                knowledge: {
-                    confirmed: ["角色基础设定已同步"],
-                    unknown: ["后续剧情信息待生成"],
-                    wrong: [],
-                    doubt: []
-                }
-            };
-        });
-    }
-
-    let activeCharIndex = 0;
+    var activeCharIndex = 0;
     const CHARACTER_STORAGE_KEY = "characterSettingsV7Wizard";
-    const defaultPersonalityPool = ["冷静孤傲", "机警过人", "傲娇嘴硬", "热烈坦率", "腹黑深沉", "坚韧不拔", "散漫自由", "侠骨柔情", "野心勃勃"];
+    const defaultPersonalityPool = [];
 
-    function loadSavedData() {
-        const wizardSaved = localStorage.getItem("NEW_BOOK_CHAR_STATE_V2");
-        const stored = localStorage.getItem(CHARACTER_STORAGE_KEY);
-        if (wizardSaved) {
-            try {
-                const parsed = JSON.parse(wizardSaved);
-                if (parsed && Array.isArray(parsed.characters)) {
-                    const source = window.NEW_BOOK_WIZARD_DATA;
-                    const charStep = source && source.stages && source.stages.find(s => s.key === "characters");
-                    if (charStep) charStep.characters = parsed.characters;
-                    const mapped = wizardCharacterSettings();
-                    if (mapped) window.characterSettings = mapped;
-                    return;
-                }
-            } catch(e) {
-                console.error("加载新书角色状态错误: ", e);
-            }
-        }
-        if (stored) {
-            try {
-                window.characterSettings = JSON.parse(stored);
-                return;
-            } catch(e) {
-                console.error("加载角色数据错误: ", e);
-            }
-        }
-        const mapped = wizardCharacterSettings();
-        if (mapped) window.characterSettings = mapped;
-    }
+    function loadSavedData() { window.characterSettings = []; }
 
-    function saveAllData() {
-        syncWizardCharacterState();
-        localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(window.characterSettings));
-        localStorage.setItem('characterSettings', JSON.stringify(window.characterSettings));
-    }
+    function saveAllData() {}
 
-    function syncWizardCharacterState() {
-        const source = window.NEW_BOOK_WIZARD_DATA;
-        const charStep = source && source.stages && source.stages.find(s => s.key === "characters");
-        if (!charStep || !Array.isArray(charStep.characters)) return;
-        const worldStep = source && source.stages && source.stages.find(s => s.key === "world_settings");
-        const worldCards = worldStep && Array.isArray(worldStep.cards) ? worldStep.cards : [];
-        const idsByTitle = (names, typeNames) => {
-            const list = Array.isArray(names) ? names : [];
-            return list.map(name => {
-                const card = worldCards.find(item => typeNames.includes(item.category || item.board_type) && (item.title === name || item.item_name === name || item.id === name));
-                return card ? card.id : name;
-            }).filter(Boolean);
-        };
-        const nextCharacters = charStep.characters.map((char) => {
-            const current = window.characterSettings.find(item => item.id === char.id || item.name === char.name);
-            if (!current) return char;
-            const resources = current.resource ? current.resource.split(',').map(r => r.trim()).filter(Boolean) : [];
-            return {
-                ...char,
-                name: current.name || char.name,
-                role: current.identity || char.role,
-                age: current.age ?? char.age ?? "",
-                background: current.desc || char.background || "",
-                traitTags: current.personalities || char.traitTags || [],
-                bindRes: idsByTitle(resources, ["资源"]),
-                bindForce: idsByTitle(current.bindForce || (current.sect ? [current.sect] : []), ["势力"]),
-                bindJob: idsByTitle(current.bindJob || [], ["职业", "职业/超能"])
-            };
+    function syncWizardCharacterState() {}
+
+    function escapeCharacterHtml(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character];
         });
-        localStorage.setItem("NEW_BOOK_CHAR_STATE_V2", JSON.stringify({ characters: nextCharacters, activeCharIndex }));
     }
 
-    // 动态渲染角色卡片阵列
     function renderCharacterCards() {
         const listContainer = document.getElementById('character-card-list');
         if (!listContainer) return;
@@ -889,9 +586,10 @@
             else if (char.identity === "反派敌对") { badgeColor = "bg-error text-error-content"; shortIdentity = "反"; }
             else if (char.identity === "常驻NPC") { badgeColor = "bg-base-300 text-base-content opacity-85"; shortIdentity = "NPC"; }
 
-            // 压力分值展现
-            const stressText = `压: ${char.stress || 0}/10`;
-            const stressPercent = Math.min(100, Math.max(0, (char.stress || 0) * 10));
+            // `pressure_level` is runtime state, not a character-design default.
+            const hasStress = Number.isFinite(char.stress);
+            const stressText = hasStress ? `压: ${char.stress}/10` : "压: —";
+            const stressPercent = hasStress ? Math.min(100, Math.max(0, char.stress * 10)) : 0;
 
             const card = document.createElement('div');
             card.className = `w-64 bg-base-100 border border-base-content/5 rounded-2xl p-5 flex gap-3 cursor-pointer transition-all relative shrink-0 ${isActive ? 'active-card' : 'border-transparent hover:border-base-content/10 shadow-sm'}`;
@@ -905,21 +603,21 @@
             card.innerHTML = `
                 <div class="w-16 h-16 rounded bg-gradient-to-br from-indigo-500/20 to-purple-600/30 flex items-center justify-center text-base-content text-xl font-bold border border-base-content/10 shrink-0 relative overflow-hidden">
                     <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                    <span class="relative z-10">${char.name.charAt(0)}</span>
-                    <div class="absolute bottom-0 right-0 ${badgeColor} text-[9px] font-bold px-1 rounded-tl select-none cursor-pointer" onclick="toggleCardIdentity(${index}, event)">${shortIdentity}</div>
+                    <span class="relative z-10">${escapeCharacterHtml((char.name || "").charAt(0))}</span>
+                    <span aria-disabled="true" title="候选身份由生成结果提供；候选写入合同尚未提供。" class="absolute bottom-0 right-0 ${badgeColor} text-[9px] font-bold px-1 rounded-tl select-none opacity-70">${shortIdentity}</span>
                 </div>
                 <div class="flex-1 min-w-0 flex flex-col justify-between">
                     <div class="flex justify-between items-start">
-                        <h3 class="text-xs font-bold text-base-content truncate glow-text">${char.name}</h3>
-                        <button onclick="deleteCharacter(${index}, event)" class="text-base-content opacity-50 hover:text-error transition-colors">
+                        <h3 class="text-xs font-bold text-base-content truncate glow-text">${escapeCharacterHtml(char.name)}</h3>
+                        <button type="button" disabled aria-disabled="true" title="候选写入合同尚未提供删除操作。" class="text-base-content opacity-50 transition-colors disabled:cursor-not-allowed disabled:opacity-30">
                             <span class="material-symbols-outlined text-[14px]">delete</span>
                         </button>
                     </div>
-                    <p class="text-[10px] text-base-content opacity-70 truncate">${char.resource || '无特殊资源'}</p>
+                    <p class="text-[10px] text-base-content opacity-70 truncate">${escapeCharacterHtml(char.resource || '未提供')}</p>
                     <div class="flex flex-col gap-1 mt-1">
                         <div class="flex justify-between text-[9px] text-base-content opacity-70">
-                            <span>${char.personalities[0] || '平凡'}</span>
-                            <span>${stressText}</span>
+                            <span>${escapeCharacterHtml((char.personalities || [])[0] || '未提供')}</span>
+                            <span>${escapeCharacterHtml(stressText)}</span>
                         </div>
                         <div class="h-1.5 w-full bg-neutral/5 rounded-full overflow-hidden">
                             <div class="h-full bg-gradient-to-r from-secondary to-error" style="width: ${stressPercent}%"></div>
@@ -982,97 +680,9 @@
     }
 
     // AI孕育新人物
-    function spawnCharacterViaAi() {
-        const listNames = ["姬如雪", "莫问天", "独孤一剑", "林玄机4", "沈妙音", "风无极", "白骨真君", "妙手神医", "紫云仙子", "冷无双"];
-        const randomName = listNames[Math.floor(Math.random() * listNames.length)] + (window.characterSettings.length + 1);
-        const randomIdentity = ["核心主角", "重要配角", "反派敌对", "常驻NPC"][Math.floor(Math.random() * 4)];
-        const randomGender = ["男性", "女性", "非人类"][Math.floor(Math.random() * 3)];
-        const randomStress = Math.floor(Math.random() * 10) + 1;
-        const resourcePool = resourceOptions.map(opt => opt.name);
-        const randomResource = resourcePool.length ? resourcePool[Math.floor(Math.random() * resourcePool.length)] : "";
-        const forcePool = wizardSelectOptions(["势力"]).map(opt => opt.name);
-        const randomSect = forcePool.length ? forcePool[Math.floor(Math.random() * forcePool.length)] : "";
-        const randomDesc = `神秘修行者，来历讳莫如深。行事随心所欲，近期在各大灵矿脉附近现身，其身负绝学不可小觑。`;
+    // AI generation is installed by the runtime bridge below.
+    function spawnCharacterViaAi() {}
 
-        // 随机特质
-        const allTraits = ["冷静孤傲", "机警过人", "傲娇嘴硬", "热烈坦率", "腹黑深沉", "坚韧不拔", "散漫自由"];
-        const personalities = [allTraits[Math.floor(Math.random() * allTraits.length)], allTraits[Math.floor(Math.random() * allTraits.length)]];
-
-        const newChar = {
-            name: randomName,
-            identity: randomIdentity,
-            gender: randomGender,
-            stress: randomStress,
-            resource: randomResource,
-            sect: randomSect,
-            bindForce: randomSect ? [randomSect] : [],
-            status: "活跃，想当大将军",
-            personalities: Array.from(new Set(personalities)),
-            bindLaw: "rules:灵气赤字",
-            desc: randomDesc,
-            l0: {
-                dilemma: { val: "中立", desc: "对待天地规则抱持审视态度" },
-                valueOrder: { val: "中立", desc: "平衡自我提升与人际交往" },
-                belief: { val: "中立", desc: "不轻信他人亦不作无端猜忌" }
-            },
-            l1: {
-                innerDrive: "摸索并掌握大自然运转的核心规律",
-                outerDrive: "游历各方，探查天地变局",
-                desire: "在这场末法之灾中自保并寻求飞升",
-                fear: "沦为高阶修士权力博弈的弃子",
-                shame: "往昔的决策失误导致门派基业受损",
-                obsession: "寻找传说中可打破灵力屏障的至纯法力点"
-            },
-            l2: {
-                worldBinding: `受到灵气赤字法则的影响，产生相应的防御加持或灵力损耗表现。`
-            },
-            l3: {
-                relations: {}
-            },
-            knowledge: {
-                confirmed: ["此界正在发生灵气枯竭事实"],
-                unknown: ["天变即将完全合拢的准确倒计时"],
-                wrong: ["误认为修行资源彻底断绝"],
-                doubt: ["怀疑某些隐世长老在暗中开启献祭大阵"]
-            },
-            memory: {
-                source: ["在残破仙府中继承部分上古传承的起点"],
-                active: ["在此城中四处打探拜月教动向"],
-                conflict: ["典籍关于天裂缝隙的记载与肉眼观测多有出入"],
-                support: ["所佩戴的玉坠能屏蔽一切精神干扰"]
-            }
-        };
-
-        // 双向默认关系织网
-        window.characterSettings.forEach(c => {
-            newChar.l3.relations[c.name] = { trust: 5, depend: 3, hostility: 0, evidence: "首次碰面，在灵矿山脚下有过一次简单切磋。" };
-            if (!c.l3) c.l3 = { relations: {} };
-            if (!c.l3.relations) c.l3.relations = {};
-            c.l3.relations[newChar.name] = { trust: 5, depend: 2, hostility: 0, evidence: "来历成谜，暂以礼相待但抱有戒备之心。" };
-        });
-
-        window.characterSettings.push(newChar);
-        activeCharIndex = window.characterSettings.length - 1;
-        window.activeCharIndex = activeCharIndex;
-
-        saveAllData();
-        renderCharacterCards();
-        refreshCharDetail();
-
-        // 孕育闪烁特效
-        setTimeout(() => {
-            const cards = document.querySelectorAll('#character-card-list > div');
-            const activeCard = cards[activeCharIndex];
-            if (activeCard) {
-                activeCard.classList.add('ring-2', 'ring-secondary');
-                setTimeout(() => activeCard.classList.remove('ring-2', 'ring-secondary'), 1000);
-            }
-        }, 100);
-    }
-
-    // ===================================================
-    // ⚙️ 势力及自定义资源下拉多选配置与交互函数
-    // ===================================================
     function wizardWorldCardsByType(typeNames) {
         const source = window.NEW_BOOK_WIZARD_DATA;
         const worldStep = source && source.stages && source.stages.find(s => s.key === "world_settings");
@@ -1090,14 +700,7 @@
         }));
     }
 
-    let resourceOptions = wizardResourceOptions() || [
-        { name: "三尺青锋剑", law: "rules:灵气赤字", lawLabel: "灵气赤字" },
-        { name: "女娲神杖", law: "geography:仙灵岛", lawLabel: "仙灵岛" },
-        { name: "万魂血煞幡", law: "rules:因果契约", lawLabel: "因果契约" },
-        { name: "天琊神剑", law: "rules:九天玄刹", lawLabel: "九天玄刹" },
-        { name: "合欢铃", law: "geography:古墓情缘", lawLabel: "古墓情缘" },
-        { name: "九仪天尊剑", law: "rules:天道法则", lawLabel: "天道法则" }
-    ];
+    let resourceOptions = [];
 
     function wizardSelectOptions(typeNames) {
         return wizardWorldCardsByType(typeNames).map(card => ({
@@ -1169,7 +772,7 @@
             const item = document.createElement('label');
             item.className = 'flex items-center gap-2 p-1.5 rounded hover:bg-base-content/5 cursor-pointer text-[11px] text-base-content';
             item.innerHTML = `
-                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleResourceSelection('${opt.name}', this.checked)" class="accent-secondary rounded border-base-content/10 bg-base-100">
+                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleResourceSelection('${opt.name}', this.checked)" class="ui-checkbox accent-secondary rounded border-base-content/10 bg-base-100">
                 <span>${opt.name}</span>
                 <span class="text-[9px] text-base-content opacity-50 ml-auto">[${opt.lawLabel}]</span>
             `;
@@ -1691,31 +1294,671 @@
     });
 </script>
 
-<script>
-window.toggleSidebar = function() {
-    document.body.classList.toggle('sidebar-collapsed');
-    const icon = document.getElementById('sidebarIcon');
-    if (icon) {
-        icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
+<script type="module">
+import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalizeCharacterSnapshot } from "./candidate-adapter.mjs";
+
+// V7 character page: source layout with live FP003-04 candidates only.
+(function () {
+    const status = document.getElementById("character-runtime-status");
+    const originalRenderCards = window.renderCharacterCards;
+    const originalRefreshCharDetail = window.refreshCharDetail;
+    const endpoint = window.CHARACTER_SETTINGS_WEBHOOK_URL || "http://127.0.0.1:5678/webhook/43a4c891-b0b8-42c1-bd0d-aa85a824b14e";
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const initialMemoryTypes = new Set(["event", "emotion", "knowledge", "relationship"]);
+    const initialMemoryTruthStatuses = new Set(["true", "misremembered", "false"]);
+    let busy = false;
+    let frozen = false;
+    let transientCandidate = null;
+    let savedCandidate = null;
+    const l0Head = document.querySelector("#drawer-l0 thead");
+    const l0Body = document.querySelector("#drawer-l0 tbody");
+    const l0HeadTemplate = l0Head ? l0Head.innerHTML : "";
+    const l0BodyTemplate = l0Body ? l0Body.innerHTML : "";
+    const l3Drawer = document.getElementById("drawer-l3");
+    const l3Template = l3Drawer ? l3Drawer.innerHTML : "";
+    const l3Title = document.querySelector('[onclick="toggleDrawer(\'drawer-l3\')"] .flex-1');
+    const l3TitleText = l3Title ? l3Title.textContent : "";
+    const dialogueTable = document.querySelector("#drawer-dialogue table");
+    const dialogueHead = dialogueTable ? dialogueTable.querySelector("thead") : null;
+    const dialogueBody = dialogueTable ? dialogueTable.querySelector("tbody") : null;
+    const dialogueHeadTemplate = dialogueHead ? dialogueHead.innerHTML : "";
+    const dialogueBodyTemplate = dialogueBody ? dialogueBody.innerHTML : "";
+    const dialogueTitle = document.querySelector('[onclick="toggleDrawer(\'drawer-dialogue\')"] .flex-1');
+    const dialogueTitleText = dialogueTitle ? dialogueTitle.textContent : "";
+    const relationCanvas = document.getElementById("relation-radar");
+    const relationLegend = relationCanvas && relationCanvas.parentElement ? relationCanvas.parentElement.nextElementSibling : null;
+    const relationLegendTemplate = relationLegend ? relationLegend.innerHTML : "";
+
+    function textValue(value) {
+        if (typeof value === "string") return value.trim();
+        if (typeof value === "number" && Number.isFinite(value)) return String(value);
+        return "";
     }
-};
-</script>
-<script>
-// TASK3_CHARACTER_BRIDGE_ACTIVE
-(function(){
-  if(window.TASK3_CHARACTER_BRIDGE_ACTIVE)return; window.TASK3_CHARACTER_BRIDGE_ACTIVE=true;
-  function D(){return window.WIZARD_DATA||{};} function esc(s){return String(s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]||c;});}
-  function activeChar(){return (window.characterSettings||[])[window.activeCharIndex||0]||(window.characterSettings||[])[0]||{};}
-  function targetName(){var sel=document.getElementById('rel-char-selector');return (sel&&sel.value)||window.currentChar||'';}
-  function relData(){var c=activeChar(), t=targetName(), r=(c.l3&&c.l3.relations&&c.l3.relations[t])||{};return {c:c,t:t,r:r};}
-  function bar(label,val,cls){var n=Number(val==null?0:val), pct=Math.max(0,Math.min(100,(n+10)*5));return '<div class="text-[11px]"><div class="flex justify-between"><span>'+esc(label)+'</span><b>'+esc(n)+'</b></div><progress class="progress '+(cls||'progress-primary')+' w-full" value="'+pct+'" max="100"></progress></div>';}
-  function syncBindings(){document.querySelectorAll('#v7-force-bind-badge,#v7-character-binding-badges').forEach(function(x){x.remove();});}
-  function syncRelation(){var rs=(D().RELATION_SCHEMA||{}), data=relData(), c=data.c, t=data.t, r=data.r, title=(c.name||'A')+' ↔ '+(t||'B');var radar=document.getElementById('relation-radar');if(radar&&!document.getElementById('v7-relation-radar-meta'))radar.closest('.flex').insertAdjacentHTML('beforeend','<div id="v7-relation-radar-meta" class="w-full mt-3 p-2 rounded-lg bg-base-200/50 border border-base-content/10 text-xs"></div>');var meta=document.getElementById('v7-relation-radar-meta');if(meta)meta.innerHTML='<div class="flex items-center justify-between gap-2"><b>'+esc(title)+'</b><span class="badge badge-ghost badge-xs">关系状态</span></div><div class="grid grid-cols-2 gap-2 mt-2">'+['trust','intimacy','dependence','hostility'].map(function(k){var dim=(rs.DIMENSIONS||[]).find(function(x){return x.key===k;})||{label:k};return bar(dim.label,r[k]!==undefined?r[k]:(k==='hostility'?0:5),k==='hostility'?'progress-error':'progress-primary');}).join('')+'</div><div class="mt-2 opacity-60 text-[10px]">当前角色与目标角色的关系。</div>';var l2=document.getElementById('drawer-l2');if(l2){var card=document.getElementById('v7-l2-relation-state');if(!card){card=document.createElement('div');card.id='v7-l2-relation-state';card.className='mt-3 p-2 rounded-lg bg-secondary/10 border border-secondary/20 text-xs';l2.appendChild(card);}card.innerHTML='<div class="flex items-center justify-between"><b>L2 关系状态：'+esc(title)+'</b><span class="badge badge-secondary badge-xs">关系</span></div><div class="grid grid-cols-2 gap-2 mt-2">'+(rs.DIMENSIONS||[]).map(function(x){var v=r[x.key];if(v===undefined){v=x.key==='hostility'?0:5;}return bar(x.label,v,x.key==='hostility'?'progress-error':'progress-secondary');}).join('')+'</div><div class="mt-2 opacity-60">类型 / 层级 / 起源</div>';}}
-  function syncKnowledge(){var cs=(D().CHARACTER_SCHEMA||{}), l3=document.getElementById('drawer-l3');if(!l3)return;var kb=document.getElementById('v7-knowledge-boundary');if(!kb){kb=document.createElement('div');kb.id='v7-knowledge-boundary';kb.className='mt-3 p-2 rounded-lg bg-warning/10 border border-warning/20 text-xs';l3.appendChild(kb);}kb.innerHTML='<div class="flex items-center justify-between"><b>知识边界</b><span class="badge badge-warning badge-xs">待确认</span></div><div class="grid grid-cols-2 gap-2 mt-2">'+(cs.KB_QUADRANTS||['已知','未知','错误认知','合理推断']).map(function(q){return '<div class="p-2 rounded bg-base-100/70 border border-base-content/10"><b>'+esc(q)+'</b><p class="opacity-60 mt-1">按当前角色可见信息整理</p></div>';}).join('')+'</div>';}
-  function syncAll(){syncBindings();syncRelation();document.querySelectorAll('#v7-relation-radar-meta').forEach(function(x){x.remove();});syncKnowledge();}
-  function mount(){var d=D(); if(!d.CHARACTER_SCHEMA||!d.RELATION_SCHEMA)return;document.querySelectorAll('#v7-relation-network').forEach(function(x){x.remove();});syncAll();['refreshCharDetail','selectRadarChar','refreshRadarForActiveChar','renderL2Relations','renderResourceTags'].forEach(function(name){var old=window[name];if(typeof old==='function'&&!old.__v7Wrapped){window[name]=function(){var ret=old.apply(this,arguments);setTimeout(syncAll,0);return ret;};window[name].__v7Wrapped=true;}});setTimeout(syncAll,300);
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount); else mount();
+
+    function valueOrDash(value) {
+        return textValue(value) || "—";
+    }
+
+    function listOrDash(values) {
+        return Array.isArray(values) ? values.map(textValue).filter(Boolean).join("；") || "—" : "—";
+    }
+
+    function arcDirectionText(arc) {
+        if (!arc || typeof arc !== "object" || Array.isArray(arc)) return "";
+        const direction = textValue(arc.direction);
+        const progress = Number(arc.progress);
+        if (!direction) return "";
+        return Number.isFinite(progress) ? `${direction} · 进度 ${progress}%` : direction;
+    }
+
+    function setText(id, value) {
+        const field = document.getElementById(id);
+        if (field) field.textContent = valueOrDash(value);
+    }
+
+    function createTextElement(tagName, className, value) {
+        const element = document.createElement(tagName);
+        element.className = className;
+        element.textContent = value;
+        return element;
+    }
+
+    function activeCandidate() {
+        const characters = Array.isArray(window.characterSettings) ? window.characterSettings : [];
+        return characters[Number(window.activeCharIndex) || 0] || null;
+    }
+
+    function resetCandidateDetails() {
+        if (l0Head) l0Head.innerHTML = l0HeadTemplate;
+        if (l0Body) l0Body.innerHTML = l0BodyTemplate;
+        if (l3Drawer) l3Drawer.innerHTML = l3Template;
+        if (l3Title) l3Title.textContent = l3TitleText;
+        if (dialogueHead) dialogueHead.innerHTML = dialogueHeadTemplate;
+        if (dialogueBody) dialogueBody.innerHTML = dialogueBodyTemplate;
+        if (dialogueTitle) dialogueTitle.textContent = dialogueTitleText;
+        if (relationCanvas) relationCanvas.hidden = false;
+        document.getElementById("candidate-relation-evidence")?.remove();
+        if (relationLegend) relationLegend.innerHTML = relationLegendTemplate;
+        const l2Drawer = document.getElementById("drawer-l2");
+        if (l2Drawer) {
+            l2Drawer.replaceChildren(createTextElement("div", "space-y-2 text-xs text-base-content opacity-60", "关系候选需由稳定读取合同提供。"));
+        }
+    }
+
+    function renderCandidateL0(l0) {
+        if (!l0Head || !l0Body) return;
+        const labels = ["维度", "基线", "值", "变化", "依据"];
+        const headerRow = document.createElement("tr");
+        labels.forEach((label, index) => {
+            const alignment = index > 0 && index < 4 ? " text-center" : "";
+            headerRow.appendChild(createTextElement("th", `pb-2 border-b border-base-content/10 text-xs${alignment}`, label));
+        });
+        l0Head.replaceChildren(headerRow);
+        const entries = Object.entries(l0 || {}).filter(([key]) => key !== "source");
+        l0Body.replaceChildren();
+        entries.forEach(([dimension, raw]) => {
+            const data = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+            const row = document.createElement("tr");
+            row.className = "border-b border-base-content/5";
+            row.appendChild(createTextElement("td", "py-2 text-outline text-xs", dimension));
+            row.appendChild(createTextElement("td", "py-2 text-center text-base-content opacity-60 text-xs", "—"));
+            row.appendChild(createTextElement("td", "py-2 text-center text-primary font-code-sm", valueOrDash(data.value)));
+            const delta = typeof data.delta === "number" ? `${data.delta > 0 ? "+" : ""}${data.delta}` : "—";
+            row.appendChild(createTextElement("td", "py-2 text-center text-secondary text-xs", delta));
+            row.appendChild(createTextElement("td", "py-2 text-xs text-base-content break-words", valueOrDash(data.basis || raw)));
+            l0Body.appendChild(row);
+        });
+        if (!entries.length) {
+            const row = document.createElement("tr");
+            row.appendChild(createTextElement("td", "py-2 text-xs text-base-content opacity-60", "—"));
+            for (let index = 0; index < 4; index += 1) row.appendChild(createTextElement("td", "py-2 text-xs text-base-content opacity-60", "—"));
+            l0Body.appendChild(row);
+        }
+    }
+
+    function renderCandidateRelations(candidate) {
+        const l2Drawer = document.getElementById("drawer-l2");
+        if (!l2Drawer) return;
+        const relations = Array.isArray(candidate.candidateRelations) ? candidate.candidateRelations : [];
+        const list = document.createElement("div");
+        list.className = "space-y-2 text-xs";
+        if (!relations.length) {
+            list.appendChild(createTextElement("div", "bg-base-200/50 p-2 rounded border border-base-content/10 text-base-content opacity-60", "生成结果未提供该角色的关系候选。"));
+        }
+        relations.forEach((relation) => {
+            const card = document.createElement("div");
+            card.className = "bg-secondary/10 p-2 rounded border border-secondary/20";
+            card.appendChild(createTextElement("div", "text-secondary font-medium mb-1.5", `与 ${valueOrDash(relation.counterpart)} 的候选关系`));
+            card.appendChild(createTextElement("div", "text-base-content opacity-80 leading-relaxed break-words", valueOrDash(relation.description)));
+            list.appendChild(card);
+        });
+        l2Drawer.replaceChildren(list);
+
+        if (relationCanvas) relationCanvas.hidden = true;
+        if (relationLegend) {
+            relationLegend.replaceChildren(createTextElement("span", "text-xs text-base-content opacity-60", "候选关系证据（未保存）"));
+        }
+        const relationRoot = relationCanvas && relationCanvas.parentElement ? relationCanvas.parentElement.parentElement : null;
+        if (!relationRoot) return;
+        document.getElementById("candidate-relation-evidence")?.remove();
+        const evidence = document.createElement("div");
+        evidence.id = "candidate-relation-evidence";
+        evidence.className = "w-full text-xs text-base-content opacity-80 leading-relaxed break-words";
+        evidence.textContent = relations.length
+            ? relations.map((relation) => `${valueOrDash(relation.counterpart)}：${valueOrDash(relation.description)}`).join("\n")
+            : "生成结果未提供量化关系；关系选择器保持禁用。";
+        relationRoot.insertBefore(evidence, relationLegend || null);
+    }
+
+    function renderCandidateL3(candidate) {
+        if (!l3Drawer) return;
+        if (l3Title) l3Title.textContent = "L3 · 关系作用位";
+        const list = document.createElement("div");
+        list.className = "space-y-1.5 text-xs";
+        const entries = Object.entries(candidate.l3 || {}).filter(([key]) => key !== "source");
+        entries.forEach(([label, value]) => {
+            const card = document.createElement("div");
+            card.className = "bg-base-200/50 p-2.5 rounded-lg border border-base-content/10";
+            card.appendChild(createTextElement("span", "text-base-content opacity-60 block mb-0.5", label));
+            card.appendChild(createTextElement("span", "text-base-content break-words", valueOrDash(value)));
+            list.appendChild(card);
+        });
+        if (!entries.length) list.appendChild(createTextElement("div", "text-base-content opacity-60", "—"));
+        l3Drawer.replaceChildren(list);
+    }
+
+    function renderKnowledgeEvidence(candidate) {
+        if (!dialogueHead || !dialogueBody) return;
+        if (dialogueTitle) dialogueTitle.textContent = "知识边界与初始记忆";
+        const header = document.createElement("tr");
+        header.appendChild(createTextElement("th", "pb-2 border-b border-base-content/10", "候选信息"));
+        header.appendChild(createTextElement("th", "pb-2 border-b border-base-content/10", "内容"));
+        dialogueHead.replaceChildren(header);
+        dialogueBody.replaceChildren();
+        [
+            ["已知", listOrDash(candidate.knowledge?.confirmed)],
+            ["未知", listOrDash(candidate.knowledge?.unknown)],
+            ["错误认知", listOrDash(candidate.knowledge?.wrong)],
+            ["合理推断", listOrDash(candidate.knowledge?.doubt)],
+            ["候选初始记忆", listOrDash(candidate.initialMemories)],
+        ].forEach(([label, value]) => {
+            const row = document.createElement("tr");
+            row.className = "border-b border-base-content/5";
+            row.appendChild(createTextElement("td", "py-2 text-primary align-top", label));
+            row.appendChild(createTextElement("td", "py-2 text-base-content opacity-70 break-words", value));
+            dialogueBody.appendChild(row);
+        });
+    }
+
+    function renderCandidateBasicFields(candidate) {
+        setText("char-target-val", arcDirectionText(candidate.arc));
+        const description = document.getElementById("char-desc-val");
+        if (description) {
+            description.textContent = valueOrDash(candidate.roleCharm);
+            description.title = textValue(candidate.roleCharm);
+        }
+        const statusValue = document.getElementById("char-status-val");
+        if (statusValue) statusValue.textContent = candidate.snapshotState === "formal" ? "正式" : candidate.isTransientCandidate ? "候选（未保存）" : "候选（已保存）";
+        setText("char-stress-val", "");
+        const stressBar = document.getElementById("char-stress-bar");
+        if (stressBar) stressBar.style.width = "0%";
+        setText("cs-belief", candidate.l0?.["底层信念"]?.basis);
+        setText("cs-desire", candidate.l1?.desire);
+        const divergenceLabel = document.getElementById("cs-divergence-label");
+        if (divergenceLabel) divergenceLabel.textContent = "关系纠葛：";
+        setText("cs-divergence", candidate.l3?.["纠葛"]);
+
+        const tags = document.getElementById("char-resource-tags");
+        if (tags) {
+            tags.replaceChildren();
+            if (textValue(candidate.resource)) tags.appendChild(createTextElement("span", "inline-flex items-center px-2 py-0.5 bg-secondary/10 border border-secondary/20 text-secondary text-[10px] rounded-full font-medium", candidate.resource));
+        }
+        const resourceCount = document.getElementById("selected-resource-count-text");
+        if (resourceCount) resourceCount.textContent = textValue(candidate.resource) ? "候选资源" : "—";
+    }
+
+    function renderCandidateDetails() {
+        const candidate = activeCandidate();
+        if (!candidate?.isV7Character) return;
+        renderCandidateBasicFields(candidate);
+        renderCandidateL0(candidate.l0);
+        renderCandidateRelations(candidate);
+        renderCandidateL3(candidate);
+        renderKnowledgeEvidence(candidate);
+        [
+            ["l1-innerDrive", candidate.l1?.innerDrive],
+            ["l1-outerDrive", candidate.l1?.outerDrive],
+            ["l1-desire", candidate.l1?.desire],
+            ["l1-fear", candidate.l1?.fear],
+            ["l1-shame", candidate.l1?.shame],
+            ["l1-obsession", candidate.l1?.obsession],
+        ].forEach(([id, value]) => setText(id, value));
+    }
+
+    function setStatus(text) {
+        if (status) status.textContent = text;
+    }
+
+    function bookContext() {
+        return window.ZHBookContext?.readMatchingBookContext?.({ requireRoute: true }) || null;
+    }
+
+    function bookId() {
+        return bookContext()?.bookId || "";
+    }
+
+    function operatorId() {
+        return bookContext()?.localOperatorId || "";
+    }
+
+    function hasCharacterContext() {
+        return Boolean(bookContext());
+    }
+
+    function correlationId() {
+        const suffix = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        return `characters-${suffix}`;
+    }
+
+    function clearPrototypeValues() {
+        resetCandidateDetails();
+        window.characterSettings = [];
+        window.activeCharIndex = 0;
+        transientCandidate = null;
+        savedCandidate = null;
+
+        const textFields = [
+            "char-name-val", "char-target-val", "char-desc-val", "cs-belief", "cs-desire",
+            "cs-divergence", "char-stress-val", "l1-innerDrive", "l1-outerDrive", "l1-desire",
+            "l1-fear", "l1-shame", "l1-obsession", "l3-keyEvent", "l3-memoryFragment",
+            "l3-trigger", "l3-recentChange"
+        ];
+        for (const id of textFields) {
+            const field = document.getElementById(id);
+            if (!field) continue;
+            field.textContent = "—";
+            field.removeAttribute("title");
+        }
+
+        const badge = document.getElementById("char-identity-badge");
+        if (badge) badge.textContent = "—";
+        const currentStatus = document.getElementById("char-status-val");
+        if (currentStatus) currentStatus.textContent = "—";
+        const stressBar = document.getElementById("char-stress-bar");
+        if (stressBar) stressBar.style.width = "0%";
+        const resourceTags = document.getElementById("char-resource-tags");
+        if (resourceTags) resourceTags.replaceChildren();
+        const resourceCount = document.getElementById("selected-resource-count-text");
+        if (resourceCount) resourceCount.textContent = "—";
+
+        for (const row of document.querySelectorAll("#drawer-l0 tbody tr")) {
+            if (row.cells[2]) row.cells[2].textContent = "—";
+            if (row.cells[4]) row.cells[4].textContent = "—";
+        }
+
+        const relationSelector = document.getElementById("rel-char-selector");
+        if (relationSelector) {
+            relationSelector.replaceChildren();
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "暂无可读取关系";
+            relationSelector.appendChild(option);
+        }
+        const relationPanel = document.querySelector("#drawer-l2 > .space-y-2");
+        if (relationPanel) relationPanel.textContent = "关系候选需由稳定读取合同提供。";
+        const divergenceLabel = document.getElementById("cs-divergence-label");
+        if (divergenceLabel) divergenceLabel.textContent = "本质分歧：";
+        const radar = document.getElementById("relation-radar");
+        if (radar && radar.getContext) {
+            const context = radar.getContext("2d");
+            if (context) context.clearRect(0, 0, radar.width, radar.height);
+        }
+    }
+
+    function identityFor(charType) {
+        if (charType === "protagonist") return "核心主角";
+        if (charType === "antagonist") return "反派敌对";
+        return "重要配角";
+    }
+
+    function materializeCandidate(candidate) {
+        const characters = normalizeCharacterCandidates(candidate);
+        window.characterSettings = characters.map((item) => ({
+            id: item.id,
+            name: item.name,
+            identity: identityFor(item.charType),
+            gender: item.gender,
+            stress: null,
+            resource: item.resource,
+            personalities: [],
+            sect: "",
+            status: "候选（未保存）",
+            desc: item.roleCharm,
+            l0: item.l0,
+            l1: item.l1,
+            l2: item.l2,
+            l3: item.l3,
+            knowledge: item.knowledge,
+            initialMemories: item.initialMemories,
+            candidateRelations: item.candidateRelations,
+            worldBinding: "",
+            arc: item.arc,
+            isTransientCandidate: true,
+            isV7Character: true,
+            snapshotState: "transient"
+        }));
+        transientCandidate = candidate;
+        savedCandidate = null;
+        window.activeCharIndex = 0;
+        window.renderCharacterCards();
+        window.refreshCharDetail();
+
+        for (const id of ["char-sect-select", "char-job-select"]) {
+            const select = document.getElementById(id);
+            if (select) {
+                select.replaceChildren();
+                const option = document.createElement("option");
+                option.textContent = "候选绑定未提供";
+                select.appendChild(option);
+            }
+        }
+        updateActionControls();
+    }
+
+    function materializeSnapshot(snapshot) {
+        const characters = normalizeCharacterSnapshot(snapshot);
+        window.characterSettings = characters.map((item) => ({
+            id: item.id, name: item.name, identity: identityFor(item.charType), gender: item.gender,
+            stress: null, resource: item.resource, personalities: [], sect: "", status: item.snapshotState === "formal" ? "正式" : "候选（已保存）",
+            desc: item.roleCharm, l0: item.l0, l1: item.l1, l2: item.l2, l3: item.l3, knowledge: item.knowledge,
+            initialMemories: item.initialMemories, candidateRelations: item.candidateRelations, worldBinding: "", arc: item.arc,
+            candidateId: item.candidateId, snapshotState: item.snapshotState, isTransientCandidate: false, isV7Character: true
+        }));
+        window.activeCharIndex = 0;
+        window.renderCharacterCards();
+        window.refreshCharDetail();
+        updateActionControls();
+    }
+
+    function setButtonEnabled(button, enabled, label, title) {
+        if (!button) return;
+        button.disabled = !enabled;
+        button.setAttribute("aria-disabled", String(!enabled));
+        button.style.cursor = enabled ? "pointer" : "not-allowed";
+        button.style.opacity = enabled ? "" : ".45";
+        if (label) button.textContent = label;
+        if (title) button.title = title;
+    }
+
+    function updateActionControls() {
+        const confirm = document.getElementById("character-confirm-candidate");
+        const contextAvailable = hasCharacterContext();
+        setButtonEnabled(document.getElementById("character-snapshot-current"), contextAvailable && !busy, null, "读取正式角色快照");
+        setButtonEnabled(document.getElementById("character-snapshot-future"), contextAvailable && !busy, null, "读取候选角色快照");
+        if (frozen) setButtonEnabled(confirm, false, "确认候选", "设计已锁定，角色设定仅可查看");
+        else if (transientCandidate) setButtonEnabled(confirm, contextAvailable && !busy, "保存候选", "将当前临时候选保存为候选态");
+        else if (savedCandidate?.confirmable) setButtonEnabled(confirm, contextAvailable && !busy, "确认候选", "原子正式化已保存的角色、关系和初始记忆");
+        else setButtonEnabled(confirm, false, "确认候选", "需重新生成候选后确认");
+        decorateGeneratorCard();
+    }
+
+    function decorateGeneratorCard() {
+        const list = document.getElementById("character-card-list");
+        const card = list && list.lastElementChild;
+        if (!card) return;
+        if (!hasCharacterContext()) {
+            card.onclick = null;
+            card.setAttribute("aria-disabled", "true");
+            card.tabIndex = -1;
+            card.setAttribute("title", "请从有效作品上下文进入角色设定。");
+            card.classList.add("pointer-events-none", "opacity-40");
+            return;
+        }
+        card.onclick = frozen ? null : generateCandidate;
+        card.setAttribute("aria-disabled", String(busy || frozen));
+        card.setAttribute("role", "button");
+        card.tabIndex = busy || frozen ? -1 : 0;
+        card.setAttribute("title", frozen ? "设计已锁定，角色设定仅可查看" : busy ? "正在生成角色候选" : "根据当前作品设定生成角色候选");
+        card.classList.toggle("cursor-not-allowed", frozen);
+        card.classList.toggle("opacity-40", frozen);
+        card.classList.toggle("pointer-events-none", busy || frozen);
+        card.setAttribute("aria-busy", String(busy));
+        card.onkeydown = function (event) {
+            if ((event.key === "Enter" || event.key === " ") && !busy && !frozen) {
+                event.preventDefault();
+                generateCandidate();
+            }
+        };
+    }
+
+    async function generateCandidate() {
+        if (busy || frozen) return;
+        const currentBookId = bookId();
+        const currentOperatorId = operatorId();
+        if (!hasCharacterContext()) {
+            setStatus("请从有效作品上下文进入角色设定。");
+            return;
+        }
+
+        busy = true;
+        window.renderCharacterCards();
+        setStatus("正在生成角色候选…");
+        try {
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: { "content-type": "application/json", accept: "application/json" },
+                body: JSON.stringify({
+                    action: "generate_candidate",
+                    correlation_id: correlationId(),
+                    local_operator_id: currentOperatorId,
+                    book_id: currentBookId
+                })
+            });
+            const body = await response.json().catch(() => ({}));
+            const error = body?.error || body?.redacted_error;
+            if (!response.ok || body?.ok !== true || error) {
+                throw new Error(error?.message || "角色候选服务暂不可用。");
+            }
+            if (body?.result?.status !== "candidate" || !Array.isArray(body?.result?.candidate?.characters)) {
+                throw new Error("角色候选服务未返回可展示的候选。");
+            }
+            materializeCandidate(body.result.candidate);
+            setStatus("已生成临时角色候选；请先保存候选，再确认正式化。");
+        } catch (error) {
+            setStatus(error.message || "角色候选服务暂不可用。");
+        } finally {
+            busy = false;
+            window.renderCharacterCards();
+            updateActionControls();
+        }
+    }
+
+    async function requestCharacterService(payload) {
+        const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json", accept: "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || body?.ok !== true || body?.error || body?.redacted_error) {
+            throw new Error(body?.error?.message || body?.redacted_error?.message || "角色设定服务暂时不可用。");
+        }
+        return body;
+    }
+
+    function markCandidateSaved() {
+        for (const character of window.characterSettings) {
+            if (!character?.isTransientCandidate) continue;
+            character.status = "候选（已保存）";
+            character.isTransientCandidate = false;
+            character.snapshotState = "candidate";
+        }
+        window.renderCharacterCards();
+        window.refreshCharDetail();
+    }
+
+    async function saveCandidate() {
+        if (!transientCandidate || busy || frozen) return;
+        busy = true;
+        updateActionControls();
+        setStatus("正在保存角色候选…");
+        try {
+            const body = await requestCharacterService({ action: "save_candidate", correlation_id: correlationId(), local_operator_id: operatorId(), book_id: bookId(), candidate: transientCandidate, bindings: [] });
+            const result = body?.result;
+            const map = result?.client_ref_map || {};
+            const sourceMemories = Array.isArray(transientCandidate.initial_memories) ? transientCandidate.initial_memories : [];
+            const memories = buildInitialMemoryConfirmation(sourceMemories, map);
+            const memoriesComplete = memories.length === sourceMemories.length && memories.every((memory) => (
+                uuid.test(memory.char_id || "")
+                && initialMemoryTypes.has(memory.memory_type)
+                && initialMemoryTruthStatuses.has(memory.truth_status)
+                && Boolean(memory.memory_content)
+            ));
+            savedCandidate = {
+                characterIds: Array.isArray(result?.character_candidate_ids) ? result.character_candidate_ids : [],
+                relationIds: Array.isArray(result?.relation_candidate_ids) ? result.relation_candidate_ids : [],
+                initialMemories: memories,
+                confirmable: memories.length > 0 && memoriesComplete
+            };
+            if (!savedCandidate.confirmable) throw new Error("候选保存结果未返回可确认的角色映射。");
+            transientCandidate = null;
+            markCandidateSaved();
+            setStatus("候选已保存；初始记忆仅保留在本次页面会话，确认后才会原子正式化角色、关系和初始记忆。");
+        } catch (error) {
+            setStatus(error.message || "候选保存失败，未显示为成功。");
+        } finally {
+            busy = false;
+            updateActionControls();
+        }
+    }
+
+    function restoreSavedCandidateFromSnapshot(snapshot) {
+        const characters = Array.isArray(snapshot?.characters) ? snapshot.characters : [];
+        const characterIds = characters.map((character) => character?.id).filter((id) => uuid.test(id || ""));
+        const characterIdSet = new Set(characterIds);
+        const relations = Array.isArray(snapshot?.relations) ? snapshot.relations : [];
+        const relationIds = relations.map((relation) => relation?.id).filter((id) => uuid.test(id || ""));
+        const relationsComplete = relationIds.length === relations.length && relations.every((relation) => (
+            characterIdSet.has(relation?.char_a_id)
+            && characterIdSet.has(relation?.char_b_id)
+        ));
+        return {
+            characterIds,
+            relationIds,
+            initialMemories: [],
+            confirmable: false
+        };
+    }
+
+    async function readSnapshot(kind) {
+        if (busy) return;
+        busy = true;
+        updateActionControls();
+        setStatus("正在读取角色快照…");
+        try {
+            const body = await requestCharacterService({ action: "read_versions", correlation_id: correlationId(), local_operator_id: operatorId(), book_id: bookId() });
+            frozen = body?.result?.frozen === true;
+            const snapshot = body?.result?.[kind];
+            if (!snapshot || !Array.isArray(snapshot.characters) || !snapshot.characters.length) {
+                clearPrototypeValues();
+                throw new Error("角色快照未返回可展示的数据。");
+            }
+            materializeSnapshot(snapshot);
+            if (kind === "candidate") {
+                savedCandidate = restoreSavedCandidateFromSnapshot(snapshot);
+                if (!savedCandidate.confirmable) throw new Error("候选快照缺少已定义的初始记忆来源，需重新生成候选后确认。");
+                setStatus("已读取候选快照。");
+            } else if (frozen) setStatus("设计已锁定，角色设定仅可查看。");
+            else setStatus("已读取正式角色快照。");
+        } catch (error) {
+            setStatus(error.message || "角色快照读取失败。");
+        } finally {
+            busy = false;
+            updateActionControls();
+        }
+    }
+
+    async function confirmCandidate() {
+        if (frozen) return;
+        if (transientCandidate) return saveCandidate();
+        if (!savedCandidate?.confirmable || busy) return;
+        let confirmed = false;
+        busy = true;
+        updateActionControls();
+        setStatus("正在确认角色候选…");
+        try {
+            await requestCharacterService({ action: "confirm", correlation_id: correlationId(), local_operator_id: operatorId(), book_id: bookId(), idempotency_key: correlationId(), character_candidate_ids: savedCandidate.characterIds, relation_candidate_ids: savedCandidate.relationIds, binding_candidate_ids: [], initial_memories: savedCandidate.initialMemories });
+            savedCandidate = null;
+            transientCandidate = null;
+            confirmed = true;
+        } catch (error) {
+            setStatus(error.message || "候选确认失败，未显示为成功。");
+        } finally {
+            busy = false;
+            updateActionControls();
+        }
+        if (confirmed) {
+            await readSnapshot("formal");
+            setStatus("角色、关系和初始记忆已原子正式化。");
+        }
+    }
+
+    function reportUnavailable() {
+        setStatus("该原型控件缺少稳定的世界绑定选择合同，保持不可操作。");
+    }
+
+    window.loadSavedData = function () { window.characterSettings = []; };
+    window.saveAllData = saveCandidate;
+    window.syncWizardCharacterState = function () {};
+    window.spawnCharacterViaAi = generateCandidate;
+    window.updateCharSect = reportUnavailable;
+    window.updateCharJob = reportUnavailable;
+    window.toggleResourceDropdown = reportUnavailable;
+    window.toggleResourceSelection = reportUnavailable;
+    window.toggleCardIdentity = reportUnavailable;
+    window.deleteCharacter = reportUnavailable;
+    window.toggleAutoSwitch = reportUnavailable;
+    window.toggleQuickSettings = function (event) {
+        if (event) event.stopPropagation();
+        const popover = document.getElementById("quick-settings-popover");
+        if (popover) popover.classList.toggle("hidden");
+    };
+    window.renderCharacterCards = function () {
+        originalRenderCards();
+        decorateGeneratorCard();
+    };
+    window.refreshCharDetail = function () {
+        resetCandidateDetails();
+        originalRefreshCharDetail();
+        renderCandidateDetails();
+    };
+
+    document.getElementById("character-confirm-candidate")?.addEventListener("click", confirmCandidate);
+    document.getElementById("character-snapshot-current")?.addEventListener("click", () => readSnapshot("formal"));
+    document.getElementById("character-snapshot-future")?.addEventListener("click", () => readSnapshot("candidate"));
+
+    clearPrototypeValues();
+    async function bootstrapCharacterPage() {
+        clearPrototypeValues();
+        window.renderCharacterCards();
+        updateActionControls();
+        if (!hasCharacterContext()) {
+            setStatus("请从有效作品上下文进入角色设定。");
+            clearPrototypeValues();
+            window.renderCharacterCards();
+            updateActionControls();
+            return;
+        }
+        const headerBookName = document.getElementById("header-book-name");
+        const scopedBookId = bookId();
+        if (headerBookName && scopedBookId) {
+            headerBookName.textContent = `作品 ${scopedBookId.slice(0, 8)}`;
+            headerBookName.title = `当前作品标识：${scopedBookId}`;
+        }
+        await readSnapshot("formal");
+    }
+    window.addEventListener("load", bootstrapCharacterPage, { once: true });
 })();
 </script>
+
 </body></html>

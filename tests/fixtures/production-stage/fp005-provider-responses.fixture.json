@@ -1,0 +1,51 @@
+{
+  "valid_full_response": {
+    "statusCode": 200,
+    "statusMessage": "OK",
+    "data": "{\"choices\":[{\"message\":{\"content\":\"{\\\"scene_condition_package\\\":{\\\"scene_location\\\":\\\"The documented threshold\\\",\\\"participant_chars\\\":[\\\"lead\\\"],\\\"rule_locks\\\":[],\\\"scene_affordance\\\":[{\\\"item_code\\\":\\\"resource.initial\\\",\\\"available\\\":true,\\\"functional\\\":true,\\\"functions\\\":\\\"CF-05\\\"},{\\\"item_code\\\":\\\"resource.secondary\\\",\\\"available\\\":true,\\\"functional\\\":true,\\\"functions\\\":[\\\"CF-01\\\"]}],\\\"available_resource_codes\\\":[\\\"resource.initial\\\",\\\"resource.secondary\\\"],\\\"info_reveal_candidates\\\":[],\\\"chain_reaction_candidates\\\":[],\\\"scene_constraints\\\":[],\\\"forbid_lines_active\\\":[],\\\"materialize_notes\\\":[]},\\\"data_debt\\\":[]}\"}}]}"
+  },
+  "execution_3457_completion_envelope": {
+    "statusCode": 200,
+    "data": "{\"id\":\"fixture-3457\",\"object\":\"chat.completion\",\"model\":\"fixture-model\",\"provider\":\"fixture-provider\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"scene_condition_package\\\":{\\\"scene_location\\\":\\\"The documented threshold\\\",\\\"participant_chars\\\":[\\\"lead\\\"],\\\"rule_locks\\\":[],\\\"scene_affordance\\\":[{\\\"item_code\\\":\\\"resource.initial\\\",\\\"available\\\":true,\\\"functional\\\":true,\\\"functions\\\":\\\"CF-05\\\"},{\\\"item_code\\\":\\\"resource.secondary\\\",\\\"available\\\":true,\\\"functional\\\":true,\\\"functions\\\":[\\\"CF-01\\\"]}],\\\"available_resource_codes\\\":[\\\"resource.initial\\\",\\\"resource.secondary\\\"],\\\"info_reveal_candidates\\\":[],\\\"chain_reaction_candidates\\\":[],\\\"scene_constraints\\\":[],\\\"forbid_lines_active\\\":[],\\\"materialize_notes\\\":[]},\\\"data_debt\\\":[]}\"}}],\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}}"
+  },
+  "direct_choices_response": {
+    "statusCode": 200,
+    "choices": [
+      {
+        "message": {
+          "content": "{\"scene_condition_package\":{\"scene_location\":\"The documented threshold\",\"participant_chars\":[\"lead\"],\"rule_locks\":[],\"scene_affordance\":[{\"item_code\":\"resource.initial\",\"available\":true,\"functional\":true,\"functions\":[\"CF-05\"]},{\"item_code\":\"resource.secondary\",\"available\":true,\"functional\":true,\"functions\":[\"CF-01\"]}],\"available_resource_codes\":[\"resource.initial\",\"resource.secondary\"],\"info_reveal_candidates\":[],\"chain_reaction_candidates\":[],\"scene_constraints\":[],\"forbid_lines_active\":[],\"materialize_notes\":[]},\"data_debt\":[]}"
+        }
+      }
+    ]
+  },
+  "malformed_data_response": {
+    "statusCode": 200,
+    "statusMessage": "OK",
+    "data": "{\"scene_condition_package\":"
+  },
+  "transport_error_response": {
+    "statusCode": 503,
+    "statusMessage": "Service Unavailable",
+    "data": "{\"error\":{\"message\":\"upstream unavailable\"}}"
+  },
+  "empty_response": {
+    "statusCode": 200,
+    "statusMessage": "OK",
+    "data": ""
+  },
+  "scene_location_terminal_punctuation": "The documented threshold。",
+  "scene_location_non_terminal_punctuation": "The documented threshold,",
+  "functions": {
+    "legal_scalar": "CF-05",
+    "illegal_scalar": "CF-01, CF-05",
+    "empty_scalar": "",
+    "unknown_scalar": "CF-99",
+    "object": {
+      "code": "CF-05"
+    },
+    "array": [
+      "CF-01",
+      "CF-05"
+    ]
+  }
+}

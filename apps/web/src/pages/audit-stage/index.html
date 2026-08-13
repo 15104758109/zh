@@ -4,13 +4,12 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Narrative Engine - 审计阶段</title>
-<!-- Tailwind CSS & DaisyUI v4 via CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css" rel="stylesheet" type="text/css" />
-    <link href="../common/theme.css" rel="stylesheet">
-    <link rel="stylesheet" href="../common/sidebar.css">
-    <script src="../common/theme.js"></script>
-    <script src="./new_book_wizard_data.js"></script>
-    <script src="../common/header.js"></script>
+<link href="/vendor/font-fallback.css" rel="stylesheet">
+    <link href="/vendor/daisyui-4.12.10-full.css" rel="stylesheet" type="text/css" />
+    <link href="/pages/prototype/common/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="/pages/prototype/common/sidebar.css">
+    <script src="/pages/prototype/common/theme.js"></script>
+    <script defer src="/pages/prototype/common/sidebar.js"></script>
 
 
 
@@ -250,45 +249,14 @@
         .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
         .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
-        .settings-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-base-300); cursor: pointer; transition: background 0.2s ease; flex-shrink: 0; }
-        .settings-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.2s ease; }
-        .settings-switch.on { background: var(--color-accent); }
-        .settings-switch.on::after { transform: translateX(16px); }
-        .settings-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent; cursor: pointer; transition: all 0.15s ease; }
-        .settings-btn:hover { background: var(--color-accent); color: white; }
-
 </style>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="/vendor/tailwindcss-browser-4.js"></script>
+    <link rel="stylesheet" href="/pages/audit-stage/page.css">
 </head>
-<body class="bg-base-200 text-base-content font-body-md overflow-hidden h-screen flex selection:bg-primary/30 selection:text-base-content">
-<a href="#main-content" class="skip-link">跳到主内容</a>
+<body class="ui-page bg-base-200 text-base-content font-body-md overflow-hidden h-screen flex selection:bg-primary/30 selection:text-base-content">
+<a href="#main" class="skip-link">跳到主内容</a>
 
-<nav class="sidebar-glass" aria-label="主菜单">
-  <div class="sidebar-brand">
-    <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
-    <div class="sidebar-text">
-      <div class="brand-title">纵横</div>
-      <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
-    </div>
-  </div>
-  <div class="sidebar-separator" aria-hidden="true"></div>
-  <ul class="menu sidebar-menu" id="sidebarMenu">
-    <li><a href="workbench.html" aria-label="总控设置面板"><span class="material-symbols-outlined">dashboard</span><span class="sidebar-text">总控设置</span></a></li>
-    <li><a href="world_creator.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段"><span class="material-symbols-outlined">architecture</span><span class="sidebar-text">设计阶段</span></a></li>
-    <li><a href="production_stage.html" aria-label="生产阶段：章节推演、多代理执行"><span class="material-symbols-outlined">precision_manufacturing</span><span class="sidebar-text">生产阶段</span></a></li>
-    <li><a href="audit_stage.html" class="active" aria-label="审计阶段：正文审计、主编裁决"><span class="material-symbols-outlined">fact_check</span><span class="sidebar-text">审计阶段</span></a></li>
-    <li><a href="iteration.html" aria-label="迭代管理：提示词优化、失败样本分析"><span class="material-symbols-outlined">history</span><span class="sidebar-text">迭代管理</span></a></li>
-  </ul>
-  <footer class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-user-avatar">U</div>
-      <span class="sidebar-text sidebar-user-name">用户</span>
-    </div>
-  </footer>
-</nav>
-<button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
-  <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
-</button>
+<nav class="sidebar-glass" aria-label="主菜单" data-region="sidebar" data-shared-sidebar data-sidebar-active="audit"></nav>
 <!-- Main Content Area -->
 <div class="main-content" id="main">
 
@@ -296,14 +264,13 @@
     <!-- TopNavBar -->
         <!-- TopNavBar -->
         <!-- TopNavBar -->
-    <header class="header-glass h-16 fixed top-0 right-0 z-[60] flex justify-between items-center px-6 bg-base-100">
+    <header class="header-glass h-16 fixed top-0 right-0 z-[60] flex justify-between items-center px-6 bg-base-100" data-region="topbar">
         <div class="flex items-center gap-4 h-full">
             <nav class="flex h-full items-center ml-2">
                 <!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
-                                <div class="header-tabs">
-                    <a href="production_stage.html" class="header-tab">套路展开</a>
-                    <a href="multi_agent_deduction.html" class="header-tab">多代理推演</a>
-                    <a href="audit_review.html" class="header-tab active">结果审核</a>
+                <div class="ui-segmented flex bg-base-content/40 p-1 rounded-box border border-base-content/5 gap-1" data-interaction="switch_audit_panel" role="group" aria-label="审计工作区视图">
+                    <button id="view-audit-btn" class="px-6 py-1.5 rounded-lg bg-base-content/5 text-primary font-bold border border-base-content/5 shadow-[0_0_15px_rgba(173,198,255,0.1)] transition-all cursor-pointer" type="button" aria-pressed="true">审计</button>
+                    <button id="view-assets-btn" class="px-6 py-1.5 rounded-lg text-base-content opacity-60 hover:text-base-content hover:bg-base-content/5 transition-all cursor-pointer" type="button" aria-pressed="false">资产</button>
                 </div>
             </nav>
         </div>
@@ -332,28 +299,25 @@
                 <div class="flex flex-col gap-2 mb-3">
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
-                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                        <div id="sw-auto-production" class="settings-switch" data-key="auto_production" data-contract-unavailable="true" aria-disabled="true"></div>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
-                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                        <div id="sw-auto-audit" class="settings-switch" data-key="auto_audit" data-contract-unavailable="true" aria-disabled="true"></div>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
-                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                        <div id="sw-auto-iteration" class="settings-switch" data-key="auto_iteration" data-contract-unavailable="true" aria-disabled="true"></div>
                     </div>
                 </div>
                 <div class="mt-3 pt-2 border-t border-base-content/5">
-                    <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
+                    <button class="settings-btn w-full" type="button" disabled data-contract-unavailable="true" aria-disabled="true">
                         <span class="material-symbols-outlined text-[14px]">check</span>
                         应用当前配置
                     </button>
                 </div>
             </div>
 
-                <div class="mt-4 pt-3 border-t border-base-content/5">
-                    <button class="btn btn-outline btn-primary btn-sm w-full font-bold" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">应用当前配置</button>
-                </div>
             </div>
             </div>
 
@@ -362,14 +326,14 @@
     </header>
 
 <!-- BEGIN: Audit Review Content -->
-<main class="flex-1 mt-16 p-6 overflow-hidden">
-<div class="grid grid-cols-12 gap-6 h-full max-w-[1600px] mx-auto">
+<main class="flex-1 mt-16 p-6 overflow-hidden relative" data-audit-stage-root data-region="prose_view" data-mode="contract_unavailable">
+<div class="grid grid-cols-12 gap-6 h-full max-w-[1600px] mx-auto" data-audit-stage-mock-content hidden inert aria-hidden="true">
 
 <!-- BEGIN: Left Content Area (Text Editor/Reader) -->
-<section class="col-span-9 flex flex-col gap-4 h-full overflow-hidden" data-purpose="text-editor-container">
+<section class="col-span-9 flex flex-col gap-4 h-full overflow-hidden" data-purpose="text-editor-container" data-region="prose_view">
 
 <!-- Main Editor Panel -->
-<div id="editor-panel" class="flex-1 bg-base-200 shadow-inner border border-base-content/5 rounded-3xl shadow-sm p-8 overflow-y-auto scroll-hide relative" style="border: 1px solid rgba(0,0,0,0.06); box-shadow: inset 0 2px 8px rgba(0,0,0,0.02);">
+<div id="editor-panel" class="ui-card flex-1 bg-base-200 shadow-inner border border-base-content/5 rounded-3xl shadow-sm p-8 overflow-y-auto scroll-hide relative" style="border: 1px solid rgba(0,0,0,0.06); box-shadow: inset 0 2px 8px rgba(0,0,0,0.02);">
 <!-- 右上角折角“影子版”切换卡 -->
 <div id="page-curl-ctrl" class="page-curl-box" onclick="toggleShadowMode()" title="切换影子版/正式版">
     <div class="page-curl-corner"></div>
@@ -391,9 +355,9 @@
             <!-- 下拉框本体 -->
             <div id="chapter-select-dropdown" class="hidden absolute left-0 mt-2 w-80 rounded-box quick-settings-glass border border-base-content/10 shadow-2xl z-50 py-3 text-base-content">
                 <div class="px-4 py-1.5 border-b border-base-content/5 text-[9px] text-primary font-label-caps tracking-widest">
-                    本次推演章节 (运行中)
+                    本次推演章节 (当前 L1A 正式章节)
                 </div>
-                <div class="px-2 py-1 space-y-0.5">
+                <div class="px-2 py-1 space-y-0.5" id="current-run-chapters-list">
                     <a onclick="switchChapter(29, '第029章 霓虹深渊的低语')" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-base-content/5 cursor-pointer text-xs font-semibold text-secondary">
                         <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
                         <span>第029章 霓虹深渊的低语</span>
@@ -428,7 +392,7 @@
         </div>
 
         <!-- 大中小字号直选 -->
-        <div class="flex items-center bg-black/5 border border-base-content/5 p-0.5 rounded text-xs text-success-content transition-colors" id="font-size-container">
+        <div class="ui-segmented flex items-center bg-black/5 border border-base-content/5 p-0.5 rounded text-xs text-success-content transition-colors" id="font-size-container">
             <button id="btn-font-sm" onclick="changeFontSize('small', this)" class="px-2.5 py-1 rounded hover:bg-neutral/10 transition-colors font-medium opacity-60 hover:opacity-100">小</button>
             <button id="btn-font-md" onclick="changeFontSize('medium', this)" class="px-2.5 py-1 rounded bg-neutral/10 transition-colors font-bold border border-base-content/5">中</button>
             <button id="btn-font-lg" onclick="changeFontSize('large', this)" class="px-2.5 py-1 rounded hover:bg-neutral/10 transition-colors font-medium opacity-60 hover:opacity-100">大</button>
@@ -480,8 +444,8 @@
 <!-- BEGIN: Right Sidebar Panels -->
 <aside class="col-span-3 flex flex-col gap-4 overflow-y-auto scroll-hide" data-purpose="review-sidebar">
 <!-- 常驻正文呈现控制卡 (右一) -->
-<section class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 shrink-0" data-purpose="presentation-card">
-    <button id="start-presentation-btn" onclick="triggerTextPresentation(this)" class="start-presentation-btn-class w-full py-1.5 rounded-lg flex items-center justify-center gap-2 transition-all btn-rainbow-glow">
+<section class="ui-card bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 shrink-0" data-purpose="presentation-card">
+    <button id="start-presentation-btn" onclick="triggerTextPresentation(this)" class="start-presentation-btn-class w-full py-1.5 rounded-lg flex items-center justify-center gap-2 transition-all btn-rainbow-glow" disabled aria-disabled="true" data-contract-unavailable="true" title="正文呈现编排合同尚未接入">
         <span class="material-symbols-outlined text-[16px] text-base-content">play_circle</span>
         <div class="text-left">
             <p class="text-[11px] font-bold text-base-content leading-tight">开始正文呈现</p>
@@ -491,29 +455,29 @@
 </section>
 
 <!-- Tabs 维度审计综合控制区 (右二) -->
-        <div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 flex flex-col gap-4 shrink-0" data-purpose="audit-tabs-panel">
+        <div class="ui-card bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 flex flex-col gap-4 shrink-0" data-purpose="audit-tabs-panel" data-region="objective_audit">
             <!-- Tabs 三维维度切换标签组 -->
-            <div class="flex bg-base-content/40 p-1 rounded-box border border-base-content/5 gap-1">
-                <button id="tab-audit-objective" onclick="switchAuditDimension('objective')" class="dim-tab-btn tab-objective flex-1 py-1.5 rounded-lg text-[11px] font-bold text-secondary bg-base-content/5 border border-base-content/5 transition-all cursor-pointer active">
+            <div class="ui-segmented flex bg-base-content/40 p-1 rounded-box border border-base-content/5 gap-1">
+                <button id="tab-audit-objective" onclick="switchAuditDimension('objective')" class="dim-tab-btn tab-objective flex-1 py-1.5 rounded-lg text-[11px] font-bold text-secondary bg-base-content/5 border border-base-content/5 transition-all cursor-not-allowed active" disabled aria-disabled="true" data-contract-unavailable="true">
                     客观审计<br><span class="text-[9px] opacity-80 font-medium">通过</span>
                 </button>
-                <button id="tab-audit-commercial" onclick="switchAuditDimension('commercial')" class="dim-tab-btn tab-commercial flex-1 py-1.5 rounded-lg text-[11px] font-bold text-base-content opacity-60 hover:text-base-content transition-all cursor-pointer">
+                <button id="tab-audit-commercial" onclick="switchAuditDimension('commercial')" class="dim-tab-btn tab-commercial flex-1 py-1.5 rounded-lg text-[11px] font-bold text-base-content opacity-40 transition-all cursor-not-allowed" disabled aria-disabled="true" data-mvp-deferred="FP011">
                     商业审计<br><span class="text-[9px] opacity-80 font-medium">8.5分</span>
                 </button>
-                <button id="tab-audit-reader" onclick="switchAuditDimension('reader')" class="dim-tab-btn tab-reader flex-1 py-1.5 rounded-lg text-[11px] font-bold text-base-content opacity-60 hover:text-base-content transition-all cursor-pointer">
+                <button id="tab-audit-reader" onclick="switchAuditDimension('reader')" class="dim-tab-btn tab-reader flex-1 py-1.5 rounded-lg text-[11px] font-bold text-base-content opacity-40 transition-all cursor-not-allowed" disabled aria-disabled="true" data-mvp-deferred="FP011">
                     读者审计<br><span class="text-[9px] opacity-80 font-medium">9分</span>
                 </button>
             </div>
         </div>
 
         <!-- 审计评价内容动态卡片 -->
-        <div class="bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 flex-1 flex flex-col overflow-hidden relative" id="audit-details-panel">
+        <div class="ui-card bg-base-100 border border-base-content/5 rounded-3xl shadow-sm p-5 flex-1 flex flex-col overflow-hidden relative" id="audit-details-panel">
             <!-- JS 动态渲染客观审计/商业审计/读者审计的内容 -->
         </div>
         <!-- Action Buttons Footer -->
         <div id="action-footer-container" class="mt-auto flex flex-col gap-3" data-purpose="action-footer-container">
             <!-- 主编决策内容卡片 -->
-            <div class="p-3.5 bg-base-content/5 border border-base-content/5 rounded-box text-xs flex flex-col gap-2" data-purpose="editor-decision-panel">
+            <div class="ui-card p-3.5 bg-base-content/5 border border-base-content/5 rounded-box text-xs flex flex-col gap-2" data-purpose="editor-decision-panel" data-region="editor_decision">
                 <div class="flex items-center gap-2 text-base-content opacity-60 font-semibold select-none">
                     <span class="material-symbols-outlined text-[16px] text-primary">gavel</span>
                     <span class="tracking-wide text-[11px] text-base-content">主编决策意见</span>
@@ -521,15 +485,16 @@
                 <p class="text-[10px] text-base-content opacity-60/75 leading-relaxed bg-neutral/20 p-2.5 rounded border border-base-content/5">
                     本章推演骨架完整，爽点与因果校验合格。影子态修改了下降协议中的物理隔绝细节，建议主编直接放行或针对局部文风提交重新渲染。
                 </p>
+                <p class="text-[10px] text-base-content opacity-60 leading-relaxed" data-audit-stage-preview role="status">审计读取与确认编排合同尚未接入，页面不会展示或提交候选数据。</p>
             </div>
 
             <!-- 底部并列按钮 -->
-            <div class="grid grid-cols-2 gap-3" data-purpose="action-footer">
-                <button id="approve-chapter-btn" onclick="approveChapterAndRelease()" class="bg-secondary/15 hover:bg-secondary/25 border border-secondary text-secondary py-2.5 rounded-box flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(78,251,190,0.15)] group">
+            <div class="grid grid-cols-2 gap-3" data-purpose="action-footer" data-region="release_actions">
+                <button id="approve-chapter-btn" onclick="showReleasedState()" data-interaction="show_released_state" class="ui-button ui-button-success bg-secondary/15 hover:bg-secondary/25 border border-secondary text-secondary py-2.5 rounded-box flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(78,251,190,0.15)] group" disabled aria-disabled="true" data-contract-unavailable="true" title="审计确认编排合同尚未接入">
                     <span class="material-symbols-outlined text-[16px] text-secondary group-hover:scale-110 transition-transform">task_alt</span>
                     <span class="text-xs font-bold text-base-content">正文放行</span>
                 </button>
-                <button id="replan-chapter-btn" onclick="openReplanModal()" class="bg-warning/15 hover:bg-warning/25 border border-warning text-warning py-2.5 rounded-box flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(255,171,0,0.1)] group">
+                <button id="replan-chapter-btn" onclick="openReplanModal()" data-interaction="open_returned_state" class="ui-button ui-button-quiet bg-warning/15 hover:bg-warning/25 border border-warning text-warning py-2.5 rounded-box flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(255,171,0,0.1)] group" disabled aria-disabled="true" data-contract-unavailable="true" title="审计退回编排合同尚未接入">
                     <span class="material-symbols-outlined text-[16px] text-warning group-hover:scale-110 transition-transform">autorenew</span>
                     <span class="text-xs font-bold text-base-content">重新渲染</span>
                 </button>
@@ -539,6 +504,13 @@
 <!-- END: Right Sidebar Panels -->
 
 </div>
+<section class="ui-state-overlay z-50" data-audit-stage-state-overlay data-state="blocked" role="status" aria-live="polite">
+    <div class="ui-state-panel">
+        <h1 class="ui-state-title" data-state-title>审计数据尚未接入</h1>
+        <p class="ui-state-detail" data-state-detail>当前没有可用的审计读取或确认编排合同。正文、审计结论和资产不会在此展示或提交。</p>
+        <button class="ui-button ui-button-quiet ui-button-small" data-state-retry hidden type="button">重新载入</button>
+    </div>
+</section>
 </main>
 <!-- END: Audit Review Content -->
 
@@ -635,55 +607,15 @@
         listContainer.innerHTML = html;
     }
 
-    // 正文放行大按钮切章联动交互
-    let approvedChapters = [29];
+    // 审计读取/确认编排合同缺失时，所有会影响正文状态的操作保持阻断。
     function approveChapterAndRelease() {
-        const btn = document.getElementById('approve-chapter-btn');
-        btn.disabled = true;
-        const origHtml = btn.innerHTML;
-        btn.innerHTML = `
-            <span class="material-symbols-outlined text-[18px] animate-spin text-secondary">sync</span>
-            <span class="text-xs font-bold text-base-content">正在向正文库提交...</span>
-        `;
-
-        setTimeout(() => {
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-
-            showToast('已完成第 0' + currentChapterNum + ' 章的评估与正文放行回写！', 'success');
-
-            // 切换当前章节从 29 切到 30
-            if (currentChapterNum === 29) {
-                // 将 29 移入下拉已放行章节列表
-                const historyList = document.getElementById('history-chapters-list');
-                if (historyList) {
-                    historyList.innerHTML += `
-                    <a onclick="switchChapter(29, '第029章 霓虹深渊的低语')" class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-base-content/5 cursor-pointer text-xs text-base-content opacity-50 hover:text-base-content transition-colors">
-                        <span class="w-1 h-1 rounded-full bg-white/20"></span>
-                        <span class="truncate">第029章 霓虹深渊的低语</span>
-                    </a>`;
-                }
-
-                // 动态切到 30 章
-                switchChapter(30, '第030章 数据走私港');
-            } else if (currentChapterNum === 30) {
-                switchChapter(31, '第031章 虚拟主机的觉醒');
-            }
-        }, 1500);
+        showToast('审计确认编排合同尚未接入，不能放行正文。', 'error');
+        return false;
     }
 
     function triggerReturnRevision(btn) {
-        btn.disabled = true;
-        const origHtml = btn.innerHTML;
-        btn.innerHTML = `
-            <span class="material-symbols-outlined text-[18px] animate-spin text-warning">sync</span>
-            <span class="text-xs font-bold text-base-content">发送中...</span>
-        `;
-        setTimeout(() => {
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-            showToast('已退回给编辑和作者重新修文。', 'info');
-        }, 1200);
+        showToast('审计退回编排合同尚未接入，不能提交修正方向。', 'error');
+        return false;
     }
 
 
@@ -1051,45 +983,26 @@
         }
     }
 
+    function updateUnavailableViewNotice(mode) {
+        const overlay = document.querySelector('[data-audit-stage-state-overlay]');
+        if (!overlay || overlay.hidden) return;
+
+        const title = overlay.querySelector('[data-state-title]');
+        const detail = overlay.querySelector('[data-state-detail]');
+        const isAssets = mode === 'assets';
+        overlay.dataset.view = isAssets ? 'assets' : 'audit';
+        if (title) title.textContent = isAssets ? '资产数据尚未接入' : '审计数据尚未接入';
+        if (detail) {
+            detail.textContent = isAssets
+                ? '当前没有可用的叙事资产读取合同。资产列表和证据对照不会在此展示或提交。'
+                : '当前没有可用的审计读取或确认编排合同。正文、审计结论和资产不会在此展示或提交。';
+        }
+    }
+
     // 6. 开始正文呈现按钮交互
-    window.isPresentationRendered = false;
-    function triggerTextPresentation(btn) {
-        if (window.isPresentationRendered) return;
-
-        const btns = document.querySelectorAll('.start-presentation-btn-class');
-        btns.forEach(b => {
-            b.disabled = true;
-            b.classList.remove('btn-rainbow-glow');
-            b.style.background = '#4b5563';
-            b.innerHTML = `
-                <span class="material-symbols-outlined text-[16px] text-base-content animate-spin">sync</span>
-                <div class="text-left">
-                    <p class="text-[11px] font-bold text-base-content leading-tight">正文呈现渲染中...</p>
-                    <p class="text-[7.5px] text-blue-200 leading-tight">Rendering Stage Presenter</p>
-                </div>
-            `;
-        });
-
-        setTimeout(() => {
-            window.isPresentationRendered = true;
-
-            const activeBtns = document.querySelectorAll('.start-presentation-btn-class');
-            activeBtns.forEach(b => {
-                b.disabled = true;
-                b.style.background = '#272a31';
-                b.style.borderColor = 'rgba(255,255,255,0.05)';
-                b.style.cursor = 'not-allowed';
-                b.style.boxShadow = 'none';
-                b.innerHTML = `
-                    <span class="material-symbols-outlined text-[16px] text-base-content opacity-50">check_circle</span>
-                    <div class="text-left">
-                        <p class="text-[11px] font-bold text-base-content opacity-70 font-semibold leading-tight">本章已完成正文渲染</p>
-                        <p class="text-[7.5px] text-base-content opacity-40 leading-tight">Presentation Rendered</p>
-                    </div>
-                `;
-            });
-            showToast('正文呈现渲染完毕！已进入正式播放就绪状态。', 'success');
-        }, 1500);
+    function triggerTextPresentation() {
+        showToast('正文呈现编排合同尚未接入，不能启动正文生成。', 'error');
+        return false;
     }
     // 6.5. 重新渲染弹窗控制与修正方向提交
     function openReplanModal() {
@@ -1103,45 +1016,8 @@
     }
 
     function submitReplanDirection() {
-        const suggestion = document.getElementById('replan-suggestion').value.trim();
-        if (!suggestion) {
-            showToast('请输入退回重新渲染的修正建议！', 'error');
-            return;
-        }
-
-        const confirmBtn = document.getElementById('confirm-replan-btn');
-        confirmBtn.disabled = true;
-        confirmBtn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>发送中...</span>`;
-
-        setTimeout(() => {
-            closeReplanModal();
-            confirmBtn.disabled = false;
-            confirmBtn.innerHTML = `<span>确认重新渲染</span>`;
-
-            // 清空输入框内容
-            document.getElementById('replan-suggestion').value = '';
-
-            showToast('修正意见已提交！正在重新调度推演渲染管线...', 'success');
-
-            // 状态重置闭环：将 window.isPresentationRendered 重置为 false，并恢复按钮为炫彩可点击状态
-            window.isPresentationRendered = false;
-            const activeBtns = document.querySelectorAll('.start-presentation-btn-class');
-            activeBtns.forEach(b => {
-                b.disabled = false;
-                b.classList.add('btn-rainbow-glow');
-                b.style.background = '';
-                b.style.borderColor = '';
-                b.style.cursor = 'pointer';
-                b.style.boxShadow = '';
-                b.innerHTML = `
-                    <span class="material-symbols-outlined text-[16px] text-base-content">play_circle</span>
-                    <div class="text-left">
-                        <p class="text-[11px] font-bold text-base-content leading-tight">开始正文呈现</p>
-                        <p class="text-[7.5px] text-blue-200 leading-tight">Start Chapter Presentation</p>
-                    </div>
-                `;
-            });
-        }, 1500);
+        showToast('审计退回编排合同尚未接入，不能提交修正方向。', 'error');
+        return false;
     }
 
     // 7. Toast 通用提示
@@ -1228,6 +1104,9 @@
             if (mode === 'assets') {
                 auditBtn.className = "px-6 py-1.5 rounded-lg text-base-content opacity-60 hover:text-base-content hover:bg-base-content/5 transition-all cursor-pointer";
                 assetsBtn.className = "px-6 py-1.5 rounded-lg bg-base-content/5 text-primary font-bold border border-base-content/5 shadow-[0_0_15px_rgba(173,198,255,0.1)] transition-all cursor-pointer";
+                auditBtn.setAttribute('aria-pressed', 'false');
+                assetsBtn.setAttribute('aria-pressed', 'true');
+                updateUnavailableViewNotice('assets');
 
                 // 切入资产视图时，隐藏客观/主观审计 Tabs 卡与主编决策底栏
                 if (tabsPanel) tabsPanel.classList.add('hidden');
@@ -1294,6 +1173,9 @@
             } else {
                 auditBtn.className = "px-6 py-1.5 rounded-lg bg-base-content/5 text-primary font-bold border border-base-content/5 shadow-[0_0_15px_rgba(173,198,255,0.1)] transition-all cursor-pointer";
                 assetsBtn.className = "px-6 py-1.5 rounded-lg text-base-content opacity-60 hover:text-base-content hover:bg-base-content/5 transition-all cursor-pointer";
+                auditBtn.setAttribute('aria-pressed', 'true');
+                assetsBtn.setAttribute('aria-pressed', 'false');
+                updateUnavailableViewNotice('audit');
 
                 if (tabsPanel) tabsPanel.classList.remove('hidden');
                 if (footer) footer.classList.remove('hidden');
@@ -1309,7 +1191,7 @@
 
 
 <!-- Re-render/Replan suggestions modal -->
-<div id="replan-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-neutral/60 backdrop-blur-sm transition-all duration-300">
+<div id="replan-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-neutral/60 backdrop-blur-sm transition-all duration-300" data-region="enhancement">
     <div class="w-[500px] bg-base-100 border border-base-content/10 rounded-box p-6 shadow-2xl relative overflow-hidden">
         <div class="absolute -right-16 -top-16 w-32 h-32 bg-warning/10 rounded-full blur-3xl"></div>
         <div class="flex items-center justify-between mb-4 pb-2 border-b border-base-content/5">
@@ -1324,12 +1206,12 @@
         <div class="space-y-4">
             <div class="space-y-2">
                 <label class="text-[10px] text-base-content opacity-60 uppercase font-semibold tracking-wider">修正建议与调整方向</label>
-                <textarea id="replan-suggestion" rows="4" class="w-full bg-base-content/40 border border-base-content/10 rounded-box p-3 text-xs text-base-content placeholder-on-surface-variant/40 focus:outline-none focus:border-warning/50 transition-colors resize-none" placeholder="请输入针对本章重新渲染的具体修正意见、文风微调方向或情感补强建议..."></textarea>
+                <textarea id="replan-suggestion" rows="4" class="ui-textarea w-full bg-base-content/40 border border-base-content/10 rounded-box p-3 text-xs text-base-content placeholder-on-surface-variant/40 focus:outline-none focus:border-warning/50 transition-colors resize-none" placeholder="请输入针对本章重新渲染的具体修正意见、文风微调方向或情感补强建议..."></textarea>
             </div>
 
             <div class="flex justify-end gap-3 pt-2">
                 <button onclick="closeReplanModal()" class="px-4 py-2 border border-base-content/5 hover:bg-base-content/5 rounded-lg text-xs text-base-content opacity-60 hover:text-base-content transition-all">取消</button>
-                <button id="confirm-replan-btn" onclick="submitReplanDirection()" class="px-5 py-2 bg-warning hover:bg-warning/80 text-neutral-content text-xs font-semibold rounded-lg flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(255,171,0,0.25)]">
+                <button id="confirm-replan-btn" onclick="showReturnedState()" data-interaction="show_returned_state" class="px-5 py-2 bg-warning hover:bg-warning/80 text-neutral-content text-xs font-semibold rounded-lg flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(255,171,0,0.25)]" disabled aria-disabled="true" data-contract-unavailable="true" title="审计退回编排合同尚未接入">
                     <span>确认重新渲染</span>
                 </button>
             </div>
@@ -1340,14 +1222,6 @@
 <!-- Toast Container -->
 <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
 
-<script>
-window.toggleSidebar = function() {
-    document.body.classList.toggle('sidebar-collapsed');
-    const icon = document.getElementById('sidebarIcon');
-    if (icon) {
-        icon.textContent = document.body.classList.contains('sidebar-collapsed') ? 'chevron_right' : 'chevron_left';
-    }
-};
-</script>
+<script type="module" src="/pages/audit-stage/index.mjs"></script>
 </body>
 </html>

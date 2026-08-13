@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-07-15",
+  "assets": [
+    {
+      "file": "daisyui-4.12.10-full.css",
+      "source": "https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.css",
+      "version": "4.12.10",
+      "sha256": "204f6cea0b8b0c94edeb6f21e1026cc903f172426a060cf61c5a0bfc655fdf83"
+    },
+    {
+      "file": "tailwindcss-browser-4.js",
+      "source": "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4",
+      "version": "4.3.2",
+      "sha256": "d04446c80203b7517ca833115e9bdcbd87f1ff709a9f4f7ca48804604129d782"
+    },
+    {
+      "file": "font-fallback.css",
+      "source": "Local system text-face fallback plus the pinned Material Icons asset below",
+      "version": "material-icons-1.13.14",
+      "sha256": "5cc3c36c72e2e605009fd17e83da3d7db8fc3f30338dc8736c09e8733aaf3224",
+      "note": "Inter and JetBrains Mono use installed system fallbacks; Material icon ligatures use the local pinned font."
+    },
+    {
+      "file": "material-icons-outlined.woff2",
+      "source": "https://cdn.jsdelivr.net/npm/material-icons@1.13.14/iconfont/material-icons-outlined.woff2",
+      "version": "1.13.14",
+      "sha256": "35dca8a7145a17c8d1306f25a3ca091578e15396f0b22d61eb8e73262ac75577"
+    }
+  ]
+}

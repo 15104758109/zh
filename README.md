@@ -1,181 +1,96 @@
-# 纵横叙事引擎(ZongHeng Narrative Engine)
+# 纵横叙事引擎 V7
 
+本仓库是本地运行的单章小说生产 MVP。产品链路由浏览器页面、现有 n8n
+工作流和 PostgreSQL 组成；只有 V7 明确标记为高代码例外的 FP008-02 使用
+独立 Node.js 服务。
 
-<p align="center">
-  <img src="https://img.shields.io/badge/G01-Approved-success?style=for-the-badge&logo=github" alt="G01 Approved">
-  <img src="https://img.shields.io/badge/G02-Approved-success?style=for-the-badge" alt="G02 Approved">
-  <img src="https://img.shields.io/badge/G03_A--D-Approved-success?style=for-the-badge" alt="G03 A-D Approved">
-  <img src="https://img.shields.io/badge/G04_r2-Approved-success?style=for-the-badge" alt="G04 revision 2 approved">
-  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License">
-</p>
+当前实现仍在联调。测试通过只证明对应合同，不代表整条 MVP 已可用；缺少
+V7 数据定义或运行配置的入口会明确失败，不会返回假成功。
 
-> **面向长篇小说一致性治理的 AI 叙事引擎。**
->
-> 💡先让角色在世界里活起来，再把发生的事写成小说。
+## 当前进度
 
----
+产品旅程的唯一活动进度记录是 `docs/MVP_PROGRESS.md`。它只记录已由真实页面、
+n8n 和 PostgreSQL 证明的结果、当前阻塞和下一步，不定义业务范围，也不恢复
+历史 Task Index、审计证据协议或开发治理状态机。
 
-## 🚨传统 AI 写作的五大“工程灾难”
+## 权威来源
 
-如果你用 AI 写过小说，你一定遇到过：
+1. `docs/v7设计文档_20260709_终版.md` 定义业务功能、前后端职责和数据状态。
+2. `docs/前端原型_v2/` 定义页面内容、DOM、布局、CSS 和原型交互；WORLD
+   使用 `pages/world-settings-drag-binding.html`。
+3. `docs/前端原型_v2/common/ScreenShot_2026-06-28_043110_371.jpg` 是共享
+   组件颜色和风格语义参考。
+4. `docs/后端/n8n/*.json` 是本地 n8n 工作流的唯一可修改基线。
+5. `db/install/v7-data-rpc-contract.sql` 是 PostgreSQL 数据标准和 RPC 的唯一
+   canonical 安装入口。
 
-| 痛点 | 传统 AI 的表现 |
-|---|---|
-| 📉 **人物崩坏** | 角色到中后期行为与设定严重偏离，AI 不知道角色"该做什么"或者人物五感不好不会生长 |
-| 🧩 **设定污染** | 资料一多就开始漏设定、漏剧情、漏钩子，资料少了又会随机创造，世界规则前后矛盾|
-| 🛤️ **剧情跑偏** | 缺乏长期承诺管控，主线随写作漂移，卖点无法兑现，给多了大纲又会快速剧透  |
-| 🪝 **伏笔断线** | 不同AI分析的伏笔标准和结果不同，回收标准不一致，有时候作者和读者都忘了|
-| 🔁 **质量不可控** | 什么才是作者想要的，提示词少写不好，多了AI发挥不出来，结果问题越来越复杂 |
-| 🔁 **AI工具化** | 适合缝合，适合拆书，但不适合充满想象力的作者，他不能将创意灵感放大 |
+现有源码、数据库和测试只说明“当前实现了什么”，不能覆盖 V7 对“应该实现
+什么”的定义。任何文档外功能、默认值、状态、RPC 字段或工作流职责都必须先
+用业务语言说明影响并获得创作者批准。
 
-**根本原因不是模型不够强，而是没有"叙事工程系统"。**
+## 技术环境
 
----
+- Node.js 24
+- pnpm 9
+- PostgreSQL：现有 `n8n-pgvector` 容器中的 `zh_narrative`
+- n8n：现有本地实例 `http://127.0.0.1:5678`
+- Web：原生 HTML、CSS 和 JavaScript ESM
+- FP008-02：TypeScript/Node.js
 
-## 🛠️ 解法：受控的工业化生产管线
+本项目不新建容器，不依赖云部署，也不需要 MySQL、SQLite 或 SQL Server。
 
-纵横引擎用工程方法把小说生产拆成一条**受控的管线**，而不是让 AI 直接写正文：
+## 本地运行
 
-```
-你的创作意图
-    │
-    ▼
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│ 剧情合约  │───→│ 角色博弈  │───→│ 分层审计  │───→│ 正式入库  │───→│ 文学呈现  │
-│  (L1A)   │    │  (推演)   │    │  (质检)   │    │  (真值)   │   │  (效果)   │
-└──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘
-    │                │                │                │               │
-    ▼                ▼                ▼                ▼               ▼
-本段必须发生什么   角色基于自身动机    事实/逻辑/OOC    7个存储原子更新  基于场景可供性渲染
-绝不能发生什么     在信息盲区中行动    不合格→打回重做   任一失败全部回滚  精准剥离"AI指纹"
-底线牌暂时保留     导演选择最佳路径    SQL级硬约束      永不丢钩子      画龙点睛
-─────────────────────────────────────────────────────────────────────────────────────
- 📊 底层底盘：PostgreSQL 唯一真值层 (所有的设定、状态变更、伏笔账本均处于 SQL 级硬约束中)
-─────────────────────────────────────────────────────────────────────────────────────
+```powershell
+pnpm install --frozen-lockfile
+$env:PORT=4191
+pnpm dev:web
 ```
 
-**核心差异**：AI 不是直接写小说，而是先推演出"谁做了什么、为什么"的结构化记录，经过审计确认无误后，再由文学渲染器呈现为正文。
----
+打开 `http://127.0.0.1:4191/workbench`。数据库连接用户从容器内的
+`POSTGRES_USER` 读取；本地 n8n 连接使用工作区已有 `.env`，不得把凭据写入
+页面、工作流附件或仓库。
 
-## 💎为什么比现有工具更可靠？
+FP008-02 服务按需启动：
 
-| 维度 | 主流 AI 小说工具 | 纵横引擎 |
-|---|---|---|
-| 设定管理 | Story Bible — AI 参考但不强制 | **真值层 + 物理短路器** — 审计未通过，数据库拒绝写入 |
-| 人物一致性 | 角色卡 — 写在 Prompt 里建议 AI | **四层本体模型** — 角色行为从哲学底线、欲望恐惧、资源限制中推导 |
-| 剧情控制 | 大纲/场景节拍 — AI 经常绕过去 | **L1A 中程合约** — 必须发生+绝不能发生+战略留白，强制执行 |
-| 伏笔管理 | 随机识别或 AI 条目 — 容易遗忘 | **资产生命周期** — 埋设→回收发生在每个L1A单元内，与读者记忆强度同步 |
-| 生成方式 | 直接写正文 — 混在一起无法审计 | **推演 JSON → 正文渲染** — 导演、配角作用于主角选择，只呈现不改结构 |
-| 质量保障 | 作者AI工具+自己修文 | **客观审计 + 主编路由 + 升华修文** — 自迭代系统，越用自动化程度越高 |
-| 失败处理 | 重写/撤销 — 经验主义 | **机内循环 →  熔断 → 沉淀优化样本**  — 影子版本、失败样本是智慧|
+```powershell
+pnpm --filter @zhreplan/api start:fp008
+```
 
----
+仅在明确要重建空的本地产品库时运行 `pnpm db:v7:rebuild`。不要对已有业务
+数据的库把它当作增量迁移命令。
 
-🔬 对齐学术前沿 (State-of-the-Art Alignment)
+## 验证
 
-纵横引擎不是凭空设计的。它的每一项核心机制都与当前顶级研究对齐，但更进一步——把论文中的单点能力组合成了**完整生产协议**：
+```powershell
+pnpm typecheck
+pnpm build
+pnpm test:db
+pnpm test:business
+pnpm test:pages
+pnpm test:web
+```
 
-| 研究前沿 | 代表工作 | 纵横引擎对应 |
-|---|---|---|
-| 动态大纲 + 记忆增强 | DOME | L1A + 三线排序 + 真值回写 这不是大纲-细纲，而是合同-工程拆解 |
-| 多 Agent 角色模拟 | Multi-Agent Character Simulation | 推演 JSON + 导演收束 + 正文隔离 这不是提示词推演，而是独立人格的聊天室 |
-| 知识图谱叙事 | CreAgentive | 世界原子 + 信息颗粒 + 资产状态机，这不是AI的小说总结，而是游戏世界的渲染器 |
-| 量子力学 | 第五维度 | 多重目的推演导演选择真值，这不是已知目的填内容的试题，而是看不见的宿命安排 |
-| 沙盒世界生成 | StoryBox | 世界物化器 + 角色四层本体，这不是上下文堆出的任务模拟，而是用分层和数据建立的神经网络 |
-| 长篇记忆评测 | StoryBench | PgSQL 真值层 + 遗忘率 + 追加只写记录表，这不是自我膨胀的宇宙，而是面向读者设计的熵减 |
+- `test:db` 从 canonical SQL 建立隔离临时库并验证 B1-B8 数据旅程。
+- `test:business` 验证页面、n8n 和 RPC 之间的 V7 业务职责。
+- `test:pages` 验证页面适配、状态、工作流映射和 FP008 服务。
+- `test:web` 验证十个正式路由、原型移植和本地静态资源。
 
-> DOME 指出长篇生成需要动态层级规划和记忆增强来减少上下文冲突。Multi-Agent Simulation 明确采用"先角色模拟、再故事写作"的两阶段模式。CreAgentive 用知识图谱解耦故事逻辑和风格实现。
->
-> **纵横引擎的独特之处**：多数研究解决"怎么生成更长、更连贯、更像故事"，纵横引擎解决"假如世界是由这些基本元素构成的，然后用第五维度控制谁知道什么、谁能做什么、为什么这么做、违反了什么规则、能否入正式真值层"——这是从生成算法到叙事工程系统的跨越。
+页面最终验收使用真实本地路由和 1920x1080、100% 缩放，检查原型视觉、
+正常/空/加载/失败/恢复状态、直接刷新、跨页作品上下文、控制台错误和真实
+按钮。生成截图和一次性审计报告不进入仓库。
 
----
-
-🎯 工业级对比：不只是一支“更聪明的笔”
-
-| 维度 | 主流 AI 小说工具 (如 Sudowrite / Novelcrafter) | 纵横叙事引擎 (ZongHeng Engine) |
-|---|---|---|
-| 定位 | AI 写作助手 (给你一支更懂连接词的笔) | 给你一个会自质检的虚拟制片厂 |
-| 核心逻辑 | 作者规划 → AI 帮写 → 作者整理 | 系统约束 → 世界推演 → 角色行动 → 审计入库 → 文学呈现 |
-| 进化 | 生成不好只能手动重试或点撤销 (经验主义) | 机内循环熔断 ── 失败样本自动沉淀为“负面约束提示词库”自迭代。 |
-
----
-
-## 文档导航
-
-| 入口 | 职责 |
-|---|---|
-| [实施控制面](./docs/IMPLEMENTATION_CONTROL.md) | Gate、事实源职责、成熟度、术语/RPC、全局裁决、FP/Task 骨架和角色窗口 |
-| [项目上下文路由器](./tools/project-context-loader.mjs) | 按 Task、角色与精确 FP 范围生成带哈希的只读上下文路由 |
-| [自治状态编排器](./tools/project-orchestrator.mjs) | G07-A 当前实现的外部单调事件 head、Ed25519 收据、平台写 capability、模型会话见证、lease-bound 报告拒绝恢复、主责 Auditor/Slice Gate 机械执行证据、历史回放、原始 blob 秘密证据、预算和恢复控制面；不调用模型 |
-| [自治证据复现器](./tools/g07-control-evidence.mjs) | 从 G01-G06 基线 Git 对象复现旧 58 项，复用登记秘密规则，并现场执行自测、语法、执行视图、治理叙述语义一致性和 Dry Run，与活动 evidence 的完整机械声明逐项比对 |
-| [自治机器政策](./.autonomy/policy.json) | `G07::AUTONOMY` 的阶段/Gate/制品哈希、平台信任根、外部 head、可信 inbox、写 capability、预算和硬停止规则 |
-| [当前 G07-A v11 机械证据](./docs/G07_A_EVIDENCE_V11.json) | 锁定 v11 实现、58/78/161/24 项测试、治理叙述语义一致性、签名租约拒绝绑定、畸形报告恢复、跨租约隔离、执行视图一致性、Dry Run 语义、实现 commit 制品和全基线扫描 |
-| [历史 G07-A v10 机械证据](./docs/G07_A_EVIDENCE_V10.json) | 已被 v11 的 Gate Register、README 活动登记镜像与当前状态语义校验取代，仅保留审计追溯 |
-| [历史 G07-A v9 机械证据](./docs/G07_A_EVIDENCE_V9.json) | 已被 v10 的 selector 防伪和 lease-bound 畸形报告恢复条件取代，仅保留审计追溯 |
-| [历史 G07-A v8 机械证据](./docs/G07_A_EVIDENCE_V8.json) | 已被 v9 的 fine-grained PAT、模型见证、报告拒绝和执行视图一致性条件取代，仅保留审计追溯 |
-| [历史 G07-A v7 机械证据](./docs/G07_A_EVIDENCE_V7.json) | 已被 v8 的非零 Slice 验收制品条件取代，仅保留审计追溯，不代表当前返修通过 |
-| [历史 G07-A v6 机械证据](./docs/G07_A_EVIDENCE_V6.json) | 已被 v7 的登记哈希逐项负向测试取代，仅保留审计追溯，不代表当前返修通过 |
-| [历史 G07-A v5 机械证据](./docs/G07_A_EVIDENCE_V5.json) | 已被后续活动证据与审计发现取代，仅保留审计追溯，不代表当前返修通过 |
-| [历史 G07-A v4 机械证据](./docs/G07_A_EVIDENCE_V4.json) | 已被后续活动证据与审计发现取代，仅保留审计追溯，不代表当前返修通过 |
-| [历史 G07-A v3 机械证据](./docs/G07_A_EVIDENCE_V3.json) | 已被第三轮 G07-B 判为失效，仅保留审计追溯，不代表当前返修通过 |
-| [历史 G07-A 机械证据](./docs/G07_A_EVIDENCE.json) | 已被第二轮 G07-B 判为失效的上一版证据，仅保留审计追溯，不代表当前返修通过 |
-| [V7 设计文档](./docs/v7设计文档_20260709_终版.md) | 业务意图、节点职责和上下游语义 |
-| [对齐版提示词](./docs/后端/对齐版提示词.md) | FP001-FP014 中 LLM 节点的模型行为设计 |
-| [开发窗口线束](./DEV_HARNESS.md) | 按实施控制面的角色/窗口协议执行和交接 |
-| [前端原型入口](./docs/前端原型_v2/pages/new_book.html) | 视觉与信息架构参考，不代表行为已实现 |
-
----
-## 当前状态
+## 目录
 
 ```text
-G07_GATE=PENDING
-G07_A_STATUS=IMPLEMENTED
-G07_A_COMMIT=24f5df65c2714dab58880f35a8207f0d8fc37131
-G07_A_EVIDENCE_STATUS=ACTIVE_V11_IMPLEMENTATION_EVIDENCE
-G07_A_EVIDENCE_PATH=docs/G07_A_EVIDENCE_V11.json
-G07_A_EVIDENCE_SHA256=d89a1253278ee41bce2a39e53ff093166cba4b3e986febf7bbd30306ffe91d3c
-G07_LATEST_AUDIT_P0=0
-G07_LATEST_AUDIT_P1=1
-G07_LATEST_AUDIT_P2=0
-G07_LATEST_AUDIT_DISPOSITION=REMEDIATED_AWAITING_INDEPENDENT_REAUDIT
+apps/web/                       十个正式 Web 路由和共享页面资源
+apps/api/src/features/fp008/    FP008-02 高代码运行时
+db/install/                     PostgreSQL canonical 数据/RPC
+docs/前端原型_v2/              页面视觉与交互参考
+docs/后端/n8n/                 可修改的 n8n 附件
+packages/contracts/src/         当前页面和 RPC 的 JSON 合同
+tests/business/                 跨层业务旅程
+tests/pages/                    页面、工作流和运行时验证
 ```
 
-| 项目 | 状态 |
-|---|---|
-| `G01_GATE` | `APPROVED` |
-| `G02_GATE` | `APPROVED`（2026-07-10） |
-| `G03-A_GATE` ~ `G03-D_GATE` | `APPROVED`（分组业务对齐；D 组于 2026-07-11 修订） |
-| `G04_R1_GATE` | `APPROVED`（历史 66-Task 蓝图；当前控制面不再提供其可执行 Task Index） |
-| `G04_GATE` / `G04_REVISION` | `APPROVED` / `2`（85 个 Task；仅 `F0-01-REPO` 为 `READY`，其余 84 个 `PLANNED`） |
-| `G05_GATE` / `G06_GATE` | `APPROVED` / `APPROVED`（G06 当前路由器扩展自测 78/78） |
-| `G07_GATE` / `G07_A_STATUS` | `PENDING` / `IMPLEMENTED`；最新独立审计记录 P0=0、P1=1、P2=0；该 P1 已在当前活动候选完成返修，等待新的独立 G07-B Audit/Review，不得执行产品 Task |
-| MVP 身份/配置边界 | 本地单人、免登录、不跨设备；稳定 `local_operator_id`；第一次模型调用前安全默认预算可见可改；统一配置面显示五类生效值/版本 |
-| 业务意图 | V7 已基线化，仍有登记的对齐债 |
-| Prompt 源 | FP001-FP014 已识别 LLM 节点的源文本已基线化；未证明已部署或已验证 |
-| Schema / 迁移 | 当前仓库不存在 |
-| 产品源码 / 产品自动化测试 | 当前仓库不存在，不能宣称产品已实现或已验证；G06/G07 治理工具及其内建自测不属于产品 Task 证据 |
-| 原型 / n8n | 参考与实验部署材料，不是数据契约或行为证据 |
-
-G02 治理控制面、G03-A~D 分组业务对齐及 G04 revision 2 已获创作者批准。当前 Task Index 共 85 个 Task，仅 `F0-01-REPO` 为 `READY`；其余 84 个等待依赖。Schema/迁移、源码和测试证据尚不存在，因此任何 FP 都不能宣称已实现或已验证。
-
----
-## License
-
-MIT
-
----
-
-## R3 最小 MVP 候选计划
-
-R3 入口为 [MVP 实施计划](./docs/MVP_IMPLEMENTATION_PLAN_R3.md)、[13 项页面化 Task Index](./docs/MVP_TASK_INDEX_R3.json)、[新窗口执行交接](./docs/R3_EXECUTION_HANDOFF.md) 和 [MVP 后候选功能](./docs/FEATURE_CANDIDATES.md)。该候选只规划 Web + n8n + PostgreSQL 的单章最快闭环；9 个 MVP 页面各由一个 Task 唯一交付，原生移动端和原生桌面端不在产品范围，也不是验收依赖。
-
-当前 R3 状态为 APPROVED / ACTIVE：F0-05 与 F0-06 是首批两个 READY Task，其余 11 个 PLANNED，selected_task=null。施工、业务 Auditor、Reviewer 和 MVP Gate Runner 全部请求 `gpt-5.6-terra`，并按 Task 风险使用 medium/high 推理。旧 G04 revision 2、G07 R2/V11 和 85 项 Task Index 仅作历史映射。
-
-```text
-pnpm mvp:plan
-node tools/mvp-plan.mjs status
-node tools/mvp-plan.mjs dry-run
-node tools/mvp-plan.mjs --self-test
-```
-
-以上入口只读，不提供启动、租约或状态写入命令。创作者授权的最小激活已经记录；产品 Task 只能由 Orchestrator 通过独立 terra 委派任务启动。
+协作和审批边界见 `AGENTS.md`。

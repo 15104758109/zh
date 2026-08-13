@@ -2,63 +2,16 @@
   "name": "ZH03-三线排序",
   "nodes": [
     {
-      "parameters": {},
-      "id": "f97c9e23-b70a-4eff-a885-c8402caf5860",
-      "name": "IF：已有 L1A 候选？",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [
-        384,
-        0
-      ]
-    },
-    {
       "parameters": {
-        "jsCode": "// 校验三线排序的 JSON 结构并进行容错修复\nconst input = $input.first().json;\nlet l1a_seq = [];\ntry {\n  const rawText = input.output || input.text || '';\n  const match = rawText.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (match) {\n    l1a_seq = JSON.parse(match[0]);\n  } else {\n    l1a_seq = JSON.parse(rawText);\n  }\n} catch (e) {\n  l1a_seq = input.l1a_seq || [];\n}\nreturn [{\n  json: {\n    ...input,\n    l1a_seq: l1a_seq,\n    isValid: Array.isArray(l1a_seq) && l1a_seq.length > 0\n  }\n}];"
-      },
-      "id": "a0081724-4329-43d0-aecf-47a50e3c35c6",
-      "name": "JSON修复与排序结构校验",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        1632,
-        -96
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// 修复审计 Agent 输出的 JSON\nconst input = $input.first().json;\nlet auditResult = { pass: false, reason: 'parse error' };\ntry {\n  const text = input.output || input.text || '';\n  const match = text.match(/\\{\\s*\"pass\"[\\s\\S]*\\}/);\n  if (match) {\n    auditResult = JSON.parse(match[0]);\n  } else {\n    auditResult = JSON.parse(text);\n  }\n} catch (e) {\n  if (input.text && input.text.includes('通过')) {\n    auditResult = { pass: true, reason: input.text };\n  } else {\n    auditResult = { pass: false, reason: '审计解析失败: ' + e.message };\n  }\n}\nreturn [{\n  json: {\n    ...input,\n    auditResult: auditResult\n  }\n}];"
-      },
-      "id": "d8a0dbaf-26a4-40c6-ae1c-c4970fc73eb5",
-      "name": "JSON修复",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        1664,
-        128
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "0e1db8c7-2180-41a5-aca4-3c8147c49ee3",
-      "name": "IF：审计通过？",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [
-        1840,
-        128
-      ]
-    },
-    {
-      "parameters": {
-        "path": "/design_stage",
-        "responseMode": "lastNode",
+        "httpMethod": "POST",
+        "path": "finalize_l1a",
+        "responseMode": "responseNode",
         "options": {}
       },
       "id": "a0649be5-8d1a-4d64-ae64-068c8441e5b0",
       "name": "开始三线排序",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
         0,
         0
@@ -67,252 +20,236 @@
     },
     {
       "parameters": {
-        "operation": "query",
-        "additionalFields": {}
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS request\n), scoped AS (\n  SELECT i.request, b.id, b.local_operator_id, b.title, b.target_words, b.chapter_words,\n    NOT EXISTS (SELECT 1 FROM public.l1a_unit l WHERE l.book_id=b.id AND l.is_locked AND l.is_valid AND NOT l.is_shadow) AS design_editable\n  FROM input i\n  LEFT JOIN public.book_project b ON b.id=(i.request->>'book_id')::uuid AND b.local_operator_id=(i.request->>'local_operator_id')::uuid\n), resolved AS (\n  SELECT s.*, CASE WHEN s.request->>'action'='sort' THEN COALESCE((\n    SELECT jsonb_build_object('node_code',binding.node_code,'model_name',binding.model_name,'provider_base_url',binding.provider_base_url,'api_key_ref',binding.api_key_ref,'temperature',binding.temperature,'prompt_text',binding.prompt_text,'prompt_status',binding.prompt_status,'model_config_version',binding.model_config_version,'prompt_version',binding.prompt_version)\n    FROM public.v_prompt_runtime_binding binding\n    WHERE binding.local_operator_id=s.local_operator_id AND binding.node_code='FP004-02' AND binding.prompt_status='active'\n      AND NULLIF(btrim(binding.model_name),'') IS NOT NULL AND NULLIF(btrim(binding.provider_base_url),'') IS NOT NULL\n      AND NULLIF(btrim(binding.api_key_ref),'') IS NOT NULL AND NULLIF(btrim(binding.prompt_text),'') IS NOT NULL\n    ORDER BY binding.model_config_version DESC,binding.prompt_version DESC LIMIT 1\n  ),'{}'::jsonb) ELSE '{}'::jsonb END AS binding\n  FROM scoped s\n)\nSELECT CASE WHEN r.id IS NULL THEN jsonb_build_object('ok',false,'correlation_id',r.request->>'correlation_id','redacted_error',jsonb_build_object('code','SCOPE_REJECTED','message','The selected book is unavailable.'))\nELSE jsonb_build_object('ok',true,'correlation_id',r.request->>'correlation_id','context',jsonb_build_object(\n  'book',jsonb_build_object('id',r.id,'title',r.title,'target_words',r.target_words,'chapter_words',r.chapter_words),\n  'design_editable',r.design_editable,'design_fingerprint',public.v7_formal_design_fingerprint(r.id),\n  'candidate_fingerprint',encode(digest(convert_to(COALESCE((SELECT jsonb_agg(to_jsonb(l)-'created_at'-'updated_at' ORDER BY l.id) FROM public.l1a_unit l WHERE l.book_id=r.id AND NOT l.is_formal AND l.is_valid AND NOT l.is_shadow AND NOT l.is_locked),'[]'::jsonb)::text,'UTF8'),'sha256'),'hex'),\n  'sort_index_start',1,\n  'runtime_binding',r.binding,\n  'l1as',COALESCE((SELECT jsonb_agg(to_jsonb(l)-'created_at'-'updated_at' ORDER BY l.l1a_index,l.id) FROM public.l1a_unit l WHERE l.book_id=r.id AND NOT l.is_formal AND l.is_valid AND NOT l.is_shadow),'[]'::jsonb),\n  'characters',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',c.id,'char_name',c.char_name,'char_type',c.char_type,'five_layers_json',c.five_layers_json,'arc_json',c.arc_json) ORDER BY c.char_name) FROM public.character c WHERE c.book_id=r.id AND c.is_active AND c.is_formal AND c.is_valid AND NOT c.is_shadow),'[]'::jsonb)\n)) END AS response FROM resolved r;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.body ?? $json)] }}"
+        }
       },
       "id": "96c33460-38eb-482b-a904-8060014b2a19",
       "name": "读取设计阶段快照1",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.5,
       "position": [
-        192,
+        672,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.response?.ok === true && $json.response?.context ? 'ok' : 'error' }}",
+              "rightValue": "ok",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "f97c9e23-b70a-4eff-a885-c8402caf5860",
+      "name": "IF：已有 L1A 候选？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        448,
         0
       ]
     },
     {
       "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ (() => { const request = $('开始三线排序').first().json.body ?? $('开始三线排序').first().json ?? {}; return request.action === 'sort' ? 'sort' : ''; })() }}",
+                    "rightValue": "sort",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "sort"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ (() => { const request = $('开始三线排序').first().json.body ?? $('开始三线排序').first().json ?? {}; return request.action === 'finalize' ? 'finalize' : ''; })() }}",
+                    "rightValue": "finalize",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "finalize"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "4a382884-b13a-4f27-8cee-9717fdd636af",
+      "name": "Route Sort Or Finalize",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('开始三线排序').first().json.body ?? $('开始三线排序').first().json ?? {};\nconst context = $('读取设计阶段快照1').first().json.response?.context ?? null;\nconst { action, candidate_fingerprint, ...rpc_request } = request;\nreturn ['finalize_lock', 'finalize_apply'].map((stage) => ({ json: { request, context, rpc_request, finalize_passthrough: action === 'finalize' && context !== null, stage } }));"
+      },
+      "id": "b2d210a5-0b26-4a4d-bf85-b38432d88b10",
+      "name": "Prepare Finalize RPC Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response ?? { ok: false, correlation_id: (($('开始三线排序').first().json.body ?? $('开始三线排序').first().json).correlation_id ?? 'unavailable'), redacted_error: { code: 'CONTEXT_UNAVAILABLE', message: 'The L1A context could not be loaded.' } } }}",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.5,
+      "typeVersion": 1.1,
       "position": [
-        592,
-        96
+        672,
+        192
       ],
       "id": "6197d3d8-f737-45d4-96ae-ed9859424c7b",
       "name": "Respond:请先生成L1A候选再进行排序"
     },
     {
       "parameters": {
-        "jsCode": "// 校验三线排序的 JSON 结构并进行容错修复\nconst input = $input.first().json;\nlet l1a_seq = [];\ntry {\n  const rawText = input.output || input.text || '';\n  const match = rawText.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (match) {\n    l1a_seq = JSON.parse(match[0]);\n  } else {\n    l1a_seq = JSON.parse(rawText);\n  }\n} catch (e) {\n  l1a_seq = input.l1a_seq || [];\n}\nreturn [{\n  json: {\n    ...input,\n    l1a_seq: l1a_seq,\n    isValid: Array.isArray(l1a_seq) && l1a_seq.length > 0\n  }\n}];"
-      },
-      "id": "b3c44b4d-8f82-4381-bfaf-9b3ccc2252f1",
-      "name": "JSON修复与排序结构校验1",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        832,
-        -320
-      ]
-    },
-    {
-      "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "G1 角色利用缺口：审查主角角色是否有足够的专属 L1A 剧情段支撑，以及核心配角是否在主线中被边缘化或忽视。  G2 弧光连续性缺口：审查在相邻的 L1A 之间，同一角色的心理或状态弧光跳跃是否过大，是否因缺乏必要的铺垫和过渡导致人设割裂。  G3 情绪节奏缺口：审查排定顺序后，是否存在连续 3 个或更多相同情绪类型的 L1A 密集堆叠，导致读者产生审美和情绪疲劳。  G4 世界状态缺口：审查宏观世界的变迁与势力格局的剧变在前后剧情序列中是否具备充足的因果关系解释。  G5 支线缺口：审查重要配角和反派角色是否缺乏专属的叙事支线，防止其沦为扁平的剧情工具人"
-            }
-          ]
-        },
-        "builtInTools": {},
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
-      "position": [
-        1824,
-        -96
-      ],
-      "id": "cfbe9006-da8e-4d8d-8567-8f1d03ab6afa",
-      "name": "5类缺口诊断与补充",
-      "credentials": {
-        "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
+        "operation": "executeQuery",
+        "query": "SELECT $1::jsonb AS response;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json)] }}"
         }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// 校验三线排序的 JSON 结构并进行容错修复\nconst input = $input.first().json;\nlet l1a_seq = [];\ntry {\n  const rawText = input.output || input.text || '';\n  const match = rawText.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (match) {\n    l1a_seq = JSON.parse(match[0]);\n  } else {\n    l1a_seq = JSON.parse(rawText);\n  }\n} catch (e) {\n  l1a_seq = input.l1a_seq || [];\n}\nreturn [{\n  json: {\n    ...input,\n    l1a_seq: l1a_seq,\n    isValid: Array.isArray(l1a_seq) && l1a_seq.length > 0\n  }\n}];"
-      },
-      "id": "272a8c00-a662-42c3-b890-84ad7abff15d",
-      "name": "JSON修复与排序结构校验4",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        2128,
-        -96
-      ]
-    },
-    {
-      "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "G1 角色利用缺口：审查主角角色是否有足够的专属 L1A 剧情段支撑，以及核心配角是否在主线中被边缘化或忽视。  G2 弧光连续性缺口：审查在相邻的 L1A 之间，同一角色的心理或状态弧光跳跃是否过大，是否因缺乏必要的铺垫和过渡导致人设割裂。  G3 情绪节奏缺口：审查排定顺序后，是否存在连续 3 个或更多相同情绪类型的 L1A 密集堆叠，导致读者产生审美和情绪疲劳。  G4 世界状态缺口：审查宏观世界的变迁与势力格局的剧变在前后剧情序列中是否具备充足的因果关系解释。  G5 支线缺口：审查重要配角和反派角色是否缺乏专属的叙事支线，防止其沦为扁平的剧情工具人"
-            }
-          ]
-        },
-        "builtInTools": {},
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
-      "position": [
-        1376,
-        128
-      ],
-      "id": "46437497-e695-4c84-be70-f96a03641538",
-      "name": "阶段审计 判断排序是否可进入生产",
-      "credentials": {
-        "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "update",
-        "additionalFields": {}
       },
       "id": "37e2198f-21aa-4545-8182-074b8318a8db",
       "name": "更新候选数据",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.5,
       "position": [
-        1088,
-        -96
+        672,
+        0
       ],
       "credentials": {
         "postgres": {
           "id": "kitjw53XlibTPzxM",
           "name": "zh-database"
         }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "query",
-        "additionalFields": {}
       },
-      "id": "104abc75-17f9-4c05-a329-4248f357d5a8",
-      "name": "退回样本",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [
-        2032,
-        288
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "kitjw53XlibTPzxM",
-          "name": "zh-database"
-        }
-      }
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nconst base=$('JSON修复与排序结构校验2').first().json;if(base.finalize_passthrough||base.workflow_error)return[{json:base}];const input=$input.first().json;if(input?.error||input?.message)return[{json:{...base,workflow_error:{code:'SORT_FAILED',message:'The L1A sort model did not complete.'}}}];const raw=input.choices?.[0]?.message?.content??input.output_text??input.output?.[0]?.content?.[0]?.text??input.output??input.message?.content??input.content??input.text??'';let arcs;try{arcs=parseSingleJson(raw)}catch{return[{json:{...base,workflow_error:{code:'SORT_OUTPUT_INVALID',message:'The L1A sort output was not valid JSON.'}}}]}if(!Array.isArray(arcs?.character_arcs)||!Array.isArray(arcs?.l0_conflicts))return[{json:{...base,workflow_error:{code:'SORT_OUTPUT_INVALID',message:'The character arc analysis was incomplete.'}}}];const to_ref=new Map([...(base.reference_catalog?.l1as??[]),...(base.reference_catalog?.characters??[])].map((item)=>[item.id,item.ref]));const map_for_model=(value)=>{if(typeof value==='string')return to_ref.get(value)??value;if(Array.isArray(value))return value.map(map_for_model);if(!value||typeof value!=='object')return value;const entries=Object.entries(value).map(([key,nested])=>[to_ref.get(key)??key,map_for_model(nested)]);if(new Set(entries.map(([key])=>key)).size!==entries.length)throw new Error('duplicate_reference');return Object.fromEntries(entries);};try{return[{json:{...base,arcs,model_arcs:map_for_model(arcs)}}];}catch{return[{json:{...base,workflow_error:{code:'SORT_OUTPUT_INVALID',message:'The character arc references were invalid.'}}}];}"
+      },
+      "id": "2e022a5a-312c-471a-9d38-b3cc4b300438",
+      "name": "JSON修复与排序结构校验3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "content": "1. 硬约束优先：hard类型依赖必须满足（from排在to前）\n2. 时间锚定：有明确时间锚的L1A按时间顺序\n3. 弧光节奏：同一角色弧光转换点之间至少间隔1个其他角色的L1A\n4. 情绪波函数：相邻L1A的情绪类型必须有变化（不得连续3个以上同类情绪）\n5. 商业节奏：每3-5个L1A中至少1个有明确爽点"
+              "leftValue": "={{ $json.stage ? 'ready' : 'error' }}",
+              "rightValue": "ready",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
-          ]
-        },
-        "builtInTools": {},
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
-      "position": [
-        1328,
-        -96
-      ],
-      "id": "da994e56-5a28-46a1-a999-482a741fc058",
-      "name": "FP004-02 执行时间线/故事线/人物线物理排序",
-      "credentials": {
-        "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
+          ],
+          "combinator": "and"
         }
-      }
-    },
-    {
-      "parameters": {
-        "options": {}
       },
-      "id": "ea356e29-b4ef-44e6-ad98-7e114cb3cace",
-      "name": "FP004-03 三线排序完成",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
+      "id": "0e1db8c7-2180-41a5-aca4-3c8147c49ee3",
+      "name": "IF：审计通过？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "position": [
-        2224,
-        112
+        1120,
+        0
       ]
     },
     {
       "parameters": {
-        "operation": "query",
-        "additionalFields": {}
-      },
-      "id": "418a1592-eba4-4187-a4b6-afe55b867309",
-      "name": "FP004-04",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [
-        2032,
-        112
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "kitjw53XlibTPzxM",
-          "name": "zh-database"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "1. 时间锚定：从L1A的jinzhan和payoff中提取时间线索\n2. 阶段识别：按情绪强度变化和世界状态变迁划分3-5个叙事阶段\n3. 转折点标注：标记阶段间转折L1A（情绪突变/世界剧变/角色弧反转）\n4. 依赖链构建：识别L1A间因果依赖（A的consequences是B的trigger条件）\n"
-            }
-          ]
-        },
-        "builtInTools": {},
+        "method": "POST",
+        "url": "={{ (()=>{const base=$('读取设计阶段快照1').first().json.response.context.runtime_binding.provider_base_url;return /\\/chat\\/completions$/i.test(base)?base:/\\/v[0-9]+(?:beta)?$/i.test(base)?`${base}/chat/completions`:`${base}/v1/chat/completions`;})() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (()=>{const source=$('读取设计阶段快照1').first().json.response.context;const l1as=Array.isArray(source.l1as)?source.l1as:[];const characters=Array.isArray(source.characters)?source.characters:[];const l1a_refs=new Map(l1as.map((item,index)=>[item.id,'L'+String(index+1).padStart(3,'0')]));const character_refs=new Map(characters.map((item,index)=>[item.id,'C'+String(index+1).padStart(3,'0')]));const map_for_model=(value)=>{if(typeof value==='string')return l1a_refs.get(value)??character_refs.get(value)??value;if(Array.isArray(value))return value.map(map_for_model);if(!value||typeof value!=='object')return value;return Object.fromEntries(Object.entries(value).map(([key,nested])=>[l1a_refs.get(key)??character_refs.get(key)??key,map_for_model(nested)]));};const {id:book_id,local_operator_id:book_operator_id,...book}=source.book??{};const model_context=map_for_model({book,l1as:l1as.map((item,index)=>{const {id,book_id:source_book_id,local_operator_id:source_operator_id,...rest}=item;return{l1a_ref:'L'+String(index+1).padStart(3,'0'),...rest};}),characters:characters.map((item,index)=>{const {id,book_id:source_book_id,local_operator_id:source_operator_id,...rest}=item;return{character_ref:'C'+String(index+1).padStart(3,'0'),...rest};})});const reference_catalog={l1as:l1as.map((item,index)=>({l1a_ref:'L'+String(index+1).padStart(3,'0'),l1a_name:item.l1a_name??null})),characters:characters.map((item,index)=>({character_ref:'C'+String(index+1).padStart(3,'0'),char_name:item.char_name??null}))};const content=source.runtime_binding.prompt_text+'\\n\\nStep 1: derive a timeline anchor for every L1A. Return {timeline:[{l1a_ref,anchor,phase}]}; cover every current L1A reference exactly once. Use only the supplied Lxxx references and copy them exactly; never output, construct, shorten, combine, or alter a UUID.\\nReturn only JSON. Do not add, remove, merge, persist, approve, or lock an L1A.\\n\\nREFERENCE_CATALOG='+JSON.stringify(reference_catalog)+'\\n\\nINPUT='+JSON.stringify(model_context);return JSON.stringify({model:source.runtime_binding.model_name,messages:[{role:'user',content}],temperature:source.runtime_binding.temperature});})() }}",
         "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        560,
-        -320
+        1344,
+        -192
       ],
       "id": "aaa1787f-a2e7-4037-8d60-edfccfdb641d",
       "name": "大事纪划分",
@@ -321,44 +258,40 @@
           "id": "ktkbgOI2RQI4Y8QK",
           "name": "OpenAI account"
         }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// 校验三线排序的 JSON 结构并进行容错修复\nconst input = $input.first().json;\nlet l1a_seq = [];\ntry {\n  const rawText = input.output || input.text || '';\n  const match = rawText.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (match) {\n    l1a_seq = JSON.parse(match[0]);\n  } else {\n    l1a_seq = JSON.parse(rawText);\n  }\n} catch (e) {\n  l1a_seq = input.l1a_seq || [];\n}\nreturn [{\n  json: {\n    ...input,\n    l1a_seq: l1a_seq,\n    isValid: Array.isArray(l1a_seq) && l1a_seq.length > 0\n  }\n}];"
       },
-      "id": "675735c5-5846-4f9c-ba23-6c1f797f52e4",
-      "name": "JSON修复与排序结构校验2",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        1280,
-        -320
-      ]
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "1. 依赖提取：从consequences/escalation/payoff.related_hook中提取对其他L1A的显式引用\n2. 硬约束识别：标记不可违反的因果链（A后果必须是B前提）\n3. 软约束识别：建议但不强制的顺序（情绪节奏建议的先后）\n4. 循环检测：检查循环依赖并提出解决方案\n"
-            }
-          ]
-        },
-        "builtInTools": {},
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nconst request=$('开始三线排序').first().json.body ?? $('开始三线排序').first().json;const context=$('读取设计阶段快照1').first().json.response?.context;const fail=(message)=>[{json:{request,context,workflow_error:{code:'SORT_OUTPUT_INVALID',message}}}];if(!request||!context)return[{json:{request,context,workflow_error:{code:'CONTEXT_UNAVAILABLE',message:'The L1A context could not be loaded.'}}}];if(request.action==='finalize')return[{json:{request,context,finalize_passthrough:true}}];const l1as=Array.isArray(context.l1as)?context.l1as:[];const characters=Array.isArray(context.characters)?context.characters:[];const stable=(items)=>items.length>0&&items.every((item)=>typeof item?.id==='string'&&item.id.trim())&&new Set(items.map((item)=>item.id)).size===items.length;if(!stable(l1as)||!stable(characters))return fail('The current L1A and character references were incomplete.');const l1a_refs=l1as.map((item,index)=>({ref:'L'+String(index+1).padStart(3,'0'),id:item.id}));const character_refs=characters.map((item,index)=>({ref:'C'+String(index+1).padStart(3,'0'),id:item.id}));const l1a_ref_to_id=new Map(l1a_refs.map((item)=>[item.ref,item.id]));const character_ref_to_id=new Map(character_refs.map((item)=>[item.ref,item.id]));const l1a_id_to_ref=new Map(l1a_refs.map((item)=>[item.id,item.ref]));const character_id_to_ref=new Map(character_refs.map((item)=>[item.id,item.ref]));const map_for_model=(value)=>{if(typeof value==='string')return l1a_id_to_ref.get(value)??character_id_to_ref.get(value)??value;if(Array.isArray(value))return value.map(map_for_model);if(!value||typeof value!=='object')return value;const entries=Object.entries(value).map(([key,nested])=>[l1a_id_to_ref.get(key)??character_id_to_ref.get(key)??key,map_for_model(nested)]);if(new Set(entries.map(([key])=>key)).size!==entries.length)throw new Error('duplicate_reference');return Object.fromEntries(entries);};let model_context;try{const {id:book_id,local_operator_id:book_operator_id,...book}=context.book??{};const model_l1as=l1as.map((item,index)=>{const {id,book_id:source_book_id,local_operator_id:source_operator_id,...rest}=item;return{l1a_ref:l1a_refs[index].ref,...rest};});const model_characters=characters.map((item,index)=>{const {id,book_id:source_book_id,local_operator_id:source_operator_id,...rest}=item;return{character_ref:character_refs[index].ref,...rest};});model_context=map_for_model({book,l1as:model_l1as,characters:model_characters});}catch{return fail('The current L1A references could not be prepared.');}const reference_catalog={l1as:l1a_refs,characters:character_refs};const model_reference_catalog={l1as:l1as.map((item,index)=>({l1a_ref:l1a_refs[index].ref,l1a_name:item.l1a_name??null})),characters:characters.map((item,index)=>({character_ref:character_refs[index].ref,char_name:item.char_name??null}))};const input=$input.first().json;if(input?.error||input?.message)return[{json:{request,context,reference_catalog,model_reference_catalog,model_context,workflow_error:{code:'SORT_FAILED',message:'The L1A sort model did not complete.'}}}];const raw=input.choices?.[0]?.message?.content??input.output_text??input.output?.[0]?.content?.[0]?.text??input.output??input.message?.content??input.content??input.text??'';let value;try{value=parseSingleJson(raw)}catch{return fail('The L1A sort output was not valid JSON.')}const timeline=Array.isArray(value?.timeline)?value.timeline:[];const resolve_l1a=(ref)=>l1a_ref_to_id.get(ref)??(l1a_id_to_ref.has(ref)?ref:null);const keys=['l1a_ref','anchor','phase'];if(timeline.length!==l1as.length||new Set(timeline.map((item)=>resolve_l1a(item?.l1a_ref??item?.l1a_id))).size!==l1as.length||!timeline.every((item)=>item&&typeof item==='object'&&Object.keys(item).every((key)=>keys.includes(key)||key==='l1a_id')&&typeof item.anchor==='string'&&item.anchor.trim()&&typeof item.phase==='string'&&item.phase.trim()&&resolve_l1a(item.l1a_ref??item.l1a_id)))return fail('The chronicle analysis did not cover every L1A.');const model_chronology={timeline:timeline.map((item)=>({l1a_ref:l1a_id_to_ref.get(resolve_l1a(item.l1a_ref??item.l1a_id)),anchor:item.anchor,phase:item.phase}))};const chronology={timeline:model_chronology.timeline.map((item)=>({l1a_id:l1a_ref_to_id.get(item.l1a_ref),anchor:item.anchor,phase:item.phase}))};return[{json:{request,context,reference_catalog,model_reference_catalog,model_context,chronology,model_chronology}}];"
+      },
+      "id": "b3c44b4d-8f82-4381-bfaf-9b3ccc2252f1",
+      "name": "JSON修复与排序结构校验1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        -192
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (()=>{const base=$('读取设计阶段快照1').first().json.response.context.runtime_binding.provider_base_url;return /\\/chat\\/completions$/i.test(base)?base:/\\/v[0-9]+(?:beta)?$/i.test(base)?`${base}/chat/completions`:`${base}/v1/chat/completions`;})() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (()=>{const base=$('JSON修复与排序结构校验1').first().json;const content=base.context.runtime_binding.prompt_text+'\\n\\nStep 2: derive explicit hard/soft causal dependencies. Return {dependencies:[{from_l1a_ref,to_l1a_ref,strength,reason}]}; use only the supplied Lxxx references and copy them exactly. Never output, construct, shorten, combine, or alter a UUID.\\nReturn only JSON. Do not add, remove, merge, persist, approve, or lock an L1A.\\n\\nREFERENCE_CATALOG='+JSON.stringify(base.model_reference_catalog)+'\\n\\nINPUT='+JSON.stringify({context:base.model_context,chronology:base.model_chronology});return JSON.stringify({model:base.context.runtime_binding.model_name,messages:[{role:'user',content}],temperature:base.context.runtime_binding.temperature});})() }}",
         "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        1008,
-        -320
+        1792,
+        -192
       ],
       "id": "6ffea3d1-df0e-43fb-8a45-fa0eacb3951a",
       "name": "前提分析",
@@ -367,44 +300,40 @@
           "id": "ktkbgOI2RQI4Y8QK",
           "name": "OpenAI account"
         }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// 校验三线排序的 JSON 结构并进行容错修复\nconst input = $input.first().json;\nlet l1a_seq = [];\ntry {\n  const rawText = input.output || input.text || '';\n  const match = rawText.match(/\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/);\n  if (match) {\n    l1a_seq = JSON.parse(match[0]);\n  } else {\n    l1a_seq = JSON.parse(rawText);\n  }\n} catch (e) {\n  l1a_seq = input.l1a_seq || [];\n}\nreturn [{\n  json: {\n    ...input,\n    l1a_seq: l1a_seq,\n    isValid: Array.isArray(l1a_seq) && l1a_seq.length > 0\n  }\n}];"
       },
-      "id": "2e022a5a-312c-471a-9d38-b3cc4b300438",
-      "name": "JSON修复与排序结构校验3",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        912,
-        -96
-      ]
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "1. 弧光提取：从role_arcs提取各角色弧光方向（growth/fall/stable）\n2. 转换点识别：标记弧光方向反转的L1A（growth→fall 或 fall→growth）\n3. 一致性校验：检查弧光方向与角色L0层底盘是否一致\n4. 交叉影响：分析不同角色弧光在同一L1A中的交互张力\n"
-            }
-          ]
-        },
-        "builtInTools": {},
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nconst base=$('JSON修复与排序结构校验1').first().json;if(base.finalize_passthrough||base.workflow_error)return[{json:base}];const fail=(message)=>[{json:{...base,workflow_error:{code:'SORT_OUTPUT_INVALID',message}}}];const input=$input.first().json;if(input?.error||input?.message)return[{json:{...base,workflow_error:{code:'SORT_FAILED',message:'The L1A sort model did not complete.'}}}];const raw=input.choices?.[0]?.message?.content??input.output_text??input.output?.[0]?.content?.[0]?.text??input.output??input.message?.content??input.content??input.text??'';let value;try{value=parseSingleJson(raw)}catch{return fail('The L1A sort output was not valid JSON.')}const refs=Array.isArray(base.reference_catalog?.l1as)?base.reference_catalog.l1as:[];const ref_to_id=new Map(refs.map((item)=>[item.ref,item.id]));const id_to_ref=new Map(refs.map((item)=>[item.id,item.ref]));const resolve=(ref)=>ref_to_id.get(ref)??(id_to_ref.has(ref)?ref:null);const dependencies=Array.isArray(value?.dependencies)?value.dependencies:[];const allowed=new Set(['from_l1a_ref','to_l1a_ref','from_l1a_id','to_l1a_id','strength','reason']);const normalized=dependencies.map((item)=>({from_l1a_id:resolve(item?.from_l1a_ref??item?.from_l1a_id),to_l1a_id:resolve(item?.to_l1a_ref??item?.to_l1a_id),strength:item?.strength,reason:item?.reason}));if(refs.length!==base.context.l1as.length||!dependencies.every((item,index)=>item&&typeof item==='object'&&Object.keys(item).every((key)=>allowed.has(key))&&normalized[index].from_l1a_id&&normalized[index].to_l1a_id&&normalized[index].from_l1a_id!==normalized[index].to_l1a_id&&['hard','soft'].includes(normalized[index].strength)&&typeof normalized[index].reason==='string'&&normalized[index].reason.trim()))return fail('The premise analysis contained an invalid dependency.');const premises={dependencies:normalized};const model_premises={dependencies:normalized.map((item)=>({from_l1a_ref:id_to_ref.get(item.from_l1a_id),to_l1a_ref:id_to_ref.get(item.to_l1a_id),strength:item.strength,reason:item.reason}))};return[{json:{...base,premises,model_premises}}];"
+      },
+      "id": "675735c5-5846-4f9c-ba23-6c1f797f52e4",
+      "name": "JSON修复与排序结构校验2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        -192
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (()=>{const base=$('读取设计阶段快照1').first().json.response.context.runtime_binding.provider_base_url;return /\\/chat\\/completions$/i.test(base)?base:/\\/v[0-9]+(?:beta)?$/i.test(base)?`${base}/chat/completions`:`${base}/v1/chat/completions`;})() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (()=>{const base=$('JSON修复与排序结构校验2').first().json;const content=base.context.runtime_binding.prompt_text+'\\n\\nStep 3: map growth/fall/stable character arcs and identify conflict_with_L0 or any single-dimension L0 delta over 3. Return {character_arcs:[],l0_conflicts:[]}. Use only the supplied Cxxx/Lxxx references if a reference is needed; never output or alter a UUID.\\nReturn only JSON. Do not add, remove, merge, persist, approve, or lock an L1A.\\n\\nREFERENCE_CATALOG='+JSON.stringify(base.model_reference_catalog)+'\\n\\nINPUT='+JSON.stringify({context:base.model_context,premises:base.model_premises});return JSON.stringify({model:base.context.runtime_binding.model_name,messages:[{role:'user',content}],temperature:base.context.runtime_binding.temperature});})() }}",
         "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        640,
-        -96
+        2240,
+        -192
       ],
       "id": "33398b43-d37e-462e-bdee-1edea26863b2",
       "name": "人物弧光分析",
@@ -413,12 +342,207 @@
           "id": "ktkbgOI2RQI4Y8QK",
           "name": "OpenAI account"
         }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nconst carrier=$('更新候选数据').first().json;const request=$('开始三线排序').first().json.body ?? $('开始三线排序').first().json;const context=$('读取设计阶段快照1').first().json.response?.context;const base=carrier.response??{request,context};const fail=(message)=>[{json:{...base,request:base.request??request,context:base.context??context,workflow_error:{code:'SORT_OUTPUT_INVALID',message}}}];if(base.finalize_passthrough||base.workflow_error)return[{json:base}];if(carrier?.error||carrier?.message||!base.context)return[{json:{...base,request:base.request??request,context:base.context??context,workflow_error:{code:'SORT_FAILED',message:'The L1A sort workflow did not complete.'}}}];const input=$input.first().json;if(input?.error||input?.message)return[{json:{...base,workflow_error:{code:'SORT_FAILED',message:'The L1A sort model did not complete.'}}}];const raw=input.choices?.[0]?.message?.content??input.output_text??input.output?.[0]?.content?.[0]?.text??input.output??input.message?.content??input.content??input.text??'';let value;try{value=parseSingleJson(raw)}catch{return fail('The L1A sort output was not valid JSON.')}const l1a_refs=Array.isArray(base.reference_catalog?.l1as)?base.reference_catalog.l1as:[];const character_refs=Array.isArray(base.reference_catalog?.characters)?base.reference_catalog.characters:[];const l1a_ref_to_id=new Map(l1a_refs.map((item)=>[item.ref,item.id]));const character_ref_to_id=new Map(character_refs.map((item)=>[item.ref,item.id]));const l1a_id_to_ref=new Map(l1a_refs.map((item)=>[item.id,item.ref]));const character_id_to_ref=new Map(character_refs.map((item)=>[item.id,item.ref]));const resolve_l1a=(ref)=>l1a_ref_to_id.get(ref)??(l1a_id_to_ref.has(ref)?ref:null);const resolve_character=(ref)=>character_ref_to_id.get(ref)??(character_id_to_ref.has(ref)?ref:null);const ref_to_id=new Map([...l1a_refs,...character_refs].map((item)=>[item.ref,item.id]));const canonicalize=(value)=>{if(typeof value==='string'){const refs=value.match(/[LC][0-9]{3}/g)??[];let mapped=value;for(const ref of refs){if(!ref_to_id.has(ref))throw new Error('unknown_reference');mapped=mapped.split(ref).join(ref_to_id.get(ref));}return mapped;}if(Array.isArray(value))return value.map(canonicalize);if(!value||typeof value!=='object')return value;const entries=Object.entries(value).map(([key,nested])=>[canonicalize(key),canonicalize(nested)]);if(new Set(entries.map(([key])=>key)).size!==entries.length)throw new Error('duplicate_reference');return Object.fromEntries(entries);};const object=(item)=>item&&typeof item==='object'&&!Array.isArray(item);const expected=new Set(base.context.l1as.map((item)=>item.id));const ordered_refs=value?.ordered_l1a_refs??value?.ordered_l1a_ids;const revisions=Array.isArray(value?.candidate_revisions)?value.candidate_revisions:[];const allowed=new Set(['l1a_ref','l1a_id','l1a_index','plot_emotion_commit','arc_requirement','participant_char_refs','participant_chars_json']);try{if(!Array.isArray(ordered_refs)||ordered_refs.length!==expected.size)return fail('The ordering did not contain every current L1A exactly once.');const ordered=ordered_refs.map(resolve_l1a);if(ordered.some((id)=>!id)||new Set(ordered).size!==expected.size||!ordered.every((id)=>expected.has(id))||revisions.length!==expected.size)return fail('The ordering did not contain every current L1A exactly once.');const canonical_revisions=revisions.map((item,index)=>{const l1a_id=resolve_l1a(item?.l1a_ref??item?.l1a_id);const participant_refs=item?.participant_char_refs??item?.participant_chars_json;if(!object(item)||!Object.keys(item).every((key)=>allowed.has(key))||item.l1a_ref!==undefined&&item.l1a_id!==undefined||item.participant_char_refs!==undefined&&item.participant_chars_json!==undefined||l1a_id!==ordered[index]||!Number.isInteger(item.l1a_index)||item.l1a_index!==index+1||!object(item.plot_emotion_commit)||Object.keys(item.plot_emotion_commit).length===0||!object(item.arc_requirement)||Object.keys(item.arc_requirement).length===0||!Array.isArray(participant_refs)||participant_refs.length===0)return null;const participants=participant_refs.map(resolve_character);if(participants.some((id)=>!id)||new Set(participants).size!==participants.length)return null;return{l1a_id,l1a_index:item.l1a_index,plot_emotion_commit:canonicalize(item.plot_emotion_commit),arc_requirement:canonicalize(item.arc_requirement),participant_chars_json:participants};});if(canonical_revisions.some((item)=>item===null))return fail('The ordering did not contain every current L1A exactly once.');return[{json:{...base,ordering:{ordered_l1a_ids:ordered,three_lines:canonicalize(value.three_lines),candidate_revisions:canonical_revisions}}}];}catch{return fail('The ordering contained an unknown or invalid scoped reference.');}"
+      },
+      "id": "a0081724-4329-43d0-aecf-47a50e3c35c6",
+      "name": "JSON修复与排序结构校验",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        -192
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (()=>{const base=$('读取设计阶段快照1').first().json.response.context.runtime_binding.provider_base_url;return /\\/chat\\/completions$/i.test(base)?base:/\\/v[0-9]+(?:beta)?$/i.test(base)?`${base}/chat/completions`:`${base}/v1/chat/completions`;})() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (()=>{const carrier=$('更新候选数据').first().json;const base=carrier.response??{};const source=base.context??$('读取设计阶段快照1').first().json.response.context;const content=source.runtime_binding.prompt_text+'\\n\\nStep 4: order all candidates under hard dependencies, emotion variety, commercial rhythm, and L0 spacing. Return {ordered_l1a_refs:[...],three_lines:{timeline:[],story:[],character:[]},candidate_revisions:[{l1a_ref,l1a_index,plot_emotion_commit,arc_requirement,participant_char_refs}]} with every current Lxxx reference exactly once in both ordered_l1a_refs and candidate_revisions. candidate_revisions must follow ordered_l1a_refs order; l1a_index must be the stable normalized sequence 1..N in ordered_l1a_refs order. plot_emotion_commit and arc_requirement must be non-empty objects; participant_char_refs must be a non-empty unique list using only supplied Cxxx references. Use only supplied Cxxx/Lxxx references in every nested field and copy them exactly; never output, construct, shorten, combine, or alter a UUID. Preserve each current value unless the five-step analysis requires a documented sorting revision.\\nReturn only JSON. Do not add, remove, merge, approve, formalize, or lock an L1A.\\n\\nREFERENCE_CATALOG='+JSON.stringify(base.model_reference_catalog)+'\\n\\nINPUT='+JSON.stringify({context:base.model_context,chronology:base.model_chronology,premises:base.model_premises,arcs:base.model_arcs});return JSON.stringify({model:source.runtime_binding.model_name,messages:[{role:'user',content}],temperature:source.runtime_binding.temperature});})() }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2688,
+        -192
+      ],
+      "id": "da994e56-5a28-46a1-a999-482a741fc058",
+      "name": "FP004-02 执行时间线/故事线/人物线物理排序",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "id": "d8a0dbaf-26a4-40c6-ae1c-c4970fc73eb5",
+      "name": "JSON修复",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2912,
+        -192
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (()=>{const base=$('读取设计阶段快照1').first().json.response.context.runtime_binding.provider_base_url;return /\\/chat\\/completions$/i.test(base)?base:/\\/v[0-9]+(?:beta)?$/i.test(base)?`${base}/chat/completions`:`${base}/v1/chat/completions`;})() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (()=>{const source=$('读取设计阶段快照1').first().json.response.context;const content=source.runtime_binding.prompt_text+'\\n\\nStep 5: diagnose dependency, commercial, arc, emotion, world, or branch gaps without changing the order. Return {gaps:[{type,summary,suggestion}]}; an empty gaps array is allowed.\\nReturn only JSON. Do not add, remove, merge, persist, approve, or lock an L1A.\\n\\nINPUT='+JSON.stringify({context:source,ordering:$('JSON修复与排序结构校验').first().json.ordering});return JSON.stringify({model:source.runtime_binding.model_name,messages:[{role:'user',content}],temperature:source.runtime_binding.temperature});})() }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3136,
+        -192
+      ],
+      "id": "cfbe9006-da8e-4d8d-8567-8f1d03ab6afa",
+      "name": "5类缺口诊断与补充",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw=$('JSON修复与排序结构校验4').first().json;const request=raw.request??($('开始三线排序').first().json.body ?? $('开始三线排序').first().json);const context=raw.context??$('读取设计阶段快照1').first().json.response?.context;const base={...raw,request,context};if(base.finalize_passthrough)return ['finalize_lock','finalize_apply'].map(stage=>({json:{...base,stage}}));if(base.workflow_error)base.sort_result={ordered_l1a_ids:[],candidate_revisions:[],gaps:[],design_fingerprint:context?.design_fingerprint??'',candidate_fingerprint:context?.candidate_fingerprint??''};return ['sort_lock','sort_prepare','sort_shift','sort_apply','sort_commit'].map(stage=>({json:{...base,stage}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        -192
+      ],
+      "id": "46437497-e695-4c84-be70-f96a03641538",
+      "name": "阶段审计 判断排序是否可进入生产",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nconst base=$('JSON修复与排序结构校验').first().json;if(base.finalize_passthrough){const {action,candidate_fingerprint,...rpc_request}=base.request;return[{json:{request:base.request,context:base.context,rpc_request,finalize_passthrough:true}}];}if(base.workflow_error)return[{json:base}];const input=$input.first().json;if(input?.error||input?.message)return[{json:{...base,workflow_error:{code:'SORT_FAILED',message:'The L1A sort model did not complete.'}}}];const raw=input.choices?.[0]?.message?.content??input.output_text??input.output?.[0]?.content?.[0]?.text??input.output??input.message?.content??input.content??input.text??'';let review;try{review=parseSingleJson(raw)}catch{return[{json:{...base,workflow_error:{code:'SORT_OUTPUT_INVALID',message:'The L1A sort output was not valid JSON.'}}}]}const gap_items=review?.gaps??review?.step5_gap_analysis?.gaps;const gaps=Array.isArray(gap_items)?gap_items.map((gap)=>({type:gap?.type,summary:gap?.summary??gap?.description,suggestion:gap?.suggestion})):[];if(!Array.isArray(gap_items)||!gaps.every((gap)=>typeof gap.type==='string'&&gap.type.trim()&&typeof gap.summary==='string'&&gap.summary.trim()&&typeof gap.suggestion==='string'&&gap.suggestion.trim()))return[{json:{...base,workflow_error:{code:'SORT_OUTPUT_INVALID',message:'The gap analysis was incomplete.'}}}];return[{json:{...base,sort_result:{ordered_l1a_ids:base.ordering.ordered_l1a_ids,three_lines:base.ordering.three_lines,candidate_revisions:base.ordering.candidate_revisions,gaps,design_fingerprint:base.context.design_fingerprint,candidate_fingerprint:base.context.candidate_fingerprint}}}];"
+      },
+      "id": "272a8c00-a662-42c3-b890-84ad7abff15d",
+      "name": "JSON修复与排序结构校验4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3584,
+        -64
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('读取设计阶段快照1').first().json.request;\nconst correlation_id = request?.correlation_id ?? 'unavailable';\nconst input = $input.first().json;\nconst raw = input?.error?.message ?? input?.message ?? '';\nconst match = String(raw).match(/(INVALID_REQUEST|SCOPE_REJECTED|CONTEXT_UNAVAILABLE|CONFIG_CONTRACT_BLOCKED|L1A_LOCKED|L1A_PLAN_INCOMPLETE|SORT_OUTPUT_INVALID):?([^\\n]*)/);\nreturn [{ json: { ok: false, correlation_id, redacted_error: { code: match?.[1] ?? 'SORT_FAILED', message: match?.[2]?.trim() || 'The L1A workflow could not complete.' } } }];"
+      },
+      "id": "104abc75-17f9-4c05-a329-4248f357d5a8",
+      "name": "退回样本",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3136,
+        224
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
       }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS payload\n), normalized AS (\n  SELECT\n    payload,\n    payload->>'stage' AS stage,\n    payload->'request' AS request,\n    payload->'sort_result' AS sort_result,\n    payload->'rpc_request' AS rpc_request,\n    CASE WHEN payload #>> '{request,local_operator_id}' ~* '^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$'\n      THEN (payload #>> '{request,local_operator_id}')::uuid END AS local_operator_id,\n    CASE WHEN payload #>> '{request,book_id}' ~* '^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$'\n      THEN (payload #>> '{request,book_id}')::uuid END AS book_id,\n    payload #>> '{request,idempotency_key}' AS idempotency_key,\n    payload #>> '{request,correlation_id}' AS correlation_id\n  FROM input\n), tx_state AS (\n  SELECT COALESCE(NULLIF(current_setting('v7.zh03_l1a_tx', true), ''), '{}')::jsonb AS value\n), sort_serial AS MATERIALIZED (\n  SELECT pg_advisory_xact_lock(hashtextextended(\n    'fp004_02_sort_l1a:' || n.local_operator_id::text || ':' || n.idempotency_key,\n    0\n  )) AS locked\n  FROM normalized AS n\n  WHERE n.stage = 'sort_lock'\n    AND n.local_operator_id IS NOT NULL\n    AND n.book_id IS NOT NULL\n    AND public.v7_valid_idempotency_key(n.idempotency_key)\n), sort_replay AS MATERIALIZED (\n  SELECT public.v7_replay_product_request(\n    'fp004_02_sort_l1a', n.idempotency_key, n.local_operator_id, n.book_id,\n    public.v7_request_intent(n.request)\n  ) AS response\n  FROM normalized AS n\n  JOIN sort_serial ON true\n  WHERE n.stage = 'sort_lock'\n), sort_book_lock AS MATERIALIZED (\n  SELECT book.id, book.local_operator_id\n  FROM normalized AS n\n  JOIN sort_serial ON true\n  LEFT JOIN sort_replay ON true\n  JOIN public.book_project AS book\n    ON book.id = n.book_id AND book.local_operator_id = n.local_operator_id\n  WHERE n.stage = 'sort_lock' AND sort_replay.response IS NULL\n  FOR UPDATE OF book\n), sort_lock_state AS MATERIALIZED (\n  SELECT set_config('v7.zh03_l1a_tx', (\n    CASE\n      WHEN jsonb_typeof(n.payload->'workflow_error') = 'object'\n      THEN jsonb_build_object('mode','terminal','response',jsonb_build_object(\n        'ok',false,'correlation_id',n.correlation_id,\n        'redacted_error',jsonb_build_object(\n          'code',CASE WHEN n.payload #>> '{workflow_error,code}' IN ('CONTEXT_UNAVAILABLE','SORT_FAILED','SORT_OUTPUT_INVALID')\n            THEN n.payload #>> '{workflow_error,code}' ELSE 'SORT_FAILED' END,\n          'message',CASE WHEN n.payload #>> '{workflow_error,code}'='CONTEXT_UNAVAILABLE' THEN 'The L1A context could not be loaded.'\n            WHEN n.payload #>> '{workflow_error,code}'='SORT_OUTPUT_INVALID' THEN 'The L1A sort output was invalid.'\n            ELSE 'The L1A sort model did not complete.' END\n        )\n      ))\n      WHEN n.local_operator_id IS NULL OR n.book_id IS NULL\n        OR NOT public.v7_valid_idempotency_key(n.idempotency_key)\n      THEN jsonb_build_object('mode','terminal','response',jsonb_build_object(\n        'ok',false,'correlation_id',n.correlation_id,\n        'redacted_error',jsonb_build_object('code','INVALID_REQUEST','message','The L1A sort request could not be accepted.')\n      ))\n      WHEN sort_replay.response IS NOT NULL\n      THEN jsonb_build_object('mode','terminal','response',\n        sort_replay.response || jsonb_build_object('correlation_id',n.correlation_id))\n      WHEN sort_book_lock.id IS NULL\n      THEN jsonb_build_object('mode','terminal','response',jsonb_build_object(\n        'ok',false,'correlation_id',n.correlation_id,\n        'redacted_error',jsonb_build_object('code','SCOPE_REJECTED','message','The selected book is unavailable.')\n      ))\n      ELSE jsonb_build_object(\n        'mode','sort_locked','book_id',n.book_id,'local_operator_id',n.local_operator_id,\n        'idempotency_key',n.idempotency_key\n      )\n    END\n  )::text, true)::jsonb AS value\n  FROM normalized AS n\n  LEFT JOIN sort_replay ON true\n  LEFT JOIN sort_book_lock ON true\n  WHERE n.stage = 'sort_lock'\n), locked_sort_candidates AS MATERIALIZED (\n  SELECT candidate.*\n  FROM normalized AS n\n  CROSS JOIN tx_state AS state\n  JOIN public.l1a_unit AS candidate\n    ON candidate.book_id = n.book_id\n   AND NOT candidate.is_formal AND candidate.is_valid AND NOT candidate.is_shadow AND NOT candidate.is_locked\n  WHERE n.stage = 'sort_prepare' AND state.value->>'mode' = 'sort_locked'\n  ORDER BY candidate.id\n  FOR UPDATE OF candidate\n), sort_candidate_snapshot AS (\n  SELECT\n    count(*)::integer AS candidate_count,\n    COALESCE(jsonb_agg(candidate.id ORDER BY candidate.id), '[]'::jsonb) AS candidate_ids,\n    COALESCE(jsonb_agg(to_jsonb(candidate)-'created_at'-'updated_at' ORDER BY candidate.id), '[]'::jsonb) AS snapshot\n  FROM locked_sort_candidates AS candidate\n), sort_candidate_fingerprint AS (\n  SELECT snapshot.*, encode(digest(convert_to(snapshot.snapshot::text, 'UTF8'), 'sha256'), 'hex') AS candidate_fingerprint\n  FROM sort_candidate_snapshot AS snapshot\n), sort_revisions AS (\n  SELECT revision.value AS revision, revision.ordinality\n  FROM normalized AS n\n  CROSS JOIN LATERAL jsonb_array_elements(\n    CASE WHEN jsonb_typeof(n.sort_result->'candidate_revisions') = 'array'\n      THEN n.sort_result->'candidate_revisions' ELSE '[]'::jsonb END\n  ) WITH ORDINALITY AS revision(value, ordinality)\n  WHERE n.stage IN ('sort_prepare','sort_apply','sort_commit')\n), sort_order AS (\n  SELECT ordered.value AS l1a_id, ordered.ordinality\n  FROM normalized AS n\n  CROSS JOIN LATERAL jsonb_array_elements_text(\n    CASE WHEN jsonb_typeof(n.sort_result->'ordered_l1a_ids') = 'array'\n      THEN n.sort_result->'ordered_l1a_ids' ELSE '[]'::jsonb END\n  ) WITH ORDINALITY AS ordered(value, ordinality)\n  WHERE n.stage = 'sort_prepare'\n), sort_prepare_check AS (\n  SELECT n.*, state.value AS state, snapshot.candidate_count, snapshot.candidate_ids,\n    snapshot.candidate_fingerprint,\n    public.v7_design_editable(n.book_id) AS design_editable,\n    public.v7_formal_design_fingerprint(n.book_id) = COALESCE(n.sort_result->>'design_fingerprint','') AS design_matches,\n    snapshot.candidate_fingerprint = COALESCE(n.sort_result->>'candidate_fingerprint','') AS candidate_matches,\n    snapshot.candidate_count > 0\n    AND jsonb_typeof(n.sort_result->'candidate_revisions') = 'array'\n    AND jsonb_array_length(n.sort_result->'candidate_revisions') = snapshot.candidate_count\n    AND (SELECT count(*) FROM sort_revisions) = snapshot.candidate_count\n    AND (SELECT count(DISTINCT revision->>'l1a_id') FROM sort_revisions) = snapshot.candidate_count\n    AND (SELECT count(*) FROM sort_order) = snapshot.candidate_count\n    AND NOT EXISTS (\n      SELECT 1 FROM sort_revisions AS revision\n      LEFT JOIN sort_order AS ordered USING (ordinality)\n      WHERE revision.revision->>'l1a_id' IS DISTINCT FROM ordered.l1a_id\n    )\n    AND NOT EXISTS (\n      SELECT 1\n      FROM sort_revisions AS item\n      WHERE jsonb_typeof(item.revision) IS DISTINCT FROM 'object'\n         OR (SELECT array_agg(key ORDER BY key)\n             FROM jsonb_object_keys(CASE WHEN jsonb_typeof(item.revision)='object' THEN item.revision ELSE '{}'::jsonb END) AS key)\n            IS DISTINCT FROM ARRAY['arc_requirement','l1a_id','l1a_index','participant_chars_json','plot_emotion_commit']::text[]\n         OR COALESCE(item.revision->>'l1a_id','') !~* '^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$'\n         OR NOT EXISTS (SELECT 1 FROM locked_sort_candidates AS current WHERE current.id::text=lower(item.revision->>'l1a_id'))\n         OR COALESCE(item.revision->>'l1a_index','') !~ '^[1-9][0-9]*$'\n         OR (item.revision->>'l1a_index')::integer IS DISTINCT FROM item.ordinality::integer\n         OR jsonb_typeof(item.revision->'plot_emotion_commit') IS DISTINCT FROM 'object'\n         OR item.revision->'plot_emotion_commit'='{}'::jsonb\n         OR jsonb_typeof(item.revision->'arc_requirement') IS DISTINCT FROM 'object'\n         OR item.revision->'arc_requirement'='{}'::jsonb\n         OR jsonb_typeof(item.revision->'participant_chars_json') IS DISTINCT FROM 'array'\n         OR jsonb_array_length(CASE WHEN jsonb_typeof(item.revision->'participant_chars_json')='array'\n              THEN item.revision->'participant_chars_json' ELSE '[]'::jsonb END)=0\n         OR (SELECT count(*)<>count(DISTINCT participant.value)\n             FROM jsonb_array_elements_text(CASE WHEN jsonb_typeof(item.revision->'participant_chars_json')='array'\n               THEN item.revision->'participant_chars_json' ELSE '[]'::jsonb END) AS participant(value))\n         OR EXISTS (\n           SELECT 1 FROM jsonb_array_elements_text(CASE WHEN jsonb_typeof(item.revision->'participant_chars_json')='array'\n             THEN item.revision->'participant_chars_json' ELSE '[]'::jsonb END) AS participant(value)\n           WHERE participant.value !~* '^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$'\n              OR NOT EXISTS (\n                SELECT 1 FROM public.character AS character\n                WHERE character.id::text=lower(participant.value) AND character.book_id=n.book_id\n                  AND character.status='active' AND character.is_active AND character.is_formal\n                  AND character.is_valid AND NOT character.is_shadow\n              )\n         )\n    ) AS revision_set_valid\n  FROM normalized AS n\n  CROSS JOIN tx_state AS state\n  CROSS JOIN sort_candidate_fingerprint AS snapshot\n  WHERE n.stage='sort_prepare' AND state.value->>'mode'='sort_locked'\n), sort_prepare_state AS MATERIALIZED (\n  SELECT set_config('v7.zh03_l1a_tx', (\n    CASE\n      WHEN assessment.design_editable IS NOT TRUE\n      THEN jsonb_build_object('mode','terminal','response',jsonb_build_object(\n        'ok',false,'correlation_id',assessment.correlation_id,\n        'redacted_error',jsonb_build_object('code','L1A_LOCKED','message','The L1A design is already locked.')\n      ))\n      WHEN assessment.design_matches IS NOT TRUE OR assessment.candidate_matches IS NOT TRUE\n      THEN jsonb_build_object('mode','terminal','response',jsonb_build_object(\n        'ok',false,'correlation_id',assessment.correlation_id,\n        'redacted_error',jsonb_build_object('code','DESIGN_STATE_CHANGED','message','The L1A candidate snapshot changed while sorting was running.')\n      ))\n      WHEN assessment.revision_set_valid IS NOT TRUE\n      THEN jsonb_build_object('mode','terminal','response',jsonb_build_object(\n        'ok',false,'correlation_id',assessment.correlation_id,\n        'redacted_error',jsonb_build_object('code','SORT_WRITE_REJECTED','message','The complete sorted L1A revision set could not be saved.')\n      ))\n      ELSE jsonb_build_object(\n        'mode','sort_valid','book_id',assessment.book_id,'local_operator_id',assessment.local_operator_id,\n        'candidate_count',assessment.candidate_count,'candidate_ids',assessment.candidate_ids,\n        'pre_candidate_fingerprint',assessment.candidate_fingerprint\n      )\n    END\n  )::text,true)::jsonb AS value\n  FROM sort_prepare_check AS assessment\n), sort_shifted AS (\n  UPDATE api.v_l1a_candidate_write AS candidate\n  SET l1a_index=shifted.temporary_index\n  FROM (\n    SELECT current.id,\n      max(current.l1a_index) OVER () + count(*) OVER () + row_number() OVER (ORDER BY current.id) AS temporary_index\n    FROM api.v_l1a_candidate_write AS current\n    CROSS JOIN normalized AS n\n    CROSS JOIN tx_state AS state\n    WHERE n.stage='sort_shift' AND state.value->>'mode'='sort_valid'\n      AND current.book_id=n.book_id AND current.local_operator_id=n.local_operator_id\n      AND current.id::text IN (SELECT jsonb_array_elements_text(state.value->'candidate_ids'))\n  ) AS shifted\n  WHERE candidate.id=shifted.id\n  RETURNING candidate.id\n), sort_shift_count AS (\n  SELECT count(*)::integer AS value FROM sort_shifted\n), sort_shift_state AS MATERIALIZED (\n  SELECT CASE\n    WHEN count.value=(state.value->>'candidate_count')::integer\n      THEN set_config('v7.zh03_l1a_tx',jsonb_set(state.value,'{mode}','\"sort_shifted\"'::jsonb)::text,true)\n    ELSE jsonb_array_length(jsonb_build_object('rollback_required',true))::text\n  END AS value\n  FROM normalized AS n CROSS JOIN tx_state AS state CROSS JOIN sort_shift_count AS count\n  WHERE n.stage='sort_shift' AND state.value->>'mode'='sort_valid'\n), sort_applied AS (\n  UPDATE api.v_l1a_candidate_write AS candidate\n  SET l1a_index=(revision.revision->>'l1a_index')::integer,\n      plot_emotion_commit=revision.revision->'plot_emotion_commit',\n      arc_requirement=revision.revision->'arc_requirement',\n      participant_chars_json=revision.revision->'participant_chars_json',\n      status='sorted'\n  FROM sort_revisions AS revision\n  CROSS JOIN normalized AS n\n  CROSS JOIN tx_state AS state\n  WHERE n.stage='sort_apply' AND state.value->>'mode'='sort_shifted'\n    AND candidate.book_id=n.book_id AND candidate.local_operator_id=n.local_operator_id\n    AND candidate.id::text=lower(revision.revision->>'l1a_id')\n  RETURNING candidate.id\n), sort_apply_count AS (\n  SELECT count(*)::integer AS value FROM sort_applied\n), sort_apply_state AS MATERIALIZED (\n  SELECT CASE\n    WHEN count.value=(state.value->>'candidate_count')::integer\n      THEN set_config('v7.zh03_l1a_tx',jsonb_set(state.value,'{mode}','\"sort_applied\"'::jsonb)::text,true)\n    ELSE jsonb_array_length(jsonb_build_object('rollback_required',true))::text\n  END AS value\n  FROM normalized AS n CROSS JOIN tx_state AS state CROSS JOIN sort_apply_count AS count\n  WHERE n.stage='sort_apply' AND state.value->>'mode'='sort_shifted'\n), sort_commit_candidates AS (\n  SELECT candidate.*\n  FROM public.l1a_unit AS candidate\n  CROSS JOIN normalized AS n\n  CROSS JOIN tx_state AS state\n  WHERE n.stage='sort_commit' AND state.value->>'mode'='sort_applied'\n    AND candidate.book_id=n.book_id AND NOT candidate.is_formal\n    AND candidate.is_valid AND NOT candidate.is_shadow AND NOT candidate.is_locked\n), sort_commit_snapshot AS (\n  SELECT count(*)::integer AS candidate_count,\n    COALESCE(jsonb_agg(to_jsonb(candidate)-'created_at'-'updated_at' ORDER BY candidate.id),'[]'::jsonb) AS snapshot\n  FROM sort_commit_candidates AS candidate\n), sort_commit_check AS (\n  SELECT n.*, state.value AS state, snapshot.candidate_count,\n    encode(digest(convert_to(snapshot.snapshot::text,'UTF8'),'sha256'),'hex') AS post_candidate_fingerprint,\n    snapshot.candidate_count=(state.value->>'candidate_count')::integer\n    AND NOT EXISTS (\n      SELECT 1 FROM sort_revisions AS revision\n      LEFT JOIN sort_commit_candidates AS candidate ON candidate.id::text=lower(revision.revision->>'l1a_id')\n      WHERE candidate.id IS NULL\n         OR candidate.l1a_index IS DISTINCT FROM (revision.revision->>'l1a_index')::integer\n         OR candidate.plot_emotion_commit IS DISTINCT FROM revision.revision->'plot_emotion_commit'\n         OR candidate.arc_requirement IS DISTINCT FROM revision.revision->'arc_requirement'\n         OR candidate.participant_chars_json IS DISTINCT FROM revision.revision->'participant_chars_json'\n         OR candidate.status IS DISTINCT FROM 'sorted'\n    ) AS valid\n  FROM normalized AS n CROSS JOIN tx_state AS state CROSS JOIN sort_commit_snapshot AS snapshot\n  WHERE n.stage='sort_commit' AND state.value->>'mode'='sort_applied'\n), sort_commit_guard AS MATERIALIZED (\n  SELECT CASE WHEN assessment.valid THEN true\n    ELSE jsonb_array_length(jsonb_build_object('rollback_required',true))=0 END AS valid\n  FROM sort_commit_check AS assessment\n), sort_success AS (\n  SELECT assessment.*,\n    jsonb_build_object('ok',true,'result',\n      (assessment.sort_result-'candidate_fingerprint') || jsonb_build_object('candidate_fingerprint',assessment.post_candidate_fingerprint)\n    ) AS stored_result\n  FROM sort_commit_check AS assessment CROSS JOIN sort_commit_guard AS guard\n  WHERE guard.valid\n), sort_logged AS (\n  INSERT INTO public.product_request_log(operation,idempotency_key,local_operator_id,book_id,intent,result)\n  SELECT 'fp004_02_sort_l1a',success.idempotency_key,success.local_operator_id,success.book_id,\n    public.v7_request_intent(success.request),success.stored_result\n  FROM sort_success AS success\n  RETURNING result\n), sort_commit_state AS MATERIALIZED (\n  SELECT set_config('v7.zh03_l1a_tx',jsonb_build_object(\n    'mode','terminal','response',logged.result || jsonb_build_object('correlation_id',success.correlation_id)\n  )::text,true)::jsonb AS value\n  FROM sort_success AS success CROSS JOIN sort_logged AS logged\n), finalize_serial AS MATERIALIZED (\n  SELECT pg_advisory_xact_lock(hashtextextended(\n    'rpc_finalize_l1a:' || n.local_operator_id::text || ':' || n.idempotency_key,0\n  )) AS locked\n  FROM normalized AS n\n  WHERE n.stage='finalize_lock' AND n.local_operator_id IS NOT NULL AND n.book_id IS NOT NULL\n    AND public.v7_valid_idempotency_key(n.idempotency_key)\n), finalize_replay AS MATERIALIZED (\n  SELECT public.v7_replay_product_request(\n    'rpc_finalize_l1a',n.idempotency_key,n.local_operator_id,n.book_id,\n    public.v7_request_intent(n.rpc_request)\n  ) AS response\n  FROM normalized AS n JOIN finalize_serial ON true\n  WHERE n.stage='finalize_lock'\n), finalize_book_lock AS MATERIALIZED (\n  SELECT book.id,book.local_operator_id\n  FROM normalized AS n JOIN finalize_serial ON true LEFT JOIN finalize_replay ON true\n  JOIN public.book_project AS book ON book.id=n.book_id AND book.local_operator_id=n.local_operator_id\n  WHERE n.stage='finalize_lock' AND finalize_replay.response IS NULL\n  FOR UPDATE OF book\n), finalize_lock_state AS MATERIALIZED (\n  SELECT set_config('v7.zh03_l1a_tx',(\n    CASE\n      WHEN n.local_operator_id IS NULL OR n.book_id IS NULL OR NOT public.v7_valid_idempotency_key(n.idempotency_key)\n      THEN jsonb_build_object('mode','terminal','response',jsonb_build_object(\n        'ok',false,'correlation_id',n.correlation_id,\n        'redacted_error',jsonb_build_object('code','INVALID_REQUEST','message','The L1A finalization request could not be accepted.')\n      ))\n      WHEN finalize_replay.response IS NOT NULL\n      THEN jsonb_build_object('mode','terminal','response',\n        finalize_replay.response || jsonb_build_object('correlation_id',n.correlation_id))\n      WHEN finalize_book_lock.id IS NULL\n      THEN jsonb_build_object('mode','terminal','response',jsonb_build_object(\n        'ok',false,'correlation_id',n.correlation_id,\n        'redacted_error',jsonb_build_object('code','SCOPE_REJECTED','message','The selected book is unavailable.')\n      ))\n      ELSE jsonb_build_object('mode','finalize_locked','book_id',n.book_id,'local_operator_id',n.local_operator_id)\n    END\n  )::text,true)::jsonb AS value\n  FROM normalized AS n\n  LEFT JOIN finalize_replay ON true LEFT JOIN finalize_book_lock ON true\n  WHERE n.stage='finalize_lock'\n), locked_finalize_candidates AS MATERIALIZED (\n  SELECT candidate.*\n  FROM normalized AS n CROSS JOIN tx_state AS state\n  JOIN public.l1a_unit AS candidate ON candidate.book_id=n.book_id\n    AND NOT candidate.is_formal AND candidate.is_valid AND NOT candidate.is_shadow AND NOT candidate.is_locked\n  WHERE n.stage='finalize_apply' AND state.value->>'mode'='finalize_locked'\n  ORDER BY candidate.id\n  FOR UPDATE OF candidate\n), finalize_candidate_snapshot AS (\n  SELECT COALESCE(jsonb_agg(to_jsonb(candidate)-'created_at'-'updated_at' ORDER BY candidate.id),'[]'::jsonb) AS snapshot\n  FROM locked_finalize_candidates AS candidate\n), finalize_result AS (\n  SELECT CASE\n    WHEN state.value->>'mode'='terminal' THEN state.value->'response'\n    WHEN encode(digest(convert_to(snapshot.snapshot::text,'UTF8'),'sha256'),'hex')\n      IS DISTINCT FROM n.request->>'candidate_fingerprint'\n    THEN jsonb_build_object(\n      'ok',false,'correlation_id',n.correlation_id,\n      'redacted_error',jsonb_build_object('code','DESIGN_STATE_CHANGED','message','The L1A candidate snapshot changed after sorting; sort again before locking.')\n    )\n    ELSE public.rpc_finalize_l1a(n.rpc_request) || jsonb_build_object('correlation_id',n.correlation_id)\n  END AS response\n  FROM normalized AS n CROSS JOIN tx_state AS state CROSS JOIN finalize_candidate_snapshot AS snapshot\n  WHERE n.stage='finalize_apply'\n)\nSELECT value->'response' AS response FROM sort_lock_state\nUNION ALL SELECT value->'response' FROM sort_prepare_state\nUNION ALL SELECT NULL::jsonb FROM sort_shift_state\nUNION ALL SELECT NULL::jsonb FROM sort_apply_state\nUNION ALL SELECT value->'response' FROM sort_commit_state\nUNION ALL SELECT NULL::jsonb FROM finalize_lock_state\nUNION ALL SELECT response FROM finalize_result;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json)] }}",
+          "queryBatching": "transaction"
+        }
+      },
+      "id": "418a1592-eba4-4187-a4b6-afe55b867309",
+      "name": "FP004-04",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1344,
+        96
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ (() => { const request = $('开始三线排序').first().json.body ?? $('开始三线排序').first().json ?? {}; const terminal = $('FP004-04').all().map((item) => item.json?.response).filter((value) => value && typeof value === 'object' && (value.ok === true || value.ok === false)).at(-1); return terminal ?? { ok: false, correlation_id: request.correlation_id ?? 'unavailable', redacted_error: { code: request.action === 'sort' ? 'SORT_WRITE_REJECTED' : 'WRITE_FAILED', message: request.action === 'sort' ? 'The complete sorted L1A revision set could not be saved.' : 'The L1A plan was not finalized.' } }; })() }}",
+        "options": {}
+      },
+      "id": "ea356e29-b4ef-44e6-ad98-7e114cb3cace",
+      "name": "FP004-03 三线排序完成",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3808,
+        -64
+      ]
     }
   ],
-  "pinData": {},
   "connections": {
     "IF：已有 L1A 候选？": {
+      "main": [
+        [
+          {
+            "node": "Route Sort Or Finalize",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond:请先生成L1A候选再进行排序",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Sort Or Finalize": {
       "main": [
         [
           {
@@ -429,7 +553,25 @@
         ],
         [
           {
-            "node": "Respond:请先生成L1A候选再进行排序",
+            "node": "Prepare Finalize RPC Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FP004-03 三线排序完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Finalize RPC Request": {
+      "main": [
+        [
+          {
+            "node": "FP004-04",
             "type": "main",
             "index": 0
           }
@@ -636,12 +778,13 @@
       ]
     }
   },
+  "pinData": {},
   "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "f3cdbf9b-9546-4485-9d30-758662090ef5",
+  "versionId": "3b37767c-1ac1-4b0b-9cc8-235bc5f3df56",
   "meta": {
     "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"
   },

@@ -1,11 +1,11 @@
 /* ============================================
    纵横叙事引擎 — 共享 JavaScript
-   公共交互逻辑 (DaisyUI v5 · Garden 亮色模式)
+   公共交互逻辑 (DaisyUI 4.12.10 · Garden 亮色模式)
    最后更新: 2026-06-26
    ============================================ */
 
 /* ---- 注意 ----
-   DaisyUI v5 + @tailwindcss/browser@4 不再需要
+   DaisyUI 4.12.10 + @tailwindcss/browser@4 不再需要
    JavaScript 里的 tailwind.config。
    主题色值由 CSS @plugin "daisyui/theme" 注入，
    Tailwind 工具类由 @tailwindcss/browser 自动处理。
@@ -14,20 +14,35 @@
    ============================================ */
 
 // ---- 侧边栏折叠 ----
+function syncSidebarToggleState() {
+  var collapsed = document.body.classList.contains("sidebar-collapsed");
+  document.querySelectorAll(".sidebar-toggle").forEach(function(toggle) {
+    var icon = toggle.querySelector("#sidebarIcon, .sidebar-toggle-icon");
+    if (icon) icon.textContent = collapsed ? "chevron_right" : "chevron_left";
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+  });
+}
+
 window.toggleSidebar = function() {
   document.body.classList.toggle("sidebar-collapsed");
   var state = document.body.classList.contains("sidebar-collapsed") ? "collapsed" : "expanded";
   try { localStorage.setItem("sidebar-state", state); } catch(e) {}
+  syncSidebarToggleState();
 };
 
 // 恢复侧边栏状态
-(function() {
-  try {
-    if (localStorage.getItem("sidebar-state") === "collapsed") {
-      document.body.classList.add("sidebar-collapsed");
-    }
-  } catch(e) {}
-})();
+function restoreSidebarState() {
+  var state = "expanded";
+  try { state = localStorage.getItem("sidebar-state") || state; } catch(e) {}
+  document.body.classList.toggle("sidebar-collapsed", state === "collapsed");
+  syncSidebarToggleState();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", restoreSidebarState, { once: true });
+} else {
+  restoreSidebarState();
+}
 
 // ---- 快速设置弹窗 ----
 window.toggleQuickSettings = function(event) {

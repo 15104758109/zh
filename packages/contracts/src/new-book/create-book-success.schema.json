@@ -1,8 +1,32 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://zhreplan.local/contracts/new-book/create-book-success/1",
+  "$id": "https://zhreplan.local/contracts/new-book/create-book-success/2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["ok", "status", "book_id", "idempotent", "current_book"],
-  "properties": { "ok": { "const": true }, "status": { "const": "success" }, "book_id": { "type": "string", "format": "uuid" }, "idempotent": { "type": "boolean" }, "current_book": { "type": "object", "additionalProperties": false, "required": ["book_id", "local_operator_id", "title"], "properties": { "book_id": { "type": "string", "format": "uuid" }, "local_operator_id": { "type": "string" }, "title": { "type": "string" } } } }
+  "required": ["ok", "book_id", "ids", "state"],
+  "properties": {
+    "ok": { "const": true },
+    "book_id": { "type": "string", "format": "uuid" },
+    "idempotent_replay": { "type": "boolean" },
+    "ids": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["character_ids", "world_ids", "relation_ids", "initial_l1a_id"],
+      "properties": {
+        "character_ids": { "type": "array", "minItems": 1, "items": { "type": "string", "format": "uuid" } },
+        "world_ids": { "type": "array", "minItems": 7, "items": { "type": "string", "format": "uuid" } },
+        "relation_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+        "initial_l1a_id": { "type": "string", "format": "uuid" }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage_code", "token_budget"],
+      "properties": {
+        "stage_code": { "const": "design" },
+        "token_budget": { "const": 1000000 }
+      }
+    }
+  }
 }

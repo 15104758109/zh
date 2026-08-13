@@ -1,1 +1,468 @@
-{"name":"ZH00-统一配置","nodes":[{"parameters":{"httpMethod":"POST","path":"workbench","responseMode":"responseNode","options":{}},"id":"zh00-webhook","name":"Webhook: POST /workbench","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[200,300],"webhookId":"8a310001-0a00-4000-8000-000000000001"},{"parameters":{"jsCode":"const input=$input.item.json.body ?? $input.item.json; const allowed=new Set(['action','local_operator_id','book_id','items']); if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>!allowed.has(k))) return [{json:{route:'respond',result:{ok:false,error:{code:'INVALID_REQUEST',message:'Request could not be accepted.'}}}}]; if(input.action==='test_connection') return [{json:{route:'test'}}]; if(!['load','save'].includes(input.action)) return [{json:{route:'respond',result:{ok:false,error:{code:'INVALID_REQUEST',message:'Request could not be accepted.'}}}}]; return [{json:{route:'db',request:input}}];"},"id":"zh00-validate","name":"Validate workbench command","type":"n8n-nodes-base.code","typeVersion":2,"position":[420,300]},{"parameters":{"rules":{"values":[{"conditions":{"options":{"caseSensitive":true,"leftValue":"","typeValidation":"strict"},"conditions":[{"leftValue":"={{ $json.route }}","rightValue":"db","operator":{"type":"string","operation":"equals"}}],"combinator":"and"},"renameOutput":true,"outputKey":"db"},{"conditions":{"options":{"caseSensitive":true,"leftValue":"","typeValidation":"strict"},"conditions":[{"leftValue":"={{ $json.route }}","rightValue":"test","operator":{"type":"string","operation":"equals"}}],"combinator":"and"},"renameOutput":true,"outputKey":"test"}]}},"id":"zh00-route","name":"Route workbench command","type":"n8n-nodes-base.switch","typeVersion":3.2,"position":[620,300]},{"parameters":{"operation":"executeQuery","query":"SELECT public.rpc_workbench($1::jsonb) AS result;","options":{"queryReplacement":"={{ [JSON.stringify($json.request)] }}"}},"id":"zh00-postgres","name":"Workbench PostgreSQL RPC","type":"n8n-nodes-base.postgres","typeVersion":2.6,"position":[860,180],"credentials":{"postgres":{"id":"kitjw53XlibTPzxM","name":"zh-database"}}},{"parameters":{"jsCode":"return [{json:$input.item.json.result}];"},"id":"zh00-normalize-db","name":"Normalize PostgreSQL result","type":"n8n-nodes-base.code","typeVersion":2,"position":[1080,180]},{"parameters":{"method":"GET","url":"https://api.openai.com/v1/models","authentication":"predefinedCredentialType","nodeCredentialType":"openAiApi","options":{"response":{"response":{"fullResponse":true,"neverError":true}}}},"id":"zh00-test-credential","name":"Test OpenAI credential","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[860,400],"credentials":{"openAiApi":{"id":"ktkbgOI2RQI4Y8QK","name":"OpenAI account"}},"onError":"continueRegularOutput"},{"parameters":{"jsCode":"const status=Number($json.statusCode); return [{json:status>=200&&status<300?{ok:true,connection_tested:true,provider:'openai'}:{ok:false,error:{code:'CONNECTION_FAILED',message:'The configured provider credential was rejected or unavailable.'}}}];"},"id":"zh00-normalize-test","name":"Redact credential test result","type":"n8n-nodes-base.code","typeVersion":2,"position":[1080,400]},{"parameters":{"respondWith":"json","responseBody":"={{ $json.result ? $json.result : $json }}","options":{"responseCode":200,"responseHeaders":{"entries":[{"name":"cache-control","value":"no-store"}]}}},"id":"zh00-respond","name":"Respond","type":"n8n-nodes-base.respondToWebhook","typeVersion":1.4,"position":[1300,300]}],"connections":{"Webhook: POST /workbench":{"main":[[{"node":"Validate workbench command","type":"main","index":0}]]},"Validate workbench command":{"main":[[{"node":"Route workbench command","type":"main","index":0}]]},"Route workbench command":{"main":[[{"node":"Workbench PostgreSQL RPC","type":"main","index":0}],[{"node":"Test OpenAI credential","type":"main","index":0}],[{"node":"Respond","type":"main","index":0}]]},"Workbench PostgreSQL RPC":{"main":[[{"node":"Normalize PostgreSQL result","type":"main","index":0}]]},"Normalize PostgreSQL result":{"main":[[{"node":"Respond","type":"main","index":0}]]},"Test OpenAI credential":{"main":[[{"node":"Redact credential test result","type":"main","index":0}]]},"Redact credential test result":{"main":[[{"node":"Respond","type":"main","index":0}]]}},"pinData":{},"active":true,"settings":{"executionOrder":"v1"},"versionId":"zh00-workbench-v2","meta":{"templateCredsSetupCompleted":true},"tags":[],"id":"0eUFi4jGi4hfxr59"}
+{
+  "name": "ZH00-统一配置",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "workbench",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "zh00-webhook",
+      "name": "Webhook: POST /workbench",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "8a310001-0a00-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.item.json.body ?? $input.item.json;\nconst uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;\nconst idempotencyKey = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;\nconst templateTypeCodes = new Map([\n  [String.fromCodePoint(0x611f, 0x6027, 0x6587, 0x5b57), 'emotive_text'],\n  [String.fromCodePoint(0x7b80, 0x5355, 0x903b, 0x8f91), 'simple_logic'],\n  [String.fromCodePoint(0x91cd, 0x590d, 0x6307, 0x4ee4), 'repeated_instruction'],\n  [String.fromCodePoint(0x590d, 0x6742, 0x4efb, 0x52a1), 'complex_task'],\n  [String.fromCodePoint(0x5ba2, 0x89c2, 0x516c, 0x6b63), 'objective_fair']\n]);\nconst templateCodeFor = (value) => templateTypeCodes.get(value);\nconst defaultCredentialReference = 'n8n-credential:openai-account-v1';\nconst credentialReferences = new Set([defaultCredentialReference, 'n8n-credential:relaycove-v1']);\nconst fail = (code, message) => [{ json: { route: 'respond', result: { ok: false, error: { code, message } } } }];\nconst hasOnly = (allowed) => Object.keys(input).every((key) => allowed.has(key));\nconst text = (value) => typeof value === 'string' && value.trim() !== '';\nconst object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);\nconst base = new Set(['action', 'local_operator_id']);\nconst readonlyBudget = ['token_budget', 'token_budget_version'];\nconst modelFieldsProvided = () => input.provider_base_url !== undefined || input.model_name !== undefined || input.api_key_ref !== undefined;\nconst validModelFields = () => text(input.provider_base_url) && text(input.model_name) && credentialReferences.has(input.api_key_ref);\nconst normalizedModelFields = () => ({\n  provider_base_url: input.provider_base_url.trim(),\n  model_name: input.model_name.trim(),\n  api_key_ref: input.api_key_ref\n});\nif (!object(input) || !text(input.action)) return fail('INVALID_REQUEST', '请求格式无效。');\nif (input.action === 'operator') {\n  const allowed = new Set(['action', 'local_operator_id']);\n  if (!hasOnly(allowed) || (input.local_operator_id !== undefined && (!text(input.local_operator_id) || !uuid.test(input.local_operator_id)))) return fail('INVALID_REQUEST', '本地操作者标识无效。');\n  return [{ json: { route: 'db', request: input } }];\n}\nif (!text(input.local_operator_id) || !uuid.test(input.local_operator_id)) return fail('INVALID_REQUEST', '请求格式或本地操作者标识无效。');\nif (input.action === 'read') {\n  const allowed = new Set([...base, 'book_id', 'node_code']);\n  if (!hasOnly(allowed) || (input.book_id !== undefined && (!text(input.book_id) || !uuid.test(input.book_id))) || (input.node_code !== undefined && !text(input.node_code))) return fail('INVALID_REQUEST', '读取配置时只能提交有效的作品或节点范围。');\n  return [{ json: { route: 'db', request: input } }];\n}\nif (input.action === 'book_banner') {\n  const allowed = new Set([...base, 'book_id']);\n  if (!hasOnly(allowed) || !text(input.book_id) || !uuid.test(input.book_id)) return fail('INVALID_REQUEST', '读取作品横幅需要有效的作品范围。');\n  return [{ json: { route: 'db', request: input } }];\n}\nif (input.action === 'save_prompt_active') {\n  const allowed = new Set([...base, 'fp_target', 'prompt_text', 'idempotency_key', ...readonlyBudget]);\n  if (!hasOnly(allowed) || !text(input.fp_target) || !text(input.prompt_text) || !text(input.idempotency_key) || !idempotencyKey.test(input.idempotency_key)) return fail('INVALID_REQUEST', '保存 Prompt 需要节点、完整文本和有效的幂等键。');\n  return [{ json: { route: 'db', request: input } }];\n}\nif (input.action === 'save_model_template') {\n  const allowed = new Set([...base, 'template_type', 'provider_base_url', 'model_name', 'api_key_ref', 'connection_test_evidence_id', 'routing_config_jsonb', 'parameters_jsonb', 'idempotency_key', ...readonlyBudget]);\n  const templateCode = templateCodeFor(input.template_type);\n  if (!hasOnly(allowed) || !templateCode || (modelFieldsProvided() && !validModelFields()) || !text(input.connection_test_evidence_id) || !uuid.test(input.connection_test_evidence_id) || !text(input.idempotency_key) || !idempotencyKey.test(input.idempotency_key) || (input.routing_config_jsonb !== undefined && !object(input.routing_config_jsonb)) || (input.parameters_jsonb !== undefined && !object(input.parameters_jsonb))) return fail('INVALID_REQUEST', '保存模型模板需要有效模板、受控测试证据和幂等键；模型地址与密钥引用由后端证据解析。');\n  return [{ json: { route: 'db', request: { ...input, ...(modelFieldsProvided() ? normalizedModelFields() : {}), template_type: templateCode } } }];\n}\nif (input.action === 'bind_node_template') {\n  const allowed = new Set([...base, 'node_code', 'template_type', 'temperature', 'idempotency_key', ...readonlyBudget]);\n  const templateCode = templateCodeFor(input.template_type);\n  if (!hasOnly(allowed) || !text(input.node_code) || !templateCode || !text(input.idempotency_key) || !idempotencyKey.test(input.idempotency_key) || (input.temperature !== undefined && (typeof input.temperature !== 'number' || !Number.isFinite(input.temperature) || input.temperature < 0 || input.temperature > 2))) return fail('INVALID_REQUEST', '绑定节点模板需要有效节点、模板、温度和幂等键。');\n  return [{ json: { route: 'db', request: { ...input, template_type: templateCode } } }];\n}\nif (input.action === 'save_book_config') {\n  const allowed = new Set([...base, 'book_id', 'auto_production', 'auto_audit', 'auto_iteration', 'presentation_intensity', 'idempotency_key', ...readonlyBudget]);\n  if (!hasOnly(allowed) || !text(input.book_id) || !uuid.test(input.book_id) || typeof input.auto_production !== 'boolean' || typeof input.auto_audit !== 'boolean' || typeof input.auto_iteration !== 'boolean' || typeof input.presentation_intensity !== 'number' || !Number.isFinite(input.presentation_intensity) || input.presentation_intensity < 0 || input.presentation_intensity > 1 || !text(input.idempotency_key) || !idempotencyKey.test(input.idempotency_key)) return fail('INVALID_REQUEST', '保存作品配置需要作品范围、三项自动化、表现参数和幂等键。');\n  return [{ json: { route: 'db', request: input } }];\n}\nif (input.action === 'test_connection') {\n  const allowed = new Set([...base, 'template_type', 'provider_base_url', 'model_name', 'api_key_ref']);\n  const templateCode = templateCodeFor(input.template_type);\n  const requestedCredentialReference = input.api_key_ref === undefined ? defaultCredentialReference : input.api_key_ref;\n  if (!hasOnly(allowed) || !templateCode || !text(input.provider_base_url) || !text(input.model_name) || !credentialReferences.has(requestedCredentialReference)) return fail('INVALID_REQUEST', 'Controlled connection testing requires an approved deployment credential reference.');\n  return [{ json: { route: 'db', request: {\n    action: 'test_connection',\n    local_operator_id: input.local_operator_id,\n    template_type: templateCode,\n    provider_base_url: input.provider_base_url.trim(),\n    model_name: input.model_name.trim(),\n    api_key_ref: requestedCredentialReference\n  } } }];\n}\nreturn fail('INVALID_REQUEST', '请求操作不受支持。');"
+      },
+      "id": "zh00-validate",
+      "name": "Validate workbench command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "respond",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "backend"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "zh00-route",
+      "name": "Route workbench command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH incoming AS (\n  SELECT $1::jsonb AS request\n), canonical AS (\n  SELECT CASE request->>'template_type'\n    WHEN 'emotive_text' THEN jsonb_set(request, '{template_type}', to_jsonb(U&'\\611F\\6027\\6587\\5B57'::text))\n    WHEN 'simple_logic' THEN jsonb_set(request, '{template_type}', to_jsonb(U&'\\7B80\\5355\\903B\\8F91'::text))\n    WHEN 'repeated_instruction' THEN jsonb_set(request, '{template_type}', to_jsonb(U&'\\91CD\\590D\\6307\\4EE4'::text))\n    WHEN 'complex_task' THEN jsonb_set(request, '{template_type}', to_jsonb(U&'\\590D\\6742\\4EFB\\52A1'::text))\n    WHEN 'objective_fair' THEN jsonb_set(request, '{template_type}', to_jsonb(U&'\\5BA2\\89C2\\516C\\6B63'::text))\n    ELSE request\n  END AS request\n  FROM incoming\n), save_projection AS (\n  SELECT CASE\n    WHEN c.request->>'action' = 'save_model_template'\n      AND e.id IS NOT NULL\n    THEN c.request || jsonb_build_object(\n      'provider_base_url', e.provider_base_url,\n      'model_name', e.model_name,\n      'api_key_ref', CASE e.api_key_ref_sha256\n        WHEN encode(digest(convert_to('n8n-credential:openai-account-v1', 'UTF8'), 'sha256'), 'hex') THEN 'n8n-credential:openai-account-v1'\n        WHEN encode(digest(convert_to('n8n-credential:relaycove-v1', 'UTF8'), 'sha256'), 'hex') THEN 'n8n-credential:relaycove-v1'\n      END\n    )\n    ELSE c.request\n  END AS request\n  FROM canonical AS c\n  LEFT JOIN LATERAL (\n    SELECT e.id, e.provider_base_url, e.model_name, e.api_key_ref_sha256\n    FROM public.model_connection_test_evidence AS e\n    WHERE e.id = (c.request->>'connection_test_evidence_id')::uuid\n      AND e.local_operator_id = (c.request->>'local_operator_id')::uuid\n      AND e.test_succeeded\n      AND e.api_key_ref_sha256 IN (encode(digest(convert_to('n8n-credential:openai-account-v1', 'UTF8'), 'sha256'), 'hex'), encode(digest(convert_to('n8n-credential:relaycove-v1', 'UTF8'), 'sha256'), 'hex'))\n  ) AS e ON c.request->>'action' = 'save_model_template'\n), test_projection AS (\n  SELECT c.request, CASE\n    WHEN c.request->>'action' = 'test_connection' THEN jsonb_build_object(\n      'route', 'test',\n      'request', jsonb_build_object(\n        'local_operator_id', c.request->>'local_operator_id',\n        'provider_base_url', c.request->>'provider_base_url',\n        'model_name', c.request->>'model_name',\n        'api_key_ref', c.request->>'api_key_ref'\n      )\n    )\n    ELSE NULL\n  END AS test_result\n  FROM save_projection AS c\n), book_banner AS (\n  SELECT jsonb_build_object(\n    'ok', true,\n    'book_banner', jsonb_build_object(\n      'book_id', bp.id,\n      'title', bp.title,\n      'genre_main', bp.genre_main,\n      'stage_code', bp.stage_code,\n      'run_status', bp.run_status,\n      'target_words', bp.target_words,\n      'chapter_words', bp.chapter_words,\n      'expected_chapter_count', CASE\n        WHEN bp.target_words IS NULL OR bp.chapter_words IS NULL OR bp.chapter_words <= 0 THEN NULL\n        ELSE ceil(bp.target_words::numeric / bp.chapter_words)::integer\n      END,\n      'formal_chapter_count', formal_chapters.formal_chapter_count,\n      'progress_percent', CASE\n        WHEN bp.target_words IS NULL OR bp.target_words <= 0 THEN NULL\n        ELSE round((formal_chapters.formal_word_count::numeric * 100) / bp.target_words, 1)\n      END,\n      'latest_chapter', CASE\n        WHEN latest.chapter_id IS NULL THEN NULL\n        ELSE jsonb_build_object(\n          'chapter_id', latest.chapter_id,\n          'chapter_index', latest.chapter_index,\n          'title', latest.title,\n          'word_count', latest.word_count,\n          'prose_summary', latest.prose_summary\n        )\n      END,\n      'formal_word_count', formal_chapters.formal_word_count,\n      'formal_asset_count', assets.formal_asset_count,\n      'formal_l1a_count', l1a.formal_l1a_count,\n      'planned_l1a_count', CASE\n        WHEN bp.target_words IS NULL OR bp.chapter_words IS NULL OR bp.chapter_words <= 0 THEN NULL\n        ELSE ceil(ceil(bp.target_words::numeric / bp.chapter_words) / 3)::integer\n      END\n    )\n  ) AS result\n  FROM test_projection\n  JOIN public.book_project AS bp\n    ON bp.id = (request->>'book_id')::uuid\n   AND bp.local_operator_id = (request->>'local_operator_id')::uuid\n  LEFT JOIN LATERAL (\n    SELECT\n      count(*)::integer AS formal_chapter_count,\n      COALESCE(sum(ch.word_count), 0)::bigint AS formal_word_count\n    FROM public.chapter_header AS ch\n    JOIN public.chapter_version AS cv\n      ON cv.chapter_id = ch.id\n     AND cv.book_id = ch.book_id\n     AND cv.version_state = 'formal'\n     AND cv.is_formal\n     AND cv.is_valid\n     AND NOT cv.is_shadow\n    WHERE ch.book_id = bp.id\n  ) AS formal_chapters ON true\n  LEFT JOIN LATERAL (\n    SELECT ch.id AS chapter_id, ch.chapter_index, ch.title, ch.word_count, cv.prose_summary\n    FROM public.chapter_header AS ch\n    JOIN public.chapter_version AS cv\n      ON cv.chapter_id = ch.id\n     AND cv.book_id = ch.book_id\n     AND cv.version_state = 'formal'\n     AND cv.is_formal\n     AND cv.is_valid\n     AND NOT cv.is_shadow\n    WHERE ch.book_id = bp.id\n    ORDER BY ch.chapter_index DESC, ch.id DESC\n    LIMIT 1\n  ) AS latest ON true\n  LEFT JOIN LATERAL (\n    SELECT count(*)::integer AS formal_asset_count\n    FROM public.narrative_asset AS na\n    WHERE na.book_id = bp.id\n      AND na.is_formal\n      AND na.is_valid\n      AND NOT na.is_shadow\n  ) AS assets ON true\n  LEFT JOIN LATERAL (\n    SELECT count(*)::integer AS formal_l1a_count\n    FROM public.l1a_unit AS lu\n    WHERE lu.book_id = bp.id\n      AND lu.is_formal\n      AND lu.is_valid\n      AND NOT lu.is_shadow\n      AND lu.is_locked\n  ) AS l1a ON true\n  WHERE request->>'action' = 'book_banner'\n)\nSELECT CASE\n  WHEN request->>'action' = 'book_banner' THEN jsonb_build_object(\n    'route', 'respond',\n    'result', COALESCE(\n      (SELECT result FROM book_banner LIMIT 1),\n      jsonb_build_object(\n        'ok', false,\n        'error', jsonb_build_object('code', 'SCOPE_REJECTED', 'message', 'The selected book is unavailable.')\n      )\n    )\n  )\n  WHEN request->>'action' = 'test_connection' THEN COALESCE(\n    test_result,\n    jsonb_build_object('route', 'respond', 'result', jsonb_build_object(\n      'ok', false,\n      'error', jsonb_build_object('code', 'INVALID_REQUEST', 'message', 'A controlled model test requires a valid address and model name.')\n    ))\n  )\n  ELSE jsonb_build_object(\n    'route', 'respond',\n    'result', CASE WHEN request->>'action' = 'operator'\n      THEN public.rpc_get_local_operator(request - 'action')\n      ELSE public.rpc_workbench(request)\n    END\n  )\nEND AS result\nFROM test_projection;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.request)] }}"
+        }
+      },
+      "id": "zh00-postgres",
+      "name": "Workbench PostgreSQL RPC",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        860,
+        180
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.result.route }}",
+                    "rightValue": "test",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "test"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "zh00-normalize-db",
+      "name": "Normalize PostgreSQL result",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1080,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (() => { const base = $('Workbench PostgreSQL RPC').item.json.result.request.provider_base_url; return /\\/chat\\/completions$/i.test(base) ? base : /\\/v[0-9]+(?:beta)?$/i.test(base) ? `${base}/chat/completions` : `${base}/v1/chat/completions`; })() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $('Workbench PostgreSQL RPC').item.json.result.request.model_name, messages: [{ role: 'user', content: 'ping' }], max_tokens: 16, temperature: 0, stream: false }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "zh00-test-credential",
+      "name": "Test OpenAI credential",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "position": [
+        860,
+        400
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS request\n), normalized AS (\n  SELECT\n    (request->>'local_operator_id')::uuid AS local_operator_id,\n    NULLIF(btrim(request->>'provider_base_url'), '') AS provider_base_url,\n    NULLIF(btrim(request->>'model_name'), '') AS model_name,\n    NULLIF(btrim(request->>'api_key_ref'), '') AS api_key_ref,\n    COALESCE((request->>'http_status')::integer, 0) AS http_status,\n    COALESCE((request->>'test_succeeded')::boolean, false) AS test_succeeded\n  FROM input\n), recorded AS (\n  SELECT\n    n.*,\n    public.v7_record_model_connection_test(\n      n.local_operator_id,\n      n.provider_base_url,\n      n.model_name,\n      n.api_key_ref,\n      n.test_succeeded,\n      jsonb_build_object(\n        'source', 'n8n-controlled-http-test',\n        'http_status', n.http_status::text,\n        'error_code', CASE WHEN n.test_succeeded THEN NULL ELSE 'CONNECTION_FAILED' END\n      )\n    ) AS evidence_id\n  FROM normalized AS n\n)\nSELECT CASE\n  WHEN test_succeeded THEN jsonb_build_object(\n    'ok', true,\n    'connection_test', jsonb_build_object(\n      'connection_test_evidence_id', evidence_id,\n      'provider_base_url', provider_base_url,\n      'model_name', model_name,\n      'http_status', http_status\n    )\n  )\n  ELSE jsonb_build_object(\n    'ok', false,\n    'error', jsonb_build_object(\n      'code', 'CONNECTION_FAILED',\n      'message', '受控模型连接测试失败，配置没有保存。'\n    )\n  )\nEND AS result\nFROM recorded;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify({ local_operator_id: $('Workbench PostgreSQL RPC').item.json.result.request.local_operator_id, provider_base_url: $('Workbench PostgreSQL RPC').item.json.result.request.provider_base_url, model_name: $('Workbench PostgreSQL RPC').item.json.result.request.model_name, api_key_ref: $('Workbench PostgreSQL RPC').item.json.result.request.api_key_ref, http_status: Number($json.statusCode ?? 0), test_succeeded: (() => { const status = Number($json.statusCode ?? 0); let body = $json.body; if (typeof body === 'string') { try { body = JSON.parse(body); } catch { return false; } } const content = body?.choices?.[0]?.message?.content; const totalTokens = body?.usage?.total_tokens; return status >= 200 && status < 300 && typeof content === 'string' && content.trim() !== '' && typeof totalTokens === 'number' && Number.isFinite(totalTokens) && totalTokens > 0; })() })] }}"
+        }
+      },
+      "id": "zh00-normalize-test",
+      "name": "Redact and record credential test evidence",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1080,
+        400
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.result ? $json.result : $json }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "cache-control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "zh00-respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.result.request.api_key_ref }}",
+                    "rightValue": "n8n-credential:openai-account-v1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "openai"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.result.request.api_key_ref }}",
+                    "rightValue": "n8n-credential:relaycove-v1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "relaycove"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "zh00-route-credential",
+      "name": "Route approved model credential",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1300,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (() => { const base = $('Workbench PostgreSQL RPC').item.json.result.request.provider_base_url; return /\\/chat\\/completions$/i.test(base) ? base : /\\/v[0-9]+(?:beta)?$/i.test(base) ? `${base}/chat/completions` : `${base}/v1/chat/completions`; })() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $('Workbench PostgreSQL RPC').item.json.result.request.model_name, messages: [{ role: 'user', content: 'ping' }], max_tokens: 16, temperature: 0, stream: false }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "zh00-test-relaycove",
+      "name": "Test RelayCove credential",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "position": [
+        1520,
+        480
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "ZpJ7ejgoXbQb5xUW",
+          "name": "RelayCove account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Webhook: POST /workbench": {
+      "main": [
+        [
+          {
+            "node": "Validate workbench command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate workbench command": {
+      "main": [
+        [
+          {
+            "node": "Route workbench command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route workbench command": {
+      "main": [
+        [
+          {
+            "node": "Workbench PostgreSQL RPC",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workbench PostgreSQL RPC": {
+      "main": [
+        [
+          {
+            "node": "Normalize PostgreSQL result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize PostgreSQL result": {
+      "main": [
+        [
+          {
+            "node": "Route approved model credential",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route approved model credential": {
+      "main": [
+        [
+          {
+            "node": "Test OpenAI credential",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Test RelayCove credential",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test OpenAI credential": {
+      "main": [
+        [
+          {
+            "node": "Redact and record credential test evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test RelayCove credential": {
+      "main": [
+        [
+          {
+            "node": "Redact and record credential test evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redact and record credential test evidence": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "zh00-workbench-v2",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "id": "0eUFi4jGi4hfxr59"
+}

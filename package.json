@@ -9,25 +9,17 @@
     "pnpm": ">=9 <10"
   },
   "scripts": {
-    "mvp:plan": "node tools/mvp-plan.mjs check",
-    "n8n:lint": "node scripts/n8n-lint/index.mjs",
-    "lint": "eslint apps/api/src/bootstrap apps/web/src/bootstrap --max-warnings 0",
+    "dev:web": "pnpm --filter @zhreplan/web dev",
     "typecheck": "tsc --project tsconfig.base.json --noEmit",
-    "build": "tsc --project tsconfig.base.json",
-    "db:migrate": "node packages/db/src/migrate.mjs",
-    "db:reset": "node packages/db/src/reset.mjs",
-    "db:migrate:check": "node packages/db/src/migrate.mjs --check",
+    "build": "pnpm typecheck && pnpm --filter @zhreplan/web build",
     "db:v7:rebuild": "node packages/db/src/rebuild-v7.mjs",
-    "test:db": "node --test packages/db/test/migrations.test.mjs",
-    "verify:task": "node scripts/verify-task/index.mjs",
-    "interaction:lint": "pnpm --filter @zh/contracts run build && pnpm --filter @zh/interaction-contracts run lint",
-    "test:interaction-contracts": "pnpm --filter @zh/contracts run build && pnpm --filter @zh/interaction-contracts test",
-    "test:n8n-lint": "node --test tests/tooling/n8n-lint/index.test.mjs"
+    "test": "pnpm test:business && pnpm test:pages && pnpm test:web",
+    "test:business": "node --test \"tests/business/**/*.test.mjs\"",
+    "test:db": "node --test --test-concurrency=1 packages/db/test/installer-authority.test.mjs tests/business/v7-data-rpc/v7-data-rpc.test.mjs tests/business/v7-data-rpc/journey-b5-b8.test.mjs tests/business/v7-data-rpc/contract-data-quality.test.mjs",
+    "test:pages": "node --test \"tests/pages/**/*.test.mjs\"",
+    "test:web": "pnpm --filter @zhreplan/web test"
   },
   "devDependencies": {
-    "@eslint/js": "9.36.0",
-    "eslint": "9.36.0",
-    "typescript": "5.9.2",
-    "typescript-eslint": "8.44.1"
+    "typescript": "5.9.2"
   }
 }

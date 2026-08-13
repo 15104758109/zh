@@ -1,33 +1,496 @@
 {
+  "id": "cf9bbb86-83ca-4f3b-a693-5cb8a527467f",
   "name": "ZH01-新书创建",
   "nodes": [
-    { "parameters": { "httpMethod": "POST", "path": "create_book", "responseMode": "responseNode", "options": {} }, "id": "d634eb1c-57a0-4ed8-a8a1-08967e946711", "name": "Webhook：POST /create_book", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [200, 300], "webhookId": "4c6f5d13-7382-45f9-bb2f-e41394b4d5c7" },
-    { "parameters": { "jsCode": "const input = $input.item.json.body ?? $input.item.json;\nconst { action = 'preview', form_data, ...raw } = input;\nconst request = form_data ?? raw;\nconst allowed = new Set(['local_operator_id','title','idempotency_key','intent','forbid','selling_points','target_words','chapter_words','characters','world_assets','relations','segment_promises']);\nconst required = [...allowed];\nconst invalid = !request || typeof request !== 'object' || Array.isArray(request) || Object.keys(request).some((key) => !allowed.has(key));\nif (invalid) return [{ json: { route: 'preview', preview_request: request, status: 'preview', missing_fields: ['valid_request'] } }];\nconst missing = required.filter((key) => !Object.hasOwn(request, key));\nif (action === 'confirm_create' && !missing.length) return [{ json: { route: 'confirm', create_request: request } }];\nreturn [{ json: { route: 'preview', preview_request: request, status: 'preview', missing_fields: missing } }];" }, "id": "1b123381-defe-4e1f-ac20-583bf77fd719", "name": "FP001-02 closed validation and route", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [440, 300] },
-    { "parameters": { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }, "conditions": [{ "id": "confirm-create", "leftValue": "={{ $json.route }}", "rightValue": "confirm", "operator": { "type": "string", "operation": "equals" } }] } }, "id": "dccd2ed0-a01f-4c89-aad5-33465b0cdb37", "name": "FP001-02 confirm route", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [660, 300] },
-    { "parameters": { "jsCode": "return [{ json: { create_request: $input.item.json.create_request } }];" }, "id": "2b77fcef-d7ae-40ae-ab8f-3d4b6b291497", "name": "编译正式提交包", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [880, 160] },
-    { "parameters": { "operation": "executeQuery", "query": "SELECT public.rpc_create_book_project($1::jsonb) AS response", "options": { "queryReplacement": "={{ [JSON.stringify($json.create_request)] }}" } }, "id": "8afd94e5-ccd8-4212-a9cc-16c206b74045", "name": "FP001-07 PostgreSQL RPC", "type": "n8n-nodes-base.postgres", "typeVersion": 2.5, "position": [1100, 160], "credentials": { "postgres": { "id": "kitjw53XlibTPzxM", "name": "zh-database" } } },
-    { "parameters": { "jsCode": "return [{ json: $input.item.json.response }];" }, "id": "new-book-response-normalizer", "name": "Closed RPC response", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1320, 160] },
-    { "parameters": { "operation": "executeQuery", "query": "SELECT EXISTS (SELECT 1 FROM public.t_repertoire_assets WHERE source_type = 'system_builtin' AND lifecycle_status = 'active' AND candidate_status = 'committed' AND skill_category = '题材组合' AND genre_main = $1) AS skill_available, EXISTS (SELECT 1 FROM public.t_prompt_configs WHERE status = 'active' AND node_code = 'FP001-03') AS config_available, EXISTS (SELECT 1 FROM public.t_prompt_configs WHERE status = 'active' AND node_code = 'FP001-03' AND max_tokens > 0) AS budget_available, COALESCE((SELECT model_name FROM public.t_prompt_configs WHERE status = 'active' AND node_code = 'FP001-03' AND max_tokens > 0 ORDER BY updated_at DESC LIMIT 1), '') AS model_name", "options": { "queryReplacement": "={{ [ $('FP001-02 closed validation and route').item.json.preview_request.intent.genre_main ] }}" } }, "id": "fp001-03-active-dependencies", "name": "FP001-03 active dependency lookup", "type": "n8n-nodes-base.postgres", "typeVersion": 2.5, "position": [880, 440], "credentials": { "postgres": { "id": "kitjw53XlibTPzxM", "name": "zh-database" } } },
-    { "parameters": { "jsCode": "const source = $('FP001-02 closed validation and route').item.json;\nconst unavailable = [['skill_available', 'ACTIVE_SKILL_UNAVAILABLE'], ['config_available', 'ACTIVE_CONFIG_UNAVAILABLE'], ['budget_available', 'ACTIVE_BUDGET_UNAVAILABLE']].find(([field]) => !$input.item.json[field]);\nif (unavailable) return [{ json: { route: 'blocked', status: 'BLOCKED', code: unavailable[1], message: 'The preview dependencies are not available.' } }];\nreturn [{ json: { route: 'agent', preview_request: source.preview_request, missing_fields: source.missing_fields } }];" }, "id": "fp001-03-dependency-gate", "name": "FP001-03 dependency gate", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1100, 440] },
-    { "parameters": { "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }, "conditions": [{ "id": "agent-available", "leftValue": "={{ $json.route }}", "rightValue": "agent", "operator": { "type": "string", "operation": "equals" } }] } }, "id": "fp001-03-agent-route", "name": "FP001-03 agent route", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [1320, 440] },
-    { "parameters": { "options": { "systemMessage": "你是纵横叙事引擎的新书创建向导。核心职责：通过苏格拉底提问法深度挖掘用户创作意图，每轮对话输出结构化 JSON 回填前端表单 + 累积跨阶段全量数据项。" } }, "id": "55af9738-b1b2-4a85-a0cd-c4ddbf80328e", "name": "FP001-03 开书表单抽取补全", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.7, "position": [1540, 360] },
-    { "parameters": { "model": { "__rl": true, "value": "={{ $('FP001-03 active dependency lookup').item.json.model_name }}", "mode": "id" }, "builtInTools": {}, "options": {} }, "id": "8b6a8153-0f9b-46ea-b326-ffc8b774902e", "name": "FP001-03 active language model", "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi", "typeVersion": 1.3, "position": [1540, 560], "credentials": { "openAiApi": { "id": "ktkbgOI2RQI4Y8QK", "name": "OpenAI account" } } },
-    { "parameters": { "jsCode": "const raw = $input.item.json.output ?? $input.item.json.text ?? '';\ntry { const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw; return [{ json: { status: 'preview', missing_fields: parsed.missing_items ?? [], chat_message: parsed.chat_message, lock_respected: parsed.lock_respected, incremental_updates: parsed.incremental_updates, stage_completion: parsed.stage_completion } }]; } catch { return [{ json: { status: 'BLOCKED', code: 'PREVIEW_OUTPUT_INVALID', message: 'The preview could not be produced.' } }]; }" }, "id": "fp001-03-preview-normalizer", "name": "FP001-03 closed preview", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1760, 360] },
-    { "parameters": { "respondWith": "json", "responseBody": "={{ $json }}", "options": {} }, "id": "9bf0168c-3d38-4058-ad2d-5a5eb58025a5", "name": "Respond", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [1980, 300] }
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "create_book",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d634eb1c-57a0-4ed8-a8a1-08967e946711",
+      "name": "Webhook：/create_book",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        320,
+        0
+      ],
+      "webhookId": "4c6f5d13-7382-45f9-bb2f-e41394b4d5c7"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input=$input.item.json.body??$input.item.json;\nconst isRecord=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);\nconst envelope=isRecord(input)?input:{};\nconst action=typeof envelope.action==='string'?envelope.action:'preview';\nconst hasFormData=Object.hasOwn(envelope,'form_data');\nconst {form_data,creator_message,correlation_id,...raw}=envelope;\nconst draft=hasFormData&&isRecord(form_data)?form_data:raw;\nconst formCorrelation=isRecord(draft)&&typeof draft.correlation_id==='string'&&draft.correlation_id.trim()?draft.correlation_id.trim():'';\nconst correlation=typeof correlation_id==='string'&&correlation_id.trim()?correlation_id.trim():(formCorrelation||(typeof $execution?.id==='string'&&$execution.id?$execution.id:'unavailable'));\n// FP001-02 routes only the creator's terminal action. Dependency state is returned later by the preflight.\nconst route=action==='confirm_create'?'confirm':action==='preview'?'preflight':'blocked';\nreturn[{json:{action,route,form_data:isRecord(draft)?draft:{},creator_message:typeof creator_message==='string'?creator_message:'',correlation_id:correlation}}];"
+      },
+      "id": "1b123381-defe-4e1f-ac20-583bf77fd719",
+      "name": "整理前端格式化表单",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nconst source=$('读库题材技能').item.json;\nconst dialogueItem=$('FP001-03 开书表单抽取补全').item.json;\nconst commercialItem=$('FP001-05 商业潜力评价').item.json;\nconst isRecord=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);\nconst parse=value=>typeof value==='string'?parseSingleJson(value):value;\nconst outputOf=item=>item?.output?.[0]?.content?.[0]?.text??item?.output??item?.text??item?.message?.content??item?.choices?.[0]?.message?.content??item?.body?.choices?.[0]?.message?.content??item?.data?.choices?.[0]?.message?.content??item?.response??'';\nconst blocked=(code,message)=>[{json:{status:'BLOCKED',code,message,correlation_id:source.correlation_id}}];\nconst positiveIntegerFields=new Set(['target_words','chapter_words']);const relationDimensionBounds=Object.freeze({trust:[-100,100],intimacy:[-100,100],power_balance:[-100,100],dependence:[-100,100],emotional_bond:[-100,100],hostility:[0,100],common_goal:[0,100],secret_known:[0,100]});const relationRecords=value=>Array.isArray(value)?value:isRecord(value)?[value]:[];const invalidRelationDimensions=updates=>['relation_state','relation_states'].flatMap(key=>relationRecords(updates?.[key])).some(relation=>isRecord(relation)&&Object.entries(relationDimensionBounds).some(([key,[min,max]])=>Object.hasOwn(relation,key)&&relation[key]!==null&&relation[key]!==undefined&&(!Number.isInteger(relation[key])||relation[key]<min||relation[key]>max)));\nconst missingPlaceholder=/^(?:\\.{3}|…+|(?:来源未明确|待创作者确认|待确认|未知|todo)(?:$|[\\s，,。；;：:].*))/iu;\nconst templatePlaceholder=/(?:^|[|｜])\\s*(?:\\.{3}|…+)\\s*$/u;\nconst invalidIncrement=(value,key='')=>{\n  if(value===null||value===undefined)return false;\n  if(positiveIntegerFields.has(key))return !Number.isInteger(value)||value<=0;\n  if(typeof value==='string'){const normalized=value.trim();return !normalized||missingPlaceholder.test(normalized)||templatePlaceholder.test(normalized);}\n  if(typeof value==='number'||typeof value==='boolean')return false;\n  if(Array.isArray(value))return value.some(item=>invalidIncrement(item,key));\n  if(isRecord(value))return Object.entries(value).some(([childKey,child])=>invalidIncrement(child,childKey));\n  return true;\n};\nlet dialogue;\ntry{dialogue=parse(outputOf(dialogueItem));}catch{return blocked('PREVIEW_OUTPUT_INVALID','The preview could not be produced.');}\nconst rawIncrementalUpdates=isRecord(dialogue?.incremental_updates)?dialogue.incremental_updates:null;\nconst missingItems=Array.isArray(dialogue?.missing_items)?dialogue.missing_items:dialogue?.missing_items===undefined&&Array.isArray(rawIncrementalUpdates?.missing_items)?rawIncrementalUpdates.missing_items:null;\nif(!isRecord(dialogue)||!Array.isArray(missingItems)||!missingItems.every(value=>typeof value==='string')||typeof dialogue.chat_message!=='string'||!dialogue.chat_message.trim()||dialogue.lock_respected!==true||!rawIncrementalUpdates||!isRecord(dialogue.stage_completion))return blocked('PREVIEW_OUTPUT_INVALID','The preview could not be produced.');\nconst missingPaths=new Set(missingItems.map(value=>value.trim()).filter(Boolean));\nconst pathIsMissing=path=>[...missingPaths].some(candidate=>path===candidate||path.startsWith(`${candidate}.`)||path.startsWith(`${candidate}[`));\nconst normalizeMissing=(value,path='')=>{\n  if(typeof value==='string'&&!value.trim()&&pathIsMissing(path))return null;\n  if(Array.isArray(value))return value.map((item,index)=>normalizeMissing(item,`${path}[${index}]`));\n  if(isRecord(value))return Object.fromEntries(Object.entries(value).map(([key,child])=>[key,normalizeMissing(child,path?`${path}.${key}`:key)]));\n  return value;\n};\nconst candidateUpdates={...rawIncrementalUpdates};\ndelete candidateUpdates.missing_items;\nconst incrementalUpdates=normalizeMissing(candidateUpdates);\nconst candidateRecords=value=>Array.isArray(value)?value:isRecord(value)?[value]:[];\nconst combinedRecords=(base,updates,singular,plural)=>[...candidateRecords(base?.[singular]??base?.[plural]),...candidateRecords(updates?.[singular]??updates?.[plural])];\nconst traceableCharacterResources=(formData,updates)=>{\n  const worlds=combinedRecords(formData,updates,'world_state','world_states');\n  const characters=combinedRecords(formData,updates,'character','characters');\n  const bindings=combinedRecords(formData,updates,'world_binding','world_bindings');\n  const resourceKeys=new Set(worlds.filter(world=>isRecord(world)&&world.board_type==='resource'&&world.atom_type==='resource'&&typeof world.atom_key==='string'&&world.atom_key.trim()).map(world=>world.atom_key));\n  return worlds.every(world=>!isRecord(world)||typeof world.atom_key==='string'&&world.atom_key.trim())&&characters.every(character=>{\n    const resources=character?.five_layers_json?.L2?.resources;\n    if(resources===undefined)return true;\n    if(!Array.isArray(resources))return false;\n    const characterRef=String(character.client_ref??character.char_id_hint??character.char_code??character.id??'').trim();\n    return Boolean(characterRef)&&resources.every(resourceRef=>typeof resourceRef==='string'&&resourceKeys.has(resourceRef)&&bindings.some(binding=>isRecord(binding)&&binding.from_ref_type==='character'&&binding.from_ref_id===characterRef&&binding.to_ref_type==='world'&&binding.to_ref_id===resourceRef));\n  });\n};\nif(invalidIncrement(incrementalUpdates)||invalidRelationDimensions(incrementalUpdates)||!traceableCharacterResources(source.form_data,incrementalUpdates))return blocked('PREVIEW_OUTPUT_INVALID','The preview could not be produced.');\nlet commercial=null;\ntry{commercial=parse(outputOf(commercialItem));}catch{commercial=null;}\nconst dimensions=['originality','visualization','emotion_value','stickiness','depth'];\nconst dimensionValues=isRecord(commercial?.shangye_dimensions)?dimensions.map(key=>commercial.shangye_dimensions[key]):[];\nconst reasons=isRecord(commercial?.shangye_deduction_reasons)?dimensions.map(key=>commercial.shangye_deduction_reasons[key]):[];\nconst commercialValid=isRecord(commercial)&&Number.isInteger(commercial.shangye)&&commercial.shangye>=0&&commercial.shangye<=10&&dimensionValues.length===dimensions.length&&dimensionValues.every(value=>Number.isInteger(value)&&value>=0&&value<=2)&&dimensionValues.reduce((sum,value)=>sum+value,0)===commercial.shangye&&reasons.length===dimensions.length&&reasons.every(value=>typeof value==='string'&&value.trim())&&Array.isArray(commercial.stage_analysis)&&Array.isArray(commercial.cross_stage_conflicts);\nif(!commercialValid)commercial=null;\nreturn[{json:{status:'preview',missing_fields:missingItems,chat_message:dialogue.chat_message,lock_respected:true,incremental_updates:incrementalUpdates,stage_completion:dialogue.stage_completion,commercial_potential:commercial,correlation_id:source.correlation_id}}];"
+      },
+      "id": "513572df-d766-44f6-ad0c-90399db6a475",
+      "name": "JSON 修复 / 输出校验",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response || $json }}",
+        "options": {}
+      },
+      "id": "9bf0168c-3d38-4058-ad2d-5a5eb58025a5",
+      "name": "Respond：返回前端",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1584,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source=$input.item.json;return[{json:{create_request:{...source.form_data,correlation_id:source.correlation_id},correlation_id:source.correlation_id}}];"
+      },
+      "id": "2b77fcef-d7ae-40ae-ab8f-3d4b6b291497",
+      "name": "编译正式提交包",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response }}",
+        "options": {}
+      },
+      "id": "d2eb4559-6b9c-4818-a05f-79c43ce30cde",
+      "name": "Respond：创建成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1424,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.correlation_id }}",
+        "contextWindowLength": 5
+      },
+      "id": "4c0ec290-6993-42f0-9049-96526fb221f6",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        1104,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS envelope\n), normalized AS (\n  SELECT\n    lower(COALESCE(NULLIF(btrim(envelope->>'action'), ''), 'preview')) AS action,\n    COALESCE(envelope->'form_data', '{}'::jsonb) AS form_data,\n    COALESCE(envelope->>'creator_message', '') AS creator_message,\n    COALESCE(NULLIF(btrim(envelope->>'correlation_id'), ''), 'unavailable') AS correlation_id\n  FROM input\n), resolved AS (\n  SELECT n.*, target.node_code,\n    CASE WHEN n.action = 'preview' THEN public.rpc_workbench(jsonb_build_object(\n      'action', 'read',\n      'local_operator_id', n.form_data->>'local_operator_id',\n      'node_code', target.node_code\n    )) ELSE jsonb_build_object('ok', false) END AS payload\n  FROM normalized AS n\n  CROSS JOIN (VALUES ('FP001-03'::text), ('FP001-05'::text)) AS target(node_code)\n), config AS (\n  SELECT\n    max(action) AS action,\n    (array_agg(form_data))[1] AS form_data,\n    max(creator_message) AS creator_message,\n    max(correlation_id) AS correlation_id,\n    count(*) FILTER (WHERE COALESCE((payload->>'ok')::boolean, false)\n      AND NULLIF(btrim(payload #>> '{effective_config,prompts,0,effective_value,prompt_text}'), '') IS NOT NULL\n      AND NULLIF(btrim(payload #>> '{effective_config,model_templates,0,effective_value,model_name}'), '') IS NOT NULL\n      AND NULLIF(btrim(payload #>> '{effective_config,model_templates,0,effective_value,provider_base_url}'), '') IS NOT NULL) = 2 AS config_available,\n    max(payload #>> '{effective_config,prompts,0,effective_value,prompt_text}') FILTER (WHERE node_code='FP001-03') AS dialogue_prompt,\n    max(payload #>> '{effective_config,prompts,0,effective_value,prompt_text}') FILTER (WHERE node_code='FP001-05') AS commercial_prompt,\n    max(payload #>> '{effective_config,model_templates,0,effective_value,model_name}') FILTER (WHERE node_code='FP001-03') AS dialogue_model_name,\n    max(payload #>> '{effective_config,model_templates,0,effective_value,provider_base_url}') FILTER (WHERE node_code='FP001-03') AS dialogue_provider_base_url,\n    max(payload #>> '{effective_config,model_templates,0,source_config_id}') FILTER (WHERE node_code='FP001-03') AS dialogue_model_config_id,\n    max(payload #>> '{effective_config,model_templates,0,version}') FILTER (WHERE node_code='FP001-03') AS dialogue_model_config_version,\n    max(payload #>> '{effective_config,node_bindings,0,effective_value,template_type}') FILTER (WHERE node_code='FP001-03') AS dialogue_template_type,\n    max(payload #>> '{effective_config,node_bindings,0,effective_value,temperature}') FILTER (WHERE node_code='FP001-03') AS dialogue_temperature,\n    (array_agg(payload #> '{effective_config,model_templates,0,effective_value,parameters_jsonb}') FILTER (WHERE node_code='FP001-03'))[1] AS dialogue_parameters,\n    max(payload #>> '{effective_config,model_templates,0,effective_value,model_name}') FILTER (WHERE node_code='FP001-05') AS commercial_model_name,\n    max(payload #>> '{effective_config,model_templates,0,effective_value,provider_base_url}') FILTER (WHERE node_code='FP001-05') AS commercial_provider_base_url,\n    max(payload #>> '{effective_config,model_templates,0,source_config_id}') FILTER (WHERE node_code='FP001-05') AS commercial_model_config_id,\n    max(payload #>> '{effective_config,model_templates,0,version}') FILTER (WHERE node_code='FP001-05') AS commercial_model_config_version,\n    max(payload #>> '{effective_config,node_bindings,0,effective_value,template_type}') FILTER (WHERE node_code='FP001-05') AS commercial_template_type,\n    max(payload #>> '{effective_config,node_bindings,0,effective_value,temperature}') FILTER (WHERE node_code='FP001-05') AS commercial_temperature,\n    (array_agg(payload #> '{effective_config,model_templates,0,effective_value,parameters_jsonb}') FILTER (WHERE node_code='FP001-05'))[1] AS commercial_parameters\n  FROM resolved\n), skills AS (\n  SELECT COALESCE(jsonb_agg(jsonb_build_object(\n    'skill_id', s.skill_id,\n    'version', s.version,\n    'skill_name', s.skill_name,\n    'skill_description', s.skill_description,\n    'combo_logic', s.combo_logic,\n    'constraint_fields', s.constraint_fields,\n    'template_fields', s.template_fields\n  ) ORDER BY s.skill_name, s.version), '[]'::jsonb) AS active_skills\n  FROM public.skill AS s\n  CROSS JOIN config AS c\n  WHERE s.source_type='system_builtin'\n    AND s.lifecycle_status='active'\n    AND s.skill_category='题材组合'\n    AND (s.genre_main->>'primary') = (c.form_data #>> '{intent_json,genre_main}')\n), routed AS (\n  SELECT c.*, skills.active_skills,\n    CASE\n      WHEN c.action='confirm_create' THEN 'confirm'\n      WHEN c.action <> 'preview' THEN 'blocked'\n      WHEN jsonb_array_length(skills.active_skills)=0 THEN 'blocked'\n      WHEN c.config_available IS NOT TRUE THEN 'blocked'\n      ELSE 'preview'\n    END AS route,\n    CASE\n      WHEN c.action <> ALL (ARRAY['preview','confirm_create']) THEN 'INVALID_REQUEST'\n      WHEN jsonb_array_length(skills.active_skills)=0 THEN 'ACTIVE_SKILL_UNAVAILABLE'\n      ELSE 'ACTIVE_CONFIG_UNAVAILABLE'\n    END AS blocked_code\n  FROM config AS c CROSS JOIN skills\n)\nSELECT\n  route,\n  form_data,\n  creator_message,\n  correlation_id,\n  active_skills,\n  dialogue_prompt,\n  commercial_prompt,\n  jsonb_build_object('model_name',dialogue_model_name,'provider_base_url',dialogue_provider_base_url,'source_config_id',dialogue_model_config_id,'version',dialogue_model_config_version,'template_type',dialogue_template_type,'temperature',dialogue_temperature::numeric,'parameters_jsonb',COALESCE(dialogue_parameters,'{}'::jsonb)) AS dialogue_model,\n  jsonb_build_object('model_name',commercial_model_name,'provider_base_url',commercial_provider_base_url,'source_config_id',commercial_model_config_id,'version',commercial_model_config_version,'template_type',commercial_template_type,'temperature',commercial_temperature::numeric,'parameters_jsonb',COALESCE(commercial_parameters,'{}'::jsonb)) AS commercial_model,\n  jsonb_build_object('form_snapshot',form_data,'creator_message',creator_message,'active_skills',active_skills) AS dialogue_input,\n  jsonb_build_object('form_snapshot',form_data,'creator_message',creator_message) AS commercial_input,\n  CASE WHEN route='blocked' THEN jsonb_build_object('status','BLOCKED','code',blocked_code,'message',CASE WHEN blocked_code='ACTIVE_SKILL_UNAVAILABLE' THEN 'The required active system skill is unavailable.' WHEN blocked_code='INVALID_REQUEST' THEN 'The request could not be accepted.' ELSE 'The preview dependencies are not available.' END,'correlation_id',correlation_id) END AS response\nFROM routed;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json)] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1200,
+        608
+      ],
+      "id": "30cb6e76-4bfd-452a-b329-7f888e4368c7",
+      "name": "读库题材技能",
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json.dialogue_input) }}",
+        "options": {
+          "systemMessage": "={{ $json.dialogue_prompt }}"
+        }
+      },
+      "id": "55af9738-b1b2-4a85-a0cd-c4ddbf80328e",
+      "name": "FP001-03 开书表单抽取补全",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1056,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (() => { const binding = $json.commercial_model; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof $json.commercial_prompt !== 'string' || !$json.commercial_prompt.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP001-05 requires an active runtime binding.'); const base = binding.provider_base_url.trim().replace(/\\/+$/, ''); return /\\/chat\\/completions$/i.test(base) ? base : /\\/v[0-9]+(?:beta)?$/i.test(base) ? base + '/chat/completions' : base + '/v1/chat/completions'; })() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const binding = $json.commercial_model; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof $json.commercial_prompt !== 'string' || !$json.commercial_prompt.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP001-05 requires an active runtime binding.'); return JSON.stringify({ model: binding.model_name, messages: [{ role: 'system', content: $json.commercial_prompt }, { role: 'user', content: JSON.stringify($json.commercial_input) }], temperature: Number(binding.temperature) }); })() }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "position": [
+        1056,
+        448
+      ],
+      "id": "d4db859b-703a-46f8-827b-3d308ef49abc",
+      "name": "FP001-05 商业潜力评价",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT public.rpc_create_book_project($1::jsonb) AS response",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.create_request)] }}"
+        }
+      },
+      "id": "8afd94e5-ccd8-4212-a9cc-16c206b74045",
+      "name": "FP001-07",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1232,
+        -96
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "confirm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "confirm"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "preflight",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "preflight"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "preview",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "preview"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "dccd2ed0-a01f-4c89-aad5-33465b0cdb37",
+      "name": "FP001-02",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        704,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "={{ $('读库题材技能').first().json.dialogue_model.model_name }}",
+        "options": {
+          "baseURL": "={{ $('读库题材技能').first().json.dialogue_model.provider_base_url }}",
+          "temperature": "={{ $('读库题材技能').first().json.dialogue_model.temperature }}",
+          "responseFormat": "json_object",
+          "timeout": 60000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "position": [
+        1056,
+        288
+      ],
+      "id": "8b6a8153-0f9b-46ea-b326-ffc8b774902e",
+      "name": "读题材技能",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "clashHandling": "rename"
+        }
+      },
+      "id": "fp001-03-05-deterministic-aggregate",
+      "name": "FP001-03+05 确定性汇总",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1460,
+        500
+      ]
+    }
   ],
   "connections": {
-    "Webhook：POST /create_book": { "main": [[{ "node": "FP001-02 closed validation and route", "type": "main", "index": 0 }]] },
-    "FP001-02 closed validation and route": { "main": [[{ "node": "FP001-02 confirm route", "type": "main", "index": 0 }]] },
-    "FP001-02 confirm route": { "main": [[{ "node": "编译正式提交包", "type": "main", "index": 0 }], [{ "node": "FP001-03 active dependency lookup", "type": "main", "index": 0 }]] },
-    "编译正式提交包": { "main": [[{ "node": "FP001-07 PostgreSQL RPC", "type": "main", "index": 0 }]] },
-    "FP001-07 PostgreSQL RPC": { "main": [[{ "node": "Closed RPC response", "type": "main", "index": 0 }]] },
-    "Closed RPC response": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] },
-    "FP001-03 active dependency lookup": { "main": [[{ "node": "FP001-03 dependency gate", "type": "main", "index": 0 }]] },
-    "FP001-03 dependency gate": { "main": [[{ "node": "FP001-03 agent route", "type": "main", "index": 0 }]] },
-    "FP001-03 agent route": { "main": [[{ "node": "FP001-03 开书表单抽取补全", "type": "main", "index": 0 }], [{ "node": "Respond", "type": "main", "index": 0 }]] },
-    "FP001-03 开书表单抽取补全": { "main": [[{ "node": "FP001-03 closed preview", "type": "main", "index": 0 }]] },
-    "FP001-03 closed preview": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] },
-    "FP001-03 active language model": { "ai_languageModel": [[{ "node": "FP001-03 开书表单抽取补全", "type": "ai_languageModel", "index": 0 }]] }
+    "Webhook：/create_book": {
+      "main": [
+        [
+          {
+            "node": "整理前端格式化表单",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "整理前端格式化表单": {
+      "main": [
+        [
+          {
+            "node": "FP001-02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP001-02": {
+      "main": [
+        [
+          {
+            "node": "编译正式提交包",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "读库题材技能",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FP001-03 开书表单抽取补全",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "FP001-05 商业潜力评价",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond：返回前端",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "编译正式提交包": {
+      "main": [
+        [
+          {
+            "node": "FP001-07",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP001-07": {
+      "main": [
+        [
+          {
+            "node": "Respond：创建成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "FP001-03 开书表单抽取补全",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读库题材技能": {
+      "main": [
+        [
+          {
+            "node": "FP001-02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读题材技能": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "FP001-03 开书表单抽取补全",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP001-03 开书表单抽取补全": {
+      "main": [
+        [
+          {
+            "node": "FP001-03+05 确定性汇总",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP001-05 商业潜力评价": {
+      "main": [
+        [
+          {
+            "node": "FP001-03+05 确定性汇总",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "FP001-03+05 确定性汇总": {
+      "main": [
+        [
+          {
+            "node": "JSON 修复 / 输出校验",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON 修复 / 输出校验": {
+      "main": [
+        [
+          {
+            "node": "Respond：返回前端",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "pinData": {}, "active": false, "settings": { "executionOrder": "v1", "binaryMode": "separate" }, "versionId": "new-book-rpc-v2", "meta": { "templateCredsSetupCompleted": true }, "id": "cf9bbb86-83ca-4f3b-a693-5cb8a527467f", "tags": []
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "active": false
 }

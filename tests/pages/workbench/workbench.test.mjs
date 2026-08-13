@@ -1,19 +1,56 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import test from "node:test";
 import { readFileSync } from "node:fs";
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"../../..");
-const operator="11111111-1111-1111-1111-111111111111";
-function sql(statement){return execFileSync("docker",["exec","-i","n8n-pgvector","sh","-lc","exec psql -X -q -v ON_ERROR_STOP=1 -U \"$POSTGRES_USER\" -d zh_narrative_test -At -f -"],{cwd:root,input:statement,encoding:"utf8"}).trim()}
-function rpc(input){return JSON.parse(sql(`SELECT public.rpc_workbench($$${JSON.stringify(input)}$$::jsonb)::text;`))}
-function items(overrides={}){const values={prompt:{text:"Test prompt"},model:{provider:"openai",model:"gpt-test",connection_tested:true},budget:{max_tokens:512},automation:{production:false,audit:false,iteration:false},presentation:{emotion:.5,pacing:.5},...overrides};return Object.entries(values).map(([kind,effective_value])=>({kind,scope:"operator",effective_value}))}
-test("workbench installer runs through stdin and creates the closed projection",()=>{const installer=path.join(root,"db/functions/workbench/install-workbench.mjs");execFileSync(process.execPath,[installer],{cwd:root,env:{...process.env,ZH_WORKBENCH_DATABASE:"zh_narrative_test"},stdio:"inherit"});assert.equal(sql("SELECT to_regclass('public.t_workbench_config_versions') IS NOT NULL;"),"t");assert.equal(sql("SELECT EXISTS (SELECT 1 FROM pg_proc WHERE proname='rpc_workbench' AND oidvectortypes(proargtypes)='jsonb');"),"t");const empty=rpc({action:"load",local_operator_id:operator});assert.equal(empty.ok,true);assert.equal(empty.config.length,5);assert.equal(JSON.stringify(empty).includes("api_key"),false);});
-test("five-item save is atomic, versions, and FP001-03 projection sync",()=>{const before=Number(sql(`SELECT count(*) FROM public.t_workbench_config_versions WHERE local_operator_id='${operator}';`));const bad=rpc({action:"save",local_operator_id:operator,items:items({budget:{max_tokens:0}})});assert.equal(bad.ok,false);assert.equal(Number(sql(`SELECT count(*) FROM public.t_workbench_config_versions WHERE local_operator_id='${operator}';`)),before);const saved=rpc({action:"save",local_operator_id:operator,items:items()});assert.equal(saved.ok,true);assert.equal(Number(sql(`SELECT count(*) FROM public.t_workbench_config_versions WHERE local_operator_id='${operator}' AND status='active';`)),5);assert.equal(sql("SELECT model_name || ':' || max_tokens FROM public.t_prompt_configs WHERE node_code='FP001-03' AND status='active' ORDER BY updated_at DESC LIMIT 1;"),"gpt-test:512");const next=rpc({action:"save",local_operator_id:operator,items:items({automation:{production:true,audit:false,iteration:false}})});assert.equal(next.error.code,"AUTOMATION_NOT_READY");const connection=rpc({action:"save",local_operator_id:operator,items:items({model:{provider:"openai",model:"gpt-test",connection_tested:false}})});assert.equal(connection.error.code,"CONNECTION_TEST_REQUIRED");});
-test("ZH00 canonical keeps the credential test response closed and inspectable",()=>{const file=path.join(root,"docs","后端","n8n","ZH00-统一配置.json");const workflow=JSON.parse(readFileSync(file,"utf8"));assert.equal(workflow.name,"ZH00-统一配置");const webhooks=workflow.nodes.filter((node)=>node.type==="n8n-nodes-base.webhook");assert.deepEqual(webhooks.map((node)=>node.parameters.path),["workbench"]);const credential=workflow.nodes.find((node)=>node.name==="Test OpenAI credential");assert.equal(credential.parameters.options.response.response.fullResponse,true);assert.equal(credential.parameters.options.response.response.neverError,true);assert.equal(credential.onError,"continueRegularOutput");const normalizer=workflow.nodes.find((node)=>node.name==="Redact credential test result").parameters.jsCode;assert.match(normalizer,/\$json\.statusCode/);assert.match(normalizer,/connection_tested:true/);assert.doesNotMatch(JSON.stringify(workflow),/api_key|password|secret/i);});
-test("workbench hidden overlays are absent until their state machine opens them",()=>{const html=readFileSync(path.join(root,"apps","web","src","pages","workbench","index.html"),"utf8");const css=readFileSync(path.join(root,"apps","web","src","pages","workbench","workbench.css"),"utf8");assert.match(css,/\[hidden\]\{display:none!important\}/);for(const id of ["modelSettingsModal","stageUnavailable","bookMenu","popover"])assert.match(html,new RegExp(`id=\\"${id}\\"[^>]*hidden|hidden[^>]*id=\\"${id}\\"`));for(const klass of ["node n1","node n6","node n4","node n5"])assert.match(html,new RegExp(`class=\\"${klass}\\"`));});
-test("save control follows the verified model connection state",()=>{const source=readFileSync(path.join(root,"apps","web","src","pages","workbench","workbench.mjs"),"utf8");assert.match(source,/save\.disabled=!state\.tested/);assert.match(source,/aria-disabled/);assert.match(source,/请先成功测试当前模型连接/);assert.match(source,/model\.connection_tested===true/);assert.match(source,/provider.*input.*state\.tested=false/);assert.match(source,/model.*input.*state\.tested=false/);assert.match(source,/result\.connection_tested===true;syncSave\(\)/);assert.match(source,/catch\(error\)\{state\.tested=false;syncSave\(\)/);});
-test("book title and save control are safe before the module runs",()=>{const html=readFileSync(path.join(root,"apps","web","src","pages","workbench","index.html"),"utf8");const source=readFileSync(path.join(root,"apps","web","src","pages","workbench","workbench.mjs"),"utf8");assert.match(html,/<button id="save" type="submit" disabled aria-disabled="true" title="请先成功测试当前模型连接">/);assert.doesNotMatch(source,/book\?`\$\{book\.title\}/);assert.match(source,/bookSelect"\)\.replaceChildren/);assert.match(source,/document\.createTextNode\(book\?\.title/);});
-test("workbench retains prototype navigation, labels, and configuration copy",()=>{const html=readFileSync(path.join(root,"apps","web","src","pages","workbench","index.html"),"utf8");for(const value of ["aria-label=\"主菜单\"","↻ 迭代管理","id=\"settings\" class=\"icon\" aria-label=\"自动化设置\"","id=\"refresh\" class=\"icon\" aria-label=\"刷新配置\"","id=\"zoomOut\" aria-label=\"缩小\"","id=\"zoomIn\" aria-label=\"放大\"","id=\"closeModelModal\" aria-label=\"关闭\"","文学呈现候选正文","成熟度未通过，已禁用","placeholder=\"尚无 active Prompt；请填写后保存。\"","自动化（成熟度未通过时不可开启）","三项自动化默认关闭；当前成熟度未通过，不能在此开启。","id=\"model\" placeholder=\"未配置\""])assert.ok(html.includes(value),value);});
-test("book context load reloads once and recovers stale storage",()=>{const source=readFileSync(path.join(root,"apps","web","src","pages","workbench","workbench.mjs"),"utf8");assert.match(source,/error\.code=result\?\.error\?\.code/);assert.match(source,/async function load\(recovered=false\)/);assert.match(source,/!state\.bookId&&state\.books\.length/);assert.match(source,/persistBookContext\(\);return load\(recovered\)/);assert.match(source,/error\.code==="BOOK_NOT_FOUND"&&!recovered/);assert.match(source,/localStorage\.removeItem\(contextKey\);return load\(true\)/);assert.match(source,/current_book_id:state\.bookId/);});
+import path from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const pageDir = path.join(root, "apps", "web", "src", "pages", "workbench");
+const page = readFileSync(path.join(pageDir, "index.html"), "utf8");
+const runtime = readFileSync(path.join(pageDir, "workbench-runtime.mjs"), "utf8");
+
+test("workbench uses only the mounted runtime and no legacy fallback", () => {
+  assert.doesNotMatch(page, /src="\/pages\/workbench\/workbench\.mjs"/);
+  assert.doesNotMatch(page, /href="\/pages\/workbench\/workbench\.css"/);
+  assert.match(page, /src="\/pages\/workbench\/workbench-runtime\.mjs"/);
+  assert.doesNotMatch(page, /node_prompt_/);
+  assert.doesNotMatch(page, /loadNodePrompt/);
+});
+
+test("workbench has no static fake book options while the stable book-list contract is absent", () => {
+  assert.match(page, /当前接口尚未提供作品列表。请从作品页面选择作品后回到这里。/);
+  assert.doesNotMatch(page, /data-title="Aetheric Chronicles"/);
+  assert.doesNotMatch(page, /data-title="剑域神座"/);
+  assert.doesNotMatch(page, /data-title="深渊降临"/);
+  assert.match(page, /id="bookDropdown"[^>]*hidden/);
+});
+
+test("workbench hands off its new-book modal data through the active new-book draft contract", () => {
+  const handoff = runtime.match(/function installNewBookHandoff\(\) \{([\s\S]*?)\n\}\n\nfunction installModalInteractions/);
+
+  assert.ok(handoff, "the new-book handoff must remain a scoped runtime adapter");
+  assert.match(page, /onclick="openNewBookModal\(\)"/);
+  assert.match(runtime, /window\.openNewBookModal\s*=/);
+  assert.match(runtime, /origin:\s*\{[\s\S]*title,[\s\S]*genre:\s*selectedMainGenre,[\s\S]*targetWords:\s*String\(Number\(targetWords\)\s*\*\s*10000\)/);
+  assert.match(runtime, /chapterWords:\s*"2000"/);
+  assert.match(runtime, /localStorage\.setItem\(newBookDraftKey, JSON\.stringify\(newBookDraft\)\)/);
+  assert.match(runtime, /window\.location\.assign\("\/books\/new"\)/);
+  // The transplanted prototype retains its inert source script for DOM fidelity;
+  // the mounted runtime is the executable handoff authority.
+  assert.doesNotMatch(runtime, /new_book\.html/);
+  assert.doesNotMatch(handoff[1], /callWorkbench\(/);
+  assert.doesNotMatch(handoff[1], /contextKey/);
+});
+
+test("workbench new-book handoff exposes only the six V7 primary genres", () => {
+  const expectedGenres = ["科幻", "玄幻", "言情", "武侠", "恐怖", "同人"];
+  const genreTags = runtime.match(/const newBookGenreTags = Object\.freeze\((\{[\s\S]*?\})\);/);
+  const affinityTags = runtime.match(/const affinityTags = (\{[\s\S]*?\n  \});/);
+
+  assert.ok(genreTags, "the handoff must keep its primary genre map");
+  assert.ok(affinityTags, "the handoff must keep its affinity map");
+  assert.deepEqual(Object.keys(Function(`return (${genreTags[1]});`)()), expectedGenres);
+  const affinity = Function(`return (${affinityTags[1]});`)();
+  assert.deepEqual(Object.keys(affinity.S), expectedGenres);
+  assert.deepEqual(Object.keys(affinity.A), expectedGenres);
+});

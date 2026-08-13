@@ -3,7 +3,8 @@
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "rootDir": "apps",
+    "allowImportingTsExtensions": true,
+    "rootDir": ".",
     "outDir": "dist",
     "strict": true,
     "declaration": true,
@@ -21,8 +22,7 @@
     "verbatimModuleSyntax": true
   },
   "include": [
-    "apps/api/src/bootstrap/**/*.ts",
-    "apps/web/src/bootstrap/**/*.ts"
+    "apps/api/src/features/fp008/**/*.ts"
   ],
   "exclude": ["dist", "node_modules"]
 }

@@ -4,8 +4,11 @@
     {
       "parameters": {
         "path": "/production_stage",
-        "responseMode": "lastNode",
-        "options": {}
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
       },
       "id": "e8d0bea8-835c-45a2-af69-d310211cb03d",
       "name": "Webhook：/production_stage",
@@ -19,7 +22,91 @@
     },
     {
       "parameters": {
-        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+        "rules": {
+          "values": [
+            {
+              "outputKey": "start",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ ($json.body ?? $json).action ?? '' }}",
+                    "rightValue": "start",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "54f3dd24-0a81-4dbd-8fbf-9b20b1c7419a"
+                  },
+                  {
+                    "leftValue": "={{ ($json.body ?? $json).action ?? '' }}",
+                    "rightValue": "restart",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9a3f42dd-8983-4834-a1ea-0c4272539a67"
+                  },
+                  {
+                    "leftValue": "={{ ($json.body ?? $json).action ?? '' }}",
+                    "rightValue": "replan",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1a8b5226-4dc7-4d0a-bf30-49ad4a650396"
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "outputKey": "resume",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ ($json.body ?? $json).action ?? '' }}",
+                    "rightValue": "resume",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "0fd534f8-ef49-44ea-80a7-640d81e705e0"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "blocked"
+        }
+      },
+      "id": "c6629b2f-8926-4447-a9c7-b413dac91643",
+      "name": "路由 FP008 推演命令",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nconst context = $('读取拆解结果').first().json.context ?? {};\nlet providerPayload = $json.data ?? $json.body ?? $json;\nif (typeof providerPayload === 'string') {\n  try { providerPayload = parseSingleJson(providerPayload); } catch {}\n}\nconst raw = providerPayload?.choices?.[0]?.message?.content ?? providerPayload?.output_text ?? providerPayload?.output?.[0]?.content?.[0]?.text ?? providerPayload?.message?.content ?? providerPayload?.content ?? providerPayload?.text ?? (typeof providerPayload === 'string' ? providerPayload : '');\nlet parsed = null;\ntry {\n  parsed = typeof raw === 'string' ? parseSingleJson(raw) : raw;\n} catch {}\nconst requiredParticleFields = ['particle_id', 'content', 'type', 'emotion_phase', 'staged_task', 'reveal_to', 'assigned_to_role_type', 'involved_chars', 'required_chars', 'source_field', 'purpose'];\nconst allowedTypes = new Set(['truth', 'resource', 'info', 'emotion', 'hook']);\nconst formalCharacters = (Array.isArray(context.characters) ? context.characters : [])\n  .filter((character) => character && typeof character === 'object' && typeof character.character_id === 'string');\nconst charactersById = new Map(formalCharacters.map((character) => [character.character_id, character]));\nconst codeCounts = new Map();\nfor (const character of formalCharacters) {\n  const code = typeof character.char_code === 'string' ? character.char_code.trim() : '';\n  if (code) codeCounts.set(code, (codeCounts.get(code) ?? 0) + 1);\n}\nconst charactersByCode = new Map(formalCharacters\n  .filter((character) => typeof character.char_code === 'string' && codeCounts.get(character.char_code.trim()) === 1)\n  .map((character) => [character.char_code.trim(), character]));\nconst roleCounts = new Map();\nfor (const character of formalCharacters) {\n  const role = typeof character.role_type === 'string' ? character.role_type.trim() : '';\n  if (role) roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);\n}\nconst charactersByRole = new Map(formalCharacters\n  .filter((character) => typeof character.role_type === 'string' && roleCounts.get(character.role_type.trim()) === 1)\n  .map((character) => [character.role_type.trim(), character]));\nconst resolveCharacterRef = (reference, roleType) => charactersById.get(reference)\n  ?? charactersByCode.get(reference)\n  ?? charactersByRole.get(typeof roleType === 'string' ? roleType.trim() : '');\nconst normalizeCharacterRefs = (value) => Array.isArray(value)\n  ? value.map((reference) => resolveCharacterRef(reference, reference)?.character_id ?? reference)\n  : value;\nconst normalizeRevealTo = (value, targetRevealTo) => {\n  if (value === '全员') return 'all';\n  if (value === '仅读者') return 'reader';\n  if (Array.isArray(value) && value.length === 1 && value[0] === 'all') return 'all';\n  if (Array.isArray(value) && value.length === 1 && value[0] === 'reader') return 'reader';\n  if (Array.isArray(value) && value.length === 0 && (targetRevealTo === 'reader' || targetRevealTo === '仅读者')) return 'reader';\n  return Array.isArray(value) ? normalizeCharacterRefs(value) : value;\n};\nconst normalizeParticle = (particle, targetParticle) => particle && typeof particle === 'object' && !Array.isArray(particle) ? {\n  ...particle,\n  involved_chars: normalizeCharacterRefs(Array.isArray(particle.involved_chars) && particle.involved_chars.length === 0 && Array.isArray(targetParticle?.involved_chars) && targetParticle.involved_chars.length > 0 ? targetParticle.involved_chars : particle.involved_chars),\n  required_chars: normalizeCharacterRefs(Array.isArray(particle.required_chars) && particle.required_chars.length === 0 && Array.isArray(targetParticle?.required_chars) && targetParticle.required_chars.length > 0 ? targetParticle.required_chars : particle.required_chars),\n  reveal_to: normalizeRevealTo(particle.reveal_to, targetParticle?.reveal_to)\n} : particle;\nconst normalizeParticipant = (participant) => {\n  if (!participant || typeof participant !== 'object' || Array.isArray(participant)\n    || (!Object.hasOwn(participant, 'char_id') && !Object.hasOwn(participant, 'role_type'))) return participant;\n  const rawId = typeof participant.char_id === 'string' ? participant.char_id.trim() : '';\n  const byId = charactersById.get(rawId);\n  if (byId && ((typeof participant.char_code === 'string' && participant.char_code !== byId.char_code)\n    || (typeof participant.role_type === 'string' && participant.role_type !== byId.role_type))) return participant;\n  const roleReference = !rawId || rawId === participant.role_type ? participant.role_type : null;\n  const character = byId ?? resolveCharacterRef(participant.char_id, roleReference) ?? charactersByCode.get(participant.char_code);\n  return character ? { ...participant, char_id: character.character_id, char_code: character.char_code, role_type: character.role_type } : participant;\n};\nconst outputs = new Map((Array.isArray(parsed?.chapters) ? parsed.chapters : []).map((chapter) => [chapter?.chapter_id + ':' + chapter?.chapter_version_id, chapter]));\nconst action = context.request?.action;\nconst engineAction = action === 'replan' ? 'restart' : action;\nconst chapters = (Array.isArray(context.chapters) ? context.chapters : []).map((chapter) => {\n  const output = outputs.get(chapter.chapter_id + ':' + chapter.chapter_version_id);\n  const targetParticles = [\n    chapter.particles_source,\n    chapter.target_snapshot_json?.particles_json,\n    chapter.target_snapshot_json?.particles,\n    chapter.chapter_implementation_json?.particles,\n  ].find(Array.isArray) ?? [];\n  const targetParticleById = new Map(targetParticles\n    .filter((particle) => particle && typeof particle === 'object' && typeof particle.particle_id === 'string')\n    .map((particle) => [particle.particle_id, particle]));\n  const mapped = {\n    chapter_id: chapter.chapter_id,\n    chapter_version_id: chapter.chapter_version_id,\n    predecessor_version_id: chapter.predecessor_version_id,\n    chapter_index: chapter.chapter_index,\n    target_snapshot_json: chapter.target_snapshot_json,\n    chapter_implementation_json: chapter.chapter_implementation_json,\n    scene_condition_package: chapter.scene_condition_package,\n    particles: Array.isArray(output?.particles) ? output.particles.map((particle) => normalizeParticle(\n      particle,\n      targetParticleById.get(particle?.particle_id),\n    )) : [],\n    participating_chars: Array.isArray(output?.participating_chars) ? output.participating_chars.map(normalizeParticipant) : [],\n    shadow_summary: chapter.shadow_summary\n  };\n  if (action === 'resume' && chapter.checkpoint != null) mapped.checkpoint = chapter.checkpoint;\n  return mapped;\n});\nconst idsAreFormal = (value) => Array.isArray(value) && value.every((id) => typeof id === 'string' && charactersById.has(id));\nconst revealToIdsAreFormal = (value) => Array.isArray(value) && value.length > 0 && idsAreFormal(value);\nconst participantMatchesFormalCharacter = (participant) => {\n  const character = charactersById.get(participant?.char_id);\n  return Boolean(character && participant.char_code === character.char_code && participant.role_type === character.role_type);\n};\nconst particlesValid = chapters.length > 0 && chapters.every((chapter) => chapter.particles.length >= 3 && chapter.particles.every((particle) =>\n  particle && typeof particle === 'object' &&\n  requiredParticleFields.every((field) => Object.hasOwn(particle, field)) &&\n  typeof particle.staged_task === 'string' && particle.staged_task.trim().length > 0 &&\n  allowedTypes.has(particle.type) &&\n  (particle.type !== 'resource' || particle.world_verified === true) &&\n  idsAreFormal(particle.involved_chars) &&\n  idsAreFormal(particle.required_chars) &&\n  (particle.reveal_to === 'all' || particle.reveal_to === 'reader' || revealToIdsAreFormal(particle.reveal_to))\n));\nconst participantsValid = chapters.every((chapter) => chapter.participating_chars.length > 0 && chapter.participating_chars.every((participant) =>\n  participant && typeof participant === 'object' &&\n  ['char_id', 'char_code', 'role_type', 'activation_reason'].every((field) => Object.hasOwn(participant, field)) &&\n  participantMatchesFormalCharacter(participant)\n));\nconst engine_request = {\n  action: engineAction,\n  creator_direction: action === 'replan' ? context.request?.return_direction : undefined,\n  scope: context.scope,\n  token_budget: context.token_budget,\n  token_budget_version: context.token_budget_version,\n  chapters,\n  characters: context.characters,\n  world_state: context.world_state,\n  world_resistance_refs: context.l1a?.world_resistance_refs ?? [],\n  relations: context.relations,\n  model_bindings: context.model_bindings\n};\nconst scenePackageValid = chapters.length > 0 && chapters.every((chapter) => {\n  const scenePackage = chapter.scene_condition_package;\n  return scenePackage && typeof scenePackage === 'object' && !Array.isArray(scenePackage)\n    && ['scene_location', 'participant_chars', 'rule_locks', 'scene_affordance', 'available_resource_codes', 'info_reveal_candidates', 'chain_reaction_candidates', 'scene_constraints', 'forbid_lines_active', 'materialize_notes'].every((key) => Object.hasOwn(scenePackage, key))\n    && ['participant_chars', 'rule_locks', 'scene_affordance', 'available_resource_codes', 'info_reveal_candidates', 'chain_reaction_candidates', 'scene_constraints', 'forbid_lines_active', 'materialize_notes'].every((key) => Array.isArray(scenePackage[key]));\n});\nconst providerError = parsed?.ok === false && parsed?.redacted_error && typeof parsed.redacted_error.code === 'string' && typeof parsed.redacted_error.message === 'string' ? { code: parsed.redacted_error.code, message: parsed.redacted_error.message } : null;\nconst mapping_ok = context.scope_ok === true && parsed?.ok === true && outputs.size === chapters.length && particlesValid && participantsValid && scenePackageValid;\nreturn [{ json: {\n  mapping_ok,\n  engine_request,\n  redacted_error: mapping_ok ? null : (providerError ?? context.redacted_error ?? {\n    code: 'PARTICLE_MAPPING_REJECTED',\n    message: 'The deduction particle package is incomplete.'\n  })\n} }];"
       },
       "id": "64fb6f8a-de62-4543-a426-953bccbb6a20",
       "name": "JSON修复",
@@ -31,7 +118,12 @@
       ]
     },
     {
-      "parameters": {},
+      "parameters": {
+        "inputSource": "passthrough",
+        "workflowInputs": {
+          "values": []
+        }
+      },
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
@@ -43,24 +135,60 @@
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "content": "纵横叙事引擎L1A颗粒拆解器。\n职责：负责将宏观剧情段落（L1A）的各个文本字段拆解为不可再分的最小推演颗粒，并与当前场景的世界设定包进行交叉比对核验。\n拆解产出的结果将直接下发，供后续的套路弧展开和章节执行目标生成节点调用。\n【输出约束】：严格输出标准的原生 JSON 格式，禁止包含任何 Markdown 代码块围栏。\n用户提示词（User Prompt）\n你是L1A颗粒拆解器。请将剧情段落字段精准拆解为高活性颗粒，并与世界设定包比对，强制过滤当前不可用的资源条目。\n\n## 输入数据\n\n- 剧情段单元：`{{ 剧情段单元_JSON }}`\n- 世界设定包可用资源资产代码列表：`{{ 可用资源资产代码列表 }}`\n\n## 执行步骤\n\n### 步骤1：高阶字段解析\n深度解析 `剧情段单元_JSON` 中的以下字段，并严格按照优先级顺序提取核心颗粒：\n- 从 `剧情承诺.必然发生 ` 提取 → 归类为：`事实颗粒 (truth)`\n- 从 `剧情承诺.必须覆盖颗粒 ` 提取 → 依据内在属性分类\n- 从 `关键后果 提取 → 归类为：`事实颗粒`\n- 从 `绝处生机` 提取 → 归类为：`资源颗粒` 或 `信息颗粒`\n- 从 `阶段性核心目标 ` 提取 → 依据内在属性分类\n\n### 步骤2：标准颗粒属性生成\n拆解出的每个最小颗粒必须完整包含以下底层属性字段：\n- `颗粒ID` / `颗粒类型 ` / `具体内容` / `来源字段 ` / `本章作用 ` / `数据债标注 `\n\n### 步骤3：世界设定包边界核验（D-V4增强机制）\n针对所有类型为 `资源 ` 的颗粒，强制核对该资源是否存在于 `可用资源资产代码列表` 中：\n- **确实存在**：安全保留该颗粒，并在颗粒内部标注 `是否通过世界核验: true`。\n- **不存在/虚空造物**：将该颗粒无条件从本章剔除，移入 `延后执行颗粒列表` 中，并标注 `延后原因: \"该资源资产在当前章节场景下处于不可用状态\"`。\n\n### 步骤4：局部数据债深度检测\n在每个颗粒内部的 `数据债标注` 中进行黑盒透视：\n- 如果该颗粒所严重依赖的外部世界观条目、人物背景设定缺失或语焉不详，必须精准标注出具体的设计缺口。\n\n### 步骤5：颗粒群完整性检查（熔断预警）\n- 若最终 `通过世界核验的颗粒计数 < 3`：必须在全局的 `全局数据债说明` 字段中报警提示：“本章可用推演颗粒不足3个，底层博弈极易流于平淡，强烈建议人工扩充前置世界设定或角色底牌”。\n- 若 `延后执行的颗粒计数 > 0`：在全局标注：“本章有部分核心颗粒因资源不满足被动延后执行”。\n\n## 输出格式\n\n{\n  \"可用颗粒列表\": [\n    {\n      \"颗粒ID\": \"p001\",\n      \"颗粒类型\": \"事实|资源|信息|情绪|悬念钩子\",\n      \"具体内容\": \"颗粒具体内容描述\",\n      \"来源字段\": \"解析自哪一个原剧情段字段\",\n      \"本章作用\": \"本颗粒在本章推演中所扮演的角色\",\n      \"公开范围\": \"全员可见|特定角色代码（继承自必须覆盖颗粒的公开范围属性）\",\n      \"是否通过世界核验\": true,\n      \"数据债标注\": \"单颗粒数据缺陷说明，无则填合规\"\n    }\n  ],\n  \"延后执行颗粒列表\": [\n    {\n      \"颗粒ID\": \"p003\",\n      \"具体内容\": \"被剔除的颗粒内容\",\n      \"延后原因\": \"该资源资产在当前章节场景下处于不可用状态\",\n      \"预计最早可用章节\": \"根据剧情规划预计可放行解锁的章节，无法预判则填null\"\n    }\n  ],\n  \"通过世界核验的颗粒计数\": 3,\n  \"延后执行的颗粒计数\": 1,\n  \"全局数据债说明\": \"全局视角的整体资源或设定缺口陈述，若完全合规且可用颗粒充足则填无\"\n}\n\n## 输出校验规则\n\n- 任何类型为 `资源` 的颗粒，必须强制完成世界边界核验并包含 `是否通过世界核验` 标注，绝对不得遗漏或跳过。\n- 凡是落入 `延后执行颗粒列表` 的颗粒，当前节点必须对其进行物理隔离，绝对不得流向下游进入本章的博弈推演。\n- 颗粒ID（如 p001, p002）在全局架构中必须保持绝对唯一，严禁碰撞。\n校验规则（来源：迭代实验固化）\n任何类型为 资源 的颗粒，必须强制完成世界边界核验并包含 是否通过世界核验 标注，绝对不得遗漏或跳过。\n\n凡是落入 延后执行颗粒列表 的颗粒，当前节点必须对其进行物理隔离，绝对不得流向下游进入本章的博弈推演。\n颗粒ID在全局架构中必须保持绝对唯一，严禁冲突"
+              "id": "f3ecee8f-8f58-4a1c-a341-e28ef80287f9",
+              "leftValue": "={{ $json.mapping_ok === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         },
-        "builtInTools": {},
         "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
+      "id": "8ce7096e-1393-4af3-8ddc-32c2af5164cc",
+      "name": "FP008-01 映射放行",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        784,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (() => { const base = String((() => { const binding = $json.context?.runtime_bindings?.['FP008-01']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-01 requires an active runtime binding.'); return binding; })().provider_base_url).replace(/\\/+$/, ''); return /\\/chat\\/completions$/i.test(base) ? base : /\\/v[0-9]+(?:beta)?$/i.test(base) ? base + '/chat/completions' : base + '/v1/chat/completions'; })() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const context = $json.context ?? {}; const binding = context.runtime_bindings?.['FP008-01']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-01 requires an active runtime binding.'); const input = { l1a: context.l1a, chapters: context.chapters, characters: context.characters, world_state: context.world_state, relations: context.relations }; const content = binding.prompt_text + '\\nINPUT=' + JSON.stringify(input); return JSON.stringify({ model: binding.model_name, messages: [{ role: 'user', content }], temperature: Number(binding.temperature) }); })() }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "onError": "continueRegularOutput",
+      "typeVersion": 4.2,
       "position": [
         384,
         -304
@@ -72,18 +200,125 @@
           "id": "ktkbgOI2RQI4Y8QK",
           "name": "OpenAI account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.context.scope_ok === true ? $json.context.runtime_bindings?.['FP008-01']?.api_key_ref : '' }}",
+                    "rightValue": "n8n-credential:openai-account-v1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "openai"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.context.scope_ok === true ? $json.context.runtime_bindings?.['FP008-01']?.api_key_ref : '' }}",
+                    "rightValue": "n8n-credential:relaycove-v1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "relaycove"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "zh05-route-fp008-01-credential",
+      "name": "路由 FP008-01 模型凭据",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        320,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (() => { const base = String((() => { const binding = $json.context?.runtime_bindings?.['FP008-01']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-01 requires an active runtime binding.'); return binding; })().provider_base_url).replace(/\\/+$/, ''); return /\\/chat\\/completions$/i.test(base) ? base : /\\/v[0-9]+(?:beta)?$/i.test(base) ? base + '/chat/completions' : base + '/v1/chat/completions'; })() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const context = $json.context ?? {}; const binding = context.runtime_bindings?.['FP008-01']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-01 requires an active runtime binding.'); const input = { l1a: context.l1a, chapters: context.chapters, characters: context.characters, world_state: context.world_state, relations: context.relations }; const content = binding.prompt_text + '\\nINPUT=' + JSON.stringify(input); return JSON.stringify({ model: binding.model_name, messages: [{ role: 'user', content }], temperature: Number(binding.temperature) }); })() }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "onError": "continueRegularOutput",
+      "typeVersion": 4.2,
+      "position": [
+        512,
+        -176
+      ],
+      "id": "zh05-fp008-01-relaycove",
+      "name": "FP008-01 剧情段颗粒拆解 RelayCove",
+      "credentials": {
+        "openAiApi": {
+          "id": "ZpJ7ejgoXbQb5xUW",
+          "name": "RelayCove account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
-        "additionalFields": {}
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS request\n), normalized AS (\n  SELECT\n    request,\n    request->>'action' AS action,\n    NULLIF(btrim(request->>'return_direction'), '') AS return_direction,\n    CASE\n      WHEN COALESCE(request #>> '{scope,local_operator_id}', request->>'local_operator_id') ~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'\n      THEN COALESCE(request #>> '{scope,local_operator_id}', request->>'local_operator_id')::uuid\n    END AS local_operator_id,\n    CASE\n      WHEN COALESCE(request #>> '{scope,book_id}', request->>'book_id') ~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'\n      THEN COALESCE(request #>> '{scope,book_id}', request->>'book_id')::uuid\n    END AS book_id,\n    CASE\n      WHEN COALESCE(request #>> '{scope,l1a_unit_id}', request->>'l1a_unit_id') ~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'\n      THEN COALESCE(request #>> '{scope,l1a_unit_id}', request->>'l1a_unit_id')::uuid\n    END AS l1a_unit_id\n  FROM input\n), restart AS MATERIALIZED (\n  SELECT CASE\n    WHEN n.action IN ('replan', 'restart') THEN public.rpc_finalize_deduction_snapshot(n.request)\n    ELSE NULL::jsonb\n  END AS replan_response\n  FROM normalized AS n\n), scoped AS (\n  SELECT\n    n.*,\n    r.replan_response,\n    bp.title AS book_title,\n    bp.current_l1a_id,\n    bp.active_l1a_json,\n    bp.token_budget,\n    bp.token_budget_version,\n    l.l1a_index,\n    l.l1a_name,\n    l.conflict_background,\n    l.escalation_path,\n    l.stakes,\n    l.irreversible_consequence,\n    l.plot_emotion_commit,\n    l.arc_requirement,\n    l.info_reveal_boundary,\n    l.role_arc_json,\n    l.participant_chars_json,\n    l.world_resistance_refs,\n    l.status AS l1a_status,\n    l.confirmation_status AS l1a_confirmation_status,\n    l.is_locked AS l1a_is_locked,\n    l.is_formal AS l1a_is_formal\n  FROM normalized AS n\n  CROSS JOIN restart AS r\n  LEFT JOIN public.book_project AS bp\n    ON bp.id = n.book_id\n   AND bp.local_operator_id = n.local_operator_id\n  LEFT JOIN public.l1a_unit AS l\n    ON l.id = n.l1a_unit_id\n   AND l.book_id = bp.id\n   AND l.is_valid\n   AND NOT l.is_shadow\n), assembled AS (\n  SELECT\n    s.*,\n    chapter_data.chapters,\n    chapter_data.checkpoint_count,\n    character_data.characters,\n    world_data.world_state,\n    relation_data.relations,\n    binding_data.runtime_bindings,\n    binding_data.model_bindings,\n    binding_data.binding_count\n  FROM scoped AS s\n  LEFT JOIN LATERAL (\n    SELECT COALESCE(jsonb_agg(\n      jsonb_build_object(\n        'chapter_id', h.id,\n        'chapter_version_id', cv.id,\n        'predecessor_version_id', cv.predecessor_version_id,\n        'chapter_index', h.chapter_index,\n        'title', h.title,\n        'status', h.status,\n        'run_status', h.run_status,\n        'target_snapshot_json', cv.target_snapshot_json,\n        'chapter_implementation_json', cv.chapter_implementation_json,\n        'scene_condition_package', COALESCE(\n          cv.target_snapshot_json->'scene_condition_package',\n          cv.chapter_implementation_json->'scene_condition_package'\n        ),\n        'particles_source', COALESCE(\n          cv.target_snapshot_json->'particles_json',\n          cv.target_snapshot_json->'particles',\n          cv.chapter_implementation_json->'particles'\n        ),\n        'participants_source', s.participant_chars_json,\n        'checkpoint', CASE\n          WHEN cv.candidate_plot_sim_json IS NULL AND cv.deduction_progress_json IS NULL THEN NULL\n          ELSE jsonb_build_object(\n            'candidate_plot_sim_json', cv.candidate_plot_sim_json,\n            'deduction_progress_json', cv.deduction_progress_json\n          )\n        END,\n        'shadow_summary', COALESCE(cv.candidate_plot_sim_json #>> '{chapter_summary,summary}', ''),\n        'deduction_locked', cv.deduction_locked\n      )\n      ORDER BY h.chapter_index\n    ), '[]'::jsonb) AS chapters,\n    count(*) FILTER (\n      WHERE cv.candidate_plot_sim_json IS NOT NULL\n        OR cv.deduction_progress_json IS NOT NULL\n    )::integer AS checkpoint_count\n    FROM public.chapter_header AS h\n    JOIN public.chapter_version AS cv\n      ON cv.chapter_id = h.id\n     AND cv.book_id = h.book_id\n     AND cv.version_state = 'candidate'\n     AND cv.is_valid\n     AND NOT cv.is_shadow\n    WHERE h.book_id = s.book_id\n      AND h.l1a_unit_id = s.l1a_unit_id\n      AND NOT h.is_finalized\n  ) AS chapter_data ON true\n  LEFT JOIN LATERAL (\n    SELECT COALESCE(jsonb_agg(\n      jsonb_build_object(\n        'character_id', c.id,\n        'char_code', c.char_code,\n        'char_name', c.char_name,\n        'role_type', c.char_type,\n        'five_layers_json', c.five_layers_json,\n        'knowledge_boundary_json', c.knowledge_boundary_json,\n        'arc_json', c.arc_json,\n        'live_state_id', c.live_state_id,\n        'live_state_source', CASE WHEN c.live_state_id IS NULL THEN 'initial_live_state_projection' ELSE 'formal_live_state' END,\n        'live_state_json', CASE WHEN c.live_state_id IS NULL THEN jsonb_build_object(\n          'source', 'initial_live_state_projection',\n          'five_layers_json', c.five_layers_json,\n          'knowledge_boundary_json', c.knowledge_boundary_json\n        ) ELSE jsonb_build_object(\n          'philosophy_live_json', c.philosophy_live_json,\n          'emotion_state_json', c.emotion_state_json,\n          'drive_live_json', c.drive_live_json,\n          'trigger_state_json', c.trigger_state_json,\n          'goal_state_json', c.goal_state_json,\n          'pressure_level', c.pressure_level,\n          'current_goal_txt', c.current_goal_txt,\n          'current_emo_tag', c.current_emo_tag\n        ) END,\n        'active_memory_json', COALESCE((\n          SELECT jsonb_agg(jsonb_build_object(\n            'memory_id', m.id,\n            'memory_type', m.memory_type,\n            'memory_content', m.memory_content,\n            'truth_status', m.truth_status,\n            'is_valid', m.is_valid,\n            'is_shadow', m.is_shadow,\n            'importance', m.importance,\n            'decay_rate', m.decay_rate\n          ) ORDER BY m.importance DESC, m.created_at DESC, m.id)\n          FROM public.character_memory AS m\n          WHERE m.book_id = s.book_id\n            AND m.char_id = c.id\n            AND m.is_valid\n            AND NOT m.is_shadow\n        ), '[]'::jsonb)\n      )\n      ORDER BY COALESCE(c.char_code, c.char_name), c.id\n    ), '[]'::jsonb) AS characters\n    FROM public.v_character_active AS c\n    WHERE c.book_id = s.book_id\n      AND c.local_operator_id = s.local_operator_id\n      AND c.id IN (\n        SELECT participant_id::uuid\n        FROM jsonb_array_elements_text(s.participant_chars_json) AS participant_id\n      )\n  ) AS character_data ON true\n  LEFT JOIN LATERAL (\n    SELECT COALESCE(jsonb_agg(\n      jsonb_build_object(\n        'world_state_id', ws.id,\n        'is_active', ws.is_active,\n        'setting_layer', ws.setting_layer,\n        'board_type', ws.board_type,\n        'atom_type', ws.atom_type,\n        'atom_key', ws.atom_key,\n        'atom_value_jsonb', ws.atom_value_jsonb,\n        'affordance_dims', ws.affordance_dims,\n        'knowledge_boundary_json', ws.knowledge_boundary_json,\n        'apply_scope_json', ws.apply_scope_json,\n        'violate_cost_json', ws.violate_cost_json\n      )\n      ORDER BY ws.atom_key, ws.id\n    ), '[]'::jsonb) AS world_state\n    FROM public.v_world_assets_for_exec AS ws\n    WHERE ws.book_id = s.book_id\n      AND ws.local_operator_id = s.local_operator_id\n  ) AS world_data ON true\n  LEFT JOIN LATERAL (\n    SELECT COALESCE(jsonb_agg(\n      jsonb_build_object(\n        'relation_state_id', r.id,\n        'char_a_id', r.char_a_id,\n        'char_b_id', r.char_b_id,\n        'trust', r.trust,\n        'intimacy', r.intimacy,\n        'power_balance', r.power_balance,\n        'dependence', r.dependence,\n        'hostility', r.hostility,\n        'common_goal', r.common_goal,\n        'secret_known', r.secret_known,\n        'emotional_bond', r.emotional_bond,\n        'relation_type', r.relation_type,\n        'relation_hierarchy', r.relation_hierarchy,\n        'relation_origin', r.relation_origin,\n        'relation_overview', r.relation_overview,\n        'change_event_json', r.change_event_json,\n        'is_formal', r.is_formal,\n        'is_valid', r.is_valid,\n        'is_shadow', r.is_shadow\n      )\n      ORDER BY r.char_a_id, r.char_b_id\n    ), '[]'::jsonb) AS relations\n    FROM public.relation_state AS r\n    WHERE r.book_id = s.book_id\n      AND r.is_formal\n      AND r.is_valid\n      AND NOT r.is_shadow\n  ) AS relation_data ON true\n  LEFT JOIN LATERAL (\n    SELECT\n      COALESCE(jsonb_object_agg(\n        b.node_code,\n        to_jsonb(b) - 'local_operator_id'\n        ORDER BY b.node_code\n      ), '{}'::jsonb) AS runtime_bindings,\n      COALESCE((\n        SELECT jsonb_build_object(\n          'NODE_05', jsonb_set(\n            to_jsonb(r) - 'local_operator_id',\n            '{node_code}', to_jsonb('NODE_05'::text)\n          ) || jsonb_build_object('source_node_code', r.node_code),\n          'NODE_06', jsonb_set(\n            to_jsonb(r) - 'local_operator_id',\n            '{node_code}', to_jsonb('NODE_06'::text)\n          ) || jsonb_build_object('source_node_code', r.node_code)\n        )\n        FROM public.v_prompt_runtime_binding AS r\n        WHERE r.local_operator_id = s.local_operator_id\n          AND r.node_code = 'FP008-02'\n          AND r.prompt_status = 'active'\n          AND NULLIF(btrim(r.model_name), '') IS NOT NULL\n          AND NULLIF(btrim(r.provider_base_url), '') IS NOT NULL\n          AND NULLIF(btrim(r.prompt_text), '') IS NOT NULL\n          AND NULLIF(btrim(r.api_key_ref), '') IS NOT NULL\n        LIMIT 1\n      ), '{}'::jsonb) AS model_bindings,\n      count(*)::integer AS binding_count\n    FROM public.v_prompt_runtime_binding AS b\n    WHERE b.local_operator_id = s.local_operator_id\n      AND b.node_code IN ('FP008-01', 'FP008-02', 'FP008-03')\n      AND b.prompt_status = 'active'\n      AND NULLIF(btrim(b.model_name), '') IS NOT NULL\n      AND NULLIF(btrim(b.provider_base_url), '') IS NOT NULL\n      AND NULLIF(btrim(b.prompt_text), '') IS NOT NULL\n      AND NULLIF(btrim(b.api_key_ref), '') IS NOT NULL\n  ) AS binding_data ON true\n)\nSELECT jsonb_build_object(\n  'request', a.request,\n  'scope_ok',\n    a.action IN ('start', 'resume', 'restart', 'replan')\n    AND a.local_operator_id IS NOT NULL\n    AND a.book_id IS NOT NULL\n    AND a.l1a_unit_id IS NOT NULL\n    AND a.current_l1a_id = a.l1a_unit_id\n    AND a.l1a_status = 'locked_for_deduction'\n    AND a.l1a_confirmation_status = 'creator_confirmed'\n    AND a.l1a_is_locked\n    AND a.l1a_is_formal\n    AND ((a.action = 'start' AND a.return_direction IS NULL AND a.checkpoint_count = 0\n      OR (a.action = 'restart' AND a.return_direction IS NULL\n          AND COALESCE(a.replan_response->>'ok', 'false') = 'true'\n          AND a.checkpoint_count = 0)\n      OR (a.action = 'resume' AND a.return_direction IS NULL AND a.checkpoint_count > 0)\n      OR (a.action = 'replan' AND a.return_direction IS NOT NULL\n          AND COALESCE(a.replan_response->>'ok', 'false') = 'true'\n          AND a.checkpoint_count = 0)))\n    AND a.token_budget = 3000000\n    AND a.token_budget_version = 'mvp-fixed-3000000'\n    AND jsonb_array_length(a.chapters) > 0\n    AND NOT EXISTS (\n      SELECT 1\n      FROM jsonb_array_elements(a.chapters) AS chapter(value)\n      WHERE jsonb_typeof(chapter.value->'scene_condition_package') IS DISTINCT FROM 'object'\n        OR NOT (chapter.value->'scene_condition_package' ?& ARRAY[\n          'scene_location', 'participant_chars', 'rule_locks', 'scene_affordance',\n          'available_resource_codes', 'info_reveal_candidates', 'chain_reaction_candidates',\n          'scene_constraints', 'forbid_lines_active', 'materialize_notes'\n        ])\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'participant_chars') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'rule_locks') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'scene_affordance') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'available_resource_codes') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'info_reveal_candidates') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'chain_reaction_candidates') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'scene_constraints') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'forbid_lines_active') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'materialize_notes') IS DISTINCT FROM 'array'\n    )\n    AND a.binding_count = 3\n    AND a.runtime_bindings ?& ARRAY['FP008-01', 'FP008-02', 'FP008-03']\n    AND a.model_bindings ?& ARRAY['NODE_05', 'NODE_06'],\n  'redacted_error', CASE\n    WHEN a.action IS NULL\n      OR a.action NOT IN ('start', 'resume', 'restart', 'replan')\n      OR a.local_operator_id IS NULL\n      OR a.book_id IS NULL\n      OR a.l1a_unit_id IS NULL\n      OR (a.action = 'replan' AND a.return_direction IS NULL)\n      OR (a.action <> 'replan' AND a.return_direction IS NOT NULL)\n      THEN jsonb_build_object('code', 'INVALID_REQUEST', 'message', 'The deduction command could not be accepted.')\n    WHEN a.action IN ('replan', 'restart')\n      AND COALESCE(a.replan_response->>'ok', 'false') <> 'true'\n      THEN jsonb_build_object(\n        'code', COALESCE(a.replan_response#>>'{error,code}', CASE WHEN a.action = 'restart' THEN 'DEDUCTION_RESTART_REJECTED' ELSE 'DEDUCTION_REPLAN_REJECTED' END),\n        'message', COALESCE(a.replan_response#>>'{error,message}', CASE WHEN a.action = 'restart' THEN 'The deduction restart could not be accepted.' ELSE 'The deduction replan could not be accepted.' END)\n      )\n    WHEN a.current_l1a_id IS DISTINCT FROM a.l1a_unit_id\n      OR a.l1a_status IS DISTINCT FROM 'locked_for_deduction'\n      OR a.l1a_confirmation_status IS DISTINCT FROM 'creator_confirmed'\n      OR NOT COALESCE(a.l1a_is_locked, false)\n      OR NOT COALESCE(a.l1a_is_formal, false)\n      THEN jsonb_build_object('code', 'L1A_SCOPE_REJECTED', 'message', 'The selected L1A is unavailable for deduction.')\n    WHEN NOT ((a.action = 'start' AND a.return_direction IS NULL AND a.checkpoint_count = 0)\n      OR (a.action = 'restart' AND a.return_direction IS NULL\n          AND COALESCE(a.replan_response->>'ok', 'false') = 'true'\n          AND a.checkpoint_count = 0)\n      OR (a.action = 'resume' AND a.return_direction IS NULL AND a.checkpoint_count > 0)\n      OR (a.action = 'replan' AND a.return_direction IS NOT NULL\n          AND COALESCE(a.replan_response->>'ok', 'false') = 'true'\n          AND a.checkpoint_count = 0))\n      THEN jsonb_build_object('code', 'CHECKPOINT_ACTION_MISMATCH', 'message', 'Start, restart, and resume must match the persisted L1A checkpoint state.')\n    WHEN a.token_budget IS DISTINCT FROM 3000000\n      OR a.token_budget_version IS DISTINCT FROM 'mvp-fixed-3000000'\n      OR a.binding_count IS DISTINCT FROM 3\n      OR NOT COALESCE(a.runtime_bindings ?& ARRAY['FP008-01', 'FP008-02', 'FP008-03'], false)\n      OR NOT COALESCE(a.model_bindings ?& ARRAY['NODE_05', 'NODE_06'], false)\n      THEN jsonb_build_object('code', 'CONFIG_CONTRACT_BLOCKED', 'message', 'The deduction runtime configuration is incomplete.')\n    WHEN jsonb_array_length(a.chapters) = 0\n      THEN jsonb_build_object('code', 'CHAPTER_SCOPE_REJECTED', 'message', 'The selected L1A has no candidate chapters to deduce.')\n    ELSE NULL\n  END,\n  'scope', jsonb_build_object(\n    'local_operator_id', a.local_operator_id,\n    'book_id', a.book_id,\n    'l1a_unit_id', a.l1a_unit_id\n  ),\n  'token_budget', a.token_budget,\n  'token_budget_version', a.token_budget_version,\n  'l1a', jsonb_build_object(\n    'l1a_unit_id', a.l1a_unit_id,\n    'l1a_index', a.l1a_index,\n    'l1a_name', a.l1a_name,\n    'conflict_background', a.conflict_background,\n    'escalation_path', a.escalation_path,\n    'stakes', a.stakes,\n    'irreversible_consequence', a.irreversible_consequence,\n    'plot_emotion_commit', a.plot_emotion_commit,\n    'arc_requirement', a.arc_requirement,\n    'info_reveal_boundary', a.info_reveal_boundary,\n    'role_arc_json', a.role_arc_json,\n    'participant_chars_json', a.participant_chars_json,\n    'world_resistance_refs', a.world_resistance_refs\n  ),\n  'chapters', a.chapters,\n  'characters', a.characters,\n  'world_state', a.world_state,\n  'relations', a.relations,\n  'runtime_bindings', a.runtime_bindings,\n  'model_bindings', a.model_bindings\n) AS context\nFROM assembled AS a\nWHERE a.action IN ('start', 'resume', 'restart', 'replan');",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.body ?? $json)] }}"
+        }
       },
       "id": "189865e3-2c21-407f-ab81-6e46dfc61489",
       "name": "读取拆解结果",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.6,
       "position": [
         192,
         -304
@@ -93,18 +328,21 @@
           "id": "kitjw53XlibTPzxM",
           "name": "zh-database"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
-        "additionalFields": {}
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS request\n), normalized AS (\n  SELECT\n    request,\n    request->>'action' AS action,\n    NULLIF(btrim(request->>'return_direction'), '') AS return_direction,\n    CASE\n      WHEN COALESCE(request #>> '{scope,local_operator_id}', request->>'local_operator_id') ~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'\n      THEN COALESCE(request #>> '{scope,local_operator_id}', request->>'local_operator_id')::uuid\n    END AS local_operator_id,\n    CASE\n      WHEN COALESCE(request #>> '{scope,book_id}', request->>'book_id') ~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'\n      THEN COALESCE(request #>> '{scope,book_id}', request->>'book_id')::uuid\n    END AS book_id,\n    CASE\n      WHEN COALESCE(request #>> '{scope,l1a_unit_id}', request->>'l1a_unit_id') ~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'\n      THEN COALESCE(request #>> '{scope,l1a_unit_id}', request->>'l1a_unit_id')::uuid\n    END AS l1a_unit_id\n  FROM input\n), replan AS MATERIALIZED (\n  SELECT CASE\n    WHEN n.action = 'replan' THEN public.rpc_finalize_deduction_snapshot(n.request)\n    ELSE NULL::jsonb\n  END AS response\n  FROM normalized AS n\n), scoped AS (\n  SELECT\n    n.*,\n    r.response AS replan_response,\n    bp.title AS book_title,\n    bp.current_l1a_id,\n    bp.active_l1a_json,\n    bp.token_budget,\n    bp.token_budget_version,\n    l.l1a_index,\n    l.l1a_name,\n    l.conflict_background,\n    l.escalation_path,\n    l.stakes,\n    l.irreversible_consequence,\n    l.plot_emotion_commit,\n    l.arc_requirement,\n    l.info_reveal_boundary,\n    l.role_arc_json,\n    l.participant_chars_json,\n    l.world_resistance_refs,\n    l.status AS l1a_status,\n    l.confirmation_status AS l1a_confirmation_status,\n    l.is_locked AS l1a_is_locked,\n    l.is_formal AS l1a_is_formal\n  FROM normalized AS n\n  CROSS JOIN replan AS r\n  LEFT JOIN public.book_project AS bp\n    ON bp.id = n.book_id\n   AND bp.local_operator_id = n.local_operator_id\n  LEFT JOIN public.l1a_unit AS l\n    ON l.id = n.l1a_unit_id\n   AND l.book_id = bp.id\n   AND l.is_valid\n   AND NOT l.is_shadow\n), assembled AS (\n  SELECT\n    s.*,\n    chapter_data.chapters,\n    chapter_data.checkpoint_count,\n    character_data.characters,\n    world_data.world_state,\n    relation_data.relations,\n    binding_data.runtime_bindings,\n    binding_data.model_bindings,\n    binding_data.binding_count\n  FROM scoped AS s\n  LEFT JOIN LATERAL (\n    SELECT COALESCE(jsonb_agg(\n      jsonb_build_object(\n        'chapter_id', h.id,\n        'chapter_version_id', cv.id,\n        'predecessor_version_id', cv.predecessor_version_id,\n        'chapter_index', h.chapter_index,\n        'title', h.title,\n        'status', h.status,\n        'run_status', h.run_status,\n        'target_snapshot_json', cv.target_snapshot_json,\n        'chapter_implementation_json', cv.chapter_implementation_json,\n        'scene_condition_package', COALESCE(\n          cv.target_snapshot_json->'scene_condition_package',\n          cv.chapter_implementation_json->'scene_condition_package'\n        ),\n        'particles_source', COALESCE(\n          cv.target_snapshot_json->'particles_json',\n          cv.target_snapshot_json->'particles',\n          cv.chapter_implementation_json->'particles'\n        ),\n        'participants_source', s.participant_chars_json,\n        'checkpoint', CASE\n          WHEN cv.candidate_plot_sim_json IS NULL AND cv.deduction_progress_json IS NULL THEN NULL\n          ELSE jsonb_build_object(\n            'candidate_plot_sim_json', cv.candidate_plot_sim_json,\n            'deduction_progress_json', cv.deduction_progress_json\n          )\n        END,\n        'shadow_summary', COALESCE(cv.candidate_plot_sim_json #>> '{chapter_summary,summary}', ''),\n        'deduction_locked', cv.deduction_locked\n      )\n      ORDER BY h.chapter_index\n    ), '[]'::jsonb) AS chapters,\n    count(*) FILTER (\n      WHERE cv.candidate_plot_sim_json IS NOT NULL\n        OR cv.deduction_progress_json IS NOT NULL\n    )::integer AS checkpoint_count\n    FROM public.chapter_header AS h\n    JOIN public.chapter_version AS cv\n      ON cv.chapter_id = h.id\n     AND cv.book_id = h.book_id\n     AND cv.version_state = 'candidate'\n     AND cv.is_valid\n     AND NOT cv.is_shadow\n    WHERE h.book_id = s.book_id\n      AND h.l1a_unit_id = s.l1a_unit_id\n      AND NOT h.is_finalized\n  ) AS chapter_data ON true\n  LEFT JOIN LATERAL (\n    SELECT COALESCE(jsonb_agg(\n      jsonb_build_object(\n        'character_id', c.id,\n        'char_code', c.char_code,\n        'char_name', c.char_name,\n        'role_type', c.char_type,\n        'five_layers_json', c.five_layers_json,\n        'knowledge_boundary_json', c.knowledge_boundary_json,\n        'arc_json', c.arc_json,\n        'live_state_id', c.live_state_id,\n        'live_state_source', CASE WHEN c.live_state_id IS NULL THEN 'initial_live_state_projection' ELSE 'formal_live_state' END,\n        'live_state_json', CASE WHEN c.live_state_id IS NULL THEN jsonb_build_object(\n          'source', 'initial_live_state_projection',\n          'five_layers_json', c.five_layers_json,\n          'knowledge_boundary_json', c.knowledge_boundary_json\n        ) ELSE jsonb_build_object(\n          'philosophy_live_json', c.philosophy_live_json,\n          'emotion_state_json', c.emotion_state_json,\n          'drive_live_json', c.drive_live_json,\n          'trigger_state_json', c.trigger_state_json,\n          'goal_state_json', c.goal_state_json,\n          'pressure_level', c.pressure_level,\n          'current_goal_txt', c.current_goal_txt,\n          'current_emo_tag', c.current_emo_tag\n        ) END,\n        'active_memory_json', COALESCE((\n          SELECT jsonb_agg(jsonb_build_object(\n            'memory_id', m.id,\n            'memory_type', m.memory_type,\n            'memory_content', m.memory_content,\n            'truth_status', m.truth_status,\n            'is_valid', m.is_valid,\n            'is_shadow', m.is_shadow,\n            'importance', m.importance,\n            'decay_rate', m.decay_rate\n          ) ORDER BY m.importance DESC, m.created_at DESC, m.id)\n          FROM public.character_memory AS m\n          WHERE m.book_id = s.book_id\n            AND m.char_id = c.id\n            AND m.is_valid\n            AND NOT m.is_shadow\n        ), '[]'::jsonb)\n      )\n      ORDER BY COALESCE(c.char_code, c.char_name), c.id\n    ), '[]'::jsonb) AS characters\n    FROM public.v_character_active AS c\n    WHERE c.book_id = s.book_id\n      AND c.local_operator_id = s.local_operator_id\n      AND c.id IN (\n        SELECT participant_id::uuid\n        FROM jsonb_array_elements_text(s.participant_chars_json) AS participant_id\n      )\n  ) AS character_data ON true\n  LEFT JOIN LATERAL (\n    SELECT COALESCE(jsonb_agg(\n      jsonb_build_object(\n        'world_state_id', ws.id,\n        'is_active', ws.is_active,\n        'setting_layer', ws.setting_layer,\n        'board_type', ws.board_type,\n        'atom_type', ws.atom_type,\n        'atom_key', ws.atom_key,\n        'atom_value_jsonb', ws.atom_value_jsonb,\n        'affordance_dims', ws.affordance_dims,\n        'knowledge_boundary_json', ws.knowledge_boundary_json,\n        'apply_scope_json', ws.apply_scope_json,\n        'violate_cost_json', ws.violate_cost_json\n      )\n      ORDER BY ws.atom_key, ws.id\n    ), '[]'::jsonb) AS world_state\n    FROM public.v_world_assets_for_exec AS ws\n    WHERE ws.book_id = s.book_id\n      AND ws.local_operator_id = s.local_operator_id\n  ) AS world_data ON true\n  LEFT JOIN LATERAL (\n    SELECT COALESCE(jsonb_agg(\n      jsonb_build_object(\n        'relation_state_id', r.id,\n        'char_a_id', r.char_a_id,\n        'char_b_id', r.char_b_id,\n        'trust', r.trust,\n        'intimacy', r.intimacy,\n        'power_balance', r.power_balance,\n        'dependence', r.dependence,\n        'hostility', r.hostility,\n        'common_goal', r.common_goal,\n        'secret_known', r.secret_known,\n        'emotional_bond', r.emotional_bond,\n        'relation_type', r.relation_type,\n        'relation_hierarchy', r.relation_hierarchy,\n        'relation_origin', r.relation_origin,\n        'relation_overview', r.relation_overview,\n        'change_event_json', r.change_event_json,\n        'is_formal', r.is_formal,\n        'is_valid', r.is_valid,\n        'is_shadow', r.is_shadow\n      )\n      ORDER BY r.char_a_id, r.char_b_id\n    ), '[]'::jsonb) AS relations\n    FROM public.relation_state AS r\n    WHERE r.book_id = s.book_id\n      AND r.is_formal\n      AND r.is_valid\n      AND NOT r.is_shadow\n  ) AS relation_data ON true\n  LEFT JOIN LATERAL (\n    SELECT\n      COALESCE(jsonb_object_agg(\n        b.node_code,\n        to_jsonb(b) - 'local_operator_id'\n        ORDER BY b.node_code\n      ), '{}'::jsonb) AS runtime_bindings,\n      COALESCE((\n        SELECT jsonb_build_object(\n          'NODE_05', jsonb_set(\n            to_jsonb(r) - 'local_operator_id',\n            '{node_code}', to_jsonb('NODE_05'::text)\n          ) || jsonb_build_object('source_node_code', r.node_code),\n          'NODE_06', jsonb_set(\n            to_jsonb(r) - 'local_operator_id',\n            '{node_code}', to_jsonb('NODE_06'::text)\n          ) || jsonb_build_object('source_node_code', r.node_code)\n        )\n        FROM public.v_prompt_runtime_binding AS r\n        WHERE r.local_operator_id = s.local_operator_id\n          AND r.node_code = 'FP008-02'\n          AND r.prompt_status = 'active'\n          AND NULLIF(btrim(r.model_name), '') IS NOT NULL\n          AND NULLIF(btrim(r.provider_base_url), '') IS NOT NULL\n          AND NULLIF(btrim(r.prompt_text), '') IS NOT NULL\n          AND NULLIF(btrim(r.api_key_ref), '') IS NOT NULL\n        LIMIT 1\n      ), '{}'::jsonb) AS model_bindings,\n      count(*)::integer AS binding_count\n    FROM public.v_prompt_runtime_binding AS b\n    WHERE b.local_operator_id = s.local_operator_id\n      AND b.node_code IN ('FP008-01', 'FP008-02', 'FP008-03')\n      AND b.prompt_status = 'active'\n      AND NULLIF(btrim(b.model_name), '') IS NOT NULL\n      AND NULLIF(btrim(b.provider_base_url), '') IS NOT NULL\n      AND NULLIF(btrim(b.prompt_text), '') IS NOT NULL\n      AND NULLIF(btrim(b.api_key_ref), '') IS NOT NULL\n  ) AS binding_data ON true\n)\nSELECT jsonb_build_object(\n  'request', a.request,\n  'scope_ok',\n    a.action IN ('start', 'resume', 'restart', 'replan')\n    AND a.local_operator_id IS NOT NULL\n    AND a.book_id IS NOT NULL\n    AND a.l1a_unit_id IS NOT NULL\n    AND a.current_l1a_id = a.l1a_unit_id\n    AND a.l1a_status = 'locked_for_deduction'\n    AND a.l1a_confirmation_status = 'creator_confirmed'\n    AND a.l1a_is_locked\n    AND a.l1a_is_formal\n    AND ((a.action IN ('start', 'restart') AND a.return_direction IS NULL AND a.checkpoint_count = 0)\n      OR (a.action = 'resume' AND a.return_direction IS NULL AND a.checkpoint_count > 0)\n      OR (a.action = 'replan' AND a.return_direction IS NOT NULL\n          AND COALESCE(a.replan_response->>'ok', 'false') = 'true'\n          AND a.checkpoint_count = 0))\n    AND a.token_budget = 3000000\n    AND a.token_budget_version = 'mvp-fixed-3000000'\n    AND jsonb_array_length(a.chapters) > 0\n    AND NOT EXISTS (\n      SELECT 1\n      FROM jsonb_array_elements(a.chapters) AS chapter(value)\n      WHERE jsonb_typeof(chapter.value->'scene_condition_package') IS DISTINCT FROM 'object'\n        OR NOT (chapter.value->'scene_condition_package' ?& ARRAY[\n          'scene_location', 'participant_chars', 'rule_locks', 'scene_affordance',\n          'available_resource_codes', 'info_reveal_candidates', 'chain_reaction_candidates',\n          'scene_constraints', 'forbid_lines_active', 'materialize_notes'\n        ])\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'participant_chars') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'rule_locks') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'scene_affordance') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'available_resource_codes') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'info_reveal_candidates') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'chain_reaction_candidates') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'scene_constraints') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'forbid_lines_active') IS DISTINCT FROM 'array'\n        OR jsonb_typeof(chapter.value->'scene_condition_package'->'materialize_notes') IS DISTINCT FROM 'array'\n    )\n    AND a.binding_count = 3\n    AND a.runtime_bindings ?& ARRAY['FP008-01', 'FP008-02', 'FP008-03']\n    AND a.model_bindings ?& ARRAY['NODE_05', 'NODE_06'],\n  'redacted_error', CASE\n    WHEN a.action IS NULL\n      OR a.action NOT IN ('start', 'resume', 'restart', 'replan')\n      OR a.local_operator_id IS NULL\n      OR a.book_id IS NULL\n      OR a.l1a_unit_id IS NULL\n      OR (a.action = 'replan' AND a.return_direction IS NULL)\n      OR (a.action <> 'replan' AND a.return_direction IS NOT NULL)\n      THEN jsonb_build_object('code', 'INVALID_REQUEST', 'message', 'The deduction command could not be accepted.')\n    WHEN a.action = 'replan'\n      AND COALESCE(a.replan_response->>'ok', 'false') <> 'true'\n      THEN jsonb_build_object(\n        'code', COALESCE(a.replan_response#>>'{error,code}', 'DEDUCTION_REPLAN_REJECTED'),\n        'message', COALESCE(a.replan_response#>>'{error,message}', 'The deduction replan could not be accepted.')\n      )\n    WHEN a.current_l1a_id IS DISTINCT FROM a.l1a_unit_id\n      OR a.l1a_status IS DISTINCT FROM 'locked_for_deduction'\n      OR a.l1a_confirmation_status IS DISTINCT FROM 'creator_confirmed'\n      OR NOT COALESCE(a.l1a_is_locked, false)\n      OR NOT COALESCE(a.l1a_is_formal, false)\n      THEN jsonb_build_object('code', 'L1A_SCOPE_REJECTED', 'message', 'The selected L1A is unavailable for deduction.')\n    WHEN NOT ((a.action IN ('start', 'restart') AND a.return_direction IS NULL AND a.checkpoint_count = 0)\n      OR (a.action = 'resume' AND a.return_direction IS NULL AND a.checkpoint_count > 0)\n      OR (a.action = 'replan' AND a.return_direction IS NOT NULL\n          AND COALESCE(a.replan_response->>'ok', 'false') = 'true'\n          AND a.checkpoint_count = 0))\n      THEN jsonb_build_object('code', 'CHECKPOINT_ACTION_MISMATCH', 'message', 'Start, restart, and resume must match the persisted L1A checkpoint state.')\n    WHEN a.token_budget IS DISTINCT FROM 3000000\n      OR a.token_budget_version IS DISTINCT FROM 'mvp-fixed-3000000'\n      OR a.binding_count IS DISTINCT FROM 3\n      OR NOT COALESCE(a.runtime_bindings ?& ARRAY['FP008-01', 'FP008-02', 'FP008-03'], false)\n      OR NOT COALESCE(a.model_bindings ?& ARRAY['NODE_05', 'NODE_06'], false)\n      THEN jsonb_build_object('code', 'CONFIG_CONTRACT_BLOCKED', 'message', 'The deduction runtime configuration is incomplete.')\n    WHEN jsonb_array_length(a.chapters) = 0\n      THEN jsonb_build_object('code', 'CHAPTER_SCOPE_REJECTED', 'message', 'The selected L1A has no candidate chapters to deduce.')\n    ELSE NULL\n  END,\n  'scope', jsonb_build_object(\n    'local_operator_id', a.local_operator_id,\n    'book_id', a.book_id,\n    'l1a_unit_id', a.l1a_unit_id\n  ),\n  'token_budget', a.token_budget,\n  'token_budget_version', a.token_budget_version,\n  'l1a', jsonb_build_object(\n    'l1a_unit_id', a.l1a_unit_id,\n    'l1a_index', a.l1a_index,\n    'l1a_name', a.l1a_name,\n    'conflict_background', a.conflict_background,\n    'escalation_path', a.escalation_path,\n    'stakes', a.stakes,\n    'irreversible_consequence', a.irreversible_consequence,\n    'plot_emotion_commit', a.plot_emotion_commit,\n    'arc_requirement', a.arc_requirement,\n    'info_reveal_boundary', a.info_reveal_boundary,\n    'role_arc_json', a.role_arc_json,\n    'participant_chars_json', a.participant_chars_json,\n    'world_resistance_refs', a.world_resistance_refs\n  ),\n  'chapters', a.chapters,\n  'characters', a.characters,\n  'world_state', a.world_state,\n  'relations', a.relations,\n  'runtime_bindings', a.runtime_bindings,\n  'model_bindings', a.model_bindings\n) AS context\nFROM assembled AS a\nWHERE a.action IN ('start', 'resume', 'restart', 'replan');",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.body ?? $json)] }}"
+        }
       },
       "id": "be602323-61a1-419e-b214-7cd4c0b4ccf7",
       "name": "读取拆解结果1",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.6,
       "position": [
         192,
         0
@@ -114,11 +352,26 @@
           "id": "kitjw53XlibTPzxM",
           "name": "zh-database"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "options": {}
+        "method": "POST",
+        "url": "http://host.docker.internal:4182/fp008-02",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.mapping_ok === true ? $json.engine_request : {}) }}",
+        "options": {
+          "timeout": 10800000
+        },
+        "response": {
+          "response": {
+            "neverError": true,
+            "responseFormat": "json"
+          }
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
@@ -127,11 +380,12 @@
         -304
       ],
       "id": "a23c1f7a-e88d-468f-93c1-1f65ee9654fc",
-      "name": "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎"
+      "name": "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎",
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nfunction parseEnvelope(value) {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return Object.hasOwn(value, 'ok') ? value : null;\n  if (typeof value !== 'string') return null;\n  const start = value.indexOf('{');\n  const end = value.lastIndexOf('}');\n  const candidates = [value];\n  if (start >= 0 && end > start) candidates.push(value.slice(start, end + 1));\n  for (const candidate of candidates) {\n    try { return parseSingleJson(candidate); } catch {}\n    try { return parseSingleJson(candidate.replace(/\\\\\\\"/g, '\"')); } catch {}\n  }\n  return null;\n}\nfunction hasExhaustedSelfCheck(result) {\n  if (!result || typeof result !== 'object' || Array.isArray(result)\n    || result.service_state !== 'blocked'\n    || result.blocked_code !== 'DEDUCTION_BLOCKED'\n    || !Array.isArray(result.chapters)) return false;\n  return result.chapters.some((chapter) => {\n    const records = chapter?.candidate_plot_sim_json?.particles_records;\n    return Array.isArray(records) && records.some((record) => (\n      record && typeof record === 'object'\n      && record.particle_status === 'blocked'\n      && record.self_check && typeof record.self_check === 'object'\n      && ['emotion', 'hook', 'pivot'].some((key) => (\n        record.self_check[key] !== true && record.self_check[key] !== 'pass'\n      ))\n    ));\n  });\n}\nconst upstream = $('JSON修复').first().json ?? {};\nconst upstreamError = upstream.mapping_ok === false && upstream.redacted_error &&\n  typeof upstream.redacted_error.code === 'string' && typeof upstream.redacted_error.message === 'string'\n  ? { code: upstream.redacted_error.code, message: upstream.redacted_error.message }\n  : null;\nconst rawPayload = $json.body ?? $json;\nlet payload = parseEnvelope(rawPayload);\nif (!payload) payload = parseEnvelope($json?.error?.message);\nconst resultValid = payload?.result && typeof payload.result === 'object' && !Array.isArray(payload.result);\nconst self_check_exhausted = resultValid && hasExhaustedSelfCheck(payload.result);\nconst terminalEngineFailure = resultValid && (\n  payload.result.service_state === 'failed' ||\n  (payload.result.service_state === 'blocked' && !self_check_exhausted)\n);\nconst blockedCode = terminalEngineFailure && typeof payload.result.blocked_code === 'string' && payload.result.blocked_code.trim()\n  ? payload.result.blocked_code\n  : 'DEDUCTION_SERVICE_FAILED';\nconst service_ok = upstreamError === null && payload?.ok === true && resultValid && !terminalEngineFailure;\nconst suppliedError = payload?.redacted_error;\nconst engineError = terminalEngineFailure\n  ? { code: blockedCode, message: 'The deduction service could not complete the command.' }\n  : null;\nconst redacted_error = upstreamError ?? engineError ?? (service_ok ? null : (\n  suppliedError && typeof suppliedError.code === 'string' && typeof suppliedError.message === 'string'\n    ? { code: suppliedError.code, message: suppliedError.message }\n    : { code: 'DEDUCTION_SERVICE_FAILED', message: 'The deduction service could not complete the command.' }\n));\nreturn [{ json: { service_ok, engine_result: service_ok ? payload.result : null, redacted_error } }];"
       },
       "id": "78a78ba1-45e7-4d06-8dfc-14bc4daf4ed0",
       "name": "JSON修复1",
@@ -144,24 +398,27 @@
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "审查-02 凭空造物（特级/P0）：正文中是否错误使用了「世界设定包」之外的物品、超自然能力、外部援军或底层规则？\n审查-03 信息越权（特级/P0）：角色是否在自身控视角中，使用了其「信息边界.不知」范围内的未授权客观信息？\n审查-05 设定污染（特级/P0）：文本中是否出现了任何未经前置审批的全新世界观规则或异能设定？\n审查-06 失活实体（高级/P1）：正文中是否错误调用了在先前剧情中已明确死亡、毁坏、停用或失去活性的角色与剧情道具？\n审查-09 情绪任务（高级/P1，节奏量化版）：\n从「目标快照.预设情绪目标」中提取预设的叙事节奏进行比对：\n实际情绪波事件：正文中实际体现的情绪波动事件（其支撑类型必须属于：资源消耗、关系变化、信息差变动、代价支付、底牌释放之一）。\n目标覆盖率：实际兑现的情绪节点数量 / 预设情绪节点总数。\n节奏忠实度判定：合格（≥80%） | 警告（60%-80%） | 不合格（<60%）。"
+        "method": "POST",
+        "url": "={{ (() => { if ($json.service_ok !== true) throw new Error($json.redacted_error?.code ?? 'DEDUCTION_SERVICE_FAILED'); const binding = $('读取拆解结果').first().json.context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); const base = String(binding.provider_base_url).replace(/\\/+$/, ''); return /\\/chat\\/completions$/i.test(base) ? base : /\\/v[0-9]+(?:beta)?$/i.test(base) ? base + '/chat/completions' : base + '/v1/chat/completions'; })() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const context = $('读取拆解结果').first().json.context ?? {}; const binding = context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); const content = binding.prompt_text + '\\nINPUT=' + JSON.stringify({ service_ok: $json.service_ok, service_error: $json.redacted_error, deduction_result: $json.engine_result, chapters: context.chapters, characters: context.characters, world_state: context.world_state }); return { model: binding.model_name, messages: [{ role: 'user', content }], temperature: Number(binding.temperature) }; })() }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
             }
-          ]
-        },
-        "builtInTools": {},
-        "options": {}
+          }
+        }
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
+      "type": "n8n-nodes-base.httpRequest",
+      "onError": "continueRegularOutput",
+      "typeVersion": 4.2,
       "position": [
         1232,
         -304
@@ -173,11 +430,116 @@
           "id": "ktkbgOI2RQI4Y8QK",
           "name": "OpenAI account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
-        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('读取拆解结果').first().json.context.runtime_bindings?.['FP008-03']?.api_key_ref }}",
+                    "rightValue": "n8n-credential:openai-account-v1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "openai"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('读取拆解结果').first().json.context.runtime_bindings?.['FP008-03']?.api_key_ref }}",
+                    "rightValue": "n8n-credential:relaycove-v1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "relaycove"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "zh05-route-fp008-03-start-credential",
+      "name": "路由 FP008-03 初始模型凭据",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1168,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (() => { if ($json.service_ok !== true) throw new Error($json.redacted_error?.code ?? 'DEDUCTION_SERVICE_FAILED'); const binding = $('读取拆解结果').first().json.context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); const base = String(binding.provider_base_url).replace(/\\/+$/, ''); return /\\/chat\\/completions$/i.test(base) ? base : /\\/v[0-9]+(?:beta)?$/i.test(base) ? base + '/chat/completions' : base + '/v1/chat/completions'; })() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const context = $('读取拆解结果').first().json.context ?? {}; const binding = context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); const content = binding.prompt_text + '\\nINPUT=' + JSON.stringify({ service_ok: $json.service_ok, service_error: $json.redacted_error, deduction_result: $json.engine_result, chapters: context.chapters, characters: context.characters, world_state: context.world_state }); return { model: binding.model_name, messages: [{ role: 'user', content }], temperature: Number(binding.temperature) }; })() }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "onError": "continueRegularOutput",
+      "typeVersion": 4.2,
+      "position": [
+        1360,
+        -176
+      ],
+      "id": "zh05-fp008-03-start-relaycove",
+      "name": "FP008-03 阶段审计 RelayCove",
+      "credentials": {
+        "openAiApi": {
+          "id": "ZpJ7ejgoXbQb5xUW",
+          "name": "RelayCove account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nconst service = $('JSON修复1').first().json;\nlet providerPayload = $json.data ?? $json.body ?? $json;\nif (typeof providerPayload === 'string') {\n  try { providerPayload = parseSingleJson(providerPayload); } catch {}\n}\nconst raw = providerPayload?.choices?.[0]?.message?.content ?? providerPayload?.output_text ?? providerPayload?.output?.[0]?.content?.[0]?.text ?? providerPayload?.data?.[0]?.message?.content ?? providerPayload?.message?.content ?? providerPayload?.content ?? providerPayload?.text ?? (typeof providerPayload === 'string' ? providerPayload : '');\nconst providerError = providerPayload && typeof providerPayload === 'object' && !Array.isArray(providerPayload) ? providerPayload.error : null;\nconst modelError = typeof $json.error?.message === 'string' ? $json.error.message : typeof $json.error === 'string' ? $json.error : typeof providerError?.message === 'string' ? providerError.message : typeof providerError === 'string' ? providerError : typeof $json.message === 'string' ? $json.message : '';\nlet parsed = null;\ntry {\n  const fence = String.fromCharCode(96).repeat(3);\n  parsed = typeof raw === 'string' ? parseSingleJson(raw) : raw;\n} catch { parsed = null; }\nfunction hasExhaustedSelfCheck(result) {\n  if (!result || typeof result !== 'object' || Array.isArray(result)\n    || result.service_state !== 'blocked'\n    || result.blocked_code !== 'DEDUCTION_BLOCKED'\n    || !Array.isArray(result.chapters)) return false;\n  return result.chapters.some((chapter) => {\n    const records = chapter?.candidate_plot_sim_json?.particles_records;\n    return Array.isArray(records) && records.some((record) => (\n      record && typeof record === 'object'\n      && record.particle_status === 'blocked'\n      && record.self_check && typeof record.self_check === 'object'\n      && ['emotion', 'hook', 'pivot'].some((key) => (\n        record.self_check[key] !== true && record.self_check[key] !== 'pass'\n      ))\n    ));\n  });\n}\nconst severityByCode = new Map([\n  ['AUDIT-02', 'P0'],\n  ['AUDIT-03', 'P0'],\n  ['AUDIT-05', 'P0'],\n  ['AUDIT-06', 'P1'],\n  ['AUDIT-09', 'P1']\n]);\nconst expectedCodes = new Set(severityByCode.keys());\nconst allowedOutcomes = new Set(['pass', 'risk', 'block']);\nconst risk_hints = Array.isArray(parsed?.risk_hints)\n  ? parsed.risk_hints.map((hint) => hint && typeof hint === 'object' ? { ...hint, severity: severityByCode.get(hint.check_code) } : hint)\n  : [];\nconst seenCodes = new Set(risk_hints.map((hint) => hint?.check_code));\nconst hintShapeValid = risk_hints.length === expectedCodes.size &&\n  [...expectedCodes].every((code) => seenCodes.has(code)) &&\n  risk_hints.every((hint) => expectedCodes.has(hint?.check_code) && allowedOutcomes.has(hint?.outcome));\nconst p0HintPresent = hintShapeValid && risk_hints.some((hint) => hint.severity === 'P0' && hint.outcome !== 'pass');\nconst protocolAccepted = parsed?.ok !== false || p0HintPresent;\nconst preaudit_valid = service.service_ok === true && protocolAccepted && hintShapeValid;\nconst p0_blocked = preaudit_valid && p0HintPresent;\nconst self_check_exhausted = preaudit_valid && hasExhaustedSelfCheck(service.engine_result);\nconst restart_required = p0_blocked || self_check_exhausted;\nconst audit_pass = preaudit_valid && !restart_required;\nconst route_to_storage = audit_pass;\nconst retainedP0Error = (() => {\n  try {\n    return $('JSON修复2').all(0, 0)\n      .map((item) => item?.json?.redacted_error)\n      .find((error) => error && typeof error.code === 'string' && typeof error.message === 'string'\n        && error.code === 'DEDUCTION_PREAUDIT_BLOCKED') ?? null;\n  } catch {\n    return null;\n  }\n})();\nconst initial = $('JSON修复').first().json ?? {};\nconst restartRequest = restart_required && initial.mapping_ok === true && initial.engine_request &&\n  typeof initial.engine_request === 'object' && !Array.isArray(initial.engine_request) &&\n  Array.isArray(initial.engine_request.chapters)\n  ? (() => {\n      const { creator_direction, ...request } = initial.engine_request;\n      return { ...request, action: 'restart', chapters: request.chapters.map(({ checkpoint, ...chapter }) => chapter) };\n    })()\n  : null;\nconst redacted_error = audit_pass ? null : (\n  retainedP0Error ??\n  service.redacted_error ??\n  (modelError.includes('CONFIG_CONTRACT_BLOCKED')\n    ? { code: 'CONFIG_CONTRACT_BLOCKED', message: 'An active FP008-03 model and prompt binding is required.' }\n    : modelError.trim()\n    ? { code: 'MODEL_PROVIDER_UNAVAILABLE', message: 'The current model service is unavailable.' }\n    : !preaudit_valid\n    ? { code: 'PREAUDIT_RESPONSE_REJECTED', message: 'The deduction risk hints are incomplete.' }\n    : p0_blocked\n    ? { code: 'DEDUCTION_PREAUDIT_BLOCKED', message: 'The deduction result requires a complete L1A restart.' }\n    : { code: 'DEDUCTION_BLOCKED', message: 'The current particle failed the required self-check three times.' })\n);\nreturn [{ json: {\n  service_ok: service.service_ok,\n  preaudit_valid,\n  p0_blocked,\n  self_check_exhausted,\n  restart_required,\n  audit_pass,\n  route_to_storage,\n  risk_hints,\n  emotion_task: parsed?.emotion_task ?? null,\n  engine_result: service.engine_result,\n  redacted_error,\n  rpc_request: null,\n  mapping_ok: restartRequest !== null,\n  engine_request: restartRequest\n} }];"
       },
       "id": "a2670d52-4b56-401c-975c-6d8aee890140",
       "name": "JSON修复2",
@@ -190,7 +552,7 @@
     },
     {
       "parameters": {
-        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nconst context = $('读取拆解结果1').first().json.context ?? {};\nlet providerPayload = $json.data ?? $json.body ?? $json;\nif (typeof providerPayload === 'string') {\n  try { providerPayload = parseSingleJson(providerPayload); } catch {}\n}\nconst raw = providerPayload?.choices?.[0]?.message?.content ?? providerPayload?.output_text ?? providerPayload?.output?.[0]?.content?.[0]?.text ?? providerPayload?.message?.content ?? providerPayload?.content ?? providerPayload?.text ?? (typeof providerPayload === 'string' ? providerPayload : '');\nlet parsed = null;\ntry {\n  parsed = typeof raw === 'string' ? parseSingleJson(raw) : raw;\n} catch {}\nif (parsed === null && providerPayload && typeof providerPayload === 'object' && !Array.isArray(providerPayload) && Object.hasOwn(providerPayload, 'ok')) parsed = providerPayload;\nconst requiredParticleFields = ['particle_id', 'content', 'type', 'emotion_phase', 'staged_task', 'reveal_to', 'assigned_to_role_type', 'involved_chars', 'required_chars', 'source_field', 'purpose'];\nconst allowedTypes = new Set(['truth', 'resource', 'info', 'emotion', 'hook']);\nconst formalCharacters = (Array.isArray(context.characters) ? context.characters : [])\n  .filter((character) => character && typeof character === 'object' && typeof character.character_id === 'string');\nconst charactersById = new Map(formalCharacters.map((character) => [character.character_id, character]));\nconst codeCounts = new Map();\nfor (const character of formalCharacters) {\n  const code = typeof character.char_code === 'string' ? character.char_code.trim() : '';\n  if (code) codeCounts.set(code, (codeCounts.get(code) ?? 0) + 1);\n}\nconst charactersByCode = new Map(formalCharacters\n  .filter((character) => typeof character.char_code === 'string' && codeCounts.get(character.char_code.trim()) === 1)\n  .map((character) => [character.char_code.trim(), character]));\nconst roleCounts = new Map();\nfor (const character of formalCharacters) {\n  const role = typeof character.role_type === 'string' ? character.role_type.trim() : '';\n  if (role) roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);\n}\nconst charactersByRole = new Map(formalCharacters\n  .filter((character) => typeof character.role_type === 'string' && roleCounts.get(character.role_type.trim()) === 1)\n  .map((character) => [character.role_type.trim(), character]));\nconst resolveCharacterRef = (reference, roleType) => charactersById.get(reference)\n  ?? charactersByCode.get(reference)\n  ?? charactersByRole.get(typeof roleType === 'string' ? roleType.trim() : '');\nconst normalizeCharacterRefs = (value) => Array.isArray(value)\n  ? value.map((reference) => resolveCharacterRef(reference, reference)?.character_id ?? reference)\n  : value;\nconst normalizeRevealTo = (value, targetRevealTo) => {\n  if (value === '全员') return 'all';\n  if (value === '仅读者') return 'reader';\n  if (Array.isArray(value) && value.length === 1 && value[0] === 'all') return 'all';\n  if (Array.isArray(value) && value.length === 1 && value[0] === 'reader') return 'reader';\n  if (Array.isArray(value) && value.length === 0 && (targetRevealTo === 'reader' || targetRevealTo === '仅读者')) return 'reader';\n  return Array.isArray(value) ? normalizeCharacterRefs(value) : value;\n};\nconst normalizeParticle = (particle, targetParticle) => particle && typeof particle === 'object' && !Array.isArray(particle) ? {\n  ...particle,\n  involved_chars: normalizeCharacterRefs(Array.isArray(particle.involved_chars) && particle.involved_chars.length === 0 && Array.isArray(targetParticle?.involved_chars) && targetParticle.involved_chars.length > 0 ? targetParticle.involved_chars : particle.involved_chars),\n  required_chars: normalizeCharacterRefs(Array.isArray(particle.required_chars) && particle.required_chars.length === 0 && Array.isArray(targetParticle?.required_chars) && targetParticle.required_chars.length > 0 ? targetParticle.required_chars : particle.required_chars),\n  reveal_to: normalizeRevealTo(particle.reveal_to, targetParticle?.reveal_to)\n} : particle;\nconst normalizeParticipant = (participant) => {\n  if (!participant || typeof participant !== 'object' || Array.isArray(participant)\n    || (!Object.hasOwn(participant, 'char_id') && !Object.hasOwn(participant, 'role_type'))) return participant;\n  const rawId = typeof participant.char_id === 'string' ? participant.char_id.trim() : '';\n  const byId = charactersById.get(rawId);\n  if (byId && ((typeof participant.char_code === 'string' && participant.char_code !== byId.char_code)\n    || (typeof participant.role_type === 'string' && participant.role_type !== byId.role_type))) return participant;\n  const roleReference = !rawId || rawId === participant.role_type ? participant.role_type : null;\n  const character = byId ?? resolveCharacterRef(participant.char_id, roleReference) ?? charactersByCode.get(participant.char_code);\n  return character ? { ...participant, char_id: character.character_id, char_code: character.char_code, role_type: character.role_type } : participant;\n};\nconst outputs = new Map((Array.isArray(parsed?.chapters) ? parsed.chapters : []).map((chapter) => [chapter?.chapter_id + ':' + chapter?.chapter_version_id, chapter]));\nconst action = context.request?.action;\nconst chapters = (Array.isArray(context.chapters) ? context.chapters : []).map((chapter) => {\n  const output = outputs.get(chapter.chapter_id + ':' + chapter.chapter_version_id);\n  const targetParticles = [\n    chapter.particles_source,\n    chapter.target_snapshot_json?.particles_json,\n    chapter.target_snapshot_json?.particles,\n    chapter.chapter_implementation_json?.particles,\n  ].find(Array.isArray) ?? [];\n  const targetParticleById = new Map(targetParticles\n    .filter((particle) => particle && typeof particle === 'object' && typeof particle.particle_id === 'string')\n    .map((particle) => [particle.particle_id, particle]));\n  const mapped = {\n    chapter_id: chapter.chapter_id,\n    chapter_version_id: chapter.chapter_version_id,\n    predecessor_version_id: chapter.predecessor_version_id,\n    chapter_index: chapter.chapter_index,\n    target_snapshot_json: chapter.target_snapshot_json,\n    chapter_implementation_json: chapter.chapter_implementation_json,\n    scene_condition_package: chapter.scene_condition_package,\n    particles: Array.isArray(output?.particles) ? output.particles.map((particle) => normalizeParticle(\n      particle,\n      targetParticleById.get(particle?.particle_id),\n    )) : [],\n    participating_chars: Array.isArray(output?.participating_chars) ? output.participating_chars.map(normalizeParticipant) : [],\n    shadow_summary: chapter.shadow_summary\n  };\n  if (action === 'resume' && chapter.checkpoint != null) mapped.checkpoint = chapter.checkpoint;\n  return mapped;\n});\nconst idsAreFormal = (value) => Array.isArray(value) && value.every((id) => typeof id === 'string' && charactersById.has(id));\nconst revealToIdsAreFormal = (value) => Array.isArray(value) && value.length > 0 && idsAreFormal(value);\nconst participantMatchesFormalCharacter = (participant) => {\n  const character = charactersById.get(participant?.char_id);\n  return Boolean(character && participant.char_code === character.char_code && participant.role_type === character.role_type);\n};\nconst particlesValid = chapters.length > 0 && chapters.every((chapter) => chapter.particles.length >= 3 && chapter.particles.every((particle) =>\n  particle && typeof particle === 'object' &&\n  requiredParticleFields.every((field) => Object.hasOwn(particle, field)) &&\n  typeof particle.staged_task === 'string' && particle.staged_task.trim().length > 0 &&\n  allowedTypes.has(particle.type) &&\n  (particle.type !== 'resource' || particle.world_verified === true) &&\n  idsAreFormal(particle.involved_chars) &&\n  idsAreFormal(particle.required_chars) &&\n  (particle.reveal_to === 'all' || particle.reveal_to === 'reader' || revealToIdsAreFormal(particle.reveal_to))\n));\nconst participantsValid = chapters.every((chapter) => chapter.participating_chars.length > 0 && chapter.participating_chars.every((participant) =>\n  participant && typeof participant === 'object' &&\n  ['char_id', 'char_code', 'role_type', 'activation_reason'].every((field) => Object.hasOwn(participant, field)) &&\n  participantMatchesFormalCharacter(participant)\n));\nconst engine_request = {\n  action,\n  scope: context.scope,\n  token_budget: context.token_budget,\n  token_budget_version: context.token_budget_version,\n  chapters,\n  characters: context.characters,\n  world_state: context.world_state,\n  world_resistance_refs: context.l1a?.world_resistance_refs ?? [],\n  relations: context.relations,\n  model_bindings: context.model_bindings\n};\nconst scenePackageValid = chapters.length > 0 && chapters.every((chapter) => {\n  const scenePackage = chapter.scene_condition_package;\n  return scenePackage && typeof scenePackage === 'object' && !Array.isArray(scenePackage)\n    && ['scene_location', 'participant_chars', 'rule_locks', 'scene_affordance', 'available_resource_codes', 'info_reveal_candidates', 'chain_reaction_candidates', 'scene_constraints', 'forbid_lines_active', 'materialize_notes'].every((key) => Object.hasOwn(scenePackage, key))\n    && ['participant_chars', 'rule_locks', 'scene_affordance', 'available_resource_codes', 'info_reveal_candidates', 'chain_reaction_candidates', 'scene_constraints', 'forbid_lines_active', 'materialize_notes'].every((key) => Array.isArray(scenePackage[key]));\n});\nconst providerError = parsed?.ok === false && parsed?.redacted_error && typeof parsed.redacted_error.code === 'string' && typeof parsed.redacted_error.message === 'string' ? { code: parsed.redacted_error.code, message: parsed.redacted_error.message } : null;\nconst mapping_ok = context.scope_ok === true && parsed?.ok === true && outputs.size === chapters.length && particlesValid && participantsValid && scenePackageValid;\nreturn [{ json: {\n  mapping_ok,\n  engine_request,\n  redacted_error: mapping_ok ? null : (parsed?.redacted_error ?? context.redacted_error ?? {\n    code: 'PARTICLE_MAPPING_REJECTED',\n    message: 'The deduction particle package is incomplete.'\n  })\n} }];"
       },
       "id": "afd04fbe-6e85-49e0-ad50-7a5a5ab2542b",
       "name": "JSON修复3",
@@ -203,40 +565,35 @@
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "纵横叙事引擎L1A颗粒拆解器。\n职责：负责将宏观剧情段落（L1A）的各个文本字段拆解为不可再分的最小推演颗粒，并与当前场景的世界设定包进行交叉比对核验。\n拆解产出的结果将直接下发，供后续的套路弧展开和章节执行目标生成节点调用。\n【输出约束】：严格输出标准的原生 JSON 格式，禁止包含任何 Markdown 代码块围栏。\n用户提示词（User Prompt）\n你是L1A颗粒拆解器。请将剧情段落字段精准拆解为高活性颗粒，并与世界设定包比对，强制过滤当前不可用的资源条目。\n\n## 输入数据\n\n- 剧情段单元：`{{ 剧情段单元_JSON }}`\n- 世界设定包可用资源资产代码列表：`{{ 可用资源资产代码列表 }}`\n\n## 执行步骤\n\n### 步骤1：高阶字段解析\n深度解析 `剧情段单元_JSON` 中的以下字段，并严格按照优先级顺序提取核心颗粒：\n- 从 `剧情承诺.必然发生 ` 提取 → 归类为：`事实颗粒 (truth)`\n- 从 `剧情承诺.必须覆盖颗粒 ` 提取 → 依据内在属性分类\n- 从 `关键后果 提取 → 归类为：`事实颗粒`\n- 从 `绝处生机` 提取 → 归类为：`资源颗粒` 或 `信息颗粒`\n- 从 `阶段性核心目标 ` 提取 → 依据内在属性分类\n\n### 步骤2：标准颗粒属性生成\n拆解出的每个最小颗粒必须完整包含以下底层属性字段：\n- `颗粒ID` / `颗粒类型 ` / `具体内容` / `来源字段 ` / `本章作用 ` / `数据债标注 `\n\n### 步骤3：世界设定包边界核验（D-V4增强机制）\n针对所有类型为 `资源 ` 的颗粒，强制核对该资源是否存在于 `可用资源资产代码列表` 中：\n- **确实存在**：安全保留该颗粒，并在颗粒内部标注 `是否通过世界核验: true`。\n- **不存在/虚空造物**：将该颗粒无条件从本章剔除，移入 `延后执行颗粒列表` 中，并标注 `延后原因: \"该资源资产在当前章节场景下处于不可用状态\"`。\n\n### 步骤4：局部数据债深度检测\n在每个颗粒内部的 `数据债标注` 中进行黑盒透视：\n- 如果该颗粒所严重依赖的外部世界观条目、人物背景设定缺失或语焉不详，必须精准标注出具体的设计缺口。\n\n### 步骤5：颗粒群完整性检查（熔断预警）\n- 若最终 `通过世界核验的颗粒计数 < 3`：必须在全局的 `全局数据债说明` 字段中报警提示：“本章可用推演颗粒不足3个，底层博弈极易流于平淡，强烈建议人工扩充前置世界设定或角色底牌”。\n- 若 `延后执行的颗粒计数 > 0`：在全局标注：“本章有部分核心颗粒因资源不满足被动延后执行”。\n\n## 输出格式\n\n{\n  \"可用颗粒列表\": [\n    {\n      \"颗粒ID\": \"p001\",\n      \"颗粒类型\": \"事实|资源|信息|情绪|悬念钩子\",\n      \"具体内容\": \"颗粒具体内容描述\",\n      \"来源字段\": \"解析自哪一个原剧情段字段\",\n      \"本章作用\": \"本颗粒在本章推演中所扮演的角色\",\n      \"公开范围\": \"全员可见|特定角色代码（继承自必须覆盖颗粒的公开范围属性）\",\n      \"是否通过世界核验\": true,\n      \"数据债标注\": \"单颗粒数据缺陷说明，无则填合规\"\n    }\n  ],\n  \"延后执行颗粒列表\": [\n    {\n      \"颗粒ID\": \"p003\",\n      \"具体内容\": \"被剔除的颗粒内容\",\n      \"延后原因\": \"该资源资产在当前章节场景下处于不可用状态\",\n      \"预计最早可用章节\": \"根据剧情规划预计可放行解锁的章节，无法预判则填null\"\n    }\n  ],\n  \"通过世界核验的颗粒计数\": 3,\n  \"延后执行的颗粒计数\": 1,\n  \"全局数据债说明\": \"全局视角的整体资源或设定缺口陈述，若完全合规且可用颗粒充足则填无\"\n}\n\n## 输出校验规则\n\n- 任何类型为 `资源` 的颗粒，必须强制完成世界边界核验并包含 `是否通过世界核验` 标注，绝对不得遗漏或跳过。\n- 凡是落入 `延后执行颗粒列表` 的颗粒，当前节点必须对其进行物理隔离，绝对不得流向下游进入本章的博弈推演。\n- 颗粒ID（如 p001, p002）在全局架构中必须保持绝对唯一，严禁碰撞。\n校验规则（来源：迭代实验固化）\n任何类型为 资源 的颗粒，必须强制完成世界边界核验并包含 是否通过世界核验 标注，绝对不得遗漏或跳过。\n\n凡是落入 延后执行颗粒列表 的颗粒，当前节点必须对其进行物理隔离，绝对不得流向下游进入本章的博弈推演。\n颗粒ID在全局架构中必须保持绝对唯一，严禁冲突"
-            }
-          ]
-        },
-        "builtInTools": {},
-        "options": {}
+        "jsCode": "const context = $json.context ?? {};\nconst chapters = Array.isArray(context.chapters) ? context.chapters : [];\nconst restored = chapters.map((chapter) => {\n  const inputSnapshot = chapter?.checkpoint?.candidate_plot_sim_json?.deduction_input_snapshot;\n  if (!inputSnapshot\n    || typeof chapter?.chapter_id !== 'string'\n    || typeof chapter?.chapter_version_id !== 'string'\n    || !Array.isArray(inputSnapshot.particles)\n    || inputSnapshot.particles.length === 0\n    || !Array.isArray(inputSnapshot.participating_chars)\n    || inputSnapshot.participating_chars.length === 0) {\n    return null;\n  }\n  return {\n    chapter_id: chapter.chapter_id,\n    chapter_version_id: chapter.chapter_version_id,\n    particles: inputSnapshot.particles,\n    participating_chars: inputSnapshot.participating_chars\n  };\n});\nconst resumable = context.request?.action === 'resume'\n  && restored.length === chapters.length\n  && restored.length > 0\n  && restored.every((chapter) => chapter !== null);\nconst envelope = resumable\n  ? { ok: true, chapters: restored }\n  : {\n      ok: false,\n      redacted_error: {\n        code: 'INVALID_CHECKPOINT',\n        message: 'The persisted deduction checkpoint cannot be resumed.'\n      }\n    };\nreturn [{ json: { data: JSON.stringify(envelope) } }];"
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
+      "type": "n8n-nodes-base.code",
+      "onError": "continueRegularOutput",
+      "typeVersion": 1,
       "position": [
         368,
         0
       ],
       "id": "aa14c168-7552-424b-b1c9-c288124929ad",
-      "name": "FP008-01 剧情段颗粒拆解1",
-      "credentials": {
-        "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
-        }
-      }
+      "name": "FP008-01 剧情段颗粒拆解1"
     },
     {
       "parameters": {
-        "options": {}
+        "method": "POST",
+        "url": "http://host.docker.internal:4182/fp008-02",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.mapping_ok === true ? $json.engine_request : {}) }}",
+        "options": {
+          "timeout": 10800000
+        },
+        "response": {
+          "response": {
+            "neverError": true,
+            "responseFormat": "json"
+          }
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
@@ -245,11 +602,12 @@
         0
       ],
       "id": "32e53a03-04bb-40cb-a77d-90117fc79068",
-      "name": "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎1"
+      "name": "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎1",
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nfunction parseEnvelope(value) {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return Object.hasOwn(value, 'ok') ? value : null;\n  if (typeof value !== 'string') return null;\n  const start = value.indexOf('{');\n  const end = value.lastIndexOf('}');\n  const candidates = [value];\n  if (start >= 0 && end > start) candidates.push(value.slice(start, end + 1));\n  for (const candidate of candidates) {\n    try { return parseSingleJson(candidate); } catch {}\n    try { return parseSingleJson(candidate.replace(/\\\\\\\"/g, '\"')); } catch {}\n  }\n  return null;\n}\nfunction hasExhaustedSelfCheck(result) {\n  if (!result || typeof result !== 'object' || Array.isArray(result)\n    || result.service_state !== 'blocked'\n    || result.blocked_code !== 'DEDUCTION_BLOCKED'\n    || !Array.isArray(result.chapters)) return false;\n  return result.chapters.some((chapter) => {\n    const records = chapter?.candidate_plot_sim_json?.particles_records;\n    return Array.isArray(records) && records.some((record) => (\n      record && typeof record === 'object'\n      && record.particle_status === 'blocked'\n      && record.self_check && typeof record.self_check === 'object'\n      && ['emotion', 'hook', 'pivot'].some((key) => (\n        record.self_check[key] !== true && record.self_check[key] !== 'pass'\n      ))\n    ));\n  });\n}\nconst upstream = $('JSON修复3').first().json ?? {};\nconst upstreamError = upstream.mapping_ok === false && upstream.redacted_error &&\n  typeof upstream.redacted_error.code === 'string' && typeof upstream.redacted_error.message === 'string'\n  ? { code: upstream.redacted_error.code, message: upstream.redacted_error.message }\n  : null;\nconst rawPayload = $json.body ?? $json;\nlet payload = parseEnvelope(rawPayload);\nif (!payload) payload = parseEnvelope($json?.error?.message);\nconst resultValid = payload?.result && typeof payload.result === 'object' && !Array.isArray(payload.result);\nconst self_check_exhausted = resultValid && hasExhaustedSelfCheck(payload.result);\nconst terminalEngineFailure = resultValid && (\n  payload.result.service_state === 'failed' ||\n  (payload.result.service_state === 'blocked' && !self_check_exhausted)\n);\nconst blockedCode = terminalEngineFailure && typeof payload.result.blocked_code === 'string' && payload.result.blocked_code.trim()\n  ? payload.result.blocked_code\n  : 'DEDUCTION_SERVICE_FAILED';\nconst service_ok = upstreamError === null && payload?.ok === true && resultValid && !terminalEngineFailure;\nconst suppliedError = payload?.redacted_error;\nconst engineError = terminalEngineFailure\n  ? { code: blockedCode, message: 'The deduction service could not complete the command.' }\n  : null;\nconst redacted_error = upstreamError ?? engineError ?? (service_ok ? null : (\n  suppliedError && typeof suppliedError.code === 'string' && typeof suppliedError.message === 'string'\n    ? { code: suppliedError.code, message: suppliedError.message }\n    : { code: 'DEDUCTION_SERVICE_FAILED', message: 'The deduction service could not complete the command.' }\n));\nreturn [{ json: { service_ok, engine_result: service_ok ? payload.result : null, redacted_error } }];"
       },
       "id": "d78f3c15-e61e-4422-918e-7c3e31e4c929",
       "name": "JSON修复4",
@@ -262,8 +620,9 @@
     },
     {
       "parameters": {},
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "disabled": true,
       "position": [
         2080,
         0
@@ -283,13 +642,13 @@
           },
           "conditions": [
             {
-              "id": "b9f86fcf-77a0-47b7-bbab-f52ff2865fef",
-              "leftValue": "",
-              "rightValue": "",
+              "id": "76ef6417-dacc-48d7-ba1e-4688905392c4",
+              "leftValue": "={{ $json.route_to_storage === true || !($json.restart_required === true && $json.mapping_ok === true) }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
               }
             }
           ],
@@ -317,13 +676,13 @@
           },
           "conditions": [
             {
-              "id": "b9f86fcf-77a0-47b7-bbab-f52ff2865fef",
-              "leftValue": "",
-              "rightValue": "",
+              "id": "91db96bc-27ed-414e-9ca5-82709161b1fb",
+              "leftValue": "={{ $json.route_to_storage === true || !($json.restart_required === true && $json.mapping_ok === true) }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
               }
             }
           ],
@@ -343,13 +702,14 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
-        "additionalFields": {}
+        "query": "SELECT jsonb_build_object('ok', false, 'redacted_error', jsonb_build_object('code', 'ITERATION_SAMPLE_DISABLED', 'message', 'No V7-qualified deduction failure sample was written.')) AS response;",
+        "options": {}
       },
       "id": "0c262066-325d-4625-8622-6f081ebac574",
       "name": "异常样本入库",
+      "disabled": true,
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.6,
       "position": [
         2464,
         144
@@ -364,13 +724,14 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
-        "additionalFields": {}
+        "query": "SELECT jsonb_build_object('ok', false, 'redacted_error', jsonb_build_object('code', 'ITERATION_SAMPLE_DISABLED', 'message', 'No V7-qualified deduction failure sample was written.')) AS response;",
+        "options": {}
       },
       "id": "5af03a8b-df76-41aa-8a36-5924da9c6a48",
       "name": "异常样本入库1",
+      "disabled": true,
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.6,
       "position": [
         1888,
         -176
@@ -384,7 +745,7 @@
     },
     {
       "parameters": {
-        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+        "jsCode": "const audit = $('JSON修复2').first().json;\nconst initial = $('JSON修复').first().json;\nconst scope = initial.engine_request?.scope ?? {};\nconst chapters = Array.isArray(audit.engine_result?.chapters) ? audit.engine_result.chapters : [];\nconst executionId = String($execution.id);\nconst snapshots = chapters.map((chapter) => ({\n  chapter_id: chapter?.chapter_id,\n  chapter_version_id: chapter?.candidate_version_id,\n  candidate_plot_sim_json: chapter?.candidate_plot_sim_json,\n  deduction_progress_json: chapter?.deduction_progress_json\n}));\nconst snapshotValid = chapters.length > 0 &&\n  typeof scope.local_operator_id === 'string' && typeof scope.book_id === 'string' &&\n  typeof scope.l1a_unit_id === 'string' &&\n  /^[A-Za-z0-9._:-]+$/.test(executionId) &&\n  snapshots.every((chapter) =>\n    typeof chapter.chapter_id === 'string' && typeof chapter.chapter_version_id === 'string' &&\n    chapter.candidate_plot_sim_json && typeof chapter.candidate_plot_sim_json === 'object' && !Array.isArray(chapter.candidate_plot_sim_json) &&\n    chapter.deduction_progress_json && typeof chapter.deduction_progress_json === 'object' && !Array.isArray(chapter.deduction_progress_json)\n  );\nconst rpc_request = audit.audit_pass === true && snapshotValid ? {\n  local_operator_id: scope.local_operator_id,\n  book_id: scope.book_id,\n  l1a_unit_id: scope.l1a_unit_id,\n  idempotency_key: `fp008-04:${scope.l1a_unit_id}:${executionId}`,\n  chapters: snapshots\n} : null;\nconst response = rpc_request ? null : {\n  ok: false,\n  redacted_error: audit.redacted_error ?? {\n    code: 'DEDUCTION_SNAPSHOT_INCOMPLETE',\n    message: 'The released L1A deduction snapshots are incomplete.'\n  }\n};\nreturn [{ json: { rpc_request, response } }];"
       },
       "id": "c2aba984-2d71-4d98-9796-551c9459b4fa",
       "name": "JSON修复5",
@@ -397,7 +758,7 @@
     },
     {
       "parameters": {
-        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+        "jsCode": "const audit = $('JSON修复7').first().json;\nconst initial = $('JSON修复3').first().json ?? {};\nconst scope = initial.engine_request?.scope ?? {};\nconst chapters = Array.isArray(audit.engine_result?.chapters) ? audit.engine_result.chapters : [];\nconst executionId = String($execution.id);\nconst snapshots = chapters.map((chapter) => ({\n  chapter_id: chapter?.chapter_id,\n  chapter_version_id: chapter?.candidate_version_id,\n  candidate_plot_sim_json: chapter?.candidate_plot_sim_json,\n  deduction_progress_json: chapter?.deduction_progress_json\n}));\nconst snapshotValid = chapters.length > 0 &&\n  typeof scope.local_operator_id === 'string' && typeof scope.book_id === 'string' &&\n  typeof scope.l1a_unit_id === 'string' &&\n  /^[A-Za-z0-9._:-]+$/.test(executionId) &&\n  snapshots.every((chapter) =>\n    typeof chapter.chapter_id === 'string' && typeof chapter.chapter_version_id === 'string' &&\n    chapter.candidate_plot_sim_json && typeof chapter.candidate_plot_sim_json === 'object' && !Array.isArray(chapter.candidate_plot_sim_json) &&\n    chapter.deduction_progress_json && typeof chapter.deduction_progress_json === 'object' && !Array.isArray(chapter.deduction_progress_json)\n  );\nconst restartRequest = audit.restart_required === true && initial.mapping_ok === true && initial.engine_request &&\n  typeof initial.engine_request === 'object' && !Array.isArray(initial.engine_request) &&\n  Array.isArray(initial.engine_request.chapters)\n  ? (() => {\n      const { creator_direction, ...request } = initial.engine_request;\n      return { ...request, action: 'restart', chapters: request.chapters.map(({ checkpoint, ...chapter }) => chapter) };\n    })()\n  : null;\nconst rpc_request = audit.route_to_storage === true && snapshotValid ? {\n  local_operator_id: scope.local_operator_id,\n  book_id: scope.book_id,\n  l1a_unit_id: scope.l1a_unit_id,\n  idempotency_key: 'fp008-04:' + scope.l1a_unit_id + ':' + executionId,\n  chapters: snapshots\n} : null;\nconst response = rpc_request || restartRequest ? null : {\n  ok: false,\n  redacted_error: audit.redacted_error ?? {\n    code: 'DEDUCTION_SNAPSHOT_INCOMPLETE',\n    message: 'The released L1A deduction snapshots are incomplete.'\n  }\n};\nreturn [{ json: {\n  rpc_request,\n  response,\n  route_to_storage: rpc_request !== null,\n  restart_required: restartRequest !== null,\n  mapping_ok: restartRequest !== null,\n  engine_request: restartRequest\n} }];"
       },
       "id": "f2300036-674d-4ac6-b2c6-09806acfa664",
       "name": "JSON修复6",
@@ -410,6 +771,8 @@
     },
     {
       "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response ?? ($json.redacted_error ? { ok: false, redacted_error: $json.redacted_error } : { ok: false, redacted_error: { code: 'DEDUCTION_FLOW_FAILED', message: 'The deduction flow did not produce a releasable result.' } }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
@@ -423,6 +786,8 @@
     },
     {
       "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response ?? { ok: false, redacted_error: { code: 'DEDUCTION_FLOW_FAILED', message: 'The deduction flow did not produce a releasable result.' } } }}",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
@@ -437,13 +802,15 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
-        "additionalFields": {}
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS payload\n)\nSELECT CASE\n  WHEN jsonb_typeof(payload->'rpc_request') = 'object'\n    THEN public.rpc_finalize_deduction_snapshot(payload->'rpc_request')\n  ELSE COALESCE(\n    payload->'response',\n    jsonb_build_object(\n      'ok', false,\n      'redacted_error', jsonb_build_object(\n        'code', 'DEDUCTION_FLOW_FAILED',\n        'message', 'The deduction flow did not produce a releasable result.'\n      )\n    )\n  )\nEND AS response\nFROM input;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json)] }}"
+        }
       },
       "id": "323942be-377c-4bcd-b39a-2875aeaf8008",
       "name": "推演结果断章入库",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.6,
       "position": [
         2432,
         -16
@@ -453,18 +820,21 @@
           "id": "kitjw53XlibTPzxM",
           "name": "zh-database"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM l1a_chapters WHERE status = true ORDER BY chapter_number ASC LIMIT 1;",
-        "additionalFields": {}
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS payload\n)\nSELECT CASE\n  WHEN jsonb_typeof(payload->'rpc_request') = 'object'\n    THEN public.rpc_finalize_deduction_snapshot(payload->'rpc_request')\n  ELSE COALESCE(\n    payload->'response',\n    jsonb_build_object(\n      'ok', false,\n      'redacted_error', jsonb_build_object(\n        'code', 'DEDUCTION_FLOW_FAILED',\n        'message', 'The deduction flow did not produce a releasable result.'\n      )\n    )\n  )\nEND AS response\nFROM input;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json)] }}"
+        }
       },
       "id": "c7bb1348-8afa-49ed-824a-77eca87b5f16",
       "name": "推演结果断章入库1",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "typeVersion": 2.6,
       "position": [
         2336,
         -320
@@ -474,94 +844,69 @@
           "id": "kitjw53XlibTPzxM",
           "name": "zh-database"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
-      "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "断章时机与业务分流（US1: 套路展开+断章）：  在剧情段（L1A）定稿后，系统会将中程承诺包下发。  NODE_03: 章节目标生成 负责接收这些颗粒，锁定本章的情绪目标（如节奏、峰值情绪、强度限制），并划分主/次 POV 的边界[cite: 4]。 章节套路展开 负责看菜下饭，依据情绪波峰、钩子位置、信息揭露节奏和阅读期待进行断章切分（每个剧情段最终断章通常不得少于 3 章）。  宏观大事纪划分：  如果涉及更上位的剧情段宏观排序，则通过设计层的 l1a_sort 的 Sub-call 1（大事纪划分器） 进行。它负责提取时间线索，按情绪强度变化和世界状态变迁划分叙事阶段，并标记出阶段间的转折剧情段，从而在微观拆章前完成宏观结构锁死。"
-            }
-          ]
-        },
-        "builtInTools": {},
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
       "position": [
         1888,
         -320
       ],
       "id": "8a6f5c98-f88d-47c6-aa61-21565a17ee0d",
       "name": "FP008-04断章分析",
-      "credentials": {
-        "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
-        }
-      }
+      "disabled": true
     },
     {
-      "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "断章时机与业务分流（US1: 套路展开+断章）：  在剧情段（L1A）定稿后，系统会将中程承诺包下发。  NODE_03: 章节目标生成 负责接收这些颗粒，锁定本章的情绪目标（如节奏、峰值情绪、强度限制），并划分主/次 POV 的边界[cite: 4]。 章节套路展开 负责看菜下饭，依据情绪波峰、钩子位置、信息揭露节奏和阅读期待进行断章切分（每个剧情段最终断章通常不得少于 3 章）。  宏观大事纪划分：  如果涉及更上位的剧情段宏观排序，则通过设计层的 l1a_sort 的 Sub-call 1（大事纪划分器） 进行。它负责提取时间线索，按情绪强度变化和世界状态变迁划分叙事阶段，并标记出阶段间的转折剧情段，从而在微观拆章前完成宏观结构锁死。"
-            }
-          ]
-        },
-        "builtInTools": {},
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
       "position": [
         1632,
         0
       ],
       "id": "57461c02-dcc2-4d36-b15f-6aee81d3e13d",
       "name": "FP008-04断章分析1",
-      "credentials": {
-        "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
-        }
-      }
+      "disabled": true
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "={{ (() => { if ($json.service_ok !== true) throw new Error($json.redacted_error?.code ?? 'DEDUCTION_SERVICE_FAILED'); const binding = $('读取拆解结果1').first().json.context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); const base = String(binding.provider_base_url).replace(/\\/+$/, ''); return /\\/chat\\/completions$/i.test(base) ? base : /\\/v[0-9]+(?:beta)?$/i.test(base) ? base + '/chat/completions' : base + '/v1/chat/completions'; })() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const context = $('读取拆解结果1').first().json.context ?? {}; const binding = context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); const content = binding.prompt_text + '\\nINPUT=' + JSON.stringify({ service_ok: $json.service_ok, service_error: $json.redacted_error, deduction_result: $json.engine_result, chapters: context.chapters, characters: context.characters, world_state: context.world_state }); return { model: binding.model_name, messages: [{ role: 'user', content }], temperature: Number(binding.temperature) }; })() }}",
         "modelId": {
           "__rl": true,
-          "value": "deepseek-v4-flash-free",
+          "value": "={{ (() => { const binding = $('读取拆解结果1').first().json.context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); return binding; })().model_name }}",
           "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
+          "cachedResultName": "CURRENT_EFFECTIVE_MODEL"
         },
         "responses": {
           "values": [
             {
-              "content": "审查-02 凭空造物（特级/P0）：正文中是否错误使用了「世界设定包」之外的物品、超自然能力、外部援军或底层规则？\n审查-03 信息越权（特级/P0）：角色是否在自身控视角中，使用了其「信息边界.不知」范围内的未授权客观信息？\n审查-05 设定污染（特级/P0）：文本中是否出现了任何未经前置审批的全新世界观规则或异能设定？\n审查-06 失活实体（高级/P1）：正文中是否错误调用了在先前剧情中已明确死亡、毁坏、停用或失去活性的角色与剧情道具？\n审查-09 情绪任务（高级/P1，节奏量化版）：\n从「目标快照.预设情绪目标」中提取预设的叙事节奏进行比对：\n实际情绪波事件：正文中实际体现的情绪波动事件（其支撑类型必须属于：资源消耗、关系变化、信息差变动、代价支付、底牌释放之一）。\n目标覆盖率：实际兑现的情绪节点数量 / 预设情绪节点总数。\n节奏忠实度判定：合格（≥80%） | 警告（60%-80%） | 不合格（<60%）。"
+              "content": "={{ (() => { if ($json.service_ok !== true) throw new Error($json.redacted_error?.code ?? 'DEDUCTION_SERVICE_FAILED'); const binding = $('读取拆解结果1').first().json.context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); return binding; })().prompt_text + '\\nINPUT=' + JSON.stringify({ service_ok: $json.service_ok, service_error: $json.redacted_error, deduction_result: $json.engine_result, chapters: $('读取拆解结果1').first().json.context.chapters, characters: $('读取拆解结果1').first().json.context.characters, world_state: $('读取拆解结果1').first().json.context.world_state }) }}"
             }
           ]
         },
         "builtInTools": {},
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
       },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         1184,
         0
@@ -573,11 +918,131 @@
           "id": "ktkbgOI2RQI4Y8QK",
           "name": "OpenAI account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "for (const item of $input.all()) {\n  try {\n    let text = item.json.output || item.json.text || \"\";\n    if (typeof text === 'string') {\n      let cleanStr = text.replace(/```json|```/g, '').trim();\n      item.json.affordances = JSON.parse(cleanStr);\n    }\n  } catch (e) {\n    item.json.error = \"JSON parse error: \" + e.message;\n  }\n}\nreturn $input.all();"
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('读取拆解结果1').first().json.context.runtime_bindings?.['FP008-03']?.api_key_ref }}",
+                    "rightValue": "n8n-credential:openai-account-v1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "openai"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('读取拆解结果1').first().json.context.runtime_bindings?.['FP008-03']?.api_key_ref }}",
+                    "rightValue": "n8n-credential:relaycove-v1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "relaycove"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "zh05-route-fp008-03-resume-credential",
+      "name": "路由 FP008-03 恢复模型凭据",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (() => { if ($json.service_ok !== true) throw new Error($json.redacted_error?.code ?? 'DEDUCTION_SERVICE_FAILED'); const binding = $('读取拆解结果1').first().json.context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); const base = String(binding.provider_base_url).replace(/\\/+$/, ''); return /\\/chat\\/completions$/i.test(base) ? base : /\\/v[0-9]+(?:beta)?$/i.test(base) ? base + '/chat/completions' : base + '/v1/chat/completions'; })() }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const context = $('读取拆解结果1').first().json.context ?? {}; const binding = context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); const content = binding.prompt_text + '\\nINPUT=' + JSON.stringify({ service_ok: $json.service_ok, service_error: $json.redacted_error, deduction_result: $json.engine_result, chapters: context.chapters, characters: context.characters, world_state: context.world_state }); return { model: binding.model_name, messages: [{ role: 'user', content }], temperature: Number(binding.temperature) }; })() }}",
+        "modelId": {
+          "__rl": true,
+          "value": "={{ (() => { const binding = $('读取拆解结果1').first().json.context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); return binding; })().model_name }}",
+          "mode": "list",
+          "cachedResultName": "CURRENT_EFFECTIVE_MODEL"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ (() => { if ($json.service_ok !== true) throw new Error($json.redacted_error?.code ?? 'DEDUCTION_SERVICE_FAILED'); const binding = $('读取拆解结果1').first().json.context.runtime_bindings?.['FP008-03']; if (!binding || typeof binding.model_name !== 'string' || !binding.model_name.trim() || typeof binding.provider_base_url !== 'string' || !binding.provider_base_url.trim() || typeof binding.prompt_text !== 'string' || !binding.prompt_text.trim() || typeof binding.api_key_ref !== 'string' || !binding.api_key_ref.trim()) throw new Error('CONFIG_CONTRACT_BLOCKED: FP008-03 requires an active runtime binding.'); return binding; })().prompt_text + '\\nINPUT=' + JSON.stringify({ service_ok: $json.service_ok, service_error: $json.redacted_error, deduction_result: $json.engine_result, chapters: $('读取拆解结果1').first().json.context.chapters, characters: $('读取拆解结果1').first().json.context.characters, world_state: $('读取拆解结果1').first().json.context.world_state }) }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        128
+      ],
+      "id": "zh05-fp008-03-resume-relaycove",
+      "name": "FP008-03 阶段审计1 RelayCove",
+      "credentials": {
+        "openAiApi": {
+          "id": "ZpJ7ejgoXbQb5xUW",
+          "name": "RelayCove account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nconst service = $('JSON修复4').first().json;\nlet providerPayload = $json.data ?? $json.body ?? $json;\nif (typeof providerPayload === 'string') {\n  try { providerPayload = parseSingleJson(providerPayload); } catch {}\n}\nconst raw = providerPayload?.choices?.[0]?.message?.content ?? providerPayload?.output_text ?? providerPayload?.output?.[0]?.content?.[0]?.text ?? providerPayload?.data?.[0]?.message?.content ?? providerPayload?.message?.content ?? providerPayload?.content ?? providerPayload?.text ?? (typeof providerPayload === 'string' ? providerPayload : '');\nconst providerError = providerPayload && typeof providerPayload === 'object' && !Array.isArray(providerPayload) ? providerPayload.error : null;\nconst modelError = typeof $json.error?.message === 'string' ? $json.error.message : typeof $json.error === 'string' ? $json.error : typeof providerError?.message === 'string' ? providerError.message : typeof providerError === 'string' ? providerError : typeof $json.message === 'string' ? $json.message : '';\nlet parsed = null;\ntry {\n  const fence = String.fromCharCode(96).repeat(3);\n  parsed = typeof raw === 'string' ? parseSingleJson(raw) : raw;\n} catch { parsed = null; }\nfunction hasExhaustedSelfCheck(result) {\n  if (!result || typeof result !== 'object' || Array.isArray(result)\n    || result.service_state !== 'blocked'\n    || result.blocked_code !== 'DEDUCTION_BLOCKED'\n    || !Array.isArray(result.chapters)) return false;\n  return result.chapters.some((chapter) => {\n    const records = chapter?.candidate_plot_sim_json?.particles_records;\n    return Array.isArray(records) && records.some((record) => (\n      record && typeof record === 'object'\n      && record.particle_status === 'blocked'\n      && record.self_check && typeof record.self_check === 'object'\n      && ['emotion', 'hook', 'pivot'].some((key) => (\n        record.self_check[key] !== true && record.self_check[key] !== 'pass'\n      ))\n    ));\n  });\n}\nconst severityByCode = new Map([\n  ['AUDIT-02', 'P0'],\n  ['AUDIT-03', 'P0'],\n  ['AUDIT-05', 'P0'],\n  ['AUDIT-06', 'P1'],\n  ['AUDIT-09', 'P1']\n]);\nconst expectedCodes = new Set(severityByCode.keys());\nconst allowedOutcomes = new Set(['pass', 'risk', 'block']);\nconst risk_hints = Array.isArray(parsed?.risk_hints)\n  ? parsed.risk_hints.map((hint) => hint && typeof hint === 'object' ? { ...hint, severity: severityByCode.get(hint.check_code) } : hint)\n  : [];\nconst seenCodes = new Set(risk_hints.map((hint) => hint?.check_code));\nconst hintShapeValid = risk_hints.length === expectedCodes.size &&\n  [...expectedCodes].every((code) => seenCodes.has(code)) &&\n  risk_hints.every((hint) => expectedCodes.has(hint?.check_code) && allowedOutcomes.has(hint?.outcome));\nconst p0HintPresent = hintShapeValid && risk_hints.some((hint) => hint.severity === 'P0' && hint.outcome !== 'pass');\nconst protocolAccepted = parsed?.ok !== false || p0HintPresent;\nconst preaudit_valid = service.service_ok === true && protocolAccepted && hintShapeValid;\nconst p0_blocked = preaudit_valid && p0HintPresent;\nconst self_check_exhausted = preaudit_valid && hasExhaustedSelfCheck(service.engine_result);\nconst restart_required = p0_blocked || self_check_exhausted;\nconst audit_pass = preaudit_valid && !restart_required;\nconst route_to_storage = audit_pass;\nconst initialP0Error = (() => {\n  try {\n    return $('If审计通过1').all(0, 0)\n      .map((item) => item?.json?.redacted_error)\n      .find((error) => error && typeof error.code === 'string' && typeof error.message === 'string'\n        && error.code === 'DEDUCTION_PREAUDIT_BLOCKED') ?? null;\n  } catch {\n    return null;\n  }\n})();\nconst resumeP0Error = (() => {\n  try {\n    return $('If审计通过').all(0, 0)\n      .map((item) => item?.json?.redacted_error)\n      .find((error) => error && typeof error.code === 'string' && typeof error.message === 'string'\n        && error.code === 'DEDUCTION_PREAUDIT_BLOCKED') ?? null;\n  } catch {\n    return null;\n  }\n})();\nconst retainedP0Error = initialP0Error ?? resumeP0Error;\nconst initial = $('JSON修复3').first().json ?? {};\nconst restartRequest = restart_required && initial.mapping_ok === true && initial.engine_request &&\n  typeof initial.engine_request === 'object' && !Array.isArray(initial.engine_request) &&\n  Array.isArray(initial.engine_request.chapters)\n  ? (() => {\n      const { creator_direction, ...request } = initial.engine_request;\n      return { ...request, action: 'restart', chapters: request.chapters.map(({ checkpoint, ...chapter }) => chapter) };\n    })()\n  : null;\nconst redacted_error = audit_pass ? null : (\n  retainedP0Error ??\n  service.redacted_error ??\n  (modelError.includes('CONFIG_CONTRACT_BLOCKED')\n    ? { code: 'CONFIG_CONTRACT_BLOCKED', message: 'An active FP008-03 model and prompt binding is required.' }\n    : modelError.trim()\n    ? { code: 'MODEL_PROVIDER_UNAVAILABLE', message: 'The current model service is unavailable.' }\n    : !preaudit_valid\n    ? { code: 'PREAUDIT_RESPONSE_REJECTED', message: 'The deduction risk hints are incomplete.' }\n    : p0_blocked\n    ? { code: 'DEDUCTION_PREAUDIT_BLOCKED', message: 'The deduction result requires a complete L1A restart.' }\n    : { code: 'DEDUCTION_BLOCKED', message: 'The current particle failed the required self-check three times.' })\n);\nreturn [{ json: {\n  service_ok: service.service_ok,\n  preaudit_valid,\n  p0_blocked,\n  self_check_exhausted,\n  restart_required,\n  audit_pass,\n  route_to_storage,\n  risk_hints,\n  emotion_task: parsed?.emotion_task ?? null,\n  engine_result: service.engine_result,\n  redacted_error,\n  rpc_request: null,\n  mapping_ok: restartRequest !== null,\n  engine_request: restartRequest\n} }];"
       },
       "id": "a30059fc-13f2-4fa5-a002-30e34b746b45",
       "name": "JSON修复7",
@@ -595,6 +1060,31 @@
       "main": [
         [
           {
+            "node": "路由 FP008 推演命令",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "路由 FP008 推演命令": {
+      "main": [
+        [
+          {
+            "node": "读取拆解结果",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "读取拆解结果1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "读取拆解结果1",
             "type": "main",
             "index": 0
@@ -606,7 +1096,25 @@
       "main": [
         [
           {
+            "node": "FP008-01 映射放行",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-01 映射放行": {
+      "main": [
+        [
+          {
             "node": "FP008-02 核心推演与服务层Node.js / TypeScript 编写独立的推演脚本引擎",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
             "type": "main",
             "index": 0
           }
@@ -628,7 +1136,7 @@
       "main": [
         [
           {
-            "node": "FP008-01 剧情段颗粒拆解",
+            "node": "路由 FP008-01 模型凭据",
             "type": "main",
             "index": 0
           }
@@ -661,7 +1169,7 @@
       "main": [
         [
           {
-            "node": "FP008-03 阶段审计",
+            "node": "路由 FP008-03 初始模型凭据",
             "type": "main",
             "index": 0
           }
@@ -738,7 +1246,7 @@
       "main": [
         [
           {
-            "node": "FP008-03 阶段审计1",
+            "node": "路由 FP008-03 恢复模型凭据",
             "type": "main",
             "index": 0
           }
@@ -879,6 +1387,114 @@
         ]
       ]
     },
+    "路由 FP008-01 模型凭据": {
+      "main": [
+        [
+          {
+            "node": "FP008-01 剧情段颗粒拆解",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FP008-01 剧情段颗粒拆解 RelayCove",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "JSON修复",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-01 剧情段颗粒拆解 RelayCove": {
+      "main": [
+        [
+          {
+            "node": "JSON修复",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "路由 FP008-03 初始模型凭据": {
+      "main": [
+        [
+          {
+            "node": "FP008-03 阶段审计",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FP008-03 阶段审计 RelayCove",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "JSON修复2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-03 阶段审计 RelayCove": {
+      "main": [
+        [
+          {
+            "node": "JSON修复2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "路由 FP008-03 恢复模型凭据": {
+      "main": [
+        [
+          {
+            "node": "FP008-03 阶段审计1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FP008-03 阶段审计1 RelayCove",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "JSON修复7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FP008-03 阶段审计1 RelayCove": {
+      "main": [
+        [
+          {
+            "node": "JSON修复7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "JSON修复7": {
       "main": [
         [
@@ -893,10 +1509,8 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+    "executionOrder": "v1"
   },
-  "versionId": "20f69f14-9e87-4c37-9f0f-c595a90246b5",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "314afea00f9d5b2cf80f0d9b83940b8ed0327c027db1b473c29f695c94494b34"

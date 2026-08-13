@@ -3,13 +3,15 @@
   "nodes": [
     {
       "parameters": {
+        "httpMethod": "POST",
         "path": "9f4adf5e-d40b-4c9d-8f0a-1b849c3ccb2b",
+        "responseMode": "responseNode",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -192,
+        -520,
         0
       ],
       "id": "084e2fd9-2666-48df-b8b4-956248fd3036",
@@ -18,82 +20,107 @@
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "deepseek-v4-flash-free",
-          "mode": "list",
-          "cachedResultName": "DEEPSEEK-V4-FLASH-FREE"
-        },
-        "responses": {
-          "values": [
-            {
-              "content": "你将基于以下原则生成一条世界规则：\n1.基于地理、物理、冲突、价值观差异。\n2.基于呈现内容、脑洞、商业价值等方面的推演。\n3.基于主角爽点、痛点、长期承诺价值的充分挖掘。\n4.基于伏笔、差异性、剧情张力的强化。\n5.基于普遍流行的该题材的统一认知补全。"
-            }
-          ]
-        },
-        "builtInTools": {},
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.3,
-      "position": [
-        208,
-        0
-      ],
-      "id": "47c13991-fe1a-46a6-8c20-fe98b855d184",
-      "name": "FP002-04 世界设定生成/校验助手",
-      "credentials": {
-        "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+        "jsCode": "const request=$input.first().json.body;\nconst actions=new Set(['generate_candidate','save_candidate','read_versions','confirm']);\nconst allowed=new Set(['action','local_operator_id','book_id','correlation_id','idempotency_key','creator_input','atoms','bindings','world_candidate_ids','binding_candidate_ids','delete_world_ids','delete_world_binding_ids']);\nconst validId=value=>typeof value==='string'&&/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);\nconst uuid=value=>typeof value==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value);\nconst object=value=>value&&typeof value==='object'&&!Array.isArray(value);\nconst uuidArray=value=>Array.isArray(value)&&value.length>0&&value.every(uuid)&&value.length===new Set(value).size;\nconst optionalUuidArray=value=>value===undefined||(Array.isArray(value)&&value.every(uuid)&&value.length===new Set(value).size);\nconst boardAtom=new Map([['rule','rule'],['geography','geo'],['resource','resource'],['faction','faction'],['profession','job'],['monster','monster'],['event','event']]);\nconst sourceTypes=new Set(['manual','ai_generated','imported']);\nconst bindingStrengths=new Set(['strong','medium','weak','强','中','弱']);\nconst correlationId=validId(request?.correlation_id)?request.correlation_id:'unavailable';\nconst shape=object(request)&&actions.has(request.action)&&uuid(request.local_operator_id)&&uuid(request.book_id)&&validId(request.correlation_id)&&Object.keys(request).every(key=>allowed.has(key));\nconst validAtom=atom=>object(atom)&&validId(atom.client_ref)&&(atom.formal_id===undefined||uuid(atom.formal_id))&&boardAtom.get(atom.board_type)===atom.atom_type&&typeof atom.atom_key==='string'&&atom.atom_key.trim()!==''&&object(atom.atom_value_jsonb)&&Object.keys(atom.atom_value_jsonb).length>0&&Array.isArray(atom.affordance_dims)&&atom.affordance_dims.length>0&&atom.affordance_dims.every(value=>typeof value==='string'&&value.trim()!=='')&&sourceTypes.has(atom.source_type)&&atom.setting_layer==='initial';\nconst atoms=Array.isArray(request?.atoms)?request.atoms:[];\nconst atomRefs=new Set(atoms.flatMap(atom=>[atom?.client_ref,atom?.atom_key]));\nconst uniqueAtoms=atoms.length===new Set(atoms.map(atom=>String(atom?.setting_layer)+':'+String(atom?.atom_key))).size&&atoms.length===new Set(atoms.map(atom=>atom?.client_ref)).size;\nconst completeBoards=boardAtom.size===new Set(atoms.map(atom=>atom?.board_type)).size&&[...boardAtom.keys()].every(board=>atoms.some(atom=>atom?.board_type===board));\nconst validBinding=binding=>object(binding)&&validId(binding.client_ref)&&(binding.formal_id===undefined||uuid(binding.formal_id))&&typeof binding.from_ref==='string'&&atomRefs.has(binding.from_ref)&&typeof binding.to_ref==='string'&&atomRefs.has(binding.to_ref)&&binding.from_ref!==binding.to_ref&&typeof binding.binding_type==='string'&&binding.binding_type.trim()!==''&&bindingStrengths.has(binding.binding_strength)&&binding.setting_layer==='initial';\nconst bindings=Array.isArray(request?.bindings)?request.bindings:[];\nconst uniqueBindings=bindings.length===new Set(bindings.map(binding=>[binding.from_ref,binding.to_ref,binding.binding_type,binding.setting_layer].join(':'))).size&&bindings.length===new Set(bindings.map(binding=>binding?.client_ref)).size;\nconst generate=request?.action==='generate_candidate'&&typeof request.creator_input==='string'&&request.creator_input.trim()!==''&&!('atoms'in request)&&!('bindings'in request)&&!('idempotency_key'in request)&&!('world_candidate_ids'in request)&&!('binding_candidate_ids'in request)&&!('delete_world_ids'in request)&&!('delete_world_binding_ids'in request);\nconst save=request?.action==='save_candidate'&&atoms.length>=7&&atoms.every(validAtom)&&completeBoards&&uniqueAtoms&&bindings.every(validBinding)&&uniqueBindings&&!('creator_input'in request)&&!('idempotency_key'in request)&&!('world_candidate_ids'in request)&&!('binding_candidate_ids'in request)&&!('delete_world_ids'in request)&&!('delete_world_binding_ids'in request);\nconst read=request?.action==='read_versions'&&!('creator_input'in request)&&!('atoms'in request)&&!('bindings'in request)&&!('idempotency_key'in request)&&!('world_candidate_ids'in request)&&!('binding_candidate_ids'in request)&&!('delete_world_ids'in request)&&!('delete_world_binding_ids'in request);\nconst hasWorldCandidates=uuidArray(request?.world_candidate_ids);\nconst hasWorldDeletes=uuidArray(request?.delete_world_ids);\nconst hasBindingDeletes=uuidArray(request?.delete_world_binding_ids);\nconst confirm=request?.action==='confirm'&&validId(request.idempotency_key)&&(hasWorldCandidates||hasWorldDeletes||hasBindingDeletes)&&optionalUuidArray(request.binding_candidate_ids)&&optionalUuidArray(request.world_candidate_ids)&&optionalUuidArray(request.delete_world_ids)&&optionalUuidArray(request.delete_world_binding_ids)&&!('creator_input'in request)&&!('atoms'in request)&&!('bindings'in request);\nif(!shape||!(generate||save||read||confirm))return [{json:{route:'invalid',response:{ok:false,correlation_id:correlationId,redacted_error:{code:'INVALID_REQUEST',message:'The request could not be accepted.'}}}}];\nreturn [{json:{route:generate?'generate':'rpc',request}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        560,
+        -280,
         0
       ],
-      "id": "d1e06ffb-a850-44f8-a73c-1ad7b97b5a8e",
-      "name": "json修复"
+      "id": "9a0c5b73-50f6-41fb-b93d-f0777e7af984",
+      "name": "Validate World Action"
     },
     {
       "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "generate",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "rpc",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "invalid",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
         "options": {}
       },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.5,
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
       "position": [
-        768,
+        -40,
         0
       ],
-      "id": "02217a98-a855-43c6-b01d-99803e31f898",
-      "name": "返回结果"
+      "id": "7df267a5-e138-49ac-b6ca-5db4599e698d",
+      "name": "Route World Action"
     },
     {
       "parameters": {
-        "operation": "select",
-        "schema": {
-          "__rl": true,
-          "mode": "list",
-          "value": "public"
-        },
-        "table": {
-          "__rl": true,
-          "mode": "list",
-          "value": ""
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS request\n), scoped AS (\n  SELECT\n    i.request,\n    p.id,\n    p.intent_json,\n    p.forbid_json,\n    NOT EXISTS (\n      SELECT 1\n      FROM public.l1a_unit AS l\n      WHERE l.book_id = p.id\n        AND l.is_locked\n        AND l.is_valid\n        AND NOT l.is_shadow\n    ) AS world_write_allowed\n  FROM input AS i\n  LEFT JOIN public.book_project AS p\n    ON p.id = (i.request->>'book_id')::uuid\n   AND p.local_operator_id = (i.request->>'local_operator_id')::uuid\n), resolved AS (\n  SELECT\n    s.*,\n    (\n      SELECT jsonb_build_object(\n        'node_code', b.node_code,\n        'model_config_id', b.model_config_id,\n        'model_config_version', b.model_config_version,\n        'prompt_config_id', b.prompt_config_id,\n        'prompt_version', b.prompt_version,\n        'template_type', b.template_type,\n        'temperature', b.temperature,\n        'prompt_text', b.prompt_text,\n        'prompt_status', b.prompt_status,\n        'model_name', b.model_name,\n        'provider_base_url', b.provider_base_url,\n        'api_key_ref', b.api_key_ref,\n        'routing_config_jsonb', b.routing_config_jsonb,\n        'parameters_jsonb', b.parameters_jsonb\n      )\n      FROM public.v_prompt_runtime_binding AS b\n      WHERE b.local_operator_id = (s.request->>'local_operator_id')::uuid\n        AND b.node_code = 'FP002-04'\n        AND b.prompt_status = 'active'\n        AND NULLIF(btrim(b.model_name), '') IS NOT NULL\n        AND NULLIF(btrim(b.provider_base_url), '') IS NOT NULL\n        AND NULLIF(btrim(b.prompt_text), '') IS NOT NULL\n        AND NULLIF(btrim(b.api_key_ref), '') IS NOT NULL\n      LIMIT 1\n    ) AS model_config\n  FROM scoped AS s\n)\nSELECT\n  r.request,\n  r.id IS NOT NULL AS book_exists,\n  r.world_write_allowed,\n  r.model_config IS NOT NULL AS model_config_ready,\n  r.model_config,\n  jsonb_build_object('intent', r.intent_json, 'forbid', r.forbid_json) AS book_context,\n  COALESCE((\n    SELECT jsonb_agg(jsonb_build_object(\n      'board_type', ws.board_type,\n      'atom_type', ws.atom_type,\n      'atom_key', ws.atom_key,\n      'atom_value_jsonb', ws.atom_value_jsonb,\n      'affordance_dims', ws.affordance_dims\n    ) ORDER BY ws.created_at)\n    FROM public.world_state AS ws\n    WHERE ws.book_id = r.id\n      AND ws.is_active\n      AND ws.is_formal\n      AND ws.is_valid\n      AND NOT ws.is_shadow\n  ), '[]'::jsonb) AS existing_world\nFROM resolved AS r;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.request)] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        16,
-        0
+        220,
+        -160
       ],
       "id": "31438258-b7d9-4a35-945c-f19137f27735",
       "name": "读取已有设定及书本设定",
@@ -102,16 +129,268 @@
           "id": "kitjw53XlibTPzxM",
           "name": "zh-database"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input=$input.first().json;\nconst correlationId=input.request?.correlation_id||'unavailable';\nconst binding=input.model_config;\nconst configured=input.model_config_ready===true\n  && typeof binding?.model_name==='string'&&binding.model_name.trim()!==''\n  && typeof binding?.provider_base_url==='string'&&binding.provider_base_url.trim()!==''\n  && typeof binding?.prompt_text==='string'&&binding.prompt_text.trim()!==''\n  && typeof binding?.api_key_ref==='string'&&binding.api_key_ref.trim()!=='';\nif(input.book_exists!==true)return [{json:{route:'book_missing',response:{ok:false,correlation_id:correlationId,redacted_error:{code:'BOOK_NOT_FOUND',message:'The selected book is unavailable.'}}}}];\nif(input.world_write_allowed!==true)return [{json:{route:'frozen',response:{ok:false,correlation_id:correlationId,redacted_error:{code:'FROZEN',message:'World settings are read-only after L1A sorting is confirmed.'}}}}];\nif(!configured)return [{json:{route:'model_unavailable',response:{ok:false,correlation_id:correlationId,redacted_error:{code:'CONFIG_CONTRACT_BLOCKED',message:'An active FP002-04 model and prompt binding is required before a candidate can be generated.'}}}}];\nreturn [{json:{route:'generate',request:input.request,book_context:input.book_context,existing_world:input.existing_world,model_config:binding}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        -160
+      ],
+      "id": "0d89b85d-bcea-49bb-9c5f-3a23e6b00f1a",
+      "name": "Validate Effective Model Config"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "generate",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 1
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        660,
+        -160
+      ],
+      "id": "ca31a6a6-8c61-4878-89ac-9e4ef23d7a9d",
+      "name": "Route Effective Model Config"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "={{ $('Validate Effective Model Config').item.json.model_config.model_name }}",
+          "mode": "list",
+          "cachedResultName": "CURRENT_EFFECTIVE_MODEL"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $('Validate Effective Model Config').item.json.model_config.prompt_text + '\\nINPUT=' + JSON.stringify({ creator_input: $('Validate Effective Model Config').item.json.request.creator_input, book_context: $('Validate Effective Model Config').item.json.book_context, existing_world: $('Validate Effective Model Config').item.json.existing_world }) }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "baseURL": "={{ $('Validate Effective Model Config').item.json.model_config.provider_base_url }}",
+          "temperature": "={{ $('Validate Effective Model Config').item.json.model_config.temperature }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        860,
+        -160
+      ],
+      "id": "47c13991-fe1a-46a6-8c20-fe98b855d184",
+      "name": "FP002-04 世界设定生成/校验助手",
+      "credentials": {
+        "openAiApi": {
+          "id": "ktkbgOI2RQI4Y8QK",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const repairJsonSyntax = (source) => {\n  let output = '';\n  let inDouble = false;\n  let inSingle = false;\n  let escaped = false;\n  const slash = String.fromCharCode(92);\n  const isKeyStart = (value) => /[A-Za-z_$]/u.test(value);\n  const isKeyPart = (value) => /[A-Za-z0-9_$-]/u.test(value);\n  for (let index = 0; index < source.length; index += 1) {\n    const character = source[index];\n    if (inDouble) {\n      output += character;\n      if (escaped) escaped = false;\n      else if (character === slash) escaped = true;\n      else if (character === '\"') inDouble = false;\n      continue;\n    }\n    if (inSingle) {\n      if (escaped) {\n        output += character === \"'\" ? \"'\" : character === '\"' ? slash + '\"' : slash + character;\n        escaped = false;\n      } else if (character === slash) escaped = true;\n      else if (character === \"'\") { inSingle = false; output += '\"'; }\n      else if (character === '\"') output += slash + '\"';\n      else output += character;\n      continue;\n    }\n    if (character === '\"') { inDouble = true; output += character; continue; }\n    if (character === \"'\") { inSingle = true; output += '\"'; continue; }\n    if (character === ',') {\n      let lookahead = index + 1;\n      while (lookahead < source.length && /\\s/u.test(source[lookahead])) lookahead += 1;\n      if (source[lookahead] === '}' || source[lookahead] === ']') continue;\n    }\n    if (isKeyStart(character)) {\n      let end = index + 1;\n      while (end < source.length && isKeyPart(source[end])) end += 1;\n      let colon = end;\n      while (colon < source.length && /\\s/u.test(source[colon])) colon += 1;\n      let previous = index - 1;\n      while (previous >= 0 && /\\s/u.test(source[previous])) previous -= 1;\n      if ((previous < 0 || source[previous] === '{' || source[previous] === ',') && source[colon] === ':') {\n        output += JSON.stringify(source.slice(index, end));\n        index = end - 1;\n        continue;\n      }\n    }\n    output += character;\n  }\n  if (inDouble || inSingle || escaped) throw new Error('json');\n  return output;\n};\nconst parseSingleJson = (value) => {\n  if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n  if (typeof value !== 'string' || !value.trim()) throw new Error('json');\n  const text = value.replace(/\\uFEFF/gu, '').trim();\n  const balancedRoot = (start) => {\n    const opening = text[start];\n    const stack = [opening === '{' ? '}' : ']'];\n    let quoted = false;\n    let escaped = false;\n    for (let index = start + 1; index < text.length; index += 1) {\n      const character = text[index];\n      if (quoted) {\n        if (escaped) escaped = false;\n        else if (character === '\\\\') escaped = true;\n        else if (character === '\"') quoted = false;\n        continue;\n      }\n      if (character === '\"') { quoted = true; continue; }\n      if (character === '{') { stack.push('}'); continue; }\n      if (character === '[') { stack.push(']'); continue; }\n      if (character === stack.at(-1)) {\n        stack.pop();\n        if (stack.length === 0) return { source: text.slice(start, index + 1), end: index + 1 };\n      } else if (character === '}' || character === ']') {\n        return null;\n      }\n    }\n    return null;\n  };\n  const nextRoot = (from, rejectTruncated = false) => {\n    for (let start = from; start < text.length; start += 1) {\n      if (text[start] !== '{' && text[start] !== '[') continue;\n      const root = balancedRoot(start);\n      if (!root) { if (rejectTruncated) throw new Error('json'); continue; }\n      try { const repaired = repairJsonSyntax(root.source); return { ...root, source: repaired, value: JSON.parse(repaired) }; } catch (repairError) { void repairError; }\n    }\n    return null;\n  };\n  const root = nextRoot(0, true);\n  if (!root) throw new Error('json');\n  const trailing = text.slice(root.end).trim();\n  if (/^[}\\]]/u.test(trailing) || nextRoot(root.end)) throw new Error('multiple');\n  return root.value;\n};\nconst request=$('Validate Effective Model Config').item.json.request; const input=$input.first().json; const raw=typeof input.output_text==='string'?input.output_text:typeof input.output==='string'?input.output:Array.isArray(input.output)&&typeof input.output[0]?.content?.[0]?.text==='string'?input.output[0].content[0].text:''; const boardTypes=new Set(['rule','geography','resource','faction','profession','monster','event']); const atomTypes=new Set(['rule','fact','resource','event','faction','job','monster','geo']); const text=value=>typeof value==='string'&&value.trim()!==''; const validCandidate=item=>item&&typeof item==='object'&&!Array.isArray(item)&&boardTypes.has(item.board_type)&&atomTypes.has(item.atom_type)&&text(item.item_name)&&item.item_content&&typeof item.item_content==='object'&&!Array.isArray(item.item_content)&&Array.isArray(item.affordance_dims)&&item.affordance_dims.length>0&&item.affordance_dims.every(text); const validConflict=item=>item&&typeof item==='object'&&!Array.isArray(item)&&text(item.item_a)&&text(item.item_b)&&text(item.conflict_description)&&text(item.suggestion); try { const candidate=parseSingleJson(raw); if(!candidate||!['generate','validate'].includes(candidate.mode)||!Array.isArray(candidate.candidates)||!candidate.candidates.every(validCandidate)||!Array.isArray(candidate.validation_conflicts)||!candidate.validation_conflicts.every(validConflict)||!Array.isArray(candidate.data_debt))throw new Error(); return [{json:{http_status:200,response:{ok:true,correlation_id:request.correlation_id,result:{status:'generated_candidate',mode:candidate.mode,candidates:candidate.candidates,validation_conflicts:candidate.validation_conflicts,data_debt:candidate.data_debt}}}}]; } catch { return [{json:{http_status:422,response:{ok:false,correlation_id:request?.correlation_id||'unavailable',redacted_error:{code:'CANDIDATE_OUTPUT_INVALID',message:'The generated candidate could not be accepted.'}}}}]; }"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        -160
+      ],
+      "id": "d1e06ffb-a850-44f8-a73c-1ad7b97b5a8e",
+      "name": "json修复"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT $1::jsonb AS request\n), scoped AS (\n  SELECT\n    i.request,\n    p.id AS book_id,\n    p.title,\n    p.genre_main,\n    p.stage_code,\n    p.intent_json,\n    p.id IS NOT NULL AND public.v7_design_editable(p.id) AS world_write_allowed\n  FROM input AS i\n  LEFT JOIN public.book_project AS p\n    ON p.id = (i.request->>'book_id')::uuid\n   AND p.local_operator_id = (i.request->>'local_operator_id')::uuid\n), requested_atoms AS (\n  SELECT s.*, atom.value AS atom\n  FROM scoped AS s\n  CROSS JOIN LATERAL jsonb_array_elements(\n    CASE WHEN s.request->>'action' = 'save_candidate' THEN s.request->'atoms' ELSE '[]'::jsonb END\n  ) AS atom(value)\n  WHERE s.book_id IS NOT NULL AND s.world_write_allowed\n), updated_atoms AS (\n  UPDATE api.v_world_candidate_write AS current\n  SET board_type = requested.atom->>'board_type',\n      atom_type = requested.atom->>'atom_type',\n      atom_key = requested.atom->>'atom_key',\n      atom_value_jsonb = requested.atom->'atom_value_jsonb',\n      affordance_dims = requested.atom->'affordance_dims',\n      source_type = requested.atom->>'source_type',\n      setting_layer = requested.atom->>'setting_layer'\n  FROM requested_atoms AS requested\n  WHERE current.book_id = requested.book_id\n    AND current.local_operator_id = (requested.request->>'local_operator_id')::uuid\n    AND (\n      current.id::text = requested.atom->>'client_ref'\n      OR (\n        NOT EXISTS (\n          SELECT 1 FROM api.v_world_candidate_write AS identified\n          WHERE identified.book_id = requested.book_id\n            AND identified.id::text = requested.atom->>'client_ref'\n        )\n        AND current.setting_layer = requested.atom->>'setting_layer'\n        AND current.atom_key = requested.atom->>'atom_key'\n      )\n    )\n  RETURNING current.id, current.atom_key, current.setting_layer\n), inserted_atoms AS (\n  INSERT INTO api.v_world_candidate_write(\n    book_id, local_operator_id, revision_no, supersedes_id, board_type, atom_type,\n    atom_key, atom_value_jsonb, affordance_dims, source_type, setting_layer\n  )\n  SELECT\n    requested.book_id,\n    (requested.request->>'local_operator_id')::uuid,\n    1,\n    (\n      SELECT formal.id\n      FROM public.world_state AS formal\n      WHERE formal.book_id = requested.book_id\n        AND formal.is_formal AND formal.is_valid AND NOT formal.is_shadow\n        AND (\n          formal.id::text = requested.atom->>'formal_id'\n          OR (\n            requested.atom->>'formal_id' IS NULL\n            AND formal.setting_layer = requested.atom->>'setting_layer'\n            AND formal.atom_key = requested.atom->>'atom_key'\n          )\n        )\n      ORDER BY CASE WHEN formal.id::text = requested.atom->>'formal_id' THEN 0 ELSE 1 END, formal.revision_no DESC\n      LIMIT 1\n    ),\n    requested.atom->>'board_type', requested.atom->>'atom_type', requested.atom->>'atom_key',\n    requested.atom->'atom_value_jsonb', requested.atom->'affordance_dims',\n    requested.atom->>'source_type', requested.atom->>'setting_layer'\n  FROM requested_atoms AS requested\n  WHERE NOT EXISTS (\n    SELECT 1 FROM api.v_world_candidate_write AS current\n    WHERE current.book_id = requested.book_id\n      AND current.local_operator_id = (requested.request->>'local_operator_id')::uuid\n      AND (\n        current.id::text = requested.atom->>'client_ref'\n        OR (current.setting_layer = requested.atom->>'setting_layer' AND current.atom_key = requested.atom->>'atom_key')\n      )\n  )\n  RETURNING id, atom_key, setting_layer\n), deleted_candidate_atoms AS (\n  DELETE FROM api.v_world_candidate_write AS current\n  USING scoped AS s\n  WHERE s.request->>'action' = 'save_candidate'\n    AND s.book_id IS NOT NULL AND s.world_write_allowed\n    AND current.book_id = s.book_id\n    AND current.local_operator_id = (s.request->>'local_operator_id')::uuid\n    AND NOT EXISTS (\n      SELECT 1 FROM jsonb_array_elements(s.request->'atoms') AS requested(atom)\n      WHERE current.id::text = requested.atom->>'client_ref'\n         OR (current.setting_layer = requested.atom->>'setting_layer' AND current.atom_key = requested.atom->>'atom_key')\n    )\n  RETURNING current.id\n), requested_bindings AS (\n  SELECT s.*, binding.value AS binding\n  FROM scoped AS s\n  CROSS JOIN LATERAL jsonb_array_elements(\n    CASE WHEN s.request->>'action' = 'save_candidate' THEN s.request->'bindings' ELSE '[]'::jsonb END\n  ) AS binding(value)\n  WHERE s.book_id IS NOT NULL AND s.world_write_allowed\n), updated_bindings AS (\n  UPDATE api.v_world_binding_candidate_write AS current\n  SET from_ref_type = 'world', from_ref_id = requested.binding->>'from_ref',\n      to_ref_type = 'world', to_ref_id = requested.binding->>'to_ref',\n      binding_type = requested.binding->>'binding_type',\n      binding_strength = requested.binding->>'binding_strength',\n      setting_layer = requested.binding->>'setting_layer'\n  FROM requested_bindings AS requested\n  WHERE current.book_id = requested.book_id\n    AND current.local_operator_id = (requested.request->>'local_operator_id')::uuid\n    AND (\n      current.id::text = requested.binding->>'client_ref'\n      OR (\n        NOT EXISTS (\n          SELECT 1 FROM api.v_world_binding_candidate_write AS identified\n          WHERE identified.book_id = requested.book_id\n            AND identified.id::text = requested.binding->>'client_ref'\n        )\n        AND current.from_ref_type = 'world' AND current.from_ref_id = requested.binding->>'from_ref'\n        AND current.to_ref_type = 'world' AND current.to_ref_id = requested.binding->>'to_ref'\n        AND current.binding_type = requested.binding->>'binding_type'\n        AND current.setting_layer = requested.binding->>'setting_layer'\n      )\n    )\n  RETURNING current.id, current.from_ref_id, current.to_ref_id, current.binding_type, current.setting_layer\n), inserted_bindings AS (\n  INSERT INTO api.v_world_binding_candidate_write(\n    book_id, local_operator_id, revision_no, supersedes_id, from_ref_type, from_ref_id,\n    to_ref_type, to_ref_id, binding_type, binding_strength, setting_layer\n  )\n  SELECT\n    requested.book_id,\n    (requested.request->>'local_operator_id')::uuid,\n    1,\n    (\n      SELECT formal.id\n      FROM public.world_binding AS formal\n      WHERE formal.book_id = requested.book_id\n        AND formal.is_formal AND formal.is_valid AND NOT formal.is_shadow\n        AND (\n          formal.id::text = requested.binding->>'formal_id'\n          OR (\n            requested.binding->>'formal_id' IS NULL\n            AND formal.from_ref_type = 'world' AND formal.from_ref_id = requested.binding->>'from_ref'\n            AND formal.to_ref_type = 'world' AND formal.to_ref_id = requested.binding->>'to_ref'\n            AND formal.binding_type = requested.binding->>'binding_type'\n            AND formal.setting_layer = requested.binding->>'setting_layer'\n          )\n        )\n      ORDER BY CASE WHEN formal.id::text = requested.binding->>'formal_id' THEN 0 ELSE 1 END, formal.revision_no DESC\n      LIMIT 1\n    ),\n    'world', requested.binding->>'from_ref', 'world', requested.binding->>'to_ref',\n    requested.binding->>'binding_type', requested.binding->>'binding_strength', requested.binding->>'setting_layer'\n  FROM requested_bindings AS requested\n  WHERE NOT EXISTS (\n    SELECT 1 FROM api.v_world_binding_candidate_write AS current\n    WHERE current.book_id = requested.book_id\n      AND current.local_operator_id = (requested.request->>'local_operator_id')::uuid\n      AND (\n        current.id::text = requested.binding->>'client_ref'\n        OR (\n          current.from_ref_type = 'world' AND current.from_ref_id = requested.binding->>'from_ref'\n          AND current.to_ref_type = 'world' AND current.to_ref_id = requested.binding->>'to_ref'\n          AND current.binding_type = requested.binding->>'binding_type'\n          AND current.setting_layer = requested.binding->>'setting_layer'\n        )\n      )\n  )\n  RETURNING id, from_ref_id, to_ref_id, binding_type, setting_layer\n), deleted_candidate_bindings AS (\n  DELETE FROM api.v_world_binding_candidate_write AS current\n  USING scoped AS s\n  WHERE s.request->>'action' = 'save_candidate'\n    AND s.book_id IS NOT NULL AND s.world_write_allowed\n    AND current.book_id = s.book_id\n    AND current.local_operator_id = (s.request->>'local_operator_id')::uuid\n    AND NOT EXISTS (\n      SELECT 1 FROM jsonb_array_elements(s.request->'bindings') AS requested(binding)\n      WHERE current.id::text = requested.binding->>'client_ref'\n         OR (\n           current.from_ref_type = 'world' AND current.from_ref_id = requested.binding->>'from_ref'\n           AND current.to_ref_type = 'world' AND current.to_ref_id = requested.binding->>'to_ref'\n           AND current.binding_type = requested.binding->>'binding_type'\n           AND current.setting_layer = requested.binding->>'setting_layer'\n         )\n    )\n  RETURNING current.id\n), formal_projection AS (\n  SELECT\n    s.*,\n    COALESCE((\n      SELECT jsonb_agg(jsonb_build_object(\n        'id', ws.id, 'formal_id', ws.id, 'board_type', ws.board_type, 'atom_type', ws.atom_type,\n        'atom_key', ws.atom_key, 'atom_value_jsonb', ws.atom_value_jsonb,\n        'affordance_dims', ws.affordance_dims, 'setting_layer', ws.setting_layer,\n        'is_formal', ws.is_formal\n      ) ORDER BY ws.setting_layer, ws.board_type, ws.atom_key)\n      FROM public.world_state AS ws\n      WHERE ws.book_id = s.book_id AND ws.is_formal AND ws.is_valid AND NOT ws.is_shadow\n    ), '[]'::jsonb) AS formal_atoms,\n    COALESCE((\n      SELECT jsonb_agg(jsonb_build_object(\n        'id', wb.id, 'formal_id', wb.id, 'from_ref_id', wb.from_ref_id, 'to_ref_id', wb.to_ref_id,\n        'binding_type', wb.binding_type, 'binding_strength', wb.binding_strength,\n        'setting_layer', wb.setting_layer, 'is_formal', wb.is_formal\n      ) ORDER BY wb.created_at, wb.id)\n      FROM public.world_binding AS wb\n      WHERE wb.book_id = s.book_id AND wb.is_formal AND wb.is_valid AND NOT wb.is_shadow\n    ), '[]'::jsonb) AS formal_bindings,\n    COALESCE((\n      SELECT max(ws.revision_no) FROM public.world_state AS ws\n      WHERE ws.book_id = s.book_id AND ws.is_formal AND ws.is_valid AND NOT ws.is_shadow\n    ), 1) AS formal_revision,\n    COALESCE((\n      SELECT jsonb_agg(jsonb_build_object(\n        'l1a_id', lu.id, 'l1a_name', lu.l1a_name, 'world_progression', lu.world_progress_json\n      ) ORDER BY lu.l1a_index)\n      FROM public.l1a_unit AS lu\n      WHERE lu.book_id = s.book_id AND lu.is_formal AND lu.is_valid\n        AND NOT lu.is_shadow AND lu.world_progress_json IS NOT NULL\n    ), '[]'::jsonb) AS world_progressions\n  FROM scoped AS s\n), candidate_projection_base AS (\n  SELECT\n    f.*,\n    COALESCE((\n      SELECT jsonb_agg(jsonb_build_object(\n        'id', ws.id, 'formal_id', ws.supersedes_id, 'board_type', ws.board_type, 'atom_type', ws.atom_type,\n        'atom_key', ws.atom_key, 'atom_value_jsonb', ws.atom_value_jsonb,\n        'affordance_dims', ws.affordance_dims, 'setting_layer', ws.setting_layer,\n        'is_formal', false\n      ) ORDER BY ws.setting_layer, ws.board_type, ws.atom_key)\n      FROM public.world_state AS ws\n      WHERE ws.book_id = f.book_id AND NOT ws.is_formal AND ws.is_valid AND NOT ws.is_shadow\n    ), '[]'::jsonb) AS candidate_atoms,\n    COALESCE((\n      SELECT jsonb_agg(jsonb_build_object(\n        'id', wb.id, 'formal_id', wb.supersedes_id, 'from_ref_id', wb.from_ref_id, 'to_ref_id', wb.to_ref_id,\n        'binding_type', wb.binding_type, 'binding_strength', wb.binding_strength,\n        'setting_layer', wb.setting_layer, 'is_formal', false\n      ) ORDER BY wb.created_at, wb.id)\n      FROM public.world_binding AS wb\n      WHERE wb.book_id = f.book_id AND NOT wb.is_formal AND wb.is_valid AND NOT wb.is_shadow\n    ), '[]'::jsonb) AS candidate_bindings,\n    COALESCE((\n      SELECT jsonb_agg(ws.id ORDER BY ws.id)\n      FROM public.world_state AS ws\n      WHERE ws.book_id = f.book_id AND NOT ws.is_formal AND ws.is_valid AND NOT ws.is_shadow\n    ), '[]'::jsonb) AS world_candidate_ids,\n    COALESCE((\n      SELECT jsonb_agg(wb.id ORDER BY wb.id)\n      FROM public.world_binding AS wb\n      WHERE wb.book_id = f.book_id AND NOT wb.is_formal AND wb.is_valid AND NOT wb.is_shadow\n    ), '[]'::jsonb) AS binding_candidate_ids,\n    COALESCE((\n      SELECT jsonb_agg(formal.id ORDER BY formal.id)\n      FROM public.world_state AS formal\n      WHERE formal.book_id = f.book_id AND formal.is_formal AND formal.is_valid AND NOT formal.is_shadow\n        AND NOT EXISTS (\n          SELECT 1 FROM public.world_state AS candidate\n          WHERE candidate.book_id = f.book_id AND NOT candidate.is_formal\n            AND candidate.is_valid AND NOT candidate.is_shadow\n            AND candidate.setting_layer = formal.setting_layer AND candidate.atom_key = formal.atom_key\n        )\n    ), '[]'::jsonb) AS delete_world_ids,\n    COALESCE((\n      SELECT max(ws.revision_no)\n      FROM public.world_state AS ws\n      WHERE ws.book_id = f.book_id AND NOT ws.is_formal AND ws.is_valid AND NOT ws.is_shadow\n    ), 1) AS candidate_revision\n  FROM formal_projection AS f\n), candidate_projection AS (\n  SELECT\n    base.*,\n    COALESCE((\n      SELECT jsonb_agg(formal.id ORDER BY formal.id)\n      FROM public.world_binding AS formal\n      WHERE formal.book_id = base.book_id AND formal.is_formal AND formal.is_valid AND NOT formal.is_shadow\n        AND NOT EXISTS (\n          SELECT 1 FROM public.world_binding AS candidate\n          WHERE candidate.book_id = base.book_id AND NOT candidate.is_formal\n            AND candidate.is_valid AND NOT candidate.is_shadow\n            AND candidate.from_ref_type = formal.from_ref_type AND candidate.from_ref_id = formal.from_ref_id\n            AND candidate.to_ref_type = formal.to_ref_type AND candidate.to_ref_id = formal.to_ref_id\n            AND candidate.binding_type = formal.binding_type AND candidate.setting_layer = formal.setting_layer\n            AND COALESCE(candidate.origin_l1a_id, '00000000-0000-0000-0000-000000000000'::uuid)\n              = COALESCE(formal.origin_l1a_id, '00000000-0000-0000-0000-000000000000'::uuid)\n        )\n        AND NOT EXISTS (\n          SELECT 1 FROM public.world_state AS deleted\n          WHERE deleted.id::text IN (SELECT jsonb_array_elements_text(base.delete_world_ids))\n            AND ((formal.from_ref_type = 'world' AND formal.from_ref_id = deleted.atom_key)\n              OR (formal.to_ref_type = 'world' AND formal.to_ref_id = deleted.atom_key))\n        )\n    ), '[]'::jsonb) AS delete_world_binding_ids\n  FROM candidate_projection_base AS base\n), confirmed AS (\n  SELECT public.rpc_commit_world_settings(jsonb_strip_nulls(jsonb_build_object(\n    'local_operator_id', s.request->>'local_operator_id',\n    'book_id', s.request->>'book_id',\n    'idempotency_key', s.request->>'idempotency_key',\n    'world_candidate_ids', s.request->'world_candidate_ids',\n    'binding_candidate_ids', s.request->'binding_candidate_ids',\n    'delete_world_ids', s.request->'delete_world_ids',\n    'delete_world_binding_ids', s.request->'delete_world_binding_ids'\n  ))) AS value\n  FROM scoped AS s\n  WHERE s.request->>'action' = 'confirm' AND s.book_id IS NOT NULL\n)\nSELECT CASE\n  WHEN projection.book_id IS NULL THEN jsonb_build_object(\n    'ok', false,\n    'correlation_id', projection.request->>'correlation_id',\n    'redacted_error', jsonb_build_object('code', 'SCOPE_REJECTED', 'message', 'The selected book is unavailable.')\n  )\n  WHEN projection.request->>'action' = 'read_versions' THEN jsonb_build_object(\n    'ok', true,\n    'correlation_id', projection.request->>'correlation_id',\n    'result', jsonb_build_object(\n      'status', 'read_versions',\n      'frozen', NOT projection.world_write_allowed,\n      'world_progressions', projection.world_progressions,\n      'book', jsonb_build_object(\n        'title', projection.title,\n        'genre_main', projection.genre_main,\n        'stage_code', projection.stage_code,\n        'intent_json', COALESCE(projection.intent_json, '{}'::jsonb)\n      ),\n      'versions',\n        CASE WHEN jsonb_array_length(projection.formal_atoms) > 0 THEN jsonb_build_array(jsonb_build_object(\n          'snapshot_key', 'formal:current',\n          'revision', projection.formal_revision,\n          'state', 'formal',\n          'atoms', projection.formal_atoms,\n          'bindings', projection.formal_bindings\n        )) ELSE '[]'::jsonb END\n        || CASE WHEN jsonb_array_length(projection.world_candidate_ids) > 0 THEN jsonb_build_array(jsonb_build_object(\n          'snapshot_key', 'candidate:current',\n          'revision', projection.candidate_revision,\n          'state', 'candidate',\n          'atoms', projection.candidate_atoms,\n          'bindings', projection.candidate_bindings,\n          'world_candidate_ids', projection.world_candidate_ids,\n          'binding_candidate_ids', projection.binding_candidate_ids,\n          'delete_world_ids', projection.delete_world_ids,\n          'delete_world_binding_ids', projection.delete_world_binding_ids\n        )) ELSE '[]'::jsonb END\n        || COALESCE((\n          SELECT jsonb_agg(jsonb_build_object(\n            'snapshot_key', 'history:' || history.snapshot_no,\n            'revision', history.snapshot_no,\n            'state', 'history',\n            'atoms', COALESCE((\n              SELECT jsonb_agg(jsonb_build_object(\n                'id', ws.id, 'formal_id', ws.id, 'board_type', ws.board_type, 'atom_type', ws.atom_type,\n                'atom_key', ws.atom_key, 'atom_value_jsonb', ws.atom_value_jsonb,\n                'affordance_dims', ws.affordance_dims, 'setting_layer', ws.setting_layer,\n                'is_formal', false\n              ) ORDER BY ws.setting_layer, ws.board_type, ws.atom_key)\n              FROM public.world_state AS ws\n              WHERE ws.id = ANY(ARRAY(\n                SELECT value::uuid\n                FROM jsonb_array_elements_text(history.result #> '{ids,world_ids}') AS item(value)\n              ))\n            ), '[]'::jsonb),\n            'bindings', COALESCE((\n              SELECT jsonb_agg(jsonb_build_object(\n                'id', wb.id, 'formal_id', wb.id, 'from_ref_id', wb.from_ref_id, 'to_ref_id', wb.to_ref_id,\n                'binding_type', wb.binding_type, 'binding_strength', wb.binding_strength,\n                'setting_layer', wb.setting_layer, 'is_formal', false\n              ) ORDER BY wb.created_at, wb.id)\n              FROM public.world_binding AS wb\n              WHERE wb.id = ANY(ARRAY(\n                SELECT value::uuid\n                FROM jsonb_array_elements_text(COALESCE(history.result #> '{ids,world_binding_ids}', '[]'::jsonb)) AS item(value)\n              ))\n            ), '[]'::jsonb)\n          ) ORDER BY history.snapshot_no DESC)\n          FROM (\n            SELECT\n              request_log.result,\n              row_number() OVER (ORDER BY request_log.created_at, request_log.operation, request_log.idempotency_key) AS snapshot_no,\n              count(*) OVER () AS snapshot_count\n            FROM public.product_request_log AS request_log\n            WHERE request_log.book_id = projection.book_id\n              AND request_log.operation IN ('rpc_create_book_project', 'rpc_commit_world_settings')\n              AND jsonb_array_length(COALESCE(request_log.result #> '{ids,world_ids}', '[]'::jsonb)) > 0\n          ) AS history\n          WHERE history.snapshot_no < history.snapshot_count\n        ), '[]'::jsonb),\n      'current_snapshot_key', CASE\n        WHEN jsonb_array_length(projection.world_candidate_ids) > 0 THEN 'candidate:current'\n        WHEN jsonb_array_length(projection.formal_atoms) > 0 THEN 'formal:current'\n        ELSE NULL\n      END\n    )\n  )\n  WHEN NOT projection.world_write_allowed THEN jsonb_build_object(\n    'ok', false,\n    'correlation_id', projection.request->>'correlation_id',\n    'redacted_error', jsonb_build_object('code', 'DESIGN_LOCKED', 'message', 'World settings are read-only after L1A sorting is confirmed.')\n  )\n  WHEN projection.request->>'action' = 'save_candidate' THEN jsonb_build_object(\n    'ok', true,\n    'correlation_id', projection.request->>'correlation_id',\n    'result', jsonb_build_object(\n      'status', 'candidate_saved',\n      'snapshot_key', 'candidate:current',\n      'world_candidate_ids', COALESCE((\n        SELECT jsonb_agg(written.id ORDER BY written.id)\n        FROM (SELECT id FROM updated_atoms UNION ALL SELECT id FROM inserted_atoms) AS written\n      ), '[]'::jsonb),\n      'binding_candidate_ids', COALESCE((\n        SELECT jsonb_agg(written.id ORDER BY written.id)\n        FROM (SELECT id FROM updated_bindings UNION ALL SELECT id FROM inserted_bindings) AS written\n      ), '[]'::jsonb)\n    )\n  )\n  WHEN projection.request->>'action' = 'confirm' THEN (\n    SELECT CASE\n      WHEN response.value->>'ok' = 'true' THEN jsonb_build_object(\n        'ok', true,\n        'correlation_id', projection.request->>'correlation_id',\n        'result', response.value - 'ok'\n      )\n      ELSE response.value || jsonb_build_object('correlation_id', projection.request->>'correlation_id')\n    END\n    FROM confirmed AS response\n  )\n  ELSE jsonb_build_object(\n    'ok', false,\n    'correlation_id', projection.request->>'correlation_id',\n    'redacted_error', jsonb_build_object('code', 'INVALID_REQUEST', 'message', 'The request could not be accepted.')\n  )\nEND AS response\nFROM candidate_projection AS projection;",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.request)] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        460,
+        80
+      ],
+      "id": "77dfb09a-5ee1-4db9-bc25-2b6a1bd87522",
+      "name": "Call World RPC",
+      "credentials": {
+        "postgres": {
+          "id": "kitjw53XlibTPzxM",
+          "name": "zh-database"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "try { const value=$input.first().json.response; const parsed=typeof value==='string'?JSON.parse(value):value; const correlationId=parsed?.correlation_id||$('Validate World Action').item.json.request?.correlation_id||'unavailable'; const messages={CANDIDATE_REJECTED:'候选已失效、归属不符或不能确认，请重新读取。',DESIGN_LOCKED:'三线排序已确认，世界设定现为只读。',SCOPE_REJECTED:'当前作品不可用，请从作品工作流重新进入。',INVALID_REQUEST:'请求无效，请刷新后重试。'}; const error=parsed?.redacted_error||parsed?.error; const normalizedError=error&&typeof error==='object'?{code:error.code||'WORLD_UNAVAILABLE',message:messages[error.code]||error.message||'世界设定暂不可用。'}:null; const response=parsed&&typeof parsed==='object'&&parsed.ok===true?{...parsed,correlation_id:correlationId}:normalizedError?{ok:false,correlation_id:correlationId,redacted_error:normalizedError}:{ok:false,correlation_id:correlationId,redacted_error:{code:'WORLD_UNAVAILABLE',message:'世界设定暂不可用，请稍后重试。'}}; return [{json:{http_status:response.ok===true?200:400,response}}]; } catch { const correlationId=$('Validate World Action').item.json.request?.correlation_id||'unavailable'; return [{json:{http_status:500,response:{ok:false,correlation_id:correlationId,redacted_error:{code:'WORLD_UNAVAILABLE',message:'世界设定暂不可用，请稍后重试。'}}}}]; }"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        80
+      ],
+      "id": "faed14de-8bb1-432d-a838-12ce0ef8fd59",
+      "name": "Format RPC Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input=$input.first().json; const response=input.response; const correlationId=response?.correlation_id||input.request?.correlation_id||$('Validate World Action').item.json.request?.correlation_id||'unavailable'; return [{json:{http_status:response?.redacted_error?400:500,response:response?.redacted_error?response:{ok:false,correlation_id:correlationId,redacted_error:{code:'WORLD_UNAVAILABLE',message:'The world setting could not be completed.'}}}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        80
+      ],
+      "id": "38c92d02-fb8f-4994-8e26-b85854fdac12",
+      "name": "Format Redacted Error"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response }}",
+        "options": {
+          "responseCode": "={{ $json.http_status }}"
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1300,
+        0
+      ],
+      "id": "02217a98-a855-43c6-b01d-99803e31f898",
+      "name": "返回结果"
     }
   ],
-  "pinData": {},
   "connections": {
     "Webhook": {
       "main": [
         [
           {
+            "node": "Validate World Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate World Action": {
+      "main": [
+        [
+          {
+            "node": "Route World Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route World Action": {
+      "main": [
+        [
+          {
             "node": "读取已有设定及书本设定",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call World RPC",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Redacted Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "读取已有设定及书本设定": {
+      "main": [
+        [
+          {
+            "node": "Validate Effective Model Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Redacted Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Effective Model Config": {
+      "main": [
+        [
+          {
+            "node": "Route Effective Model Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Effective Model Config": {
+      "main": [
+        [
+          {
+            "node": "FP002-04 世界设定生成/校验助手",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Redacted Error",
             "type": "main",
             "index": 0
           }
@@ -123,6 +402,13 @@
         [
           {
             "node": "json修复",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Redacted Error",
             "type": "main",
             "index": 0
           }
@@ -140,11 +426,40 @@
         ]
       ]
     },
-    "读取已有设定及书本设定": {
+    "Call World RPC": {
       "main": [
         [
           {
-            "node": "FP002-04 世界设定生成/校验助手",
+            "node": "Format RPC Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format RPC Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format RPC Response": {
+      "main": [
+        [
+          {
+            "node": "返回结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Redacted Error": {
+      "main": [
+        [
+          {
+            "node": "返回结果",
             "type": "main",
             "index": 0
           }

@@ -4,8 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>纵横叙事引擎｜新书创世 · 还原版</title>
-  <link rel="stylesheet" href="../common/daisyui-garden-full.css">
-  <link rel="stylesheet" href="../common/sidebar.css">
+  <link rel="stylesheet" href="/vendor/font-fallback.css">
+  <link rel="stylesheet" href="/pages/prototype/common/theme.css">
+  <link rel="stylesheet" href="/pages/prototype/common/sidebar.css">
+  <script src="/pages/prototype/common/theme.js"></script>
+  <script defer src="/pages/prototype/common/sidebar.js"></script>
   <style>
     :root {
       color-scheme: light;
@@ -42,6 +45,25 @@
     }
     button, input, textarea, select { font: inherit; }
     button { cursor: pointer; }
+    .menu { list-style: none; margin: 0; padding: 0; }
+    .badge { display: inline-flex; align-items: center; justify-content: center; min-height: 20px; padding: 2px 7px; border: 1px solid rgba(0,0,0,.12); border-radius: 999px; background: rgba(255,255,255,.58); color: inherit; }
+    .badge-outline { background: transparent; }
+    .badge-ghost { border-color: transparent; background: rgba(0,0,0,.05); }
+    .badge-sm { min-height: 18px; padding-inline: 6px; font-size: 10px; }
+    .chat { display: grid; gap: 4px; }
+    .chat-end { justify-items: end; }
+    .chat-start { justify-items: start; }
+    .chat-header { font-size: 11px; font-weight: 800; opacity: .54; }
+    .chat-bubble { max-width: min(82%, 560px); padding: 10px 12px; border: 1px solid rgba(0,0,0,.06); border-radius: 14px; background: rgba(255,255,255,.75); box-shadow: 0 4px 20px rgba(0,0,0,.035); }
+    .chat-bubble-primary { background: color-mix(in oklab, var(--color-primary) 18%, white 82%); }
+    .join { display: inline-flex; }
+    .join-item + .join-item { margin-left: -1px; }
+    .dropdown { position: relative; }
+    .dropdown-content { display: none; }
+    .dropdown[open] > .dropdown-content { display: block; }
+    .btn-sm { min-height: 30px; padding: 6px 10px; font-size: 12px; }
+    .btn-xs { min-height: 24px; padding: 3px 6px; font-size: 10px; }
+    .btn-circle { width: 28px; height: 28px; padding: 0; justify-content: center; border-radius: 50%; }
     .material-symbols-outlined {
       font-family: "Material Symbols Outlined";
       font-weight: normal;
@@ -74,17 +96,6 @@
       box-shadow: 0 4px 20px rgba(0,0,0,.035);
     }
 
-    .header-glass {
-      display: none;
-      position: fixed; top: 0; right: 0; left: var(--sidebar-w);
-      height: var(--header-h); z-index: 40; align-items: center; justify-content: space-between;
-      padding: 0 24px;
-      background: rgba(255,255,255,.72);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(0,0,0,.06);
-      transition: left .2s ease;
-    }
-
     .header-left, .header-right, .row { display: flex; align-items: center; gap: 12px; }
     .btn-icon {
       width: 38px; height: 38px; border-radius: 999px; border: 0;
@@ -99,6 +110,9 @@
       box-shadow: 0 1px 3px rgba(0,0,0,.04);
     }
     .btn:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(0,0,0,.08); }
+    .btn:disabled, .btn[aria-disabled="true"] {
+      cursor: not-allowed; opacity: .52; transform: none; box-shadow: none;
+    }
     .btn-primary {
       background: var(--color-accent); color: var(--color-accent-content); border-color: transparent;
       box-shadow: 0 0 16px color-mix(in oklab, var(--color-accent) 28%, transparent);
@@ -281,6 +295,12 @@
       border: 0; outline: 0; resize: none; min-height: 46px; max-height: 90px;
       border-radius: 12px; background: transparent; padding: 8px 10px;
     }
+    .chat-input button[type="submit"]:disabled,
+    .chat-input button[type="submit"][aria-disabled="true"] {
+      background: var(--color-base-300); color: color-mix(in oklab, var(--color-base-content) 48%, transparent);
+      border-color: color-mix(in oklab, var(--color-base-content) 12%, transparent);
+      box-shadow: none; cursor: not-allowed; filter: grayscale(.3); opacity: .72;
+    }
     .work-body { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .field { display: grid; gap: 6px; }
@@ -405,6 +425,12 @@
     .char-list-panel-head h5 { margin: 0; font-size: 12px; font-weight: 900; opacity: .55; letter-spacing: .04em; }
     .char-card-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
     .char-name { font-size: 16px; font-weight: 900; line-height: 1.3; }
+    .char-card-delete {
+      width: 22px; height: 22px; padding: 0; border: 0; border-radius: 4px;
+      background: transparent; color: inherit; opacity: .48; display: grid; place-items: center;
+    }
+    .char-card-delete:hover { color: var(--color-error); background: color-mix(in oklab, var(--color-error) 10%, transparent); opacity: 1; }
+    .char-card-delete .material-symbols-outlined { font-size: 15px; }
     .char-role-badge { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
     .char-role-badge.protagonist { background: color-mix(in oklab, var(--color-primary) 14%, transparent); color: var(--color-primary); }
     .char-role-badge.supporting { background: color-mix(in oklab, var(--color-accent) 14%, transparent); color: var(--color-accent); }
@@ -552,6 +578,19 @@
     .char-philosophy-section { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.35); border: 1px solid rgba(0,0,0,.05); }
     .char-detail-body { flex: 1; overflow-y: auto; padding: 12px 14px; display: grid; gap: 14px; }
     .char-section-title { font-size: 11px; font-weight: 900; opacity: .45; letter-spacing: .06em; margin-bottom: 4px; }
+    .char-review-section { display: grid; gap: 10px; padding-top: 2px; border-top: 1px solid rgba(0,0,0,.08); }
+    .char-review-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .char-review-group { display: grid; gap: 6px; min-width: 0; }
+    .char-review-group.wide { grid-column: 1 / -1; }
+    .char-review-group h6 { margin: 0; font-size: 11px; font-weight: 900; opacity: .64; }
+    .char-review-rows { display: grid; gap: 6px; }
+    .char-review-row { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px; padding-top: 6px; border-top: 1px dashed rgba(0,0,0,.08); font-size: 11px; line-height: 1.45; }
+    .char-review-row:first-child { padding-top: 0; border-top: 0; }
+    .char-review-row b { font-size: 10px; opacity: .52; }
+    .char-review-row span { min-width: 0; overflow-wrap: anywhere; }
+    .char-review-list { margin: 0; padding-left: 16px; display: grid; gap: 3px; font-size: 11px; line-height: 1.45; }
+    .char-review-empty { font-size: 11px; opacity: .42; }
+    @media (max-width: 980px) { .char-review-grid { grid-template-columns: 1fr; } .char-review-group.wide { grid-column: auto; } }
     .char-world-bindings { display: flex; flex-wrap: wrap; gap: 6px; }
     .char-bind-chip {
       display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px;
@@ -794,7 +833,7 @@
     .modal-backdrop.open { display: grid; }
     .stage-modal-panel {
       width: min(1040px, 96vw); max-height: 88vh;
-      background: var(--color-base-100); border: 1px solid rgba(0,0,0,.1); border-radius: 22px;
+      background: var(--color-base-100); border: 1px solid rgba(0,0,0,.1); border-radius: 16px;
       color: var(--color-base-content);
       box-shadow: 0 24px 80px rgba(0,0,0,.28);
       display: flex; flex-direction: column;
@@ -808,16 +847,16 @@
     .modal-head {
       border-bottom: 1px solid rgba(0,0,0,.08);
       background: color-mix(in oklab, var(--color-base-content) 3%, var(--color-base-100));
-      border-radius: 22px 22px 0 0;
+      border-radius: 16px 16px 0 0;
     }
-    .modal-head #confirmTitle { font-size: 15px; font-weight: 900; letter-spacing: -.01em; }
+    .modal-head #confirmTitle { font-size: 15px; font-weight: 900; letter-spacing: 0; }
     .modal-foot {
       border-top: 1px solid rgba(0,0,0,.08);
       background: color-mix(in oklab, var(--color-base-content) 3%, var(--color-base-100));
-      border-radius: 0 0 22px 22px;
+      border-radius: 0 0 16px 16px;
     }
     .modal-body { padding: 16px 20px; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; background: color-mix(in oklab, var(--color-base-content) 5%, var(--color-base-100)); }
-    .modal-body > .stage-card { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0; padding: 0; }
+    .modal-body > .stage-card { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0; padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
     .modal-body > .stage-card > .characters-grid { flex: 1; min-height: 380px; }
     .world-tab-panel {
       display: flex; flex-direction: column;
@@ -1028,6 +1067,9 @@
       font-size: 13px; transform: translateX(115%); opacity: 0; transition: all .25s ease;
     }
     .toast-item.show { transform: translateX(0); opacity: 1; }
+    .toast-container [data-new-book-runtime] {
+      position: fixed; top: 84px; right: calc(316px + 40px); max-width: min(420px, calc(100vw - 48px)); pointer-events: none;
+    }
     .toast-success { border-left-color: var(--color-success); }
     .toast-error { border-left-color: var(--color-error); }
     .toast-info { border-left-color: var(--color-info); }
@@ -1302,40 +1344,17 @@
       .cs-trow-main { grid-template-columns: 22px 1fr 64px 64px; }
     }
   </style>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
-<body class="cyber-grid">
-  <a class="hidden" href="#main">跳到主内容</a>
+<body class="ui-page cyber-grid">
+  <a class="skip-link" href="#main">跳到主内容</a>
 
-  <nav class="sidebar-glass" aria-label="主菜单">
-    <div class="sidebar-brand">
-      <div class="brand-mark"><span class="material-symbols-outlined">deployed_code</span></div>
-      <div class="sidebar-text">
-        <div class="brand-title">纵横</div>
-        <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
-      </div>
-    </div>
-    <div class="sidebar-separator" aria-hidden="true"></div>
-    <ul class="menu sidebar-menu" id="sidebarMenu">
-    </ul>
-
-    <footer class="sidebar-footer">
-      <div class="sidebar-user">
-        <div class="sidebar-user-avatar">U</div>
-        <span class="sidebar-text sidebar-user-name">用户</span>
-      </div>
-    </footer>
-  </nav>
-
-  <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" aria-label="折叠侧栏">
-    <span class="material-symbols-outlined" id="sidebarIcon">chevron_left</span>
-  </button>
+  <nav class="sidebar-glass" aria-label="主菜单" data-region="sidebar" data-shared-sidebar data-sidebar-active="design" data-sidebar-design-href="/books/new"></nav>
 
 
   <main class="main-content" id="main">
 
     <section class="workspace" id="workspace">
-      <aside class="chat-pane glass-panel" id="chatPane">
+      <aside class="chat-pane glass-panel ui-card" id="chatPane">
         <div class="pane-head">
           <div class="pane-title">
             <span class="material-symbols-outlined">psychology</span>
@@ -1347,13 +1366,13 @@
         </div>
         <div class="chat-history scrollbar" id="chatHistory"></div>
         <div class="quick-prompts" id="quickPrompts"></div>
-        <form class="chat-input" onsubmit="sendChat(event)">
-          <textarea id="chatInput" placeholder="请输入回答或拓展需求，例如：主角要在资源枯竭世界里靠剑修体系破局"></textarea>
-          <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">send</span>发送</button>
+        <form class="chat-input">
+          <textarea id="chatInput" class="ui-textarea" placeholder="请输入回答或拓展需求，例如：主角要在资源枯竭世界里靠剑修体系破局"></textarea>
+          <button class="btn btn-primary ui-button ui-button-primary" type="submit" onclick="window.__newBookPreviewFromChat?.(event)"><span class="material-symbols-outlined">send</span>发送</button>
         </form>
       </aside>
 
-      <aside class="timeline-pane glass-panel" id="timelinePane">
+      <aside class="timeline-pane glass-panel ui-card" id="timelinePane">
         <div class="book-meta">
           <h2 id="sideBookTitle"></h2>
           <div class="book-meta-row"><span>题材</span><b id="sideGenre"></b></div>
@@ -1370,7 +1389,7 @@
         <div class="timeline" id="sideTimeline"></div>
       </aside>
 
-      <aside class="work-pane glass-panel hidden" id="workPane">
+      <aside class="work-pane glass-panel ui-card hidden" id="workPane">
         <div class="pane-head">
           <div class="pane-title">
             <span class="material-symbols-outlined" id="workPaneIcon">fact_check</span>
@@ -1386,20 +1405,20 @@
   </main>
 
   <div class="modal-backdrop" id="confirmModal">
-    <div class="stage-modal-panel locked" id="stageModalPanel">
+    <div class="stage-modal-panel ui-modal locked" id="stageModalPanel">
       <div class="modal-head">
         <div>
           <b id="confirmTitle">01 创作原点</b>
         </div>
         <div class="row">
-          <button class="btn btn-ghost unlock-btn" id="unlockButton" type="button" onclick="unlockCurrentStep()"><span class="material-symbols-outlined">lock_open</span>解锁</button>
-          <button class="btn-icon" type="button" onclick="closeConfirmModal()"><span class="material-symbols-outlined">close</span></button>
+          <button class="ui-button ui-button-quiet ui-button-small unlock-btn" id="unlockButton" type="button" onclick="unlockCurrentStep()"><span class="material-symbols-outlined">lock_open</span>解锁</button>
+          <button class="ui-icon-button ui-button-quiet" type="button" onclick="closeConfirmModal()" aria-label="关闭阶段编辑面板"><span class="material-symbols-outlined">close</span></button>
         </div>
       </div>
       <div class="modal-body" id="confirmBody"></div>
       <div class="modal-foot">
-        <button class="btn" type="button" onclick="runIntegrityAnalysis()"><span class="material-symbols-outlined">analytics</span>完整性分析</button>
-        <button class="btn btn-primary" id="confirmAction" type="button" onclick="lockCurrentStep()"><span class="material-symbols-outlined">verified</span>确认锁死</button>
+        <button class="ui-button ui-button-quiet ui-button-small" type="button" onclick="runIntegrityAnalysis()"><span class="material-symbols-outlined">analytics</span>完整性分析</button>
+        <button class="ui-button ui-button-primary ui-button-small" id="confirmAction" type="button" onclick="lockCurrentStep()"><span class="material-symbols-outlined">verified</span>确认锁死</button>
       </div>
     </div>
   </div>
@@ -1409,8 +1428,11 @@
   <script>
     (() => {
       const data = window.NEW_BOOK_WIZARD_DATA;
+      // The route shell deliberately loads prototype initial values. Chat history has
+      // no restored-draft source, so it must never be shown as an AI transcript.
+      data.chat = [];
       const steps = data.stages;
-      const WORLD_STATE_KEY = "NEW_BOOK_WIZARD_STATE_V1";
+      const WORLD_STATE_KEY = "NEW_BOOK_WIZARD_STATE_V7";
       function getWorldStep() { return data.stages.find((s) => s.key === "world_settings"); }
       function persistWorldState() {
         const ws = getWorldStep();
@@ -1431,7 +1453,7 @@
           }
         } catch (e) { /* 解析失败时用默认数据 */ }
       })();
-      const CHAR_STATE_KEY = "NEW_BOOK_CHAR_STATE_V2";
+      const CHAR_STATE_KEY = "NEW_BOOK_CHAR_STATE_V7";
       function persistCharState() {
         const cs = steps.find(s => s.key === "characters");
         if (!cs) return;
@@ -1450,6 +1472,7 @@
       })();
       let current = 0;
       let viewing = 0;
+      const lockedSteps = new Set();
       let modalLocked = true;
       const uiGet = (id) => document.getElementById(id);
 
@@ -1459,6 +1482,13 @@
 
       function worldCategoryName(value) {
         const map = {
+          "rule": "规则",
+          "geography": "地理",
+          "resource": "资源",
+          "faction": "势力",
+          "profession": "职业/超能",
+          "monster": "怪物/灾难",
+          "event": "大事记",
           "职业": "职业/超能",
           "职业/超能": "职业/超能",
           "怪物": "怪物/灾难",
@@ -1502,28 +1532,26 @@
         return { text: "待完成", tone: "warning", dot: "pending" };
       }
 
-      function renderSidebar() {
-        const menu = uiGet("sidebarMenu");
-        if (!menu) return;
-        menu.innerHTML = `
-          ${data.menu.map((item) => `
-            <li>
-              <a class="${item.active ? "menu-active" : ""}" href="${item.href}">
-                <span class="material-symbols-outlined">${item.icon}</span>
-                <span class="sidebar-text">${item.label}</span>
-              </a>
-            </li>
-          `).join("")}
-        `;
+      function derivePlanningCounts(targetWords, chapterWords) {
+        const target = Number(targetWords);
+        const perChapter = Number(chapterWords);
+        if (!Number.isSafeInteger(target) || target <= 0 || !Number.isSafeInteger(perChapter) || perChapter <= 0) return null;
+        const chapterCount = Math.ceil(target / perChapter);
+        return { chapterCount, l1aTargetCount: Math.ceil(chapterCount / 3) };
       }
 
       function renderBookMeta() {
         const book = data.book;
+        const planning = derivePlanningCounts(book.targetWords, book.chapterWords);
         uiGet("sideBookTitle").textContent = book.title;
         uiGet("sideGenre").textContent = book.genre || book.intent_json?.genre || "";
         uiGet("sideSubGenre").textContent = book.subGenre || book.intent_json?.subGenre || "";
-        uiGet("sideTargetWords").textContent = book.targetWords;
-        uiGet("sideChapterWords").textContent = book.chapterWords;
+        uiGet("sideTargetWords").textContent = planning
+          ? `${Number(book.targetWords).toLocaleString("zh-CN")} · 预计 ${planning.chapterCount.toLocaleString("zh-CN")} 章`
+          : book.targetWords;
+        uiGet("sideChapterWords").textContent = planning
+          ? `${Number(book.chapterWords).toLocaleString("zh-CN")} · L1A 目标 ${planning.l1aTargetCount.toLocaleString("zh-CN")}`
+          : book.chapterWords;
         const stars = uiGet("sideStars");
         const rating = bookCommercialScore(book);
         if (stars) {
@@ -1570,7 +1598,7 @@
         const history = uiGet("chatHistory");
         if (!history) return;
         const chat = data.chat || [];
-        history.innerHTML = chat.map((item) => {
+        history.innerHTML = chat.length ? chat.map((item) => {
           const isUser = item.role === "user";
           return `
             <div class="chat ${isUser ? "chat-end" : "chat-start"}">
@@ -1578,13 +1606,19 @@
               <div class="chat-bubble ${isUser ? "chat-bubble-primary" : ""}">${escapeHtml(item.text)}</div>
             </div>
           `;
-        }).join("");
+        }).join("") : `<p class="chat-empty" role="status">尚无对话记录</p>`;
         history.scrollTop = history.scrollHeight;
 
         const prompts = uiGet("quickPrompts");
         if (prompts) {
           prompts.innerHTML = (data.prompts || []).map((prompt) => `<button class="prompt-chip" type="button" onclick="usePrompt('${escapeHtml(prompt)}')">${escapeHtml(prompt)}</button>`).join("");
         }
+      }
+
+      function appendRuntimeChat(role, text) {
+        if (!text) return;
+        data.chat = [...(data.chat || []), { role, text: String(text) }];
+        renderChat();
       }
 
       function setModalLock(locked) {
@@ -1608,6 +1642,18 @@
           field.tabIndex = locked ? -1 : 0;
         });
         if (!locked) uiGet("confirmBody")?.querySelector(".editable-field")?.focus();
+        syncConfirmAction();
+      }
+
+      function syncConfirmAction() {
+        const confirmAction = uiGet("confirmAction");
+        if (!confirmAction) return;
+        const gate = window.__newBookCanLockStage?.(viewing);
+        const blocked = Boolean(gate && !gate.ok);
+        confirmAction.disabled = blocked;
+        confirmAction.setAttribute("aria-disabled", String(blocked));
+        if (blocked && gate.message) confirmAction.title = gate.message;
+        else confirmAction.removeAttribute("title");
       }
 
       function editorTemplate(item) {
@@ -1626,20 +1672,35 @@
         `;
       }
 
-      function tagList(field) {
-        return `<div class="tags">${field.tags.map((tag, index) => {
+      function tagItems(field) {
+        return field.tags.map((tag, index) => {
           const tone = field.tones ? field.tones[index] : field.tone;
-          return `<span class="tag ${tone || ""}">${tag}</span>`;
-        }).join("")}</div>`;
+          return `<span class="tag ${tone || ""}">${escapeHtml(tag)}</span>`;
+        }).join("");
+      }
+
+      function tagList(field, attributes = "") {
+        return `<div class="tags"${attributes}>${tagItems(field)}</div>`;
+      }
+
+      function renderTargetEmotionTags(field) {
+        const host = document.querySelector("[data-target-emotion-tags]");
+        if (host) host.innerHTML = tagItems(field);
       }
 
       function fieldTemplate(field, index) {
         const cls = `field ${field.full ? "full" : ""}`;
         const bind = `data-field-index="${index}" oninput="window.updateCurrentField(this)" onchange="window.updateCurrentField(this)"`;
-        if (field.type === "textarea") return `<div class="${cls}"><label>${field.label}</label><textarea class="textarea editable-field" ${bind}>${escapeHtml(field.value)}</textarea></div>`;
-        if (field.type === "input") return `<div class="${cls}"><label>${field.label}</label><input class="input editable-field" ${bind} value="${escapeHtml(field.value)}"></div>`;
-        if (field.type === "select") return `<div class="${cls}"><label>${field.label}</label><select class="select editable-field" ${bind}>${field.options.map((option) => `<option>${option}</option>`).join("")}</select></div>`;
-        if (field.type === "tags") return `<div class="${cls}"><label>${field.label}</label>${tagList(field)}</div>`;
+        if (field.type === "textarea") return `<div class="${cls}"><label>${field.label}</label><textarea class="ui-textarea editable-field" ${bind}>${escapeHtml(field.value)}</textarea></div>`;
+        if (field.type === "input") return `<div class="${cls}"><label>${field.label}</label><input class="ui-field editable-field" ${bind} value="${escapeHtml(field.value)}"></div>`;
+        if (field.type === "select") return `<div class="${cls}"><label>${field.label}</label><select class="ui-select editable-field" ${bind}>${field.options.map((option) => `<option value="${escapeHtml(option)}" ${field.value === option ? "selected" : ""}>${escapeHtml(option) || "请选择"}</option>`).join("")}</select></div>`;
+        if (field.type === "tags") {
+          const editor = field.key === "targetEmotion"
+            ? `<textarea class="ui-textarea editable-field target-emotion-input" ${bind} placeholder="填写希望读者感受到的情绪或思考方向">${escapeHtml(field.value || "")}</textarea>`
+            : "";
+          const tagAttributes = field.key === "targetEmotion" ? " data-target-emotion-tags" : "";
+          return `<div class="${cls}"><label>${field.label}</label>${editor}${tagList(field, tagAttributes)}</div>`;
+        }
         return "";
       }
 
@@ -1663,6 +1724,79 @@
       /* ——— 烈度 / 鲁棒性评级标签 ——— */
       const INTENSITY_LABELS = ['', '轻度紧张', '明显冲突', '激烈对抗', '生死攸关'];
       const ROBUST_LABELS   = ['', '单一触发', '有限支撑', '多重支撑', '体系稳固'];
+
+      function l1aReviewValue(value) {
+        const text = candidateText(value);
+        if (text) return escapeHtml(text);
+        if (Array.isArray(value)) {
+          const values = value.map((entry) => l1aReviewValue(entry)).filter(Boolean);
+          return values.length
+            ? `<ul style="margin:0;padding-left:16px;display:grid;gap:3px">${values.map((entry) => `<li>${entry}</li>`).join("")}</ul>`
+            : "未提供";
+        }
+        if (isObject(value)) {
+          const rows = Object.entries(value).map(([key, entry]) => {
+            const rendered = l1aReviewValue(entry);
+            return rendered
+              ? `<div style="display:grid;grid-template-columns:minmax(72px,auto) minmax(0,1fr);gap:8px;align-items:start"><span style="opacity:.62">${escapeHtml(l1aReviewLabel(key))}</span><span>${rendered}</span></div>`
+              : "";
+          }).filter(Boolean);
+          return rows.length ? `<div style="display:grid;gap:5px">${rows.join("")}</div>` : "未提供";
+        }
+        return "";
+      }
+
+      function l1aReviewLabel(key) {
+        const labels = {
+          primary_emotion: "主情绪",
+          reader_promise: "读者承诺",
+          high_point: "高潮位置",
+          low_point: "低谷位置",
+          required_shift: "必须完成的转变",
+          direction: "弧光方向",
+          forbidden_shortcut: "禁止的捷径",
+          may_reveal: "可揭露",
+          must_not_reveal: "不得揭露",
+          starting_position: "起点",
+          required_arc: "弧光要求",
+        };
+        return labels[key] || String(key).replaceAll("_", " ");
+      }
+
+      function initialL1aParticipantNames(candidate, chars) {
+        const references = Array.isArray(candidate?.participant_char_refs) ? candidate.participant_char_refs : [];
+        const names = references.map((reference) => {
+          const value = candidateText(reference);
+          if (!value) return "";
+          const character = (chars || []).find((entry) => [entry?.client_ref, entry?.id, entry?.name]
+            .map(candidateText)
+            .includes(value));
+          return candidateText(character?.name) || value;
+        }).filter(Boolean);
+        return names.length ? names.join("、") : "未提供";
+      }
+
+      function initialL1aCandidateReviewTemplate(candidate, chars) {
+        const fields = [
+          ["L1A 名称", candidate?.l1a_name],
+          ["场景地点", candidate?.scene_location],
+          ["冲突背景", candidate?.conflict_background],
+          ["冲突升级路径", candidate?.escalation_path],
+          ["赌注", candidate?.stakes],
+          ["不可逆后果", candidate?.irreversible_consequence],
+          ["情节与情绪承诺", candidate?.plot_emotion_commit],
+          ["弧光方向要求", candidate?.arc_requirement],
+          ["信息揭露边界", candidate?.info_reveal_boundary],
+          ["角色弧光映射", candidate?.role_arc_json],
+          ["参与角色", initialL1aParticipantNames(candidate, chars)],
+        ];
+        return `<section aria-label="初始 L1A 候选承诺" style="display:grid;gap:9px;padding:12px 0 2px">
+          <div style="font-size:12px;font-weight:700">承诺审阅</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px 14px;font-size:12px;line-height:1.55">
+            ${fields.map(([label, value]) => `<div style="min-width:0"><div style="margin-bottom:2px;font-size:11px;opacity:.6">${escapeHtml(label)}</div><div style="overflow-wrap:anywhere">${l1aReviewValue(value) || "未提供"}</div></div>`).join("")}
+          </div>
+        </section>`;
+      }
 
       function conflictSeedTemplate(item) {
         const entries = item.conflictEntries || [];
@@ -1693,6 +1827,9 @@
         }
 
         function renderConflictList() {
+          const initialL1a = isObject(item.initial_l1a) ? item.initial_l1a : null;
+          const initialL1aReady = window.__newBookCanAdoptInitialL1a?.() === true;
+          const initialL1aAdopted = item.initial_l1a_adopted === true;
           return `<section class="form-section">
             <p style="margin:0 0 10px;font-size:12px;opacity:.55">💡 若需要调整冲突类型或增加新的冲突维度，请在聊天窗口与 AI 声明。</p>
             <div class="cs-table">
@@ -1721,6 +1858,23 @@
             <div style="display:flex;gap:16px;margin:8px 0 0;font-size:11px;opacity:.5">
               <span>烈度：${INTENSITY_LABELS.slice(1).map((l, i) => `<span class="cs-leg-dot" style="display:inline-block;width:7px;height:7px;border-radius:2px;margin:0 2px 0 4px;vertical-align:middle;background:var(--color-accent)"></span>${l}`).join('')}</span>
               <span>鲁棒：${ROBUST_LABELS.slice(1).map((l, i) => `<span class="cs-leg-dot" style="display:inline-block;width:7px;height:7px;border-radius:2px;margin:0 2px 0 4px;vertical-align:middle;background:var(--color-accent)"></span>${l}`).join('')}</span>
+            </div>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(0,0,0,.08);display:grid;gap:10px">
+              <div>
+                <b style="font-size:13px">初始 L1A 候选</b>
+                <p style="margin:4px 0 0;font-size:12px;opacity:.6">${initialL1a ? escapeHtml(initialL1a.l1a_name || "未命名候选") : "AI 尚未返回候选"}</p>
+                ${initialL1a ? `<p style="margin:4px 0 0;font-size:11px;opacity:.5">${escapeHtml(initialL1a.scene_location || "缺少具体场景地点")} · ${escapeHtml(initialL1a.conflict_background || "缺少冲突背景")}</p>` : ""}
+              </div>
+              ${initialL1a ? initialL1aCandidateReviewTemplate(initialL1a, chars) : ""}
+              <div class="row">
+                <button class="btn btn-primary" type="button" data-new-book-action="adopt-initial-l1a"
+                  onclick="window.adoptInitialL1aCandidate()" ${!initialL1aReady || initialL1aAdopted ? "disabled" : ""}
+                  aria-disabled="${String(!initialL1aReady || initialL1aAdopted)}">
+                  <span class="material-symbols-outlined">${initialL1aAdopted ? "check_circle" : "task_alt"}</span>
+                  ${initialL1aAdopted ? "已采用该候选" : "采用该候选"}
+                </button>
+                <span style="font-size:11px;opacity:.55">${initialL1aAdopted ? "可继续确认锁死本阶段" : initialL1aReady ? "采用后才可锁定阶段" : "候选完整后才可采用"}</span>
+              </div>
             </div>
           </section>`;
         }
@@ -1792,6 +1946,68 @@
         if (val <= 66) return d.mid;
         return d.high;
       }
+      function philosophyDisplayValue(value) {
+        if (!isObject(value)) return value;
+        if (Object.hasOwn(value, "value")) return value.value;
+        if (Object.hasOwn(value, "stance")) return value.stance;
+        if (Number.isFinite(Number(value.delta))) return Math.max(0, Math.min(100, 50 + Number(value.delta)));
+        return value;
+      }
+      function characterReviewValue(value) {
+        if (!isObject(value)) return candidateText(value);
+        const summary = candidateText(value.summary)
+          || candidateText(value.description)
+          || candidateText(value.value)
+          || candidateText(value.stance);
+        if (summary) return summary;
+        if (Number.isFinite(Number(value.delta))) {
+          const delta = Number(value.delta);
+          return `哲学偏移 ${delta >= 0 ? "+" : ""}${delta}`;
+        }
+        return "";
+      }
+      function characterReviewRows(value, labels = {}) {
+        const rows = Object.entries(isObject(value) ? value : {})
+          .map(([name, detail]) => {
+            const text = characterReviewValue(detail);
+            if (!text) return "";
+            return `<div class="char-review-row"><b>${escapeHtml(labels[name] || name)}</b><span>${escapeHtml(text)}</span></div>`;
+          })
+          .filter(Boolean);
+        return rows.length ? `<div class="char-review-rows">${rows.join("")}</div>` : '<span class="char-review-empty">未设定</span>';
+      }
+      function characterKnowledgeBoundaryTemplate(value) {
+        const boundary = isObject(value) ? value : {};
+        const labels = {
+          knows: "已知",
+          unknown: "未知",
+          false_belief: "错误认知",
+          reasonable_suspect: "合理推断",
+        };
+        return Object.entries(labels).map(([key, label]) => {
+          const entries = Array.isArray(boundary[key]) ? boundary[key].map(candidateText).filter(Boolean) : [];
+          return `<div class="char-review-row"><b>${label}</b>${entries.length
+            ? `<ul class="char-review-list">${entries.map((entry) => `<li>${escapeHtml(entry)}</li>`).join("")}</ul>`
+            : '<span class="char-review-empty">无</span>'}</div>`;
+        }).join("");
+      }
+      function characterReviewGroup(title, body, wide = false) {
+        return `<section class="char-review-group${wide ? " wide" : ""}"><h6>${escapeHtml(title)}</h6>${body}</section>`;
+      }
+      function characterReviewSectionsTemplate(char) {
+        const layers = isObject(char?.five_layers_json) ? char.five_layers_json : {};
+        return `<section class="char-review-section" aria-label="角色模型与知识边界">
+          <div class="char-section-title">角色模型与知识边界</div>
+          <div class="char-review-grid">
+            ${characterReviewGroup("L0 哲学底盘", characterReviewRows(layers.L0))}
+            ${characterReviewGroup("L1 驱动层", characterReviewRows(layers.L1))}
+            ${characterReviewGroup("L2 世界作用位", characterReviewRows(layers.L2))}
+            ${characterReviewGroup("L3 关系作用位", characterReviewRows(layers.L3))}
+            ${characterReviewGroup("知识边界", `<div class="char-review-rows">${characterKnowledgeBoundaryTemplate(char?.knowledge_boundary_json)}</div>`, true)}
+            ${characterReviewGroup("角色弧光", characterReviewRows(char?.arc_json, { direction: "方向", stakes: "代价与风险" }), true)}
+          </div>
+        </section>`;
+      }
       function getQuadrantStyle(tags) {
         if (!tags || tags.length === 0) return 'left:50%;top:50%';
         let sumS = 0, sumW = 0, sumT = 0;
@@ -1826,10 +2042,13 @@
       function charCardTemplate(char, isActive) {
         const roleClass = charRoleBadgeClass(char.role);
         const isMale = char.gender && char.gender.includes('♂');
+        const isFemale = char.gender && char.gender.includes('♀');
         return `
           <div class="char-card ${isActive ? "active" : ""}" onclick="window.selectChar('${char.id}')">
             <div class="char-card-top" style="margin-bottom:2px">
               <span class="char-name">${escapeHtml(char.name)}</span>
+              <button class="char-card-delete" type="button" aria-label="删除角色 ${escapeHtml(char.name)}" title="删除角色"
+                onclick="event.stopPropagation();window.deleteCharacter('${char.id}')"><span class="material-symbols-outlined">delete</span></button>
             </div>
             <div style="display:flex;align-items:center;gap:6px">
               <span class="char-role-badge ${roleClass}" title="点击切换角色" style="cursor:pointer"
@@ -1840,7 +2059,7 @@
                   <span class="char-gender-track" data-state="${isMale ? "0" : "1"}">
                     <span class="char-gender-thumb"></span>
                   </span>
-                  <span class="char-gender-icon i-female ${isMale ? "" : "active"}">♀</span>
+                  <span class="char-gender-icon i-female ${isFemale ? "active" : ""}">♀</span>
                 </div>
               </div>
             </div>
@@ -1918,7 +2137,7 @@
                   oninput="window.charUpdateField(this)" placeholder="角色姓名">
               </div>
               <div class="char-gender-toggle-sm" onclick="event.stopPropagation();window.charCycleGender('${char.id}')" title="点击切换性别">
-                性别：${char.gender && char.gender.includes('♂') ? '男' : '女'}
+                性别：${char.gender ? (char.gender.includes('♂') ? '男' : '女') : '未设定'}
               </div>
               <div class="char-age-group">
                 <label>年龄：</label>
@@ -1983,7 +2202,7 @@
                 </div>
                 <div class="char-phil-chips">
                   ${dims.map((name) => {
-                    const val = philValues[name] ?? 50;
+                    const val = philosophyDisplayValue(philValues[name] ?? 50);
                     const desc = philDesc(name, val);
                     return `<div class="char-phil-chip">
                       <span class="char-phil-chip-name">${escapeHtml(name)}</span>
@@ -1993,6 +2212,7 @@
                   }).join('')}
                 </div>
               </div>
+              ${characterReviewSectionsTemplate(char)}
             </div>
           </div>`;
       }
@@ -2006,14 +2226,14 @@
             <div class="char-list-panel">
               <div class="char-list-panel-head">
                 <h5>登场角色</h5>
-                <span style="font-size:11px;opacity:.4">${chars.length} 人</span>
+                <span id="charCount" style="font-size:11px;opacity:.4">${chars.length} 人</span>
               </div>
-              <div class="char-list" id="charList">
-                ${chars.map((c, i) => charCardTemplate(c, i === activeIdx)).join("")}
-                <button class="char-add-btn" type="button" onclick="window.charAdd()">
-                  <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span> AI生成新角色
-                </button>
-              </div>
+            <div class="char-list" id="charList">
+              ${chars.map((c, i) => charCardTemplate(c, i === activeIdx)).join("")}
+              <button class="char-add-btn" type="button" onclick="window.charAdd()">
+                <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span> AI生成新角色
+              </button>
+            </div>
             </div>
             <div id="charDetailPane" style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;">
               ${charDetailTemplate(item, activeChar)}
@@ -2022,19 +2242,80 @@
         `);
       }
 
+      function previewAnalysisTemplate() {
+        const preview = data.previewCandidate;
+        if (!preview) return `<p class="review-empty" role="status">尚未执行 AI 综合分析，暂无分析结果。</p>`;
+        const missing = Array.isArray(preview.missing_items) ? preview.missing_items.filter(Boolean) : [];
+        const commercial = isObject(preview.commercial_potential) ? preview.commercial_potential : {};
+        const score = Number.isInteger(commercial.shangye) ? `商业潜力候选评分：${commercial.shangye}/10。` : "";
+        const application = isObject(preview.application) ? preview.application : {};
+        const applied = Array.isArray(application.applied_stages) ? application.applied_stages.filter(Boolean) : [];
+        const skipped = Array.isArray(application.skipped_locked_stages) ? application.skipped_locked_stages.filter(Boolean) : [];
+        const stageNotes = Object.entries(isObject(preview.stage_completion) ? preview.stage_completion : {})
+          .filter(([, value]) => Number.isFinite(Number(value)))
+          .map(([stage, value]) => `${stage}：${Math.round(Number(value) * 100)}%`);
+        const dimensionLabels = {
+          originality: "原创脑洞",
+          visualization: "可视化潜力",
+          emotion_value: "情绪价值",
+          stickiness: "用户粘度",
+          depth: "思想深度",
+        };
+        const dimensionNotes = Object.entries(isObject(commercial.shangye_deduction_reasons) ? commercial.shangye_deduction_reasons : {})
+          .map(([dimension, reason]) => {
+            const text = String(reason || "").trim();
+            return text ? `${dimensionLabels[dimension] || dimension}：${text}` : "";
+          })
+          .filter(Boolean);
+        const commercialNotes = Array.isArray(commercial.stage_analysis)
+          ? commercial.stage_analysis.flatMap((item) => {
+              if (!isObject(item)) return [];
+              const prefix = [item.stage, item.status].map((value) => String(value || "").trim()).filter(Boolean).join(" · ");
+              const findings = Array.isArray(item.findings) ? item.findings : [item.finding];
+              const suggestions = Array.isArray(item.adjustment_suggestions) ? item.adjustment_suggestions : [item.suggestion || item.adjustment];
+              return [
+                ...findings.map((value) => String(value || "").trim()).filter(Boolean).map((value) => `${prefix || "阶段分析"}：${value}`),
+                ...suggestions.map((value) => String(value || "").trim()).filter(Boolean).map((value) => `${prefix || "阶段分析"}建议：${value}`),
+              ];
+            })
+          : [];
+        const crossStageNotes = Array.isArray(commercial.cross_stage_conflicts)
+          ? commercial.cross_stage_conflicts.map((item) => {
+              if (!isObject(item)) return "";
+              const conflict = String(item.conflict || "").trim();
+              const stages = Array.isArray(item.stages_involved) ? item.stages_involved.map((value) => String(value || "").trim()).filter(Boolean).join("、") : "";
+              const suggestion = String(item.suggestion || "").trim();
+              if (!conflict) return "";
+              return `跨阶段冲突${stages ? `（${stages}）` : ""}：${conflict}${suggestion ? `。建议：${suggestion}` : ""}`;
+            }).filter(Boolean)
+          : [];
+        const notices = [
+          score,
+          applied.length
+            ? `本轮候选已合并到本地草稿：${applied.join("、")}。请核对后在对应阶段确认锁定；尚未入库。`
+            : "本轮未提供可合并的本地候选；当前草稿未入库。",
+          preview.lock_respected === false ? "模型未确认锁定状态；浏览器已跳过所有锁定阶段。" : "",
+          ...skipped.map((item) => `已跳过锁定阶段：${item}`),
+          ...missing.map((item) => `待补充：${item}`),
+          ...stageNotes,
+          ...dimensionNotes,
+          ...commercialNotes,
+          ...crossStageNotes,
+        ].filter(Boolean);
+        return `<div class="review-empty" role="status"><ul class="missing-list">${notices.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>`;
+      }
+
       function finalReviewTemplate(item) {
         return stageShell(item, `
             <div class="review-module-grid">
               ${item.modules.map(([title, desc]) => `<div class="review-module"><b>${title}</b><small>${desc}</small></div>`).join("")}
             </div>
             <div class="form-section">
-              <h4>AI分析结果</h4>
-              <ul class="missing-list">
-                ${item.risks.map((risk) => `<li>${risk}</li>`).join("")}
-              </ul>
+              <h4>完整性检查</h4>
+              ${previewAnalysisTemplate()}
               <div class="row">
-                <button class="btn" type="button">详细配置</button>
-                <button class="btn btn-rose" type="button">开始创作</button>
+                <button class="btn" type="button" onclick="window.openWorkbench()">详细配置</button>
+                <button class="btn btn-rose" type="button" data-new-book-action="confirm-create">开始创作</button>
               </div>
             </div>
         `);
@@ -2245,14 +2526,12 @@
           <div class="review-board">
             ${stageBlocks}
             <section class="form-section">
-              <h4>AI分析结果</h4>
-              <ul class="missing-list">
-                ${item.risks.map((risk) => `<li>${escapeHtml(risk)}</li>`).join("")}
-              </ul>
+              <h4>完整性检查</h4>
+              ${previewAnalysisTemplate()}
             </section>
             <div class="review-actions">
               <button class="btn" type="button" onclick="window.runIntegrityAnalysis()"><span class="material-symbols-outlined">analytics</span>AI综合分析</button>
-              <button class="btn btn-rose" type="button" onclick="window.startProduction()"><span class="material-symbols-outlined">rocket_launch</span>开始创作</button>
+              <button class="btn btn-rose" type="button" data-new-book-action="confirm-create"><span class="material-symbols-outlined">rocket_launch</span>开始创作</button>
             </div>
           </div>
         `;
@@ -2344,6 +2623,7 @@
           item.bindings.push({ from: draggedId, to: targetId, type: bindType });
           data.worldBindings = item.bindings;
           persistWorldState();
+          window.__newBookDraftChanged?.();
           const result = { ok: true, total: item.bindings.length, type: bindType, from: draggedCard.title, to: targetCard.title };
           const panel = uiGet("confirmBody")?.querySelector("#worldCategoryPanel");
           if (panel) panel.innerHTML = worldCategoryPanelTemplate(item, item.activeWorldCategory || item.categories[0]);
@@ -2359,32 +2639,53 @@
           data.worldBindings = item.bindings;
           if (item.bindings.length === before) return;
           persistWorldState();
+          window.__newBookDraftChanged?.();
           const panel = uiGet("confirmBody")?.querySelector("#worldCategoryPanel");
           if (panel) panel.innerHTML = worldCategoryPanelTemplate(item, item.activeWorldCategory || item.categories[0]);
           showToast("已解除绑定", "success");
         };
         window.closeWorkPane = closeWorkPane;
         window.toggleChatDrawer = toggleChatDrawer;
-        window.toggleSidebar = () => {
-          document.body.classList.toggle("sidebar-collapsed");
-          const icon = uiGet("sidebarIcon");
-          if (icon) icon.textContent = document.body.classList.contains("sidebar-collapsed") ? "chevron_right" : "chevron_left";
-        };
         window.lockCurrentStep = () => {
+          const gate = window.__newBookCanLockStage?.(viewing);
+          if (gate && !gate.ok) {
+            showToast(gate.message, "warn");
+            return;
+          }
           // 仅当确认的是进行中步骤时推进进度指针;回看已完成步骤后锁定不重复推进
+          lockedSteps.add(viewing);
           if (viewing === current && current < steps.length - 1) current += 1;
           closeConfirmModal();
           renderSteps();
           renderTimeline();
+          window.__newBookDraftChanged?.();
         };
         window.unlockCurrentStep = () => {
+          for (const index of [...lockedSteps]) {
+            if (index >= viewing) lockedSteps.delete(index);
+          }
+          if (viewing < current) current = viewing;
           setModalLock(false);
+          renderSteps();
+          renderTimeline();
+          window.__newBookDraftChanged?.();
         };
+        function syncBookDraft() {
+          syncBookFromOrigin();
+          window.__newBookDraftChanged?.();
+        }
         window.updateCurrentField = (field) => {
           const index = Number(field.dataset.fieldIndex);
           const item = steps[viewing];
           if (!Number.isInteger(index) || !item?.fields?.[index]) return;
           item.fields[index].value = field.value;
+          if (item.key === "creative_origin") {
+            if (item.fields[index].key === "targetEmotion") {
+              setTargetEmotion(field.value);
+              renderTargetEmotionTags(item.fields[index]);
+            }
+            syncBookDraft();
+          } else window.__newBookDraftChanged?.();
         };
 
         /* ——— 冲突种子事件 handlers ——— */
@@ -2412,6 +2713,20 @@
           const modalBody = uiGet("confirmBody");
           if (modalBody) modalBody.innerHTML = editorTemplate(item);
         };
+        window.adoptInitialL1aCandidate = () => {
+          if (modalLocked) { showToast("解锁后可采用候选", "info"); return; }
+          const item = steps.find((step) => step.key === "conflict_seed");
+          if (!item || window.__newBookCanAdoptInitialL1a?.() !== true) {
+            showToast("请先补齐初始 L1A 候选", "warn");
+            return;
+          }
+          item.initial_l1a_adopted = true;
+          const modalBody = uiGet("confirmBody");
+          if (modalBody) modalBody.innerHTML = editorTemplate(item);
+          setModalLock(false);
+          window.__newBookDraftChanged?.();
+          showToast("已采用初始 L1A 候选，可确认锁死本阶段", "success");
+        };
 
         /* ——— 角色设定事件 handlers ——— */
         function getCharItem() { return steps[viewing]; }
@@ -2430,13 +2745,36 @@
             `<button class="char-add-btn" type="button" onclick="window.charAdd()">
               <span class="material-symbols-outlined" style="font-size:18px">auto_awesome</span> AI生成新角色
             </button>`;
+          const charCount = document.getElementById("charCount");
+          if (charCount) charCount.textContent = `${(item.characters || []).length} 人`;
           persistCharState();
+          window.__newBookDraftChanged?.();
         }
         window.selectChar = (id) => {
           const item = getCharItem();
           if (!item) return;
           const idx = (item.characters || []).findIndex((c) => c.id === id);
           if (idx >= 0) { item.activeCharIndex = idx; reRenderCharPanel(); }
+        };
+        window.deleteCharacter = (id) => {
+          if (modalLocked) { showToast("解锁后可删除角色", "info"); return; }
+          const item = getCharItem();
+          const index = (item?.characters || []).findIndex((character) => character.id === id);
+          if (index < 0) return;
+          const [removed] = item.characters.splice(index, 1);
+          item.relation_states = (item.relation_states || []).filter((relation) => (
+            relation.char_a_ref !== id && relation.char_b_ref !== id
+          ));
+          item.characters.forEach((character) => {
+            if (isObject(character.relations)) delete character.relations[id];
+          });
+          const priorActive = item.activeCharIndex ?? 0;
+          item.activeCharIndex = Math.max(0, Math.min(
+            index < priorActive ? priorActive - 1 : priorActive,
+            item.characters.length - 1,
+          ));
+          reRenderCharPanel();
+          showToast(`已删除角色「${removed.name}」及其关系引用`, "success");
         };
         window.charSetGender = (id, gender) => {
           if (modalLocked) { showToast("解锁后可修改", "info"); return; }
@@ -2504,6 +2842,7 @@
           if (!char) return;
           char[el.dataset.charField] = el.value;
           persistCharState();
+          window.__newBookDraftChanged?.();
           if (el.dataset.charField === "name") reRenderCharPanel();
         };
         window.charBindSlot = (charId, field, cardId) => {
@@ -2539,6 +2878,7 @@
             popup.querySelectorAll('.char-rel-popup-tag').forEach(el2 => { if (el2.textContent.trim() === tag) el2.classList.add('is-used'); });
           }
           persistCharState();
+          window.__newBookDraftChanged?.();
         };
         window.charRelRemoveTag = (el, charId, otherId) => {
           if (modalLocked) return;
@@ -2553,6 +2893,7 @@
             const popup = document.getElementById('relp-' + charId + '-' + otherId);
             if (popup) popup.querySelectorAll('.char-rel-popup-tag').forEach(el2 => { if (el2.textContent.trim() === tag) el2.classList.remove('is-used'); });
             persistCharState();
+            window.__newBookDraftChanged?.();
           }
         };
         window.charUnbindSlot = (charId, field, cardId) => {
@@ -2561,16 +2902,6 @@
           const char = (item?.characters || []).find((c) => c.id === charId);
           if (!char) return;
           char[field] = (char[field] || []).filter((id) => id !== cardId);
-          reRenderCharPanel();
-        };
-        window.charAdd = () => {
-          if (modalLocked) { showToast("解锁后可新建角色", "info"); return; }
-          const item = getCharItem();
-          if (!item) return;
-          const newChar = { id: "char-" + Date.now(), name: "新角色", role: "常驻NPC", gender: "♂ 雄性/男性",
-            age: "", traitTags: [], background: "", bio: "", appearance: "", relations: {}, bindRes: [], bindForce: [], bindJob: [], philosophy: {} };
-          item.characters = [...(item.characters || []), newChar];
-          item.activeCharIndex = item.characters.length - 1;
           reRenderCharPanel();
         };
         window.usePrompt = (text) => {
@@ -2635,6 +2966,7 @@
           item.cards = item.cards.filter((c) => c.id !== cardId);
           data.worldBindings = item.bindings;
           persistWorldState();
+          window.__newBookDraftChanged?.();
           const panel = uiGet("confirmBody")?.querySelector("#worldCategoryPanel");
           if (panel) panel.innerHTML = worldCategoryPanelTemplate(item, item.activeWorldCategory || item.categories[0]);
           showToast(`已删除条目「${target.title}」，同时移除 ${removedBindings} 条绑定`, "success");
@@ -2771,7 +3103,670 @@
         document.querySelectorAll('.char-rel-dropdown,.char-bind-dropdown').forEach(function(d) { d.removeAttribute('open'); });
       });
 
-      renderSidebar();
+      function isObject(value) {
+        return value !== null && typeof value === "object" && !Array.isArray(value);
+      }
+
+      function cloneDraftValue(value, fallback) {
+        try {
+          return JSON.parse(JSON.stringify(value));
+        } catch (error) {
+          return fallback;
+        }
+      }
+
+      function candidateText(value) {
+        return typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+      }
+
+      function candidatePositiveInteger(value) {
+        const numeric = Number(value);
+        return Number.isSafeInteger(numeric) && numeric > 0 ? String(numeric) : "";
+      }
+
+      function candidateList(value) {
+        return Array.isArray(value) ? value : isObject(value) ? [value] : [];
+      }
+
+      function candidateStringList(value) {
+        const values = Array.isArray(value)
+          ? value
+          : isObject(value) && Array.isArray(value.rules)
+            ? value.rules
+            : [value];
+        return values.map(candidateText).filter(Boolean);
+      }
+
+      function mergeCandidateObject(target, update) {
+        const merged = isObject(target) ? target : {};
+        if (!isObject(update)) return merged;
+        Object.entries(update).forEach(([key, value]) => {
+          if (value === undefined || value === null) return;
+          if (isObject(value)) {
+            merged[key] = mergeCandidateObject(isObject(merged[key]) ? merged[key] : {}, value);
+          } else if (Array.isArray(value)) {
+            merged[key] = cloneDraftValue(value, []);
+          } else if (typeof value !== "string" || value.trim()) {
+            merged[key] = value;
+          }
+        });
+        return merged;
+      }
+
+      function draftField(step, key) {
+        return step?.fields?.find((field) => field.key === key) || null;
+      }
+
+      function setDraftField(step, key, value) {
+        const field = draftField(step, key);
+        const next = candidateText(value);
+        if (!field || !next || field.value === next) return false;
+        field.value = next;
+        return true;
+      }
+
+      function setTargetEmotion(value) {
+        if (value === undefined || value === null) return false;
+        const rawValue = Array.isArray(value) ? cloneDraftValue(value, []) : candidateText(value);
+        const tags = (Array.isArray(value) ? value : [value])
+          .flatMap((item) => candidateText(item).split(/\n/u))
+          .map((item) => item.trim())
+          .filter(Boolean);
+        const origin = steps.find((step) => step.key === "creative_origin");
+        const field = origin?.fields?.find((field) => field.key === "targetEmotion");
+        if (!field) return false;
+        const before = JSON.stringify({ tags: field.tags || [], value: field.value || "" });
+        field.tags = [...tags];
+        field.value = Array.isArray(rawValue) ? rawValue.join("、") : rawValue;
+        data.book.intent_json = {
+          ...(data.book.intent_json || {}),
+          target_emotion: rawValue,
+        };
+        return before !== JSON.stringify({ tags: field.tags || [], value: field.value || "" });
+      }
+
+      function nextCandidateId(prefix, records) {
+        const existing = new Set((records || []).map((record) => String(record.id || record.client_ref || "")));
+        let index = existing.size + 1;
+        let id = `candidate-${prefix}-${index}`;
+        while (existing.has(id)) {
+          index += 1;
+          id = `candidate-${prefix}-${index}`;
+        }
+        return id;
+      }
+
+      function candidateCharacterType(value) {
+        const type = candidateText(value);
+        return {
+          "主角": "protagonist",
+          "核心主角": "protagonist",
+          protagonist: "protagonist",
+          "配角": "supporting",
+          "重要配角": "supporting",
+          "搭档": "supporting",
+          "导师": "supporting",
+          supporting: "supporting",
+          support: "supporting",
+          "宿敌": "antagonist",
+          "反派": "antagonist",
+          "反派大佬": "antagonist",
+          antagonist: "antagonist",
+          "群像": "ensemble",
+          "常驻NPC": "ensemble",
+          ensemble: "ensemble",
+        }[type] || type;
+      }
+
+      function candidateCharacterRole(type) {
+        return {
+          protagonist: "核心主角",
+          supporting: "重要配角",
+          antagonist: "反派大佬",
+          ensemble: "常驻NPC",
+        }[type] || "常驻NPC";
+      }
+
+      function mergeBookProjectCandidate(update) {
+        if (!isObject(update)) return false;
+        const origin = steps.find((step) => step.key === "creative_origin");
+        if (!origin) return false;
+        let changed = false;
+        const intent = mergeCandidateObject(data.book.intent_json || {}, update.intent_json);
+        if (Object.keys(intent).length) {
+          data.book.intent_json = intent;
+          changed = true;
+        }
+        changed = setDraftField(origin, "title", update.title) || changed;
+        changed = setDraftField(origin, "genre", update.genre_main) || changed;
+        const subGenre = Array.isArray(update.genre_sub_json)
+          ? candidateStringList(update.genre_sub_json).join("、")
+          : candidateText(update.genre_sub_json);
+        changed = setDraftField(origin, "subGenre", subGenre) || changed;
+        changed = setDraftField(origin, "targetWords", candidatePositiveInteger(update.target_words)) || changed;
+        changed = setDraftField(origin, "chapterWords", candidatePositiveInteger(update.chapter_words)) || changed;
+        changed = setDraftField(
+          origin,
+          "creativeIntent",
+          update.intent_json?.core_conflict || update.creative_intent || update.intent_json?.creative_intent,
+        ) || changed;
+        changed = setDraftField(origin, "sellingPoint", update.intent_json?.core_selling_point) || changed;
+        changed = setTargetEmotion(update.intent_json?.target_emotion) || changed;
+
+        const forbid = candidateStringList(update.forbid_json);
+        if (forbid.length) {
+          data.book.forbid_json = { ...(data.book.forbid_json || {}), rules: forbid };
+          changed = setDraftField(origin, "forbid", forbid.join("\n")) || changed;
+        } else {
+          changed = setDraftField(origin, "forbid", update.intent_json?.forbidden_direction) || changed;
+        }
+        const sellingPoints = candidateStringList(update.selling_points_json);
+        if (sellingPoints.length) changed = setDraftField(origin, "sellingPoint", sellingPoints.join("\n")) || changed;
+        return changed;
+      }
+
+      function mergeWorldCandidate(update) {
+        const world = getWorldStep();
+        if (!world) return false;
+        let changed = false;
+        candidateList(update).forEach((candidate) => {
+          if (!isObject(candidate)) return;
+          const category = worldCategoryName(candidate.board_type || candidate.category);
+          const title = candidateText(candidate.item_name || candidate.title);
+          if (!world.categories?.includes(category) || !title) return;
+          const atomKey = candidateText(candidate.atom_key);
+          if (!atomKey) return;
+          const candidateKey = `${category}::${atomKey}`;
+          let card = (world.cards || []).find((item) => item.atom_key === atomKey || item.candidate_key === candidateKey || (item.category === category && item.title === title));
+          const content = mergeCandidateObject(
+            isObject(card?.item_content) ? cloneDraftValue(card.item_content, {}) : {},
+            candidate.item_content,
+          );
+          const description = candidateText(content.summary || content.description || content.text || candidate.description || candidate.text);
+          if (!card) {
+            const id = nextCandidateId("world", world.cards);
+            card = {
+              id,
+              client_ref: id,
+              candidate_key: candidateKey,
+              atom_key: atomKey,
+              category,
+              board_type: category,
+              atom_type: candidateText(candidate.atom_type),
+              title,
+              text: description,
+              description,
+              item_content: content,
+              atom_value_jsonb: cloneDraftValue(content, {}),
+              affordance_dims: Array.isArray(candidate.affordance_dims) ? cloneDraftValue(candidate.affordance_dims, []) : [],
+              source_type: "manual",
+              bindTo: world.categories.filter((name) => name !== category),
+            };
+            world.cards.push(card);
+          } else {
+            card.category = category;
+            card.board_type = category;
+            card.title = title;
+            card.candidate_key = candidateKey;
+            card.atom_key = atomKey;
+            card.item_content = content;
+            card.atom_value_jsonb = cloneDraftValue(content, {});
+            if (description) {
+              card.text = description;
+              card.description = description;
+            }
+            if (candidateText(candidate.atom_type)) card.atom_type = candidateText(candidate.atom_type);
+            if (Array.isArray(candidate.affordance_dims)) card.affordance_dims = cloneDraftValue(candidate.affordance_dims, []);
+          }
+          changed = true;
+        });
+        if (changed) {
+          normalizeWorldStep(world);
+          persistWorldState();
+        }
+        return changed;
+      }
+
+      function mergeWorldBindingCandidate(update) {
+        const world = getWorldStep();
+        const characterStep = steps.find((item) => item.key === "characters");
+        if (!world) return false;
+        world.bindings = Array.isArray(world.bindings) ? world.bindings : [];
+        let changed = false;
+        candidateList(update).forEach((candidate) => {
+          if (!isObject(candidate)) return;
+          const fromType = candidateText(candidate.from_ref_type);
+          const toType = candidateText(candidate.to_ref_type);
+          const fromRef = candidateText(candidate.from_ref_id);
+          const toRef = candidateText(candidate.to_ref_id);
+          const bindingType = candidateText(candidate.binding_type);
+          const bindingStrength = candidateText(candidate.binding_strength);
+          const validWorldRef = (reference) => (world.cards || []).some((card) => candidateText(card.atom_key) === reference);
+          const validCharacterRef = (reference) => Boolean(findCandidateCharacter(characterStep, reference));
+          const endpointValid = (type, reference) => type === "world" ? validWorldRef(reference) : type === "character" && validCharacterRef(reference);
+          if (!endpointValid(fromType, fromRef) || !endpointValid(toType, toRef) || !bindingType || !["strong", "medium", "weak", "强", "中", "弱"].includes(bindingStrength)) return;
+          const existing = world.bindings.find((binding) => (
+            binding.from_ref_type === fromType
+            && binding.from_ref_id === fromRef
+            && binding.to_ref_type === toType
+            && binding.to_ref_id === toRef
+            && binding.binding_type === bindingType
+          ));
+          const next = {
+            from_ref_type: fromType,
+            from_ref_id: fromRef,
+            to_ref_type: toType,
+            to_ref_id: toRef,
+            binding_type: bindingType,
+            binding_strength: bindingStrength,
+            from: fromType === "world" ? (world.cards.find((card) => candidateText(card.atom_key) === fromRef)?.id || "") : fromRef,
+            to: toType === "world" ? (world.cards.find((card) => candidateText(card.atom_key) === toRef)?.id || "") : toRef,
+            type: bindingType,
+            strength: bindingStrength,
+          };
+          if (existing) Object.assign(existing, next);
+          else world.bindings.push(next);
+          changed = true;
+        });
+        if (changed) {
+          data.worldBindings = world.bindings;
+          persistWorldState();
+        }
+        return changed;
+      }
+
+      function isEmptyCandidateCharacterPlaceholder(character) {
+        const emptyObject = (value) => !isObject(value) || Object.keys(value).length === 0;
+        const emptyArray = (value) => !Array.isArray(value) || value.length === 0;
+        return candidateText(character?.char_name || character?.name) === "主角"
+          && !candidateText(character?.char_id_hint)
+          && !candidateText(character?.gender)
+          && !candidateText(character?.background)
+          && !candidateText(character?.bio)
+          && emptyObject(character?.five_layers_json)
+          && emptyObject(character?.knowledge_boundary_json)
+          && emptyObject(character?.arc_json)
+          && emptyObject(character?.relations)
+          && emptyArray(character?.traitTags)
+          && emptyArray(character?.bindRes)
+          && emptyArray(character?.bindForce)
+          && emptyArray(character?.bindJob);
+      }
+
+      function discardEmptyCharacterPlaceholders(step) {
+        if (!Array.isArray(step?.characters) || step.characters.length < 2) return false;
+        const referenced = new Set((step.relation_states || []).flatMap((relation) => [
+          candidateText(relation?.char_a_ref),
+          candidateText(relation?.char_b_ref),
+        ]).filter(Boolean));
+        const activeRef = candidateText(step.characters[step.activeCharIndex ?? 0]?.client_ref);
+        const nextCharacters = step.characters.filter((character) => (
+          !isEmptyCandidateCharacterPlaceholder(character) || referenced.has(candidateText(character.client_ref))
+        ));
+        if (nextCharacters.length === step.characters.length) return false;
+        step.characters = nextCharacters;
+        const activeIndex = step.characters.findIndex((character) => candidateText(character.client_ref) === activeRef);
+        step.activeCharIndex = activeIndex >= 0 ? activeIndex : 0;
+        return true;
+      }
+
+      function findCandidateCharacter(step, reference) {
+        const value = candidateText(reference);
+        if (!value) return null;
+        return (step?.characters || []).find((character) => [
+          character.id,
+          character.client_ref,
+          character.char_id_hint,
+          character.char_name,
+          character.name,
+        ].some((candidate) => candidateText(candidate) === value)) || null;
+      }
+
+      function mergeCharacterCandidate(update) {
+        const step = steps.find((item) => item.key === "characters");
+        if (!step) return false;
+        let changed = false;
+        candidateList(update).forEach((candidate) => {
+          if (!isObject(candidate)) return;
+          const hint = candidateText(candidate.char_id_hint || candidate.client_ref);
+          const explicitName = candidateText(candidate.char_name || candidate.name);
+          let character = findCandidateCharacter(step, candidate.client_ref || hint || explicitName);
+          if (!character && explicitName) character = findCandidateCharacter(step, explicitName);
+          if (!character && !explicitName) return;
+          if (!character) {
+            const id = nextCandidateId("character", step.characters);
+            character = {
+              id,
+              client_ref: id,
+              char_id_hint: hint,
+              char_name: explicitName,
+              name: explicitName,
+              role: "常驻NPC",
+              char_type: "ensemble",
+              traitTags: [],
+              philosophy: {},
+              five_layers_json: {},
+              knowledge_boundary_json: {},
+              arc_json: {},
+              arc: {},
+              relations: {},
+              bindRes: [],
+              bindForce: [],
+              bindJob: [],
+            };
+            step.characters.push(character);
+          }
+          const type = candidateCharacterType(candidate.char_type || candidate.role || character.char_type);
+          if (type) {
+            character.char_type = type;
+            character.role = candidateCharacterRole(type);
+          }
+          character.char_id_hint = hint || character.char_id_hint;
+          if (explicitName) {
+            character.char_name = explicitName;
+            character.name = explicitName;
+          }
+          if (candidateText(candidate.gender)) character.gender = candidateText(candidate.gender);
+          if (candidateText(candidate.background)) character.background = candidateText(candidate.background);
+          if (candidateText(candidate.bio)) character.bio = candidateText(candidate.bio);
+          character.five_layers_json = mergeCandidateObject(character.five_layers_json || {}, candidate.five_layers_json);
+          character.knowledge_boundary_json = mergeCandidateObject(character.knowledge_boundary_json || {}, candidate.knowledge_boundary_json);
+          character.arc_json = mergeCandidateObject(character.arc_json || {}, candidate.arc_json);
+          character.arc = mergeCandidateObject(character.arc || {}, candidate.arc_json);
+          if (isObject(character.five_layers_json.L0)) {
+            character.philosophy = mergeCandidateObject(character.philosophy || {}, character.five_layers_json.L0);
+          }
+          changed = true;
+        });
+        if (discardEmptyCharacterPlaceholders(step)) changed = true;
+        if (changed) persistCharState();
+        return changed;
+      }
+
+      function mergeRelationCandidate(update) {
+        const step = steps.find((item) => item.key === "characters");
+        if (!step) return false;
+        let changed = false;
+        step.relation_states = Array.isArray(step.relation_states) ? step.relation_states : [];
+        candidateList(update).forEach((candidate) => {
+          if (!isObject(candidate)) return;
+          const charA = findCandidateCharacter(step, candidate.char_a_ref || candidate.char_a || candidate.char_a_id || candidate.char_a_hint);
+          const charB = findCandidateCharacter(step, candidate.char_b_ref || candidate.char_b || candidate.char_b_id || candidate.char_b_hint);
+          if (!charA || !charB || charA.id === charB.id) return;
+          let relation = step.relation_states.find((item) => (
+            (item.char_a_ref === charA.client_ref && item.char_b_ref === charB.client_ref)
+            || (item.char_a_ref === charB.client_ref && item.char_b_ref === charA.client_ref)
+          ));
+          if (!relation) {
+            relation = { char_a_ref: charA.client_ref, char_b_ref: charB.client_ref };
+            step.relation_states.push(relation);
+          }
+          mergeCandidateObject(relation, candidate);
+          relation.char_a_ref = charA.client_ref;
+          relation.char_b_ref = charB.client_ref;
+          if (candidateText(candidate.background_note) && !candidateText(relation.relation_overview)) {
+            relation.relation_overview = candidateText(candidate.background_note);
+            relation.change_event = candidateText(candidate.background_note);
+          }
+          const relationType = candidateText(relation.relation_type);
+          if (relationType) {
+            charA.relations = isObject(charA.relations) ? charA.relations : {};
+            const tags = Array.isArray(charA.relations[charB.id]) ? charA.relations[charB.id] : [];
+            if (!tags.includes(relationType)) charA.relations[charB.id] = [...tags, relationType];
+          }
+          changed = true;
+        });
+        if (changed) persistCharState();
+        return changed;
+      }
+
+      function mergeInitialL1aCandidate(update) {
+        const conflict = steps.find((item) => item.key === "conflict_seed");
+        const characters = steps.find((item) => item.key === "characters");
+        if (!conflict) return false;
+        let changed = false;
+        candidateList(update).forEach((candidate) => {
+          if (!isObject(candidate)) return;
+          const title = candidateText(candidate.l1a_name || candidate.conflict_summary || candidate.title);
+          if (!title) return;
+          const participantRefs = candidateStringList(candidate.participant_char_refs || candidate.involved_chars)
+            .map((reference) => findCandidateCharacter(characters, reference)?.client_ref)
+            .filter(Boolean);
+          const incoming = {
+            l1a_name: title,
+            scene_location: candidate.scene_location,
+            conflict_background: candidate.conflict_background || candidate.user_note,
+            escalation_path: candidate.escalation_path || candidate.escalation,
+            stakes: candidate.stakes,
+            irreversible_consequence: candidate.irreversible_consequence,
+            plot_emotion_commit: candidate.plot_emotion_commit,
+            arc_requirement: candidate.arc_requirement || (candidateText(candidate.desired_arc) ? { direction: candidateText(candidate.desired_arc) } : undefined),
+            info_reveal_boundary: candidate.info_reveal_boundary,
+            role_arc_json: candidate.role_arc_json,
+            participant_char_refs: participantRefs.length ? participantRefs : undefined,
+          };
+          const previousInitialL1a = JSON.stringify(conflict.initial_l1a || {});
+          conflict.initial_l1a = mergeCandidateObject({}, incoming);
+          if (JSON.stringify(conflict.initial_l1a) !== previousInitialL1a) conflict.initial_l1a_adopted = false;
+          conflict.conflictEntries = Array.isArray(conflict.conflictEntries) ? conflict.conflictEntries : [];
+          let entry = conflict.conflictEntries.find((item) => item.title === title || item.l1a_name === title);
+          if (!entry) {
+            entry = { title, summary: title, types: [], intensity: 1, robustness: 1 };
+            conflict.conflictEntries.push(entry);
+          }
+          mergeCandidateObject(entry, {
+            l1a_name: title,
+            title,
+            summary: candidate.conflict_summary || candidate.user_note,
+            parties: candidate.parties,
+            stake_cost: candidate.stakes,
+            desired_arc: candidate.desired_arc,
+            types: Array.isArray(candidate.types) ? candidate.types : candidateText(candidate.seed_type) ? [candidateText(candidate.seed_type)] : undefined,
+            intensity: candidate.intensity,
+            robustness: candidate.robustness,
+          });
+          changed = true;
+        });
+        return changed;
+      }
+
+      function refreshCandidateDraft() {
+        syncBookFromOrigin();
+        renderBookMeta();
+        renderSteps();
+        renderTimeline();
+        const modal = uiGet("confirmModal");
+        const item = steps[viewing];
+        if (modal?.classList.contains("open") && item && item.key !== "final_review") {
+          uiGet("confirmBody").innerHTML = editorTemplate(item);
+          if (item.key === "world_settings") window.selectWorldCategory?.(item.activeWorldCategory || item.categories[0]);
+          setModalLock(modalLocked);
+        }
+        const workspace = uiGet("workspace");
+        const workBody = uiGet("workPaneBody");
+        if (viewing === 4 && workspace?.classList.contains("drawer-mode") && workBody) {
+          workBody.innerHTML = finalReviewBodyTemplate(steps[4]);
+        }
+        syncConfirmAction();
+      }
+
+      function applyCandidateUpdates(updates, lockRespected) {
+        const appliedStages = [];
+        const skippedLockedStages = [];
+        if (!isObject(updates)) return { applied_stages: appliedStages, skipped_locked_stages: skippedLockedStages, lock_respected: lockRespected === true };
+        const applyStage = (index, label, update, merge) => {
+          if (update === undefined || update === null) return;
+          if (lockedSteps.has(index)) {
+            skippedLockedStages.push(label);
+            return;
+          }
+          if (merge(update)) appliedStages.push(label);
+        };
+        applyStage(0, "创作原点", updates.book_project, mergeBookProjectCandidate);
+        applyStage(1, "世界设定", updates.world_state || updates.world_states, mergeWorldCandidate);
+        applyStage(1, "世界设定", updates.world_bindings || updates.world_binding, mergeWorldBindingCandidate);
+        applyStage(2, "角色设定", updates.characters, mergeCharacterCandidate);
+        applyStage(2, "角色设定", updates.relation_state || updates.relation_states, mergeRelationCandidate);
+        applyStage(3, "冲突种子", updates.l1a_unit_initial || updates.initial_l1a, mergeInitialL1aCandidate);
+        if (appliedStages.length) refreshCandidateDraft();
+        return {
+          applied_stages: [...new Set(appliedStages)],
+          skipped_locked_stages: [...new Set(skippedLockedStages)],
+          lock_respected: lockRespected === true,
+        };
+      }
+
+      function originValues() {
+        const origin = steps.find((step) => step.key === "creative_origin");
+        return Object.fromEntries((origin?.fields || []).filter((field) => field.key).map((field) => [field.key, String(field.value || "")]));
+      }
+
+      function syncBookFromOrigin() {
+        const values = originValues();
+        data.book.bookName = values.title || "";
+        data.book.title = values.title || "未命名作品";
+        data.book.intent_json = {
+          ...(data.book.intent_json || {}),
+          genre: values.genre || "",
+          subGenre: values.subGenre || "",
+          core_conflict: values.creativeIntent || "",
+          forbidden_direction: values.forbid || "",
+          core_selling_point: values.sellingPoint || "",
+          creative_intent: values.creativeIntent || "",
+          target_emotion: values.targetEmotion || ""
+        };
+        data.book.selling_points_json = values.sellingPoint ? { core: values.sellingPoint } : {};
+        data.book.forbid_json = { rules: values.forbid ? values.forbid.split(/\n|,|，/).map((value) => value.trim()).filter(Boolean) : [] };
+        data.book.targetWords = values.targetWords || "";
+        data.book.chapterWords = values.chapterWords || "";
+        renderBookMeta();
+      }
+
+      function exportDraft() {
+        const world = getWorldStep();
+        const characters = steps.find((step) => step.key === "characters");
+        const conflicts = steps.find((step) => step.key === "conflict_seed");
+        return {
+          version: 1,
+          origin: originValues(),
+          world: { cards: cloneDraftValue(world?.cards || [], []), bindings: cloneDraftValue(world?.bindings || [], []) },
+          characters: cloneDraftValue(characters?.characters || [], []),
+          relation_states: cloneDraftValue(characters?.relation_states || [], []),
+          active_character_index: Number.isInteger(characters?.activeCharIndex) ? characters.activeCharIndex : 0,
+          conflict_entries: cloneDraftValue(conflicts?.conflictEntries || [], []),
+          initial_l1a: cloneDraftValue(conflicts?.initial_l1a, null),
+          initial_l1a_adopted: conflicts?.initial_l1a_adopted === true,
+          target_emotion: cloneDraftValue(data.book.intent_json?.target_emotion, ""),
+          chat: cloneDraftValue(data.chat || [], []),
+          current_step: current,
+          locked_steps: [...lockedSteps],
+        };
+      }
+
+      function hasDraftContent() {
+        const snapshot = exportDraft();
+        return Object.values(snapshot.origin).some((value) => String(value || "").trim())
+          || snapshot.world.cards.length > 0
+          || snapshot.characters.length > 0
+          || snapshot.relation_states.length > 0
+          || snapshot.conflict_entries.length > 0
+          || snapshot.chat.length > 0;
+      }
+
+      function restoredChatText(item) {
+        const text = String(item?.text || "");
+        const claimsLockedChange = /(?:已将|已按|已经|已).{0,120}(?:改为|修改|更新|调整|覆盖)/u.test(text);
+        if (item?.role === "assistant" && lockedSteps.size && claimsLockedChange) {
+          return "已恢复历史候选记录。当前已锁定阶段保持不变，请以阶段面板显示为准。";
+        }
+        return text;
+      }
+
+      function restoreDraft(snapshot) {
+        if (!isObject(snapshot) || snapshot.version !== 1) return false;
+        const origin = steps.find((step) => step.key === "creative_origin");
+        if (isObject(snapshot.origin) && origin?.fields) {
+          origin.fields.forEach((field) => {
+            if (field.key && typeof snapshot.origin[field.key] === "string") field.value = snapshot.origin[field.key];
+          });
+        }
+        const world = getWorldStep();
+        if (isObject(snapshot.world) && world) {
+          if (Array.isArray(snapshot.world.cards)) world.cards = cloneDraftValue(snapshot.world.cards, []);
+          if (Array.isArray(snapshot.world.bindings)) world.bindings = cloneDraftValue(snapshot.world.bindings, []);
+          normalizeWorldStep(world);
+          persistWorldState();
+        }
+        const characters = steps.find((step) => step.key === "characters");
+        if (characters) {
+          if (Array.isArray(snapshot.characters)) characters.characters = cloneDraftValue(snapshot.characters, []);
+          if (Array.isArray(snapshot.relation_states)) characters.relation_states = cloneDraftValue(snapshot.relation_states, []);
+          if (Number.isInteger(snapshot.active_character_index)) characters.activeCharIndex = Math.max(0, snapshot.active_character_index);
+          persistCharState();
+        }
+        const conflicts = steps.find((step) => step.key === "conflict_seed");
+        if (conflicts) {
+          if (Array.isArray(snapshot.conflict_entries)) conflicts.conflictEntries = cloneDraftValue(snapshot.conflict_entries, []);
+          if (isObject(snapshot.initial_l1a)) conflicts.initial_l1a = cloneDraftValue(snapshot.initial_l1a, null);
+          conflicts.initial_l1a_adopted = snapshot.initial_l1a_adopted === true;
+        }
+        if (snapshot.target_emotion !== undefined) setTargetEmotion(snapshot.target_emotion);
+        lockedSteps.clear();
+        if (Array.isArray(snapshot.locked_steps)) {
+          const restoredLocks = snapshot.locked_steps
+            .filter((index) => Number.isInteger(index) && index >= 0 && index < 4)
+            .sort((left, right) => left - right);
+          for (const index of restoredLocks) {
+            if (index !== lockedSteps.size || window.__newBookCanLockStage?.(index)?.ok !== true) break;
+            lockedSteps.add(index);
+          }
+        }
+        if (Array.isArray(snapshot.chat)) {
+          data.chat = snapshot.chat
+            .filter((item) => isObject(item) && ["user", "assistant"].includes(item.role) && typeof item.text === "string")
+            .map((item) => ({ role: item.role, text: restoredChatText(item) }));
+        }
+        current = lockedSteps.size;
+        data.previewCandidate = null;
+        syncBookFromOrigin();
+        renderSteps();
+        renderTimeline();
+        renderChat();
+        return hasDraftContent();
+      }
+
+      function showPreview(result, application) {
+        const missingItems = Array.isArray(result?.missing_items)
+          ? result.missing_items
+          : Array.isArray(result?.missing_fields)
+            ? result.missing_fields
+            : [];
+        data.previewCandidate = {
+          missing_items: [...missingItems],
+          stage_completion: isObject(result?.stage_completion) ? cloneDraftValue(result.stage_completion, {}) : {},
+          commercial_potential: isObject(result?.commercial_potential) ? cloneDraftValue(result.commercial_potential, {}) : {},
+          lock_respected: typeof result?.lock_respected === "boolean" ? result.lock_respected : null,
+          application: isObject(application) ? cloneDraftValue(application, {}) : {},
+        };
+        const workspace = uiGet("workspace");
+        const workBody = uiGet("workPaneBody");
+        if (viewing === 4 && workspace?.classList.contains("drawer-mode") && workBody) {
+          workBody.innerHTML = finalReviewBodyTemplate(steps[4]);
+        }
+        syncConfirmAction();
+      }
+
+      window.__newBookRuntime = {
+        appendChat: appendRuntimeChat,
+        applyCandidateUpdates,
+        exportDraft,
+        hasDraftContent,
+        lockedStages: () => [...lockedSteps].sort((left, right) => left - right),
+        restoreDraft,
+        showPreview,
+        syncConfirmAction,
+      };
+
       renderBookMeta();
       renderSteps();
       renderTimeline();
@@ -2783,10 +3778,11 @@
       if (window.__openStageEditor) window.__openStageEditor();
     }
   </script>
+<script src="/pages/new-book/new-book-bridge.mjs?v=20260726-candidate-advice-1"></script>
 <script>
-// TASK3_NEW_BOOK_BRIDGE_ACTIVE
+// V7_NEW_BOOK_BRIDGE_MOUNTED
 (function(){
-  if(window.TASK3_NEW_BOOK_BRIDGE_ACTIVE)return; window.TASK3_NEW_BOOK_BRIDGE_ACTIVE=true;
+  if(window.V7_NEW_BOOK_BRIDGE_MOUNTED)return; window.V7_NEW_BOOK_BRIDGE_MOUNTED=true;
   function cleanup(){
     document.querySelectorAll('#v7-stage-lock-panel,#v7-conflict-seed-panel,#v7-modal-l1-fields,#v7-modal-conflict-seed-panel,.v7-l1-inline').forEach(function(x){x.remove();});
   }

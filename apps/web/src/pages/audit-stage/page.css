@@ -1,0 +1,6 @@
+/* Keep fail-closed page states centered in the product content viewport. */
+[data-audit-stage-state-overlay] {
+  position: fixed !important;
+  inset: 64px 0 0 var(--sidebar-w) !important;
+  transition: inset-inline-start 0.2s ease;
+}

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN" data-theme="garden">
 <head>
 <meta charset="utf-8">
@@ -42,7 +42,7 @@
 </a>
 </li>
 <li>
-<a href="世界设定页面_拖拽绑定版.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段">
+<a href="world-settings-drag-binding.html" aria-label="设计阶段：世界设定、角色设定、L1A剧情段">
 <span class="material-symbols-outlined">architecture</span>
 <span class="sidebar-text">设计阶段</span>
 </a>
@@ -1027,14 +1027,14 @@
 </button>
 <div class="flex items-center gap-2 mb-1">
 <span class="material-symbols-outlined text-base-content text-[22px]">psychology_alt</span>
-<h3 class=" text-sm font-semibold text-base-content">重新推演修改建议</h3>
+<h3 id="regenerate-modal-title" class=" text-sm font-semibold text-base-content">重新推演当前 L1A</h3>
 </div>
-<p class=" text-[11px] text-base-content opacity-60 leading-relaxed">请输入您希望针对当前 L1A 方案及关联章节重新生成的修改建议或因果推演方向。</p>
-<textarea id="re-deduction-direction" class="w-full h-28 bg-base-200 border border-base-300 rounded-lg p-3 text-xs text-base-content focus:border-base-content resize-none " placeholder="例如：李逍遥求药时的誓言语气要更慷慨激昂...">
+<p id="regenerate-modal-detail" class=" text-[11px] text-base-content opacity-60 leading-relaxed">提交方向后，会从第一个颗粒重新推演。已保存的推演结果将不再作为生产输入，本次预算从零累计。</p>
+<textarea id="re-deduction-direction" class="w-full h-28 bg-base-200 border border-base-300 rounded-lg p-3 text-xs text-base-content focus:border-base-content resize-none " placeholder="填写本次重推希望调整的方向" hidden disabled aria-hidden="true">
 </textarea>
 <div class="flex justify-end gap-2 mt-2">
-<button class="px-4 py-2 rounded-lg bg-base-300 text-base-content opacity-60 text-[11px] font-medium transition-colors" onclick="closeRegenerateModal()">取消</button>
-<button id="submit-replan-btn" class="btn btn-sm" onclick="submitReplanDirection()">发送建议</button>
+<button class="px-4 py-2 rounded-lg bg-base-300 text-base-content opacity-60 text-[11px] font-medium transition-colors" data-action="close-replan">取消</button>
+<button id="submit-replan-btn" class="btn btn-sm" disabled>提交方向并重新推演</button>
 </div>
 </div>
 </div>

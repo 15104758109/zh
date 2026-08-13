@@ -20,6 +20,7 @@ id_ed25519*
 *token*
 *apikey*
 *api-key*
+!apps/api/src/features/fp008/fp008-02/env-credential-resolver.mjs
 
 # Local caches and dependency folders
 .cache/
@@ -46,6 +47,13 @@ coverage/
 .nuxt/
 .vite/
 *.tsbuildinfo
+
+# Generated browser and audit evidence
+artifacts/
+tests/web-static/
+tests/**/evidence/
+tests/**/audit-evidence/
+apps/web/src/pages/**/screenshots/
 
 # Runtime logs
 logs/

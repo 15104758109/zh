@@ -1,0 +1,40 @@
+.main-content {
+  width: calc(100% - var(--sidebar-w));
+  min-width: 0;
+}
+
+.deduction-state-overlay {
+  position: absolute;
+  inset: 64px 0 0;
+  background: var(--color-base-200);
+}
+
+.deduction-state-overlay__panel {
+  width: min(440px, 100%);
+}
+
+.deduction-particle-row,
+.deduction-chapter-row {
+  min-height: 42px;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.deduction-particle-row[aria-current="true"],
+.deduction-chapter-row[aria-current="true"] {
+  border-color: color-mix(in srgb, var(--color-accent) 56%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 9%, var(--color-base-100));
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  outline-offset: 1px;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+[data-particle][aria-current="true"] {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

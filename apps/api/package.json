@@ -2,5 +2,12 @@
   "name": "@zhreplan/api",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "start:fp008": "node src/features/fp008/fp008-02/main.mjs"
+  },
+  "dependencies": {
+    "fastify": "5.6.2",
+    "jsonrepair": "3.15.0"
+  }
 }

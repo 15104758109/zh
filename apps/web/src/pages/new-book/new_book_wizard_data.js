@@ -1,27 +1,27 @@
 window.NEW_BOOK_WIZARD_DATA = {
   menu: [
-    { label: "总控设置", icon: "dashboard", href: "workbench.html" },
-    { label: "设计阶段", icon: "architecture", href: "new_book.html", active: true },
-    { label: "生产阶段", icon: "precision_manufacturing", href: "production_stage.html" },
-    { label: "审计阶段", icon: "fact_check", href: "audit_stage.html" },
-    { label: "迭代管理", icon: "history", href: "iteration.html" }
+    { label: "总控设置", icon: "dashboard", href: "/workbench" },
+    { label: "设计阶段", icon: "architecture", href: "/books/new", active: true },
+    { label: "生产阶段", icon: "precision_manufacturing", href: "#", requiresBook: true },
+    { label: "审计阶段", icon: "fact_check", href: "#", requiresBook: true },
+    { label: "迭代管理", icon: "history", href: "#", requiresBook: true }
   ],
   book: {
-    title: "Aetheric Chronicles",
-    bookName: "苍穹纪事", // 前端显示用书籍名
-    intent_json: { genre: "东方玄幻 / 资源末法", subGenre: "宗门生存 / 规则破局", creative_intent: "写一个末法资源枯竭时代里，冷静剑修夺回宗门生路的长篇玄幻故事。" },
-    selling_points_json: { core: "资源争夺、宗门存亡、规则破局与越级反杀形成连续爽点。" },
-    forbid_json: { rules: ["避免无代价开挂","战力系统失衡","核心冲突长期悬置"] },
-    targetWords: "180 万字",
-    chapterWords: "3,000 字 / 章",
+    title: "未命名作品",
+    bookName: "",
+    intent_json: { genre: "", subGenre: "", creative_intent: "" },
+    selling_points_json: {},
+    forbid_json: { rules: [] },
+    targetWords: "1000000",
+    chapterWords: "2000",
     presentation_intensity: 0.5,
     // D-001 book_project 自动化开关（对应快速控制面板）
-    auto_production: true,  // 生产阶段自动化
+    auto_production: false,
     auto_audit: false,      // 审计阶段自动化
-    auto_iteration: true,   // 提示词迭代自动化
+    auto_iteration: false,
     // D-001 book_project 运行状态
-    stage_code: "world_settings",
-    run_status: "active"
+    stage_code: "design",
+    run_status: "draft"
   },
   chat: [],
   prompts: ["补全核心卖点", "检查设定绑定", "生成风险提示"],
@@ -35,10 +35,15 @@ window.NEW_BOOK_WIZARD_DATA = {
       guide: "明确作品意图、卖点、爽点与红线",
       next: "世界设定",
       fields: [
-        { type: "textarea", label: "创作意图 *", value: "写一个末法资源枯竭时代里，冷静剑修夺回宗门生路的长篇玄幻故事。", full: true },
-        { type: "textarea", label: "核心卖点 *", value: "资源争夺、宗门存亡、规则破局与越级反杀形成连续爽点。", full: true },
-        { type: "tags", label: "目标情绪", tags: ["尊严夺回", "压迫反杀", "宗门存亡"], tone: "primary" },
-        { type: "textarea", label: "创作禁区与避雷红线 *", value: "避免无代价开挂、战力系统失衡、核心冲突长期悬置。", full: true }
+        { key: "title", type: "input", label: "作品名称 *", value: "" },
+        { key: "genre", type: "select", label: "主题材 *", options: ["", "科幻", "玄幻", "言情", "武侠", "恐怖", "同人"], value: "" },
+        { key: "subGenre", type: "input", label: "副题材", value: "" },
+        { key: "targetWords", type: "input", label: "目标总字数 *", value: "1000000" },
+        { key: "chapterWords", type: "input", label: "单章字数 *", value: "2000" },
+        { key: "creativeIntent", type: "textarea", label: "创作意图 *", value: "", full: true },
+        { key: "sellingPoint", type: "textarea", label: "核心卖点 *", value: "", full: true },
+        { key: "targetEmotion", type: "tags", label: "目标情绪", value: "", tags: [], tone: "primary", full: true },
+        { key: "forbid", type: "textarea", label: "创作禁区与避雷红线 *", value: "", full: true }
       ]
     },
     {
@@ -51,29 +56,8 @@ window.NEW_BOOK_WIZARD_DATA = {
       // ── V7附录D 修订：结构化字段替代 title+text 平铺 ──
       // 映射关系见 V7_附录D_数据标准修订方案 §D.2.1b
       categories: ["规则", "地理", "资源", "势力", "职业/超能", "怪物/灾难", "大事记"],
-      cards: [
-        { id: "rule-price", board_type: "规则", title: "等价资源抵偿", description: "所有高阶术法都需要等价资源抵偿，越级施展会转化为身体反噬。", rule_type: "物理法则", apply_scope: "全界", violate_cost: "身体反噬", source_type: "manual", setting_layer: "initial" },
-        { id: "rule-taboo", board_type: "规则", title: "宗门戒律禁咒", description: "上宗传承的禁咒清单，违背会直接断灵脉，弟子越级使用即受噬灵。", rule_type: "禁制", apply_scope: "宗门弟子", violate_cost: "断灵脉", source_type: "manual", setting_layer: "initial" },
-        { id: "geo-mountain", board_type: "地理", title: "枯灵山脉边缘", description: "宗门坐落在枯灵山脉边缘，灵脉濒临断裂，适合埋入资源与灾难入口。", location_text: "东域边境", danger_level: "中等", source_type: "manual", setting_layer: "initial" },
-        { id: "geo-ravine", board_type: "地理", title: "断剑渊", description: "传闻上古剑仙陨落之地，残留剑意能压制噬灵兽，是高阶剑修的修行圣地。", location_text: "枯灵山脉深处", danger_level: "高", source_type: "manual", setting_layer: "initial" },
-        { id: "geo-market", board_type: "地理", title: "百宝坊市", description: "外门商盟经营的资源集散地，宗门弟子必须在此完成兑换与补给。", location_text: "青云城中心", danger_level: "低", source_type: "manual", setting_layer: "initial" },
-        { id: "res-sand", board_type: "资源", title: "残存灵砂", description: "可修补经脉，也会引来势力围猎，是短期爽点和长期代价的共同载体。", usage_text: "修补经脉 / 修炼加速", scarcity_level: "较稀缺", cheat_writing: "反转爽 + 短期爆发", source_type: "manual", setting_layer: "initial" },
-        { id: "res-herb", board_type: "资源", title: "九幽冥草", description: "炼制突破丹的主材，只在断剑渊深处生长，被合欢宗长期垄断收购。", usage_text: "炼制突破丹", scarcity_level: "稀有", cheat_writing: "机缘开挂 + 势力博弈", source_type: "manual", setting_layer: "initial" },
-        { id: "force-hehuan", board_type: "势力", title: "合欢宗", description: "南疆魔道大宗，以情丝咒法控制弟子，暗中把持九幽冥草交易。", leader_name: "宗主·魅罗", hierarchy_text: "宗主→长老→执事→门徒", faction_status: "鼎盛", source_type: "manual", setting_layer: "initial" },
-        { id: "force-xuedao", board_type: "势力", title: "血刀门", description: "西境掠夺型宗门，靠血祭灵砂换取短期爆发，与外门商盟有暧昧交易。", leader_name: "掌门·祁煞", hierarchy_text: "掌门→堂主→弟子", faction_status: "崛起", source_type: "manual", setting_layer: "initial" },
-        { id: "force-shangmeng", board_type: "势力", title: "外门商盟", description: "三宗合资的资源商盟，明面议价、暗中囤积，是规则破坏的现实阻力。", leader_name: "盟主·韩玉霜", hierarchy_text: "盟主→执事→商贩", faction_status: "稳定", source_type: "manual", setting_layer: "initial" },
-        { id: "job-sword", board_type: "职业", title: "剑意承债体系", description: "剑修通过剑意承担资源反噬，短爆发强但代价明确。", is_system: true, system_tiers: [{name:"剑士",note:"可御剑气外放"},{name:"剑师",note:"剑意化形"},{name:"剑尊",note:"剑域自成"}], effect_scope: "苍穹界", cheat_writing: "千里取人首级，一剑光寒十九洲", source_type: "manual", setting_layer: "initial" },
-        { id: "job-alchemy", board_type: "职业", title: "丹修分系", description: "以药性反哺经脉，需要持续消耗九幽冥草与残存灵砂，是宗门第二战力。", is_system: true, system_tiers: [{name:"炼气丹师",note:"可炼凝气散"},{name:"筑基丹师",note:"可炼筑基丹"},{name:"金丹宗师",note:"可炼渡劫金丹"}], effect_scope: "苍穹界·炼丹侧", cheat_writing: "一炉九转金丹惊艳全场引各方哄抢", source_type: "manual", setting_layer: "initial" },
-        { id: "monster-devour", board_type: "怪物", title: "噬灵兽潮", description: "灵潮枯竭催生噬灵兽，弱点是过载灵砂，可绑定地理入口与资源线。", monster_scale: "群体", counter_text: "过载灵砂 / 剑意压制", source_type: "manual", setting_layer: "initial" },
-        { id: "monster-mist", board_type: "怪物", title: "瘴雾灾变", description: "断剑渊常年弥漫的毒瘴，能腐蚀术法根基，主角断剑意第一次觉醒正源于此。", monster_scale: "区域级", counter_text: "避瘴丹 / 剑意护体", source_type: "manual", setting_layer: "initial" },
-        { id: "event-seal", board_type: "大事", title: "十年前主灵脉被封", description: "宗门从上宗跌落为附属势力，是势力压迫和资源枯竭的源头事件。", event_era: "开天历 1187 年", event_source: "仙门典籍", source_type: "manual", setting_layer: "initial" },
-        { id: "event-blood", board_type: "大事", title: "三年前的青崖血案", description: "血刀门突袭外门商盟运输队，主角师兄战死，是冲突的导火索。", event_era: "开天历 1195 年", event_source: "宗门卷宗", source_type: "manual", setting_layer: "initial" }
-      ],
-      bindings: [
-        { from: "geo-mountain", to: "res-sand", type: "产出" },
-        { from: "res-sand", to: "rule-price", type: "抵偿" },
-        { from: "force-shangmeng", to: "res-sand", type: "垄断" }
-      ],
+      cards: [],
+      bindings: [],
       fields: []
     },
     {
@@ -84,60 +68,7 @@ window.NEW_BOOK_WIZARD_DATA = {
       guide: "绑定世界设定与人物哲学",
       next: "冲突种子",
       activeCharIndex: 0,
-      characters: [
-        {
-          id: "char-1",
-          name: "沈砚",
-          role: "核心主角",
-          char_type: "protagonist",
-          gender: "♂ 雄性/男性",
-          traitTags: ["胆子大", "爱保护人"],
-          background: "曾是宗门边缘弟子，因一次灵脉事故看见规则漏洞，逐渐用剑意承担反噬换取宗门生路。",
-          bindRes: ["res-sand"],
-          bindForce: ["force-xuedao"],
-          bindJob: ["job-sword"],
-          philosophy: { "主体能动性": 75, "价值排序": 65, "底层信念": 70, "自由与责任": 65, "秩序与反叛": 60, "牺牲边界": 75, "亲密关系": 65, "权力观": 40, "财富观": 50, "生死观": 70, "复仇观": 50 },
-          arc: { direction: "成长", progress: 35, desire: "主角想要通过修仙报仇", arcDesc: "主角如何在得势后逐渐走出舒适区承担起掌门重任", oneSentence: "主角通过穿越记忆和认知差距快速获取资源报了前世之仇，然而他逐渐发现要解决的不是人而是不断生产出仇人的体制", commitments: [
-            { name: "规则破局", note: "打破资源等价抵偿法则实现越级反杀，是爽点的第一驱动力", intensity: 4, robustness: 3 },
-            { name: "宗门复兴", note: "从边缘弟子到宗门领袖的身份跃迁，伴随代价承担的弧线张力", intensity: 3, robustness: 4 },
-            { name: "代价承担", note: "剑意承债体系下每一次付出都有明确代价，暗合长期追读期待", intensity: 2, robustness: 4 }
-          ] }
-        },
-        {
-          id: "char-2",
-          name: "韩玉霜",
-          role: "重要配角",
-          char_type: "support",
-          gender: "♀ 雌性/女性",
-          traitTags: ["老江湖", "算得精"],
-          background: "外门商盟驻宗特使，掌握灵砂定价权，以资源控制替代武力。",
-          bindRes: ["res-sand", "res-herb"],
-          bindForce: ["force-shangmeng"],
-          bindJob: [],
-          philosophy: { "主体能动性": 65, "价值排序": 25, "底层信念": 35, "自由与责任": 40, "秩序与反叛": 35, "牺牲边界": 50, "亲密关系": 40, "权力观": 65, "财富观": 70, "生死观": 50, "复仇观": 50 },
-          arc: { direction: "错位", progress: 40, desire: "在商盟体制内最大化个人话语权", arcDesc: "从利益至上到在利益与良知之间寻找平衡", oneSentence: "作为商盟特使以资源控制替代武力，却在与主角的合作中逐渐动摇，发现自己不过是资源体系的执行者而非控制者", commitments: [
-            { name: "商盟利益", note: "作为商盟特使以利益优先，与个人情感形成持续拉扯", intensity: 3, robustness: 3 },
-            { name: "个人良知", note: "在资源垄断中逐渐觉醒的良知，与其立场产生根本错位", intensity: 2, robustness: 3 }
-          ] }
-        },
-        {
-          id: "char-3",
-          name: "祁煞",
-          role: "反派大佬",
-          char_type: "antagonist",
-          gender: "♂ 雄性/男性",
-          traitTags: ["野心大", "冷血"],
-          background: "血刀门掌门，将弟子视为消耗品，是宗门存亡冲突的终极对立面。",
-          bindRes: ["res-sand"],
-          bindForce: ["force-xuedao", "force-hehuan"],
-          bindJob: ["job-alchemy"],
-          philosophy: { "主体能动性": 70, "价值排序": 40, "底层信念": 30, "自由与责任": 50, "秩序与反叛": 75, "牺牲边界": 35, "亲密关系": 25, "权力观": 75, "财富观": 60, "生死观": 70, "复仇观": 50 },
-          arc: { direction: "堕落", progress: 60, desire: "通过掠夺获得绝对实力碾压一切", arcDesc: "从理性掠夺者滑向极端，最终被自己的嗜血逻辑吞噬", oneSentence: "以血祭灵砂换取短期爆发，将弟子视为消耗品，却不知自己也是资源体系的消耗品", commitments: [
-            { name: "权力垄断", note: "以血祭灵砂换取短期爆发，将弟子视为消耗品的冷酷抉择", intensity: 4, robustness: 3 },
-            { name: "资源掠夺", note: "持续扩张吞并宗门地盘，在掠夺中不可逆地滑向极端", intensity: 3, robustness: 3 }
-          ] }
-        }
-      ],
+      characters: [],
       philosophyDims: ["主体能动性", "价值排序", "底层信念", "自由与责任", "秩序与反叛", "牺牲边界", "亲密关系", "权力观", "财富观", "生死观", "复仇观"]
     },
     {
@@ -150,18 +81,7 @@ window.NEW_BOOK_WIZARD_DATA = {
       // ── V7附录D 修订：冲突种子独立表 conflict_seed 四项结构化 ──
       // parties / interest_gap / resource_point / stake_cost 四列分离，缺一 P0阻断
       conflictTypeOptions: ["资源争夺","价值观对立","认知偏差","权力博弈","生存压迫","情感纠葛","身份对立","信念冲突","规则矛盾","信息不对等"],
-      conflictEntries: [
-        { title: "灵脉断裂真相", summary: "宗门灵脉断裂，主角必须在资源被垄断的局面中夺回第一批修复材料，但主角不知灵脉断裂的深层真相，商盟隐瞒了上宗默许的真实代价。", parties: "主角 vs 商盟", interest_gap: "主角需要修复材料恢复宗门灵脉，商盟靠垄断赚取最大利润", resource_point: "修复灵脉的第一批灵石矿脉开采权", stake_cost: "主角败则宗门彻底沦为附庸，商盟败则失去垄断地位", types: ["资源争夺","认知偏差"], intensity: 4, robustness: 3 },
-        { title: "规则改写之战", summary: "主角坚持人可以承担代价改写规则，反派坚持弱者只能接受分配，血刀门试图吞并宗门地盘。", parties: "主角 vs 祁煞", interest_gap: "主角坚持人可以承担代价改写规则，祁煞坚持弱者应该接受分配", resource_point: "宗门地盘的归属与灵砂资源的控制权", stake_cost: "主角败则宗门覆灭，祁煞败则血刀门无力维持掠夺体系", types: ["价值观对立","权力博弈"], intensity: 3, robustness: 4 },
-        { title: "立场与私情", summary: "韩玉霜作为商盟特使与主角立场对立但互存好感，外门出身 vs 上宗传人的话语权差距交错其间。", parties: "主角 vs 韩玉霜", interest_gap: "韩玉霜作为商盟特使以利益优先，主角需要她松动垄断规则", resource_point: "百宝坊市的资源定价话语权", stake_cost: "主角败则灵砂永远被商盟控制价格，韩玉霜败则失去商盟特使地位", types: ["情感纠葛","身份对立"], intensity: 2, robustness: 3 },
-        { title: "兽潮下的选择", summary: "噬灵兽潮逼近宗门，灵砂资源即将见底，剑意承债体系与丹修分系争夺有限的资源倾斜。", parties: "宗门 vs 噬灵兽潮", interest_gap: "噬灵兽潮逼近宗门，灵砂资源即将见底，两条修行路线争夺有限资源倾斜", resource_point: "最后一批灵砂的分配权", stake_cost: "选错路线则宗门毁灭，选对但分配不公则路线内战", types: ["生存压迫","信念冲突"], intensity: 4, robustness: 2 },
-        { title: "规则的双刃剑", summary: "等价资源抵偿规则既保护弱者又限制强者，信息不对称使规则可被资源垄断者利用。", parties: "个体 vs 体系", interest_gap: "等价资源抵偿规则既保护弱者又限制强者，信息不对称使规则可被资源垄断者利用", resource_point: "规则的解读权与修改权", stake_cost: "维持现状则底层永远无法翻身，改写规则可能加速体系崩溃", types: ["规则矛盾","信息不对等"], intensity: 3, robustness: 4 },
-        { title: "天命与反叛", summary: "主角坚持规则可由人改写，天道/上宗默许的秩序不允许底层动摇其根本。", parties: "主角 vs 天道/上宗", interest_gap: "主角坚持规则可由人改写，天道/上宗默许的秩序不允许底层动摇其根本", resource_point: "天道的默许权与上宗的判定权", stake_cost: "主角败则证明底层永远无法逆天改命，上宗败则整个等级秩序瓦解", types: ["价值观对立","规则矛盾"], intensity: 3, robustness: 4 },
-        { title: "路线之争", summary: "剑意承债体系与丹修分系两条路线争夺宗门有限的资源倾斜。", parties: "剑修 vs 丹修", interest_gap: "剑意承债体系主张以代价换爆发，丹修分系主张以时间换稳定成长", resource_point: "宗门有限的灵砂和九幽冥草分配份额", stake_cost: "任一路线败退则宗门失去一半战力，两败则宗门不复存在", types: ["信念冲突"], intensity: 3, robustness: 3 },
-        { title: "出身天花板", summary: "出身决定了话语权天花板，双方对宗门资源分配逻辑存在根本认知偏差。", parties: "外门弟子 vs 上宗传人", interest_gap: "双方对宗门资源分配逻辑存在根本认知偏差：外门认为应该按贡献分配，上宗认为应该按血统传承", resource_point: "真传弟子名额和对应资源配额", stake_cost: "外门胜则打破千年血统秩序，上宗胜则证明出身不可逾越", types: ["身份对立","认知偏差"], intensity: 2, robustness: 3 },
-        { title: "宗门零和博弈", summary: "血刀门试图吞并宗门地盘，主角守宗 vs 祁煞扩张的零和博弈。", parties: "主角 vs 血刀门", interest_gap: "血刀门需要持续吞并小宗门维持血祭消耗，主角需要守住宗门仅存的栖身之地", resource_point: "宗门地盘和灵砂矿脉的所有权", stake_cost: "主角败则宗门成员沦为血祭材料，血刀门败则无法补充消耗而自噬", types: ["权力博弈","生存压迫"], intensity: 3, robustness: 3 },
-        { title: "(空槽位·待新增)", summary: "", parties: "", interest_gap: "", resource_point: "", stake_cost: "", types: [], intensity: 1, robustness: 1 }
-      ]
+      conflictEntries: []
     },
     {
       step: "05",
@@ -178,11 +98,7 @@ window.NEW_BOOK_WIZARD_DATA = {
         ["绑定关系", "检查角色、世界设定、冲突之间是否互相支撑。"],
         ["风险与缺失", "标记缺失字段、逻辑断点和商业爽点不足。"]
       ],
-      prototypeRisks: [
-        "世界设定中仍有备用卡片未绑定到角色或冲突。",
-        "反派哲学立场需要进一步与资源规则对齐。",
-        "开篇三章需要明确第一个可兑现爽点。"
-      ]
+      prototypeRisks: []
     }
   ],
   charConstants: {
@@ -260,7 +176,7 @@ const WIZARD_DATA = {
     { id: "stage5", title: "终审确认", description: "汇总阶段锁定状态，全部锁定后允许最终确认创建。", l1_required_fields: ["stage_locks", "creator_confirmed"], lockable: true },
   ],
   BOOK_ENUMS: {
-    GENRE_TYPES: ["东方玄幻", "西方奇幻", "都市异能", "科幻未来", "赛博朋克", "历史架空", "悬疑推理", "末日废土", "仙侠修真", "现实主义", "轻喜剧", "权谋群像"],
+    GENRE_TYPES: ["科幻", "玄幻", "言情", "武侠", "恐怖", "同人"],
     TARGET_READERS: ["男频爽文读者", "女频情感读者", "群像权谋读者", "硬核设定读者", "轻松下饭读者", "悬疑推理读者", "青少年读者", "成熟现实向读者"],
     PRESENTATION_INTENSITY: [{ value: 0, label: "极简白描" }, { value: 0.25, label: "轻度文学化" }, { value: 0.5, label: "均衡呈现" }, { value: 0.75, label: "强文学表达" }, { value: 1, label: "高密度诗性" }],
     STAGE_CODES: ["设计", "生产", "审计", "迭代"],
