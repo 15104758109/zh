@@ -400,16 +400,24 @@ test("ZH06 retries transient model transport failures before parsing", () => {
   }
 });
 
-test("ZH06 requests structured JSON only from audit and editorial models", () => {
+test("ZH06 lets the FP010 parser enforce JSON when the active provider rejects response_format", () => {
   const value = workflow();
   for (const name of [
-    "FP010-01客观审计",
     "FP011-01读者审计",
     "FP011-02 商业审计",
     "FP012-01 主编决策",
   ]) {
-    assert.match(modelRequestBody(node(value, name)), /response_format[\s\S]*json_object/u, name);
+    const model = node(value, name);
+    assert.match(modelRequestBody(model), /response_format[\s\S]*json_object/u, name);
+    assert.equal(model.parameters.options.response.response.responseFormat, "json", name);
   }
+  const objective = node(value, "FP010-01客观审计");
+  assert.doesNotMatch(modelRequestBody(objective), /response_format/u);
+  assert.equal(
+    objective.parameters.options.response.response.responseFormat,
+    "text",
+    "FP010 must preserve the full Chat Completions envelope for its parser",
+  );
   const presentation = node(value, "FP009-01 文学呈现");
   assert.doesNotMatch(modelRequestBody(presentation), /response_format/u);
   assert.equal(
@@ -556,10 +564,18 @@ test("ZH06 rejects an incomplete locked snapshot before FP010 and renders its au
   const objectiveModel = value.nodes.find((candidate) => candidate.name.includes("FP010-01"));
   const baselinePlaceholder = "{{ \u6b63\u5f0f\u72b6\u6001\u57fa\u7ebf_JSON }}";
   const ledgerPlaceholder = "{{ candidate_truth_ledger_JSON }}";
-  const promptText = [
-    `BASELINE=${baselinePlaceholder}`,
-    `LEDGER=${ledgerPlaceholder}`,
-  ].join("\n");
+  const placeholders = {
+    prose: "{{ 待审故事正文_TEXT }}",
+    plot: "{{ 推演结果_JSON }}",
+    target: "{{ 目标快照_JSON }}",
+    world: "{{ 世界设定包_JSON }}",
+    characters: "{{ 角色档案_JSON }}",
+    baseline: baselinePlaceholder,
+    ledger: ledgerPlaceholder,
+  };
+  const promptText = Object.entries(placeholders)
+    .map(([key, placeholder]) => `${key.toUpperCase()}=${placeholder}`)
+    .join("\n");
   const ledger = {
     schema_version: 1,
     world_changes: [],
@@ -595,6 +611,13 @@ test("ZH06 rejects an incomplete locked snapshot before FP010 and renders its au
 
   assert.ok(loader, "missing ZH06 candidate loader");
   assert.ok(objectiveModel, "missing FP010 model node");
+  const nestedExpressionDelimiter = "\\{" + "\\{";
+  assert.equal(
+    (modelRequestBody(objectiveModel).match(new RegExp(nestedExpressionDelimiter, "g")) ?? []).length,
+    1,
+    "FP010 must construct prompt placeholders at runtime so n8n does not parse them as nested expressions",
+  );
+  assert.match(modelRequestBody(objectiveModel), /const placeholder = \(name\) =>/u);
   assert.match(loader.parameters.query, /candidate_truth_ledger_valid/u);
   assert.match(loader.parameters.query, /DEDUCTION_SNAPSHOT_INCOMPLETE/u);
   assert.throws(
@@ -612,11 +635,20 @@ test("ZH06 rejects an incomplete locked snapshot before FP010 and renders its au
     context,
   ));
   const content = request.messages[0].content;
-  const modelInput = JSON.parse(content.slice(content.lastIndexOf("\nINPUT=") + "\nINPUT=".length));
-  assert.ok(!content.includes(baselinePlaceholder));
-  assert.ok(!content.includes(ledgerPlaceholder));
-  assert.deepEqual(modelInput.formal_state_baseline_json, item.formal_state_baseline_json);
-  assert.deepEqual(modelInput.candidate_truth_ledger, ledger);
+  const expectedReplacements = {
+    prose: item.candidate_text,
+    plot: item.candidate_plot_sim_json,
+    target: item.target_snapshot_json,
+    world: item.world_state_json,
+    characters: item.character_profiles_json,
+    baseline: item.formal_state_baseline_json,
+    ledger: item.candidate_truth_ledger,
+  };
+  for (const [key, placeholder] of Object.entries(placeholders)) {
+    assert.ok(!content.includes(placeholder), `unreplaced FP010 placeholder: ${key}`);
+    assert.ok(content.includes(JSON.stringify(expectedReplacements[key])), `missing FP010 input: ${key}`);
+  }
+  assert.doesNotMatch(content, /\nINPUT=/u, "FP010 must not append a duplicate full input snapshot");
 });
 
 test("ZH06 loader accepts only the current L1A's ordered next candidate", () => {
