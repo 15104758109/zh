@@ -1209,6 +1209,61 @@ test("ZH06 routes objective audit from the nine check results, not from a non-em
   );
 });
 
+test("ZH06 FP010 parser requires the canonical P0 evidence-list invariant", () => {
+  const parser = node(workflow(), "JSON修复 (2)");
+  const passingChecks = Array.from({ length: 9 }, (_, index) => ({
+    check_id: `审查-${String(index + 1).padStart(2, "0")}`,
+    severity: index < 5 ? "P0" : "P1",
+    pass: true,
+    findings: "通过",
+    evidence: {},
+  }));
+  const baseAudit = {
+    has_p0_blocker: false,
+    checks: passingChecks,
+    p0_items_json: [],
+    audit_findings_jsonb: { summary: "九项均通过" },
+    return_route_suggestion_jsonb: {},
+  };
+
+  const passed = runObjectiveParser(parser.parameters.jsCode, baseAudit);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(passed[0].json.rpc_requests.rpc_confirm_audit_result.audit.p0_items_json)),
+    [],
+  );
+
+  const p0Items = [{ provider_owned_evidence: "opaque" }];
+  const p0Audit = {
+    ...baseAudit,
+    has_p0_blocker: true,
+    checks: passingChecks.map((check, index) => index === 0 ? { ...check, pass: false } : check),
+    p0_items_json: p0Items,
+    audit_findings_jsonb: { summary: "审查-01 未通过" },
+    return_route_suggestion_jsonb: { suggestion: "回 FP009-01", reason: "修正正文事实" },
+  };
+  const blocked = runObjectiveParser(parser.parameters.jsCode, p0Audit);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(blocked[0].json.rpc_requests.rpc_confirm_audit_result.audit.p0_items_json)),
+    p0Items,
+  );
+
+  for (const invalidAudit of [
+    { ...baseAudit, p0_items_json: {} },
+    { ...baseAudit, p0_items_json: [{ unexpected: "must stay empty without P0" }] },
+    { ...p0Audit, p0_items_json: [] },
+    (() => {
+      const missing = { ...p0Audit };
+      delete missing.p0_items_json;
+      return missing;
+    })(),
+  ]) {
+    assert.throws(
+      () => runObjectiveParser(parser.parameters.jsCode, invalidAudit),
+      /FP010_OUTPUT_INVALID/u,
+    );
+  }
+});
+
 test("ZH06 FP010 parser consumes only the full Chat Completions response envelope", () => {
   const parser = workflow().nodes.find(
     (candidate) => candidate.id === "0e329fca-f483-4ec1-aaf3-4812e88d4239",
