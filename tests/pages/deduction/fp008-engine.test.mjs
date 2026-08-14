@@ -634,6 +634,50 @@ test("a completed L1A keeps a stable candidate truth ledger for FP010 audit", as
   });
 });
 
+test("candidate truth ledger retains an exact memory entry only once", async () => {
+  const input = command();
+  const duplicateMemory = {
+    character_id: IDS.character,
+    memory_type: "event",
+    memory_content: "The route was held at a cost.",
+    truth_status: "true",
+    importance: 0.7,
+    decay_rate: 0.2,
+    event_ids: ["event-particle-1"],
+  };
+  const deduction = createDeductionEngine({
+    invokeModel: async (invocation) => {
+      if (invocation.mode === "director_distribute") {
+        return { output: distribution(invocation.input.particle.particle_id), usage: { total_tokens: 5 } };
+      }
+      if (invocation.mode === "character_respond") {
+        return { output: characterResult(), usage: { total_tokens: 5 } };
+      }
+      const completed = Number(invocation.input.particle.particle_id.split("-").at(-1));
+      const output = convergence(invocation.input.particle.particle_id, completed);
+      if (completed === 1) {
+        output.memory_changes = [
+          duplicateMemory,
+          structuredClone(duplicateMemory),
+          structuredClone(duplicateMemory),
+        ];
+      }
+      return { output, usage: { total_tokens: 5 } };
+    },
+  });
+
+  const result = await deduction.execute(input);
+  const plot = result.chapters[0].candidate_plot_sim_json;
+  assert.deepEqual(plot.candidate_truth_ledger, {
+    schema_version: 1,
+    world_changes: [],
+    character_live_state_changes: [],
+    relation_changes: [],
+    memories: [duplicateMemory],
+  });
+  assert.deepEqual(plot.particles_records[0].memory_changes, [duplicateMemory]);
+});
+
 test("director convergence drops a complete character state no-op without changing the truth ledger", async () => {
   const initialProjection = {
     source: "initial_live_state_projection",

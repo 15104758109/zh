@@ -700,6 +700,29 @@ function mergeCandidateChange(
   }
 }
 
+function sameCandidateMemory(left: JsonObject, right: JsonObject): boolean {
+  return jsonEqual(
+    {
+      character_id: left.character_id,
+      memory_type: left.memory_type,
+      memory_content: left.memory_content,
+      truth_status: left.truth_status,
+      importance: left.importance,
+      decay_rate: left.decay_rate,
+      event_ids: left.event_ids,
+    },
+    {
+      character_id: right.character_id,
+      memory_type: right.memory_type,
+      memory_content: right.memory_content,
+      truth_status: right.truth_status,
+      importance: right.importance,
+      decay_rate: right.decay_rate,
+      event_ids: right.event_ids,
+    },
+  );
+}
+
 function candidateTruthState(command: JsonObject): CandidateTruthState {
   const characters = new Map<string, JsonObject>();
   const characterCodes = new Map<string, string>();
@@ -746,6 +769,7 @@ function appendCandidateMemory(state: CandidateTruthState, memory: JsonObject): 
   const characterId = memory.character_id as string;
   const existing = state.memories.get(characterId);
   if (!existing) fail("CANDIDATE_TRUTH_DRIFT", "A candidate memory is outside the current role scope.", 409);
+  if (existing.some((candidate) => sameCandidateMemory(candidate, memory))) return;
   existing.push({ ...structuredClone(memory), is_valid: true, is_shadow: false });
 }
 
@@ -1325,9 +1349,13 @@ function materializeCandidateTruth(
       decay_rate: memory.decay_rate as number,
       event_ids: structuredClone(eventIds),
     };
-    memories.push(structuredClone(entry));
+    if (!memories.some((candidate) => sameCandidateMemory(candidate, entry))) {
+      memories.push(structuredClone(entry));
+    }
     appendCandidateMemory(state, entry);
-    normalizedMemories.push(entry);
+    if (!normalizedMemories.some((candidate) => sameCandidateMemory(candidate, entry))) {
+      normalizedMemories.push(entry);
+    }
   }
   result.memory_changes = normalizedMemories;
 }
