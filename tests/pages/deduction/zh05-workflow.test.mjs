@@ -1664,6 +1664,49 @@ test("a FP008-01 data debt returns through the existing response path without ca
   });
 });
 
+test("FP008-01 preserves an HTTP-200 provider error as a controlled model outage", async () => {
+  const workflow = await readWorkflow();
+  const mapper = workflow.nodes.find(candidate => candidate.name === "JSON修复").parameters.jsCode;
+  const [mapped] = runCodeNode(mapper, {
+    data: JSON.stringify({
+      error: {
+        code: 502,
+        message: "Upstream error: ResourceExhausted",
+      },
+    }),
+    statusCode: 200,
+  }, {
+    "读取拆解结果": { context: { scope_ok: true, scope: {}, request: { action: "start" }, chapters: [] } },
+  });
+
+  assert.equal(mapped.json.mapping_ok, false);
+  assert.deepEqual(mapped.json.redacted_error, {
+    code: "MODEL_PROVIDER_UNAVAILABLE",
+    message: "The current model service is unavailable.",
+  });
+});
+
+test("FP008-01 classifies a blank HTTP-200 model reply as recoverable output failure", async () => {
+  const workflow = await readWorkflow();
+  const mapperNode = workflow.nodes.find(candidate => candidate.id === "64fb6f8a-de62-4543-a426-953bccbb6a20");
+  assert.ok(mapperNode);
+  const mapper = mapperNode.parameters.jsCode;
+  const contextNodeName = mapper.match(/\$\('([^']+)'/u)?.[1];
+  assert.ok(contextNodeName);
+  const [mapped] = runCodeNode(mapper, {
+    data: " \n\t ",
+    statusCode: 200,
+  }, {
+    [contextNodeName]: { context: { scope_ok: true, scope: {}, request: { action: "start" }, chapters: [] } },
+  });
+
+  assert.equal(mapped.json.mapping_ok, false);
+  assert.deepEqual(mapped.json.redacted_error, {
+    code: "MODEL_OUTPUT_INVALID",
+    message: "The current model response is invalid.",
+  });
+});
+
 test("both FP008-02 nodes POST valid JSON only after mapping succeeds", async () => {
   const workflow = await readWorkflow();
   const node = name => workflow.nodes.find(candidate => candidate.name === name);
