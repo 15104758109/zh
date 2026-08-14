@@ -989,6 +989,11 @@ test("genre dependency failures explain the missing active skill without promisi
   assert.match(bridge, /UNSUPPORTED_GENRE: "当前主题材没有可用的系统内置技能；请检查题材选择或补齐题材技能后重试，草稿未改变。"/);
 });
 
+test("a preview transport failure never claims that the create transaction ran", () => {
+  assert.match(bridge, /RPC_UNAVAILABLE: "服务暂时不可用，草稿已保留；请恢复后重试。"/);
+  assert.match(bridge, /const failure = errorCopy\(result, action === "preview" \? "RPC_UNAVAILABLE" : "WRITE_FAILED"\);/);
+});
+
 test("operator initialization retries once without a stale local operator ID", () => {
   assert.match(bridge, /const OPERATOR_ENDPOINT = window\.NEW_BOOK_OPERATOR_URL \|\| "\/api\/skill-library"/);
   assert.match(bridge, /const OPERATOR_TIMEOUT_MS = 15000/);

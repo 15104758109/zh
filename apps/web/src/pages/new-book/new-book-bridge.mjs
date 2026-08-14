@@ -668,7 +668,7 @@ const errorMessages = Object.freeze({
   ACTIVE_CONFIG_UNAVAILABLE: "当前 Prompt 或模型模板尚未形成有效绑定，AI 预览已停止，草稿未改变。",
   PREVIEW_OUTPUT_INVALID: "AI 返回未通过候选格式校验，页面未采用该结果。",
   WRITE_FAILED: "开书事务未完成，未产生半完成作品，草稿已保留。",
-  RPC_UNAVAILABLE: "本地数据服务暂不可用，请恢复连接后重试。",
+  RPC_UNAVAILABLE: "服务暂时不可用，草稿已保留；请恢复后重试。",
 });
 
 function errorCopy(result, fallbackCode = "WRITE_FAILED") {
@@ -751,7 +751,7 @@ async function request(action, creatorMessage = "") {
     projectBlocked(result);
     return result;
   }
-  const failure = errorCopy(result);
+  const failure = errorCopy(result, action === "preview" ? "RPC_UNAVAILABLE" : "WRITE_FAILED");
   if (response.status === 409 || failure.code === "DUPLICATE_TITLE") {
     state = "duplicate";
     persistDraftNow();
