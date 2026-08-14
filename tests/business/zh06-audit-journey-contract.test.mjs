@@ -199,7 +199,13 @@ function validReviewScore(phase) {
   };
 }
 
-function runObjectiveParser(source, audit, response = null) {
+function runObjectiveParser(source, audit, response = null, candidateTruthLedger = {
+  schema_version: 1,
+  world_changes: [],
+  character_live_state_changes: [],
+  relation_changes: [],
+  memories: [],
+}) {
   const upstream = {
     request: {
       local_operator_id: "11111111-1111-4111-8111-111111111111",
@@ -216,6 +222,7 @@ function runObjectiveParser(source, audit, response = null) {
       candidate_text: "同一候选版本正文",
       idempotency_key: "audit-objective",
     },
+    candidate_truth_ledger: candidateTruthLedger,
   };
   const failedChecks = Array.isArray(audit.checks) && audit.checks.some((check) => check?.pass === false);
   const payload = { ...audit };
@@ -1145,8 +1152,9 @@ test("ZH06 persists the objective result before routing its P0 gate", () => {
   assert.equal(objectiveStore.onError, "continueErrorOutput");
   assert.match(
     objectiveStore.parameters.query,
-    /persistence_guard AS \([\s\S]*persisted\.result->>'ok' = 'true'[\s\S]*audited\.result->>'ok' = 'true'[\s\S]*ELSE 0[\s\S]*END AS asserted/su,
+    /persistence_guard AS \([\s\S]*persisted\.result->>'ok' = 'true'[\s\S]*audited\.result->>'ok' = 'true'[\s\S]*RPC_FAILED\[rpc_persist_candidate_text\][\s\S]*RPC_FAILED\[rpc_confirm_audit_result\][\s\S]*END AS asserted/su,
   );
+  assert.doesNotMatch(objectiveStore.parameters.query, /SELECT 1 \/ CASE/u);
   assert.deepEqual(
     outputTargets(value, "FP010-02 审计证据入库", 1),
     ["Respond：审计与写回完成"],
@@ -1548,6 +1556,64 @@ test("ZH06 persists the FP010 audited handoff package and returns a real boolean
   assert.match(fp010Prompt(), /asset_type 为 foreshadow 时必须提供非空 fulfillment_window/u);
   assert.match(store.parameters.query, /ELSE false\s+END AS objective_persistence_ok/u);
   assert.doesNotMatch(store.parameters.query, /\)::boolean\s+END AS objective_persistence_ok/u);
+});
+
+test("ZH06 projects locked candidate truth into the FP010 handoff", () => {
+  const parser = node(workflow(), "JSON修复 (2)");
+  const checks = Array.from({ length: 9 }, (_, index) => ({
+    check_id: `审查-${String(index + 1).padStart(2, "0")}`,
+    severity: index < 5 ? "P0" : "P1",
+    pass: true,
+    findings: "通过",
+    evidence: {},
+  }));
+  const ledger = {
+    schema_version: 1,
+    world_changes: [{ world_state_id: "world-1", before: { fuel: 2 }, after: { fuel: 1 }, event_ids: ["event-1"] }],
+    character_live_state_changes: [{ character_id: "character-1", change_type: "shift", change_layer: 1, before: {}, after: { focus: "escape" }, event_ids: ["event-1"] }],
+    relation_changes: [{ relation_state_id: "relation-1", char_a_id: "character-1", char_b_id: "character-2", before: {}, after: { trust: 1 }, change_event: {}, event_ids: ["event-1"] }],
+    memories: [{ character_id: "character-1", memory_type: "event", memory_content: "locked event", truth_status: "true", importance: 0.5, decay_rate: 0.1, event_ids: ["event-1"] }],
+  };
+  const modelHandoff = {
+    package_schema_version: 1,
+    formalization_eligible: true,
+    world_changes: [{ world_state_id: "invented-world" }],
+    character_live_state_changes: [{ character_id: "invented-character" }],
+    relation_changes: [{ relation_state_id: "invented-relation" }],
+    memories: [{ character_id: "invented-character" }],
+    narrative_assets: [{ asset_ref: "hook-1", asset_type: "hook" }],
+  };
+  const assets = [{
+    asset_ref: "hook-1",
+    asset_type: "hook",
+    asset_name: "候选钩子",
+    asset_description: "本章事件留下的候选钩子。",
+    countdown_deadline: 2,
+  }];
+
+  const output = runObjectiveParser(parser.parameters.jsCode, {
+    has_p0_blocker: false,
+    checks,
+    p0_items_json: [],
+    audit_findings_jsonb: { summary: "九项均通过" },
+    return_route_suggestion_jsonb: {},
+    audited_handoff_package: modelHandoff,
+    assets,
+  }, null, ledger);
+  const handoff = output[0].json.rpc_requests.rpc_confirm_audit_result.audit.audited_handoff_package_jsonb;
+
+  assert.deepEqual(JSON.parse(JSON.stringify({
+    world_changes: handoff.world_changes,
+    character_live_state_changes: handoff.character_live_state_changes,
+    relation_changes: handoff.relation_changes,
+    memories: handoff.memories,
+  })), {
+    world_changes: ledger.world_changes,
+    character_live_state_changes: ledger.character_live_state_changes,
+    relation_changes: ledger.relation_changes,
+    memories: ledger.memories,
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(handoff.narrative_assets)), modelHandoff.narrative_assets);
 });
 
 test("ZH06 gives FP010 only stable formal world and relation baselines for a handoff", () => {
