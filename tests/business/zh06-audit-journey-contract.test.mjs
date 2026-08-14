@@ -199,7 +199,7 @@ function validReviewScore(phase) {
   };
 }
 
-function runObjectiveParser(source, audit) {
+function runObjectiveParser(source, audit, response = null) {
   const upstream = {
     request: {
       local_operator_id: "11111111-1111-4111-8111-111111111111",
@@ -231,8 +231,12 @@ function runObjectiveParser(source, audit) {
     };
   }
   if (!Object.hasOwn(payload, "assets")) payload.assets = [];
+  const fullResponse = response ?? {
+    statusCode: 200,
+    data: JSON.stringify({ choices: [{ message: { content: JSON.stringify(payload) } }] }),
+  };
   return vm.runInNewContext(`(() => { ${source} })()`, {
-    $input: { first: () => ({ json: { output_text: JSON.stringify(payload) } }) },
+    $input: { first: () => ({ json: fullResponse }) },
     $: () => ({ first: () => ({ json: upstream }) }),
   });
 }
@@ -1203,6 +1207,76 @@ test("ZH06 routes objective audit from the nine check results, not from a non-em
     store.parameters.query,
     /return_route_suggestion_jsonb[^\n]+<> '\{\}'::jsonb/u,
   );
+});
+
+test("ZH06 FP010 parser consumes only the full Chat Completions response envelope", () => {
+  const parser = workflow().nodes.find(
+    (candidate) => candidate.id === "0e329fca-f483-4ec1-aaf3-4812e88d4239",
+  );
+  assert.ok(parser, "missing FP010 parser node");
+  const checkPrefix = "\u5ba1\u67e5-";
+  const checks = Array.from({ length: 9 }, (_, index) => ({
+    check_id: `${checkPrefix}${String(index + 1).padStart(2, "0")}`,
+    severity: index < 5 ? "P0" : "P1",
+    pass: true,
+    findings: "通过",
+    evidence: {},
+  }));
+  const audit = {
+    has_p0_blocker: false,
+    checks,
+    p0_items_json: [],
+    audit_findings_jsonb: { summary: "九项均通过" },
+    return_route_suggestion_jsonb: {},
+    audited_handoff_package: {
+      package_schema_version: 1,
+      formalization_eligible: true,
+      world_changes: [],
+      character_live_state_changes: [],
+      relation_changes: [],
+      memories: [],
+      narrative_assets: [],
+    },
+    assets: [],
+  };
+  const response = {
+    statusCode: 200,
+    data: JSON.stringify({
+      choices: [{
+        message: { content: JSON.stringify(audit) },
+        reasoning: "this is not the objective audit DTO",
+      }],
+    }),
+  };
+
+  const output = runObjectiveParser(parser.parameters.jsCode, audit, response);
+  assert.equal(output[0].json.audit_pass, true);
+  assert.equal(output[0].json.objective_audit.audit_findings_jsonb.summary, "九项均通过");
+  assert.match(parser.parameters.jsCode, /source\.data/u);
+  assert.match(parser.parameters.jsCode, /provider\.choices\?\.\[0\]\?\.message\?\.content/u);
+  assert.doesNotMatch(parser.parameters.jsCode, /output_text|reasoning|source\.body/u);
+
+  for (const failedResponse of [
+    { statusCode: 401, data: response.data },
+    { statusCode: 429, data: response.data },
+    { statusCode: 500, data: response.data },
+    { statusCode: 200, data: JSON.stringify({ error: { message: "provider failure" } }) },
+  ]) {
+    assert.throws(
+      () => runObjectiveParser(parser.parameters.jsCode, audit, failedResponse),
+      /FP010_UPSTREAM_FAILED/u,
+    );
+  }
+  for (const failedResponse of [
+    { statusCode: 200, data: "{" },
+    { statusCode: 200, data: "" },
+    { statusCode: 200, data: JSON.stringify({ choices: [{ reasoning: JSON.stringify(audit) }] }) },
+  ]) {
+    assert.throws(
+      () => runObjectiveParser(parser.parameters.jsCode, audit, failedResponse),
+      /FP010_OUTPUT_INVALID/u,
+    );
+  }
 });
 
 test("ZH06 persists the FP010 audited handoff package and returns a real boolean persistence gate", () => {
