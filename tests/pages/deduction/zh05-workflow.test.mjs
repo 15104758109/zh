@@ -1615,6 +1615,7 @@ test("FP008-01 rejects model participants outside the authoritative formal chara
   );
 
   assert.equal(mapped.json.mapping_ok, false);
+  assert.equal(mapped.json.redacted_error.code, "PARTICLE_MAPPING_REJECTED");
 });
 
 test("FP008-01 rejects particles with blank staged_task before FP008-02", async () => {
@@ -1704,25 +1705,27 @@ test("FP008-01 maps an exhausted transport failure to the existing retryable fai
   });
 });
 
-test("FP008-01 classifies a blank HTTP-200 model reply as recoverable output failure", async () => {
+test("FP008-01 classifies blank or bodyless HTTP-200 model replies as recoverable output failures", async () => {
   const workflow = await readWorkflow();
   const mapperNode = workflow.nodes.find(candidate => candidate.id === "64fb6f8a-de62-4543-a426-953bccbb6a20");
   assert.ok(mapperNode);
   const mapper = mapperNode.parameters.jsCode;
   const contextNodeName = mapper.match(/\$\('([^']+)'/u)?.[1];
   assert.ok(contextNodeName);
-  const [mapped] = runCodeNode(mapper, {
-    data: " \n\t ",
-    statusCode: 200,
-  }, {
-    [contextNodeName]: { context: { scope_ok: true, scope: {}, request: { action: "start" }, chapters: [] } },
-  });
+  for (const response of [
+    { data: " \n\t ", statusCode: 200 },
+    { headers: { "content-type": "application/json" }, statusCode: 200, statusMessage: "OK" },
+  ]) {
+    const [mapped] = runCodeNode(mapper, response, {
+      [contextNodeName]: { context: { scope_ok: true, scope: {}, request: { action: "start" }, chapters: [] } },
+    });
 
-  assert.equal(mapped.json.mapping_ok, false);
-  assert.deepEqual(mapped.json.redacted_error, {
-    code: "MODEL_OUTPUT_INVALID",
-    message: "The current model response is invalid.",
-  });
+    assert.equal(mapped.json.mapping_ok, false);
+    assert.deepEqual(mapped.json.redacted_error, {
+      code: "MODEL_OUTPUT_INVALID",
+      message: "The current model response is invalid.",
+    });
+  }
 });
 
 test("both FP008-02 nodes POST valid JSON only after mapping succeeds", async () => {

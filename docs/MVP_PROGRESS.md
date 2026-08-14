@@ -2,31 +2,18 @@
 
 更新时间：2026-08-14（PDT）
 
-## 验收结果
+## 真实用户旅程
 
-MVP 验收要求同一本书、同一 `local_operator_id` 从真实 Web 页面输入开始，依次经过 V7 规定的页面、n8n、PostgreSQL 和刷新恢复，连续完成 10 个正式章节。
-
-当前结果：**0/10 个正式章节**。静态页面、源码或夹具测试、直接数据库写入、旧执行回放，以及受控失败均不计入完成。
-
-## 当前真实结果
-
-- 验收书 `d2173b3a-75a4-49df-9528-dfc08f9f6eb8` 已以 canonical `rpc_finalize_deduction_snapshot` 恢复为第 1、2 章 `plan_ready`；两章均无候选推演、检查点或正文，`deduction_locked=false`。
-- ZH05 `fc798416-f7be-4ee6-abe6-199a98f97933` 已从当前 live workflow 做最小发布并读回 active version `5605e08a-4dfb-4504-8454-df37c125a524`：两个 FP008-01 HTTP 节点消费 active FP016 `parameters_jsonb.timeout_ms=240000`，且 n8n 无 HTTP 响应的传输失败返回既有 `MODEL_CALL_FAILED` 零写入路径。37 项 focused workflow tests 通过。该 HTTP 节点的 timeout 只约束响应头和响应体开始，不是整段流式响应的总时限。
-- 真实页面 execution `3614` 使用该 published version；FP008-01 收到 HTTP 200 的 provider `ResourceExhausted` 信封，`JSON修复` 返回 `MODEL_PROVIDER_UNAVAILABLE`，未进入 FP008-02 或 RPC-009。PostgreSQL 前后均为两章 `plan_ready`、无候选推演/检查点/正文。
-- 真实页面 execution `3634` 证明 provider 可再次产生有效 FP008-01 输入并进入 FP008-02；FP008-02 在等待 `770304 ms` 后连接被重置（`ECONNRESET: socket hang up`）。`JSON修复1` 以 `DEDUCTION_SERVICE_FAILED` 返回，FP008-03/04 只走现有失败响应，`rpc_request=null`；两章 PostgreSQL、产品请求日志和页面刷新均保持零写入、可重试。
-- 真实页面 execution `3635` 使用同一 published version；FP008-01 的 HTTP 200 响应体为 7,843 个空白字符，不含 JSON 信封或模型正文。`JSON修复` 正确返回 `MODEL_OUTPUT_INVALID`，未进入 FP008-02、FP008-03/04 或 RPC-009；两章仍为 `plan_ready`、无 checkpoint/候选推演/正文且未锁定。刷新后重新选择第 1 章，页面恢复 8 个颗粒和可用“开始推演”。
-- 页面在受控错误后显示既有“开始推演”；刷新、重新选择第 1 章后仍显示 8 个颗粒和可用“开始推演”，没有重放旧错误或产生业务写入。
+- MVP 当前为 **0/10 个正式章节**。验收书 `d2173b3a-75a4-49df-9528-dfc08f9f6eb8` 的第 1、2 章均为 `plan_ready`；没有候选推演、checkpoint、正文或 `deduction_locked`。
+- 真实页面从第 1 章“开始推演”触发 ZH05 `fc798416-f7be-4ee6-abe6-199a98f97933`。execution `3659` 的 FP008-01 收到 HTTP 200，但只有 headers/statusCode/statusMessage，没有 `data/body`；未进入 FP008-02、FP008-03/04 或 RPC-009，零业务写入。
+- ZH05 已发布并读回 active version `b5231eaa-69a0-4365-b83f-0389ddf8aaba`：`JSON修复` 仅把“2xx 且缺 data/body”归为既有 `MODEL_OUTPUT_INVALID`，保留已解析但颗粒合同不完整时的 `PARTICLE_MAPPING_REJECTED`。节点数量与连接未变，focused workflow tests `37/37` 通过。
+- 新版本的真实页面 execution `3660` 未产生任何节点结果或数据库写入，24 分钟无正文后被精确停止。页面刷新并重新选择第 1 章后恢复 8 个颗粒和可用“开始推演”入口。
+- 受控模型测试未切换 active 配置：RelayCove Haiku 当前为 HTTP 401，Gemma 当前为 HTTP 429，均未保存为模型模板。
 
 ## 当前运行时阻断
 
-当前最小阻断是 FP008-01 上游 provider 的空白 HTTP 200 响应：execution `3635` 在 304 秒后得到只含空格和换行的响应，当前 `JSON修复` 已按合同 fail-closed 为 `MODEL_OUTPUT_INVALID`。这是用户不可处理的模型/供应商异常，不是 JSON 修复器或 FP008-02 的业务错误；当前失败映射、零写入、服务重启后的内存清理和页面刷新恢复均已证明正确。现有 HTTP 节点可重试网络 throw，但尚未证明能把这类 200 空白内容转换为同一请求的参数级重试；V7 未定义备用模型、自动切换或把空白响应伪装成候选推演的规则。
+FP008-01 当前 active 的 OpenRouter/Nvidia Super 已出现一次 HTTP 200 无正文和一次无正文挂起。JSON 信封/映射职责已按现有错误合同修复并经发布读回；剩余阻断是用户不可处理的 provider/model 稳定性。没有可通过当前受控连接测试的替代模型，且 V7 未定义自动切换模型、语义级重试或把无正文伪装为候选推演的规则。
 
 ## 最小下一步
 
-已由 n8n 2.21.6 节点实现和 execution `3635` 的保存响应确认：当前 HTTP Request 使用 `responseFormat=text`；改为 `json` 时纯空白 body 会被 n8n 规范化为 `{}`，不会抛出节点错误，因而不能触发已上线的 `retryOnFail/maxTries`。FP008-01 的语义重试需要新增或重连重试控制边，属于审批边界；未获批准前只保留当前 fail-closed、零写入和页面重试入口。
-
-## 继续执行约束
-
-- 不使用手工正文、直接写入成功审计/正式章节、伪造页面成功或绕过页面调用 workflow。
-- 每次只修复一个经真实 execution 证明的首失败边界；workflow 变更必须备份、发布、读回并进行真实页面触发。
-- 当前候选的技术恢复只允许恢复到 V7 已有的“待正文呈现”页面入口，保留请求和审计证据。
+等待一个可通过受控连接测试的 FP016 候选模型后，串行从第 1 章真实页面重试一次，并验收 FP008-01 -> FP008-02 -> FP008-03/04 -> RPC-009、PostgreSQL 和刷新恢复。不得直接写入成功推演、正文或章节状态。
