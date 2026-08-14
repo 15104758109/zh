@@ -1142,6 +1142,15 @@ test("ZH06 persists the objective result before routing its P0 gate", () => {
     outputTargets(value, "FP010-02 审计证据入库", 0),
     ["IF：客观审计通过？"],
   );
+  assert.equal(objectiveStore.onError, "continueErrorOutput");
+  assert.match(
+    objectiveStore.parameters.query,
+    /persistence_guard AS \([\s\S]*persisted\.result->>'ok' = 'true'[\s\S]*audited\.result->>'ok' = 'true'[\s\S]*ELSE 0[\s\S]*END AS asserted/su,
+  );
+  assert.deepEqual(
+    outputTargets(value, "FP010-02 审计证据入库", 1),
+    ["Respond：审计与写回完成"],
+  );
   assert.deepEqual(incomingSources(value, "IF：客观审计通过？"), ["FP010-02 审计证据入库"]);
   assert.deepEqual(
     outputTargets(value, "IF：客观审计通过？", 0),
