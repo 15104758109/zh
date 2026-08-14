@@ -10,22 +10,18 @@ MVP 验收要求同一本书、同一 `local_operator_id` 从真实 Web 页面�
 
 ## 当前真实结果
 
-- 当前书的页面 `/books/:bookId/deduction-review` 能读取同一锁定 L1A 的顺序第 1 章；刷新后真实显示既有“开始生成正文”动作。
-- 为恢复前次技术失败，只在可回退备份保护下清空同一候选的候选正文并将章节恢复为 `deduction_complete`；没有伪造正文、审计、正式章节或跨书数据。
-- ZH06 的 `JSON修复 (2)` 已针对 execution `3578` 的唯一闭合符错位发布并读回。它只移动唯一终端 `}` 到唯一缺失的对象闭合处；九项检查、P0 清单、交接包和 RPC 校验仍 fail-closed。
-- 当前 active FP016 模型已恢复为 `nvidia/nemotron-3-super-120b-a12b:free`，配置版本 `33`；ZH06 workflow `ed2280fe-25ab-401f-a700-d2a79d40c369` 已发布并读回 active version `23e62e42-d545-40ce-89ce-df87000f4a46`。
-- 真实执行 `3593` 使用旧 OpenAI credential 在 RelayCove 返回 401；`3594` 使用 RelayCove credential 得到 HTTP 200，但 Claude 输出不符合 FP010 JSON 合同，parser 正确拒绝；两者均未写入业务状态。
-- 真实页面执行 `3598` 已通过 FP009（HTTP 200、JSON 修复成功、候选正文约 1703 字），随后 FP010 模型调用超时并取消；真实页面执行 `3599` 在同一 Nemotron 入口超过 7 分钟无后续节点输出后取消。取消执行均确认无数据库写入。
-- 当前数据库仍为同一候选 `5c766357-4d65-4d45-ba0a-2f7a5482302f` 的 `prose_text=NULL`、章节 `status/run_status=deduction_complete`、客观审计 `0`、正式章节 `0`。
-- 页面已修复旧 `presentationError` 和失败幂等键遮住后端可重试状态的问题；刷新后会回到既有按钮，而不重放旧失败响应。
+- 验收书 `d2173b3a-75a4-49df-9528-dfc08f9f6eb8` 已以 canonical `rpc_finalize_deduction_snapshot` 恢复为第 1、2 章 `plan_ready`；两章均无候选推演、检查点或正文，`deduction_locked=false`。
+- ZH05 `fc798416-f7be-4ee6-abe6-199a98f97933` 已从当前 live workflow 做最小发布并读回 active version `5605e08a-4dfb-4504-8454-df37c125a524`：两个 FP008-01 HTTP 节点消费 active FP016 `parameters_jsonb.timeout_ms=240000`，且 n8n 无 HTTP 响应的传输失败返回既有 `MODEL_CALL_FAILED` 零写入路径。37 项 focused workflow tests 通过。
+- 真实页面 execution `3614` 使用该 published version；FP008-01 收到 HTTP 200 的 provider `ResourceExhausted` 信封，`JSON修复` 返回 `MODEL_PROVIDER_UNAVAILABLE`，未进入 FP008-02 或 RPC-009。PostgreSQL 前后均为两章 `plan_ready`、无候选推演/检查点/正文。
+- 页面在受控错误后显示既有“开始推演”；刷新、重新选择第 1 章后仍显示 8 个颗粒和可用“开始推演”，没有重放旧错误或产生业务写入。
 
 ## 当前运行时阻断
 
-当前最小阻断是 active provider 在真实页面触发中出现无输出或超时：`3598` 在 FP010 调用超时，`3599` 在 FP009/FP010 后续节点无输出。FP009/FP010 binding、endpoint、请求映射和已有 3 次/5 秒 transport retry 已核对一致；现有解析器正确拒绝空或非 JSON 响应，数据库保持同一候选可重试状态。V7 未定义备用模型或响应级自动重试规则，不得将 headers/status 伪装为正文或审计 DTO。
+当前最小阻断是 active FP008-01 provider 的容量限制：execution `3614` 在约 3 秒内返回 `ResourceExhausted: Worker local total request limit reached (33/32)`。这是模型服务端的 HTTP 200 错误信封，不是 n8n 传输超时；V7 未定义备用模型、自动切换或把该 payload 伪装成候选推演的规则。页面和数据库均已保持可重试状态。
 
 ## 最小下一步
 
-保持页面在同一 `deduction-review` 的“开始生成正文”入口；当前不再重复触发高成本模型请求。待 provider 返回完整 completion，或创作者明确批准备用模型/响应级自动重试规则后，再继续检查 FP010 解析、RPC/PostgreSQL、刷新恢复和后续审计节点的第一个实际失败边界。
+待 provider 容量恢复后，从同一推演页第 1 章的既有“开始推演”入口重新触发一次；先验收 FP008-01/02/04 的真实完成、RPC-009 和刷新恢复，再进入 FP009/FP010 的首个实际失败边界。
 
 ## 继续执行约束
 

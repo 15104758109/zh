@@ -532,6 +532,7 @@ test("the FP008-01 start path uses the configured OpenAI-compatible chat endpoin
         prompt_text: "particle prompt",
         api_key_ref: "local-secure-ref:test",
         temperature: 0.2,
+        parameters_jsonb: { timeout_ms: 240000 },
       },
     },
     l1a: { l1a_unit_id: "l1a-1" },
@@ -572,6 +573,7 @@ test("the FP008-01 start path uses the configured OpenAI-compatible chat endpoin
     assert.equal(promptNode.parameters.options.response.response.fullResponse, true);
     assert.equal(promptNode.parameters.options.response.response.neverError, true);
     assert.equal(promptNode.parameters.options.response.response.responseFormat, "text");
+    assert.equal(runExpression(promptNode.parameters.options.timeout, { context }), 240000);
     assert.equal(promptNode.retryOnFail, true);
     assert.equal(promptNode.maxTries, 3);
     assert.equal(promptNode.waitBetweenTries, 5000);
@@ -1683,6 +1685,22 @@ test("FP008-01 preserves an HTTP-200 provider error as a controlled model outage
   assert.deepEqual(mapped.json.redacted_error, {
     code: "MODEL_PROVIDER_UNAVAILABLE",
     message: "The current model service is unavailable.",
+  });
+});
+
+test("FP008-01 maps an exhausted transport failure to the existing retryable failure state", async () => {
+  const workflow = await readWorkflow();
+  const mapper = workflow.nodes.find(candidate => candidate.name === "JSON修复").parameters.jsCode;
+  const [mapped] = runCodeNode(mapper, {
+    error: { message: "ETIMEDOUT: model request timed out after retries" },
+  }, {
+    "读取拆解结果": { context: { scope_ok: true, scope: {}, request: { action: "start" }, chapters: [] } },
+  });
+
+  assert.equal(mapped.json.mapping_ok, false);
+  assert.deepEqual(mapped.json.redacted_error, {
+    code: "MODEL_CALL_FAILED",
+    message: "The current model request failed after retries.",
   });
 });
 
