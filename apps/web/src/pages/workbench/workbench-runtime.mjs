@@ -3,6 +3,10 @@ const contextKey = "current_book_context";
 const operatorKey = "zhreplan.local_operator_id.v1";
 const uuidPattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const templateTypes = Object.freeze(["感性文字", "简单逻辑", "重复指令", "复杂任务", "客观公正"]);
+const controlledCredentialReferences = Object.freeze(new Map([
+  ["https://openrouter.ai/api/v1", "n8n-credential:openai-account-v1"],
+  ["https://api.relaycove.com/v1", "n8n-credential:relaycove-v1"],
+]));
 const newBookDraftKey = "zhreplan.new_book_draft.v1";
 const newBookDraftIdempotencyKey = "zhreplan.new_book_draft.idempotency_key.v1";
 const newBookGenreTags = Object.freeze({
@@ -523,13 +527,26 @@ function renderModalTemplate(templateType = state.modalTemplate) {
   }
 }
 
+function controlledCredentialReferenceForProvider(providerBaseUrl) {
+  try {
+    const normalized = new URL(providerBaseUrl).href.replace(/\/$/u, "");
+    return controlledCredentialReferences.get(normalized) || "";
+  } catch {
+    return "";
+  }
+}
+
 function modelConnectionInput() {
   const providerBaseUrl = String(valueFromId("modalBaseUrlInput")?.value || "").trim();
   const modelName = String(valueFromId("modalModelSelect")?.value || "").trim();
   if (!providerBaseUrl || !modelName) {
     throw new WorkbenchError("INVALID_REQUEST", "请输入连接地址和模型名称后再测试。密钥继续由本地受控凭据保管。 ");
   }
-  return { provider_base_url: providerBaseUrl, model_name: modelName };
+  const apiKeyRef = controlledCredentialReferenceForProvider(providerBaseUrl);
+  if (!apiKeyRef) {
+    throw new WorkbenchError("INVALID_REQUEST", "该连接地址没有可用的本地受控凭据，未发起测试。 ");
+  }
+  return { provider_base_url: providerBaseUrl, model_name: modelName, api_key_ref: apiKeyRef };
 }
 
 function resetModelTestEvidence() {
@@ -851,8 +868,9 @@ async function saveModelConfiguration() {
   }
   const configuredBaseUrl = String(activeTemplate?.provider_base_url || "").trim();
   const configuredModelName = String(activeTemplate?.model_name || "").trim();
-  const selectedBaseUrl = String(valueFromId("modalBaseUrlInput")?.value || "").trim();
-  const selectedModelName = String(valueFromId("modalModelSelect")?.value || "").trim();
+  const modelInput = modelConnectionInput();
+  const selectedBaseUrl = modelInput.provider_base_url;
+  const selectedModelName = modelInput.model_name;
   const unchangedModel = Boolean(
     configuredBaseUrl
     && configuredModelName
@@ -895,6 +913,7 @@ async function saveModelConfiguration() {
       action: "save_model_template",
       local_operator_id: state.operatorId,
       template_type: state.modalTemplate,
+      ...modelInput,
       connection_test_evidence_id: evidenceId,
       routing_config_jsonb: routingConfig,
       parameters_jsonb: modelParameters,
