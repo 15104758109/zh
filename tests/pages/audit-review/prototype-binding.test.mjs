@@ -111,14 +111,18 @@ test("FP009 only offers the backend-resolved next candidate with no candidate pr
   assert.equal(isPresentationCandidate({ deduction_locked: true, has_candidate_text: true, is_next_presentation: true }), false);
 });
 
-test("FP009 keeps V7's formal-write blocker visible after candidate prose exists", () => {
+test("candidate prose fails closed until a matching completed objective audit exists", () => {
   const chapter = {
     deduction_locked: true,
     has_candidate_text: true,
     is_next_presentation: true,
   };
 
-  assert.equal(presentationReleaseState(chapter), "awaiting_editorial");
+  assert.equal(presentationReleaseState(chapter), "audit_evidence_required");
+  assert.equal(
+    presentationReleaseState({ ...chapter, objective_audit_completed: true }),
+    "awaiting_editorial",
+  );
   assert.equal(
     presentationReleaseState(chapter, {
       presentationError: new DeductionDataError(

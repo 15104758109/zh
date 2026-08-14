@@ -22,6 +22,14 @@ test("deduction workspace API is a scoped read model", async () => {
   assert.match(readModel, /p\.l1a_unit_id = b\.current_l1a_id/);
   assert.match(readModel, /FROM public\.v_character_active/);
   assert.match(readModel, /'has_candidate_text', NULLIF\(btrim\(cv\.prose_text\), ''\) IS NOT NULL/);
+  assert.match(readModel, /'objective_audit_completed', EXISTS \(\s*SELECT 1\s*FROM public\.audit_attempt_log AS a/);
+  assert.match(readModel, /a\.book_id = p\.book_id/);
+  assert.match(readModel, /a\.chapter_id = p\.chapter_id/);
+  assert.match(readModel, /a\.chapter_version_id = cv\.id/);
+  assert.match(readModel, /a\.audit_type = 'objective'/);
+  assert.match(readModel, /a\.audit_status = 'completed'/);
+  assert.match(readModel, /a\.candidate_text_snapshot IS NOT DISTINCT FROM cv\.prose_text/);
+  assert.match(readModel, /a\.is_valid\s+AND NOT a\.is_shadow/);
   assert.doesNotMatch(readModel, /\b(?:INSERT|UPDATE|DELETE|CALL)\b/i);
   assert.match(source, /FP008_SERVICE_URL/);
   assert.match(source, /import \{ mergeDeductionRuntime \} from "\.\/deduction-runtime-projection\.mjs"/);

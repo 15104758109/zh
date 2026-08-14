@@ -157,6 +157,18 @@ WITH scoped_book AS (
            'target_snapshot_json', cv.target_snapshot_json,
            'candidate_plot_sim_json', cv.candidate_plot_sim_json,
            'has_candidate_text', NULLIF(btrim(cv.prose_text), '') IS NOT NULL,
+           'objective_audit_completed', EXISTS (
+             SELECT 1
+             FROM public.audit_attempt_log AS a
+             WHERE a.book_id = p.book_id
+               AND a.chapter_id = p.chapter_id
+               AND a.chapter_version_id = cv.id
+               AND a.audit_type = 'objective'
+               AND a.audit_status = 'completed'
+               AND a.candidate_text_snapshot IS NOT DISTINCT FROM cv.prose_text
+               AND a.is_valid
+               AND NOT a.is_shadow
+           ),
            'review_decision', cv.review_decision,
            'review_comment', cv.review_comment,
            'updated_at', p.updated_at,

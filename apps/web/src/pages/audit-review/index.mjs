@@ -223,7 +223,11 @@ export function presentationReleaseState(
 ) {
   if (!chapter) return "unselected";
   if (presentationError) return "blocked";
-  if (chapter.has_candidate_text === true) return "awaiting_editorial";
+  if (chapter.has_candidate_text === true) {
+    return chapter.objective_audit_completed === true
+      ? "awaiting_editorial"
+      : "audit_evidence_required";
+  }
   if (!canStartPresentation(chapter)) return "unavailable";
   return presentationPending ? "running" : "ready";
 }
@@ -294,7 +298,9 @@ function chapterSummary(chapter) {
 }
 
 function statusLabel(chapter) {
-  if (chapter?.deduction_locked === true && chapter.has_candidate_text === true) return "已有候选正文";
+  if (chapter?.deduction_locked === true && chapter.has_candidate_text === true) {
+    return chapter.objective_audit_completed === true ? "已进入审计" : "待审计留痕";
+  }
   if (chapter?.deduction_locked === true && chapter.has_candidate_text === false) return "待正文呈现";
   if (chapter?.deduction_locked === true) return "正文状态未返回";
   const value = chapter?.run_status || chapter?.status;
@@ -700,6 +706,14 @@ function renderRelease(runtime, chapter) {
     );
     return;
   }
+  if (releaseState === "audit_evidence_required") {
+    runtime.root.dataset.presentationState = "audit_evidence_required";
+    target.replaceChildren(
+      heading,
+      createNode(doc, "p", "audit-neutral-slot", "候选正文已保存，但当前版本没有匹配的完成客观审计记录。本页保持只读，不会继续审计、正式化或重新生成正文。"),
+    );
+    return;
+  }
   if (releaseState === "unavailable") {
     runtime.root.dataset.presentationState = "unavailable";
     target.replaceChildren(
@@ -745,8 +759,10 @@ function setFooter(runtime, chapter) {
   }
   footer.textContent = runtime.presentationPending
     ? "正文呈现与审计正在运行；页面只读取候选状态，不展示候选正文。"
-    : chapter?.has_candidate_text === true
+    : chapter?.has_candidate_text === true && chapter.objective_audit_completed === true
       ? `候选版本 ${displayText(chapter.candidate_version_id)} 已进入审计；正文仅在主编放行并完成正式写入后显示。`
+      : chapter?.has_candidate_text === true
+        ? `候选版本 ${displayText(chapter.candidate_version_id)} 的正文已保存，但没有匹配的完成客观审计记录；页面保持只读。`
       : chapter
         ? `正在浏览后端解析的顺序下一章候选版本 ${displayText(chapter.candidate_version_id)} 的推演事实摘要；可提交正文呈现意图。`
         : "请选择已完成推演的 L1A；页面不会代替后端裁决章节顺序、正文或审计结果。";
