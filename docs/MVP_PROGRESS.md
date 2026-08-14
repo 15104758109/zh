@@ -23,7 +23,7 @@ MVP 验收要求同一本书、同一 `local_operator_id` 从真实 Web 页面�
 
 ## 最小下一步
 
-先以 execution `3635` 的保存响应确认 HTTP Request 节点能否仅通过现有响应格式参数把纯空白 HTTP 200 变为节点错误，从而复用已上线的 `retryOnFail/maxTries`；这一步不新增或重连节点。若 n8n 不支持该参数级恢复，FP008-01 的语义重试仍需审批，因为最小实现需要新增或重连重试控制边；之后再从同一页面重新触发并验收 FP008-01/02/04、RPC-009 和刷新恢复。
+已由 n8n 2.21.6 节点实现和 execution `3635` 的保存响应确认：当前 HTTP Request 使用 `responseFormat=text`；改为 `json` 时纯空白 body 会被 n8n 规范化为 `{}`，不会抛出节点错误，因而不能触发已上线的 `retryOnFail/maxTries`。FP008-01 的语义重试需要新增或重连重试控制边，属于审批边界；未获批准前只保留当前 fail-closed、零写入和页面重试入口。
 
 ## 继续执行约束
 
