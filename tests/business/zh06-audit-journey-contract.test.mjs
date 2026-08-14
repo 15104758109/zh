@@ -1343,6 +1343,119 @@ test("ZH06 FP010 parser consumes only the full Chat Completions response envelop
   }
 });
 
+test("ZH06 FP010 repairs only the isolated structural noise observed in execution 3578", () => {
+  const parser = node(workflow(), "JSON修复 (2)");
+  const checks = Array.from({ length: 9 }, (_, index) => ({
+    check_id: `审查-${String(index + 1).padStart(2, "0")}`,
+    severity: index < 5 ? "P0" : "P1",
+    pass: true,
+    findings: "通过",
+    evidence: index === 8 ? {
+      text_excerpt: "潮汐回声管廊的墙面沥青泛着潮湿的暗光。",
+      deduction_reference: "章节目标快照 emotion_goals：E101 营造压抑氛围；E102 引导好奇探索。",
+      field: "情绪目标实现",
+    } : {},
+  }));
+  const audit = {
+    has_p0_blocker: false,
+    checks,
+    p0_items_json: [],
+    audit_findings_jsonb: {},
+    return_route_suggestion_jsonb: {},
+    audited_handoff_package: {
+      package_schema_version: 1,
+      formalization_eligible: true,
+      world_changes: [],
+      character_live_state_changes: [],
+      relation_changes: [],
+      memories: [],
+      narrative_assets: [],
+    },
+    assets: [],
+  };
+  const wellFormed = JSON.stringify(audit, null, 2);
+  const missingCheckCloser = '\n    }\n  ],\n  "p0_items_json"';
+  const omission = wellFormed.lastIndexOf(missingCheckCloser);
+  assert.ok(omission >= 0, "fixture must retain execution 3578's check-array shape");
+  const execution3578Content = `${wellFormed.slice(0, omission)}\n  ],\n  "p0_items_json"${wellFormed.slice(omission + missingCheckCloser.length)}\n}`;
+  const envelope = (content) => ({
+    statusCode: 200,
+    data: JSON.stringify({ choices: [{ message: { content } }] }),
+  });
+
+  const recovered = runObjectiveParser(
+    parser.parameters.jsCode,
+    audit,
+    envelope(execution3578Content),
+  );
+  assert.equal(recovered[0].json.audit_pass, true);
+  assert.equal(recovered[0].json.objective_audit.checks.length, 9);
+  assert.equal(recovered[0].json.objective_audit.checks.at(-1).check_id, "审查-09");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(recovered[0].json.rpc_requests.rpc_confirm_audit_result.audit.p0_items_json)),
+    [],
+  );
+
+  for (const content of [
+    wellFormed.slice(0, -1),
+    `${wellFormed}\n${wellFormed}`,
+    `${wellFormed}\n}`,
+  ]) {
+    assert.throws(
+      () => runObjectiveParser(parser.parameters.jsCode, audit, envelope(content)),
+      /FP010_OUTPUT_INVALID: objective audit must be JSON/u,
+    );
+  }
+});
+
+test("ZH06 FP010 derives fixed check severity from the V7 check ID when execution 3581 mislabels it", () => {
+  const parser = node(workflow(), "JSON修复 (2)");
+  const checks = Array.from({ length: 9 }, (_, index) => ({
+    check_id: `审查-${String(index + 1).padStart(2, "0")}`,
+    severity: index === 0 || index === 1 ? "P0" : "P1",
+    pass: index !== 1,
+    findings: index === 1 ? "正文出现未定义仪器。" : "通过",
+    evidence: {},
+  }));
+  const audit = {
+    has_p0_blocker: true,
+    checks,
+    p0_items_json: [{ check_id: "审查-02", reason: "正文出现未定义仪器。" }],
+    audit_findings_jsonb: {},
+    return_route_suggestion_jsonb: { suggestion: "回 FP009-01", reason: "修正文学呈现" },
+    audited_handoff_package: {
+      package_schema_version: 1,
+      formalization_eligible: false,
+      world_changes: [],
+      character_live_state_changes: [],
+      relation_changes: [],
+      memories: [],
+      narrative_assets: [],
+    },
+    assets: [],
+  };
+
+  const output = runObjectiveParser(parser.parameters.jsCode, audit);
+  assert.equal(output[0].json.audit_pass, false);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(output[0].json.objective_audit.checks.slice(0, 5).map((check) => check.severity))),
+    ["P0", "P0", "P0", "P0", "P0"],
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(output[0].json.rpc_requests.rpc_confirm_audit_result.audit.p0_items_json)),
+    audit.p0_items_json,
+  );
+
+  const invalidSeverity = {
+    ...audit,
+    checks: checks.map((check, index) => index === 2 ? { ...check, severity: "P2" } : check),
+  };
+  assert.throws(
+    () => runObjectiveParser(parser.parameters.jsCode, invalidSeverity),
+    /FP010_OUTPUT_INVALID/u,
+  );
+});
+
 test("ZH06 persists the FP010 audited handoff package and returns a real boolean persistence gate", () => {
   const value = workflow();
   const parser = node(value, "JSON修复 (2)");

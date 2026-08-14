@@ -1,6 +1,6 @@
 # V7 MVP 当前进度
 
-更新时间：2026-08-13（PDT）
+更新时间：2026-08-14（PDT）
 
 ## 验收结果
 
@@ -10,24 +10,23 @@ MVP 验收要求同一本书、同一 `local_operator_id` 从真实 Web 页面�
 
 ## 当前真实结果
 
-- 当前书的页面 `/books/:bookId/deduction-review` 已从真实书籍上下文读取同一锁定 L1A 的顺序第 1 章，并真实提交过一次“开始生成正文”。
-- 该页面动作真实进入 `ZH06`：FP009 已通过既有 RPC-010 将 3401 字符候选正文保存到同一 `chapter_version`；候选保持 `candidate`，章节处于 `auditing`。
-- execution 3556 暴露的 full-response `data` 解包缺陷已由单节点修复发布并读回。随后真实页面请求 execution 3557 的第一轮 FP010 已返回合法 P0 审计 DTO：审查-01 至审查-03 为 P0，`has_p0_blocker=true`，但其 `p0_items_json=[]`。
-- FP010-02 先成功登记 3401 字候选正文，再被 canonical `rpc_confirm_audit_result` 以 `AUDIT_INCOMPLETE` 拒绝；因此 `objective_persistence_ok=false`，没有 `audit_attempt_log`。现有 false branch 仍错误进入 FP009。第二轮 FP010 又返回包含中文弯引号的非法 JSON，并在 `JSON修复 (2)` fail-closed；该轮 3517 字正文没有持久化。
-- 已发布的 `JSON修复 (2)` 现在会在入库前拒绝“P0 检查失败但 P0 列表为空”或“P0 检查全通过但 P0 列表非空”的 DTO；不解释、不补造该列表内部字段。随后修复了 `FP010-02` 的真实错误分流：RPC 未完整落库时由现有 error output 返回受控的“审计未完成”，不再误回 `FP009-01`；成功留痕的 P0/P1 仍按 V7 回到正文重写。live workflow 已备份、发布到 `d6819ade-1e2e-466b-94e2-69e64ee2eced` 并读回，节点数仍为 31。
-- 当前候选仍为同一有效、锁定、非影子的 `candidate`，仅保留 3401 字正文；客观审计、主观审计、正式章节和正式写回均为零。刷新页面可恢复同一书和候选，但页面按真实 `has_candidate_text=true` 只读显示“已进入审计”，不会重复提交 FP009。
+- 当前书的页面 `/books/:bookId/deduction-review` 能读取同一锁定 L1A 的顺序第 1 章；刷新后真实显示既有“开始生成正文”动作。
+- 为恢复前次技术失败，只在可回退备份保护下清空同一候选的候选正文并将章节恢复为 `deduction_complete`；没有伪造正文、审计、正式章节或跨书数据。
+- ZH06 的 `JSON修复 (2)` 已针对 execution `3578` 的唯一闭合符错位发布并读回。它只移动唯一终端 `}` 到唯一缺失的对象闭合处；九项检查、P0 清单、交接包和 RPC 校验仍 fail-closed。
+- 发布后的真实页面请求 `3579` 进入 FP010，但 provider 返回 HTTP 200 且没有 completion body；真实页面请求 `3580` 则在 FP009 遇到相同空 body。两次均未持久化候选正文、客观审计或正式章节。
+- live severity 规范化已在 ZH06 active version `02849ce5-7b41-4082-bc8c-a10796ca295c` 发布并读回；真实页面请求 `3582`、`3583` 均经过 FP009 和 FP010 后在 `JSON修复 (2)` 看到 HTTP 200、`data` 长度 7843 但 `trim().length=0` 的空白响应。两次均未写入候选正文、客观审计或正式章节；同一 binding 的 `3581` 曾返回完整 completion，随后才暴露 severity 标注问题。
+- 页面已修复旧 `presentationError` 和失败幂等键遮住后端可重试状态的问题；刷新后会回到既有按钮，而不重放旧失败响应。
 
 ## 当前运行时阻断
 
-FP010 的 P0 DTO/RPC-012 完整性不变量已在解析节点 fail-closed，且 RPC 未落库不再误回正文重写。当前实际阻断是：该候选曾收到空 P0 列表和一次非法 JSON，V7 却没有定义“候选正文已保存、客观审计技术失败后，只对同一候选重新启动 FP010”的页面动作、workflow route 或持久化恢复规则。刷新后的真实页面也没有重审计/重试控件。页面不得伪造成功、重跑 FP009 或直接调用数据库/工作流绕过这一缺口。
+当前最小阻断是 active provider 在两次连续的真实页面触发中返回 HTTP 200、但 n8n full-response 的 `data` 只有空白。当前 FP010-01 binding、endpoint、请求映射和已有 3 次/5 秒 transport retry 已核对一致；现有解析器正确拒绝空响应，数据库保持同一候选可重试状态。V7 未定义备用模型或 200 空体的响应级自动重试，不得将 headers/status 伪装为正文或审计 DTO。
 
 ## 最小下一步
 
-1. 请创作者确认候选期技术失败的恢复方式：为现有 ZH06 增加受控“重新客观审计”入口，或规定其他不重跑 FP009、不改写锁定推演、不直接写库的既有恢复路径。
-2. 获批后才可从真实页面对同一候选重试；先核对 FP010、RPC-012/PostgreSQL 和刷新恢复，再继续检查 FP011、FP012、FP013 和同书十章验收。
+保持页面在同一 `deduction-review` 的“开始生成正文”入口；待 provider 返回完整 completion 或创作者批准备用模型/响应级自动重试规则后，再继续检查 FP010 解析、RPC/PostgreSQL、刷新恢复和后续审计节点的第一个实际失败边界。
 
 ## 继续执行约束
 
-- 不使用手工 `localStorage`、直接 PostgreSQL 写入、伪造页面成功或静态正文替代真实页面旅程。
-- 每次只修复一个经真实 execution 证明的首失败边界；修改 workflow 后必须发布、读回、触发一次真实请求，并核对 PostgreSQL 与页面刷新结果。
-- 本文档只保留当前结果、运行时阻断和下一步；历史执行号、已被覆盖的版本号、模型探针和中间诊断不再作为后续决策依据。
+- 不使用手工正文、直接写入成功审计/正式章节、伪造页面成功或绕过页面调用 workflow。
+- 每次只修复一个经真实 execution 证明的首失败边界；workflow 变更必须备份、发布、读回并进行真实页面触发。
+- 当前候选的技术恢复只允许恢复到 V7 已有的“待正文呈现”页面入口，保留请求和审计证据。

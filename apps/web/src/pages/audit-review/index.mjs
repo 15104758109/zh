@@ -217,6 +217,14 @@ export function isPresentationCandidate(chapter) {
     && chapter?.has_candidate_text === false;
 }
 
+export function clearRecoveredPresentationFailure(runtime, chapter) {
+  if (!runtime || runtime.presentationPending === true || !isPresentationCandidate(chapter)) return false;
+  const hadFailure = runtime.presentationError != null || runtime.presentationKey != null;
+  runtime.presentationError = null;
+  runtime.presentationKey = null;
+  return hadFailure;
+}
+
 export function presentationReleaseState(
   chapter,
   { presentationError = null, presentationPending = false } = {},
@@ -850,6 +858,7 @@ async function loadProjection(runtime, { background = false, scheduleNext = fals
     runtime.selectedL1aId = runtime.selectedL1aId && available.some((l1a) => l1a.id === runtime.selectedL1aId)
       ? runtime.selectedL1aId
       : selection.l1a?.id || null;
+    clearRecoveredPresentationFailure(runtime, presentationChapter(runtime));
     hideState(runtime.root);
     bindBookContext(runtime);
     bindReadonlyHeader(runtime.root, asObject(result.book));

@@ -9,6 +9,7 @@ import {
   DeductionDataError,
   hasPlot,
   isPresentationCandidate,
+  clearRecoveredPresentationFailure,
   presentationReleaseState,
   presentationSelection,
   resolveAuditReviewContext,
@@ -132,6 +133,45 @@ test("candidate prose fails closed until a matching completed objective audit ex
     }),
     "blocked",
   );
+});
+
+test("FP009 clears only a stale failed request when the refreshed projection reopens its existing action", () => {
+  const reopenable = {
+    deduction_locked: true,
+    has_candidate_text: false,
+    is_next_presentation: true,
+    chapter_id: "815fe390-94e1-4a51-947b-6db2412b5a11",
+    candidate_version_id: "987409eb-05b4-43d8-b557-60d782ca8387",
+  };
+  const runtime = {
+    presentationError: new DeductionDataError("HTTP_200", "旧请求未完成。"),
+    presentationKey: "audit-presentation-stale",
+    presentationPending: false,
+  };
+
+  assert.equal(clearRecoveredPresentationFailure(runtime, reopenable), true);
+  assert.equal(runtime.presentationError, null);
+  assert.equal(runtime.presentationKey, null);
+  assert.equal(presentationReleaseState(reopenable, runtime), "ready");
+
+  const closedRuntime = {
+    presentationError: new DeductionDataError("HTTP_200", "旧请求未完成。"),
+    presentationKey: "audit-presentation-stale",
+    presentationPending: false,
+  };
+  assert.equal(
+    clearRecoveredPresentationFailure(closedRuntime, { ...reopenable, has_candidate_text: true }),
+    false,
+  );
+  assert.equal(closedRuntime.presentationKey, "audit-presentation-stale");
+
+  const pendingRuntime = {
+    presentationError: new DeductionDataError("HTTP_200", "旧请求未完成。"),
+    presentationKey: "audit-presentation-stale",
+    presentationPending: true,
+  };
+  assert.equal(clearRecoveredPresentationFailure(pendingRuntime, reopenable), false);
+  assert.ok(pendingRuntime.presentationError);
 });
 
 test("FP009 uses the backend's L1A scope and unique next chapter instead of a chapter picker", () => {
