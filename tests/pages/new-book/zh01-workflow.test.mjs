@@ -469,6 +469,52 @@ test("preview normalizer converts only explicitly missing empty fields to null",
   assert.equal(unlisted.code, "PREVIEW_OUTPUT_INVALID");
 });
 
+test("FP001-03 rejects world L1 fields outside their item_content contract", () => {
+  const dialogue = {
+    missing_items: [],
+    chat_message: "请确认这处地理设定是否符合创作意图。",
+    lock_respected: true,
+    incremental_updates: {
+      world_state: [{
+        board_type: "地理",
+        atom_type: "geo",
+        atom_key: "geography.orbital-station",
+        item_name: "轨道站主体结构",
+        item_content: {
+          summary: "环轨居住站的维护区域。",
+          purpose: "限制无授权人员进入核心轨道。",
+          danger_level: "high",
+          location_text: "近地轨道的旧维护环。",
+        },
+        affordance_dims: ["身份门槛"],
+      }],
+    },
+    stage_completion: { world: 0.5 },
+  };
+  const sources = (payload) => ({
+    [names.skillReader]: { correlation_id: "preview-world-l1-contract" },
+    [names.dialogue]: { output: JSON.stringify(payload) },
+    [names.commercial]: { output: "not-json" },
+  });
+
+  assert.equal(runCode(names.validator, {}, sources(dialogue))[0].json.status, "preview");
+
+  const misplaced = structuredClone(dialogue);
+  const candidate = misplaced.incremental_updates.world_state[0];
+  candidate.item_content = {
+    summary: candidate.item_content.summary,
+    purpose: candidate.item_content.purpose,
+  };
+  candidate.danger_level = "high";
+  candidate.location_text = "近地轨道的旧维护环。";
+  misplaced.missing_items = ["world_state[0].item_content.violate_cost"];
+
+  const rejected = runCode(names.validator, {}, sources(misplaced))[0].json;
+  assert.equal(rejected.status, "BLOCKED");
+  assert.equal(rejected.code, "PREVIEW_OUTPUT_INVALID");
+  assert.equal(Object.hasOwn(rejected, "incremental_updates"), false);
+});
+
 test("FP001-03 rejects fractional relation dimensions outside the V7 integer scale", () => {
   const result = runCode(names.validator, {}, {
     [names.skillReader]: { correlation_id: "preview-relation-scale" },
