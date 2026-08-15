@@ -28,6 +28,11 @@ test("deduction workspace API is a scoped read model", async () => {
   assert.match(readModel, /a\.chapter_version_id = cv\.id/);
   assert.match(readModel, /a\.audit_type = 'objective'/);
   assert.match(readModel, /a\.audit_status = 'completed'/);
+  assert.match(readModel, /'subjective_audit_completed', EXISTS \(\s*SELECT 1\s*FROM public\.audit_attempt_log AS objective/);
+  assert.match(readModel, /reader\.phase = 'reader'/);
+  assert.match(readModel, /commercial\.phase = 'commercial'/);
+  assert.match(readModel, /reader\.created_at >= objective\.created_at/);
+  assert.match(readModel, /commercial\.created_at >= objective\.created_at/);
   assert.match(readModel, /a\.candidate_text_snapshot IS NOT DISTINCT FROM cv\.prose_text/);
   assert.match(readModel, /a\.is_valid\s+AND NOT a\.is_shadow/);
   assert.doesNotMatch(readModel, /\b(?:INSERT|UPDATE|DELETE|CALL)\b/i);

@@ -217,8 +217,16 @@ export function isPresentationCandidate(chapter) {
     && chapter?.has_candidate_text === false;
 }
 
+export function isAuditRecoveryCandidate(chapter) {
+  return chapter?.is_next_presentation === true
+    && chapter?.deduction_locked === true
+    && chapter?.has_candidate_text === true
+    && (chapter?.objective_audit_completed !== true || chapter?.subjective_audit_completed !== true);
+}
+
 export function clearRecoveredPresentationFailure(runtime, chapter) {
-  if (!runtime || runtime.presentationPending === true || !isPresentationCandidate(chapter)) return false;
+  if (!runtime || runtime.presentationPending === true
+    || (!isPresentationCandidate(chapter) && !isAuditRecoveryCandidate(chapter))) return false;
   const hadFailure = runtime.presentationError != null || runtime.presentationKey != null;
   runtime.presentationError = null;
   runtime.presentationKey = null;
@@ -231,13 +239,14 @@ export function presentationReleaseState(
 ) {
   if (!chapter) return "unselected";
   if (presentationError) return "blocked";
+  if (presentationPending) return "running";
   if (chapter.has_candidate_text === true) {
-    return chapter.objective_audit_completed === true
+    return chapter.objective_audit_completed === true && chapter.subjective_audit_completed === true
       ? "awaiting_editorial"
       : "audit_evidence_required";
   }
   if (!canStartPresentation(chapter)) return "unavailable";
-  return presentationPending ? "running" : "ready";
+  return "ready";
 }
 
 export function currentL1aLabel(book) {
@@ -307,7 +316,9 @@ function chapterSummary(chapter) {
 
 function statusLabel(chapter) {
   if (chapter?.deduction_locked === true && chapter.has_candidate_text === true) {
-    return chapter.objective_audit_completed === true ? "已进入审计" : "待审计留痕";
+    return chapter.objective_audit_completed === true && chapter.subjective_audit_completed === true
+      ? "已进入审计"
+      : "待审计留痕";
   }
   if (chapter?.deduction_locked === true && chapter.has_candidate_text === false) return "待正文呈现";
   if (chapter?.deduction_locked === true) return "正文状态未返回";
@@ -650,7 +661,7 @@ function renderIndicators(runtime, chapter) {
 }
 
 function canStartPresentation(chapter) {
-  return isPresentationCandidate(chapter)
+  return (isPresentationCandidate(chapter) || isAuditRecoveryCandidate(chapter))
     && UUID_PATTERN.test(String(chapter?.chapter_id || ""))
     && UUID_PATTERN.test(String(chapter?.candidate_version_id || ""));
 }
@@ -716,10 +727,23 @@ function renderRelease(runtime, chapter) {
   }
   if (releaseState === "audit_evidence_required") {
     runtime.root.dataset.presentationState = "audit_evidence_required";
+    const actions = createNode(doc, "div", "grid gap-2 mt-4");
+    const button = createNode(
+      doc,
+      "button",
+      "btn btn-primary h-auto py-2.5 rounded-lg flex items-center justify-center gap-2",
+      "\u7ee7\u7eed\u6b63\u6587\u5448\u73b0",
+    );
+    button.type = "button";
+    button.dataset.action = "start-presentation";
+    button.append(icon(doc, "auto_stories", "text-[18px]"));
+    button.addEventListener("click", () => { void startPresentation(runtime); });
+    actions.append(button);
     target.replaceChildren(
       heading,
-      createNode(doc, "p", "audit-neutral-slot", "候选正文已保存，但当前版本没有匹配的完成客观审计记录。本页保持只读，不会继续审计、正式化或重新生成正文。"),
+      createNode(doc, "p", "audit-neutral-slot", "候选正文已保存，但当前版本缺少匹配的客观或主观审计证据。可继续正文呈现以恢复审计链路；在证据完整前，页面不会进入主编裁决。"),
     );
+    target.append(actions);
     return;
   }
   if (releaseState === "unavailable") {
@@ -767,10 +791,12 @@ function setFooter(runtime, chapter) {
   }
   footer.textContent = runtime.presentationPending
     ? "正文呈现与审计正在运行；页面只读取候选状态，不展示候选正文。"
-    : chapter?.has_candidate_text === true && chapter.objective_audit_completed === true
+    : chapter?.has_candidate_text === true
+      && chapter.objective_audit_completed === true
+      && chapter.subjective_audit_completed === true
       ? `候选版本 ${displayText(chapter.candidate_version_id)} 已进入审计；正文仅在主编放行并完成正式写入后显示。`
       : chapter?.has_candidate_text === true
-        ? `候选版本 ${displayText(chapter.candidate_version_id)} 的正文已保存，但没有匹配的完成客观审计记录；页面保持只读。`
+        ? `候选版本 ${displayText(chapter.candidate_version_id)} 的正文已保存，但客观或主观审计证据不完整；可通过正文呈现入口恢复审计。`
       : chapter
         ? `正在浏览后端解析的顺序下一章候选版本 ${displayText(chapter.candidate_version_id)} 的推演事实摘要；可提交正文呈现意图。`
         : "请选择已完成推演的 L1A；页面不会代替后端裁决章节顺序、正文或审计结果。";

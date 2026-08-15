@@ -169,6 +169,44 @@ WITH scoped_book AS (
                AND a.is_valid
                AND NOT a.is_shadow
            ),
+           'subjective_audit_completed', EXISTS (
+             SELECT 1
+             FROM public.audit_attempt_log AS objective
+             WHERE objective.book_id = p.book_id
+               AND objective.chapter_id = p.chapter_id
+               AND objective.chapter_version_id = cv.id
+               AND objective.audit_type = 'objective'
+               AND objective.audit_status = 'completed'
+               AND objective.candidate_text_snapshot IS NOT DISTINCT FROM cv.prose_text
+               AND objective.is_valid
+               AND NOT objective.is_shadow
+               AND EXISTS (
+                 SELECT 1
+                 FROM public.editor_log AS reader
+                 WHERE reader.book_id = p.book_id
+                   AND reader.chapter_id = p.chapter_id
+                   AND reader.chapter_version_id = cv.id
+                   AND reader.phase = 'reader'
+                   AND jsonb_typeof(reader.score_json) = 'object'
+                   AND reader.score_json <> '{}'::jsonb
+                   AND reader.is_valid
+                   AND NOT reader.is_shadow
+                   AND reader.created_at >= objective.created_at
+               )
+               AND EXISTS (
+                 SELECT 1
+                 FROM public.editor_log AS commercial
+                 WHERE commercial.book_id = p.book_id
+                   AND commercial.chapter_id = p.chapter_id
+                   AND commercial.chapter_version_id = cv.id
+                   AND commercial.phase = 'commercial'
+                   AND jsonb_typeof(commercial.score_json) = 'object'
+                   AND commercial.score_json <> '{}'::jsonb
+                   AND commercial.is_valid
+                   AND NOT commercial.is_shadow
+                   AND commercial.created_at >= objective.created_at
+               )
+           ),
            'review_decision', cv.review_decision,
            'review_comment', cv.review_comment,
            'updated_at', p.updated_at,

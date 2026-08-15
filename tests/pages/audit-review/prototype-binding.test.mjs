@@ -8,6 +8,7 @@ import {
   currentL1aLabel,
   DeductionDataError,
   hasPlot,
+  isAuditRecoveryCandidate,
   isPresentationCandidate,
   clearRecoveredPresentationFailure,
   presentationReleaseState,
@@ -122,6 +123,10 @@ test("candidate prose fails closed until a matching completed objective audit ex
   assert.equal(presentationReleaseState(chapter), "audit_evidence_required");
   assert.equal(
     presentationReleaseState({ ...chapter, objective_audit_completed: true }),
+    "audit_evidence_required",
+  );
+  assert.equal(
+    presentationReleaseState({ ...chapter, objective_audit_completed: true, subjective_audit_completed: true }),
     "awaiting_editorial",
   );
   assert.equal(
@@ -133,6 +138,24 @@ test("candidate prose fails closed until a matching completed objective audit ex
     }),
     "blocked",
   );
+});
+
+test("locked candidate prose can resume the existing presentation action until both audit layers are complete", () => {
+  const incomplete = {
+    deduction_locked: true,
+    has_candidate_text: true,
+    is_next_presentation: true,
+    chapter_id: "815fe390-94e1-4a51-947b-6db2412b5a11",
+    candidate_version_id: "987409eb-05b4-43d8-b557-60d782ca8387",
+  };
+
+  assert.equal(isAuditRecoveryCandidate(incomplete), true);
+  assert.equal(isAuditRecoveryCandidate({ ...incomplete, objective_audit_completed: true }), true);
+  assert.equal(
+    isAuditRecoveryCandidate({ ...incomplete, objective_audit_completed: true, subjective_audit_completed: true }),
+    false,
+  );
+  assert.equal(presentationReleaseState(incomplete, { presentationPending: true }), "running");
 });
 
 test("FP009 clears only a stale failed request when the refreshed projection reopens its existing action", () => {
@@ -161,9 +184,9 @@ test("FP009 clears only a stale failed request when the refreshed projection reo
   };
   assert.equal(
     clearRecoveredPresentationFailure(closedRuntime, { ...reopenable, has_candidate_text: true }),
-    false,
+    true,
   );
-  assert.equal(closedRuntime.presentationKey, "audit-presentation-stale");
+  assert.equal(closedRuntime.presentationKey, null);
 
   const pendingRuntime = {
     presentationError: new DeductionDataError("HTTP_200", "旧请求未完成。"),
