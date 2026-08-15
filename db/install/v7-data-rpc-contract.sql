@@ -975,9 +975,9 @@ CREATE TABLE public.book_project (
   auto_audit boolean NOT NULL DEFAULT false,
   auto_iteration boolean NOT NULL DEFAULT false,
   config_revision text NOT NULL DEFAULT 'mvp-v7',
-  token_budget bigint NOT NULL DEFAULT 3000000 CHECK (token_budget = 3000000),
-  token_budget_version text NOT NULL DEFAULT 'mvp-fixed-3000000'
-    CHECK (token_budget_version = 'mvp-fixed-3000000'),
+  token_budget bigint NOT NULL DEFAULT 10000000 CHECK (token_budget = 10000000),
+  token_budget_version text NOT NULL DEFAULT 'mvp-fixed-10000000'
+    CHECK (token_budget_version = 'mvp-fixed-10000000'),
   target_words integer CHECK (target_words IS NULL OR target_words > 0),
   chapter_words integer CHECK (chapter_words IS NULL OR chapter_words > 0),
   commercial_score integer CHECK (commercial_score BETWEEN 0 AND 10),
@@ -3534,7 +3534,7 @@ BEGIN
       'relation_ids', v_relation_ids,
       'initial_l1a_id', v_l1a_id
     ),
-    'state', jsonb_build_object('stage_code', 'design', 'token_budget', 3000000)
+    'state', jsonb_build_object('stage_code', 'design', 'token_budget', 10000000)
   );
   INSERT INTO public.product_request_log(operation, idempotency_key, local_operator_id, book_id, intent, result)
   VALUES ('rpc_create_book_project', v_key, v_operator, v_book, public.v7_request_intent(p_request), v_result);
@@ -5269,8 +5269,8 @@ BEGIN
       SELECT 1 FROM public.book_project
       WHERE id = v_book
         AND current_l1a_id = v_l1a
-        AND token_budget = 3000000
-        AND token_budget_version = 'mvp-fixed-3000000'
+        AND token_budget = 10000000
+        AND token_budget_version = 'mvp-fixed-10000000'
     ) THEN
       RETURN public.v7_error('L1A_SCOPE_REJECTED', 'Only the current L1A with the fixed deduction budget can be replanned.');
     END IF;
@@ -5406,7 +5406,7 @@ BEGIN
         'action', 'replan',
         'deduction_locked', false,
         'token_consumed', 0,
-        'token_budget', 3000000
+        'token_budget', 10000000
       )
     );
     INSERT INTO public.product_request_log(operation, idempotency_key, local_operator_id, book_id, intent, result)
@@ -5424,8 +5424,8 @@ BEGIN
       SELECT 1 FROM public.book_project
       WHERE id = v_book
         AND current_l1a_id = v_l1a
-        AND token_budget = 3000000
-        AND token_budget_version = 'mvp-fixed-3000000'
+        AND token_budget = 10000000
+        AND token_budget_version = 'mvp-fixed-10000000'
     ) THEN
       RETURN public.v7_error('L1A_SCOPE_REJECTED', 'Only the current L1A with the fixed deduction budget can restart.');
     END IF;
@@ -5532,7 +5532,7 @@ BEGIN
         'status', 'plan_ready',
         'deduction_locked', false,
         'token_consumed', 0,
-        'token_budget', 3000000
+        'token_budget', 10000000
       )
     );
     INSERT INTO public.product_request_log(operation, idempotency_key, local_operator_id, book_id, intent, result)
@@ -5921,7 +5921,7 @@ BEGIN
 
   SELECT token_budget INTO v_budget FROM public.book_project WHERE id = v_book;
   IF v_requested_tokens > v_budget THEN
-    RETURN public.v7_error('L1A_TOKEN_BUDGET_EXCEEDED', 'This L1A would exceed its fixed 3000000 token budget.');
+    RETURN public.v7_error('L1A_TOKEN_BUDGET_EXCEEDED', 'This L1A would exceed its fixed 10000000 token budget.');
   END IF;
 
   PERFORM public.v7_enable_internal_write();
@@ -5931,7 +5931,7 @@ BEGIN
     v_status := CASE WHEN v_complete THEN 'deduction_complete' ELSE 'deduction_partial' END;
     v_progress := v_update->'deduction_progress_json' || jsonb_build_object(
       'token_budget', v_budget,
-      'token_budget_version', 'mvp-fixed-3000000',
+      'token_budget_version', 'mvp-fixed-10000000',
       'l1a_token_consumed', v_requested_tokens,
       'token_budget_exceeded', v_any_budget_exceeded
     );
@@ -8661,7 +8661,7 @@ BEGIN
     RETURN public.v7_error('INVALID_REQUEST', 'A supported workbench action and idempotency_key are required.');
   END IF;
   IF p_request ? 'token_budget' OR p_request ? 'token_budget_version' THEN
-    RETURN public.v7_error('READ_ONLY_CONFIG', 'The fixed 3000000 L1A budget is read-only.');
+    RETURN public.v7_error('READ_ONLY_CONFIG', 'The fixed 10000000 L1A budget is read-only.');
   END IF;
   IF v_action <> 'save_book_config' AND p_request ? 'book_id' THEN
     RETURN public.v7_error('INVALID_REQUEST', 'Prompt, model templates, and node bindings are global for this local operator and cannot carry book_id.');

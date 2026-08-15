@@ -160,7 +160,7 @@ function humanError(error) {
     MODEL_TEMPLATE_UNAVAILABLE: "所选模板还没有已验证的有效模型配置，因此没有建立节点绑定。",
     PROMPT_CONFIG_UNAVAILABLE: "这个流程步骤还没有有效 Prompt，因此没有建立节点绑定。",
     BOOK_BANNER_UNAVAILABLE: "当前作品的横幅信息未能由本地服务确认，因此页面没有显示旧值或猜测内容。",
-    READ_ONLY_CONFIG: "每次 L1A 推演的 1000000 预算是固定合同，只能查看，不能在这里修改。",
+    READ_ONLY_CONFIG: "每次 L1A 推演的 10000000 预算是固定合同，只能查看，不能在这里修改。",
     WORKBENCH_UNAVAILABLE: "无法连接本地配置服务，未修改任何配置。",
   };
   return guidance[error?.code] || message;
