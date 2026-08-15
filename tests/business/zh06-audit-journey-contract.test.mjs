@@ -1459,6 +1459,48 @@ test("ZH06 FP010 validates a well-formed multi-string audit before repair fallba
   assert.match(parser.parameters.jsCode, /return JSON\.parse\(text\)/u);
 });
 
+test("ZH06 FP010 accepts a complete fenced JSON audit without syntax repair", () => {
+  const parser = node(workflow(), "JSON修复 (2)");
+  const checks = Array.from({ length: 9 }, (_, index) => ({
+    check_id: `审查-${String(index + 1).padStart(2, "0")}`,
+    severity: index < 5 ? "P0" : "P1",
+    pass: true,
+    findings: `第 ${index + 1} 项通过，正文与锁定推演一致。`,
+    evidence: {
+      text_excerpt: `第 ${index + 1} 条原文证据。`,
+      deduction_reference: `目标快照第 ${index + 1} 条。`,
+    },
+  }));
+  const audit = {
+    has_p0_blocker: false,
+    checks,
+    p0_items_json: [],
+    audit_findings_jsonb: { summary: "九项均通过" },
+    return_route_suggestion_jsonb: {},
+    audited_handoff_package: {
+      package_schema_version: 1,
+      formalization_eligible: true,
+      world_changes: [],
+      character_live_state_changes: [],
+      relation_changes: [],
+      memories: [],
+      narrative_assets: [],
+    },
+    assets: [],
+  };
+  const response = {
+    statusCode: 200,
+    data: JSON.stringify({
+      choices: [{ message: { content: `\`\`\`json\n${JSON.stringify(audit, null, 2)}\n\`\`\`` } }],
+    }),
+  };
+
+  const output = runObjectiveParser(parser.parameters.jsCode, audit, response);
+  assert.equal(output[0].json.audit_pass, true);
+  assert.equal(output[0].json.objective_audit.checks.length, 9);
+  assert.match(parser.parameters.jsCode, /JSON\.parse\(root\.source\)/u);
+});
+
 test("ZH06 FP010 repairs only the isolated structural noise observed in execution 3578", () => {
   const parser = node(workflow(), "JSON修复 (2)");
   const checks = Array.from({ length: 9 }, (_, index) => ({
@@ -1692,6 +1734,23 @@ test("ZH06 persists the FP010 audited handoff package and returns a real boolean
   );
   assert.deepEqual(
     JSON.parse(JSON.stringify(output[0].json.rpc_requests.rpc_confirm_audit_result.assets)),
+    assets,
+  );
+  const selfDescribingHandoff = {
+    ...handoff,
+    narrative_assets: assets,
+  };
+  const recoveredAssets = runObjectiveParser(parser.parameters.jsCode, {
+    has_p0_blocker: false,
+    checks,
+    p0_items_json: [],
+    audit_findings_jsonb: { summary: "九项均通过" },
+    return_route_suggestion_jsonb: {},
+    audited_handoff_package: selfDescribingHandoff,
+    assets: [],
+  });
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(recoveredAssets[0].json.rpc_requests.rpc_confirm_audit_result.assets)),
     assets,
   );
   assert.throws(
