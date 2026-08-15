@@ -677,7 +677,7 @@
                   {
                       "parameters":  {
                                          "respondWith":  "json",
-                                         "responseBody":  "={{ $json }}",
+                                         "responseBody":  "={{ ({ ok: true, wait_route: $execution.resumeUrl }) }}",
                                          "options":  {
 
                                                      }
@@ -1019,23 +1019,28 @@
                                                        ]
                                           },
                         "If闸门放行":  {
-                                       "main":  [
-                                                    [
-                                                        {
-                                                            "node":  "FP013-01 文风增强",
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "FP013-01 文风增强",
                                                             "type":  "main",
                                                             "index":  0
                                                         }
                                                     ],
-                                                    [
-                                                        {
-                                                            "node":  "读取章节推演结果 plot_sim_json / target_snapshot_json",
-                                                            "type":  "main",
-                                                            "index":  0
-                                                        }
-                                                    ]
-                                                ]
-                                   },
+                                                         [
+                                                             {
+                                                                 "node":  "读取章节推演结果 plot_sim_json / target_snapshot_json",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             },
+                                                             {
+                                                                 "node":  "Respond：审计与写回完成",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        },
                         "FP013-01 文风增强":  {
                                               "main":  [
                                                            [
@@ -1095,13 +1100,24 @@
                                              "main":  [
                                                           [
                                                               {
-                                                                  "node":  "FP012-02 前端闸门",
+                                                                  "node":  "Respond：审计与写回完成1",
                                                                   "type":  "main",
                                                                   "index":  0
                                                               }
                                                           ]
                                                       ]
                                          },
+                        "Respond：审计与写回完成1":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "FP012-02 前端闸门",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
                         "FP011-01 读者证据入库":  {
                                                 "main":  [
                                                              [
@@ -1140,11 +1156,6 @@
                                                              [
                                                                  {
                                                                      "node":  "If闸门放行",
-                                                                     "type":  "main",
-                                                                     "index":  0
-                                                                 },
-                                                                 {
-                                                                     "node":  "Respond：审计与写回完成",
                                                                      "type":  "main",
                                                                      "index":  0
                                                                  }

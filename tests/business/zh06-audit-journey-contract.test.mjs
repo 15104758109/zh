@@ -248,13 +248,14 @@ function runObjectiveParser(source, audit, response = null, candidateTruthLedger
   });
 }
 
-function runResponseExpression(source, item, context) {
+function runResponseExpression(source, item, context, execution = {}) {
   const expression = source
     .replace(/^=\{\{\s*/u, "")
     .replace(/\s*\}\}$/u, "");
   return vm.runInNewContext(expression, {
     $json: item,
     $: () => ({ first: () => ({ json: { context } }) }),
+    $execution: execution,
   });
 }
 
@@ -287,10 +288,12 @@ test("ZH06 delegates entry responses to its existing redacted response node", ()
   );
 });
 
-test("ZH06 does not issue an FP012-02 wait route before formal chapter commit", () => {
+test("ZH06 issues its FP012-02 wait route only after the formal chapter commit", () => {
   const value = workflow();
   const editorialParser = node(value, "JSON修复 (2)3");
   const editorialStore = node(value, "FP012-01 主编证据入库");
+  const formalWrite = node(value, "FP013-02正文入库");
+  const formalResponse = node(value, "Respond：审计与写回完成1");
   const wait = node(value, "FP012-02 前端闸门");
 
   assert.equal(wait.parameters.resume, "webhook");
@@ -299,6 +302,21 @@ test("ZH06 does not issue an FP012-02 wait route before formal chapter commit", 
   assert.doesNotMatch(editorialParser.parameters.jsCode, /wait_route|\$execution\.resumeUrl|FP012_WAIT_ROUTE_UNAVAILABLE/u);
   assert.equal(editorialStore.parameters.options.queryReplacement, "={{ JSON.stringify($json) }}");
   assert.doesNotMatch(editorialStore.parameters.query, /wait_route/u);
+  assert.deepEqual(outputTargets(value, "FP013-02正文入库", 0), ["Respond：审计与写回完成1"]);
+  assert.deepEqual(incomingSources(value, "Respond：审计与写回完成1"), ["FP013-02正文入库"]);
+  assert.deepEqual(outputTargets(value, "Respond：审计与写回完成1", 0), ["FP012-02 前端闸门"]);
+  assert.deepEqual(incomingSources(value, "FP012-02 前端闸门"), ["Respond：审计与写回完成1"]);
+  assert.match(formalResponse.parameters.responseBody, /\$execution\.resumeUrl/u);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(runResponseExpression(
+      formalResponse.parameters.responseBody,
+      {},
+      {},
+      { resumeUrl: "http://127.0.0.1:5678/webhook-waiting/3779?signature=runtime-issued" },
+    ))),
+    { ok: true, wait_route: "http://127.0.0.1:5678/webhook-waiting/3779?signature=runtime-issued" },
+  );
+  assert.match(formalWrite.parameters.query, /public\.rpc_commit_chapter\(\$1::jsonb\)/u);
 });
 
 test("ZH06 FP011 parsers construct scoped phase evidence without touching objective audit", () => {
@@ -1810,17 +1828,21 @@ test("ZH06 enters FP012-02 only after the formal-write node", () => {
   const editorialStore = node(value, "FP012-01 主编证据入库");
   const editorialGate = node(value, "If闸门放行");
   const formalWrite = node(value, "FP013-02正文入库");
+  const formalResponse = node(value, "Respond：审计与写回完成1");
   const targets = outputTargets(value, "FP012-01 主编证据入库", 0);
 
   assert.doesNotMatch(editorialStore.parameters.query, /wait_route/u);
-  assert.deepEqual(targets, [
-    "If闸门放行",
-    "Respond：审计与写回完成",
-  ]);
+  assert.deepEqual(targets, ["If闸门放行"]);
   assert.match(editorialGate.parameters.conditions.conditions[0].leftValue, /decision\?\.verdict === 'Y'/u);
   assert.deepEqual(outputTargets(value, "If闸门放行", 0), ["FP013-01 文风增强"]);
-  assert.deepEqual(outputTargets(value, "FP013-02正文入库", 0), ["FP012-02 前端闸门"]);
-  assert.deepEqual(incomingSources(value, "FP012-02 前端闸门"), ["FP013-02正文入库"]);
+  assert.deepEqual(outputTargets(value, "If闸门放行", 1), [
+    "读取章节推演结果 plot_sim_json / target_snapshot_json",
+    "Respond：审计与写回完成",
+  ]);
+  assert.deepEqual(outputTargets(value, "FP013-02正文入库", 0), ["Respond：审计与写回完成1"]);
+  assert.deepEqual(outputTargets(value, "Respond：审计与写回完成1", 0), ["FP012-02 前端闸门"]);
+  assert.deepEqual(incomingSources(value, "FP012-02 前端闸门"), ["Respond：审计与写回完成1"]);
+  assert.match(formalResponse.parameters.responseBody, /\{ ok: true, wait_route: \$execution\.resumeUrl \}/u);
   assert.match(formalWrite.parameters.query, /public\.rpc_commit_chapter\(\$1::jsonb\)/u);
   assert.doesNotMatch(formalWrite.parameters.query, /WORD_COUNT_CONTRACT_UNRESOLVED|rpc_enhance_prose/u);
 });
@@ -1876,7 +1898,7 @@ test("ZH06 gives FP012 only subjective evidence and reserves FP012-02 for formal
 
   assert.match(editorialStore.parameters.query, /rpc_record_chapter_review_evidence/u);
   assert.deepEqual(incomingSources(value, "FP012-01 主编证据入库"), ["JSON修复 (2)3"]);
-  assert.deepEqual(incomingSources(value, "FP012-02 前端闸门"), ["FP013-02正文入库"]);
+  assert.deepEqual(incomingSources(value, "FP012-02 前端闸门"), ["Respond：审计与写回完成1"]);
 
   // The browser does not repeat the editorial verdict or write a candidate.
   // The Wait continuation accepts only an explicit formal-state intent and
@@ -2004,7 +2026,10 @@ test("ZH06 keeps one locked candidate through all three reviews, then routes P0 
   assert.match(node(value, "If闸门放行").parameters.conditions.conditions[0].leftValue, /EDITORIAL_RETRY_LIMIT_REACHED/u);
   assert.deepEqual(
     outputTargets(value, "If闸门放行", 1),
-    ["读取章节推演结果 plot_sim_json / target_snapshot_json"],
+    [
+      "读取章节推演结果 plot_sim_json / target_snapshot_json",
+      "Respond：审计与写回完成",
+    ],
   );
   assert.match(confirmation.parameters.query, /rpc_continue_chapter/u);
   assert.match(confirmation.parameters.query, /rpc_archive_shadow_version/u);

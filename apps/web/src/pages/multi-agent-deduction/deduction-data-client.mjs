@@ -171,7 +171,7 @@ export function scopeDeductionProjection(context, result) {
 }
 
 function visibleRuntimeValue(chapter, key) {
-  if (!['running', 'blocked', 'failed'].includes(chapter?.runtime_service_state)) return null;
+  if (!['running', 'pause_requested', 'paused', 'blocked', 'failed'].includes(chapter?.runtime_service_state)) return null;
   const value = chapter?.[key];
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
 }

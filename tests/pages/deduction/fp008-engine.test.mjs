@@ -334,6 +334,106 @@ function engine(calls, characterOutput = () => characterResult()) {
   });
 }
 
+function pausableEngine(calls) {
+  let releaseFirstParticle;
+  let reportFirstParticleStarted;
+  const firstParticleStarted = new Promise((resolve) => { reportFirstParticleStarted = resolve; });
+  let holdFirstParticle = true;
+  const deduction = createDeductionEngine({
+    invokeModel: async (invocation) => {
+      calls.push(invocation);
+      if (invocation.mode === "director_distribute") {
+        const particleId = invocation.input.particle.particle_id;
+        if (particleId === "particle-1" && holdFirstParticle) {
+          holdFirstParticle = false;
+          reportFirstParticleStarted();
+          await new Promise((resolve) => { releaseFirstParticle = resolve; });
+        }
+        return { output: distribution(particleId), usage: { total_tokens: 5 } };
+      }
+      if (invocation.mode === "character_respond") {
+        return { output: characterResult(), usage: { total_tokens: 5 } };
+      }
+      const particleId = invocation.input.particle.particle_id;
+      const completed = Number(particleId.split("-").at(-1));
+      return { output: convergence(particleId, completed), usage: { total_tokens: 5 } };
+    },
+  });
+  return {
+    deduction,
+    firstParticleStarted,
+    releaseFirstParticle: () => releaseFirstParticle(),
+  };
+}
+
+test("same-engine resume keeps the retained paused checkpoint instead of a stale request checkpoint", async () => {
+  const calls = [];
+  const { deduction, firstParticleStarted, releaseFirstParticle } = pausableEngine(calls);
+  const input = command();
+  const running = deduction.execute(input);
+  await firstParticleStarted;
+  deduction.requestPause(input.scope);
+  releaseFirstParticle();
+  const paused = await running;
+
+  assert.equal(paused.service_state, "paused");
+  assert.equal(paused.token_consumed, 15);
+  assert.equal(paused.chapters[0].deduction_progress_json.current_particle_index, 1);
+  assert.deepEqual(
+    paused.chapters[0].candidate_plot_sim_json.particles_records.map((record) => record.particle_id),
+    ["particle-1"],
+  );
+
+  const staleResume = command("resume");
+  staleResume.chapters[0].checkpoint = checkpoint(0, { token_consumed: 0 });
+  const resumeCallOffset = calls.length;
+  const resumed = await deduction.execute(staleResume);
+
+  assert.equal(resumed.service_state, "completed");
+  assert.equal(resumed.token_consumed, 45);
+  assert.equal(resumed.chapters[0].deduction_progress_json.current_particle_index, 3);
+  assert.equal(resumed.chapters[0].deduction_progress_json.token_consumed, 45);
+  assert.deepEqual(
+    resumed.chapters[0].candidate_plot_sim_json.particles_records.map((record) => record.particle_id),
+    ["particle-1", "particle-2", "particle-3"],
+  );
+  assert.deepEqual(
+    calls.slice(resumeCallOffset)
+      .filter((call) => call.mode === "director_distribute")
+      .map((call) => call.input.particle.particle_id),
+    ["particle-2", "particle-3"],
+  );
+});
+
+test("same-engine resume rejects candidate-version drift without replacing the retained pause", async () => {
+  const calls = [];
+  const { deduction, firstParticleStarted, releaseFirstParticle } = pausableEngine(calls);
+  const input = command();
+  const running = deduction.execute(input);
+  await firstParticleStarted;
+  deduction.requestPause(input.scope);
+  releaseFirstParticle();
+  await running;
+
+  const driftedResume = command("resume");
+  driftedResume.chapters[0].chapter_version_id = IDS.successor;
+  driftedResume.chapters[0].checkpoint = checkpoint(0, { token_consumed: 0 });
+  await assert.rejects(
+    () => deduction.execute(driftedResume),
+    (error) => error?.code === "INVALID_CHECKPOINT" && error?.statusCode === 409,
+  );
+
+  const retained = deduction.getProjection(input.scope);
+  assert.equal(retained.service_state, "paused");
+  assert.equal(retained.token_consumed, 15);
+  assert.equal(retained.chapters[0].candidate_version_id, IDS.version);
+  assert.equal(retained.chapters[0].deduction_progress_json.current_particle_index, 1);
+  assert.deepEqual(
+    retained.chapters[0].candidate_plot_sim_json.particles_records.map((record) => record.particle_id),
+    ["particle-1"],
+  );
+});
+
 test("engine completes, resumes, and restarts one L1A without Fastify", async () => {
   const startCalls = [];
   const started = await engine(startCalls).execute(command());

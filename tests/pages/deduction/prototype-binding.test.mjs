@@ -9,6 +9,7 @@ const modulePath = `${root}apps/web/src/pages/multi-agent-deduction/index.mjs`;
 const clientPath = `${root}apps/web/src/pages/multi-agent-deduction/deduction-data-client.mjs`;
 const cssPath = `${root}apps/web/src/pages/multi-agent-deduction/page.css`;
 const runtimeModule = await import(new URL("../../../apps/web/src/pages/multi-agent-deduction/index.mjs", import.meta.url));
+const dataClientModule = await import(new URL("../../../apps/web/src/pages/multi-agent-deduction/deduction-data-client.mjs", import.meta.url));
 
 test("DEDUCTION describes paused service states and a rejected pause intent in Chinese", () => {
   assert.equal(runtimeModule.statusLabel("pause_requested"), "正在等待当前颗粒完成");
@@ -124,6 +125,24 @@ test("DEDUCTION displays the L1A budget total instead of a selected chapter subt
   assert.equal(runtimeModule.l1aTokenConsumed({
     deduction_progress_json: { token_consumed: 316755 },
   }), 316755);
+});
+
+test("DEDUCTION renders a paused runtime checkpoint instead of its older persisted snapshot", () => {
+  const persistedProgress = { current_particle_index: 0, token_consumed: 65_779 };
+  const runtimeProgress = { current_particle_index: 1, token_consumed: 213_595 };
+  const persistedPlot = { particles_records: [] };
+  const runtimePlot = { particles_records: [{ particle_id: "P003", particle_status: "completed" }] };
+
+  const chapter = {
+    runtime_service_state: "paused",
+    deduction_progress_json: persistedProgress,
+    runtime_deduction_progress_json: runtimeProgress,
+    candidate_plot_sim_json: persistedPlot,
+    runtime_candidate_plot_sim_json: runtimePlot,
+  };
+
+  assert.equal(dataClientModule.deductionDisplayProgress(chapter), runtimeProgress);
+  assert.equal(dataClientModule.deductionDisplayPlot(chapter), runtimePlot);
 });
 
 test("DEDUCTION retains prototype anchors while binding the approved read projection", async () => {

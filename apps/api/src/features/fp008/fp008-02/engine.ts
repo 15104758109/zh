@@ -1967,43 +1967,64 @@ export function createDeductionEngine({
     }
     if (command.action === "restart") observedCallUsage.delete(String(scope.l1a_unit_id));
 
-    const chapters = (command.chapters as JsonObject[]).map((chapter) => {
-      const checkpoint = chapter.checkpoint as JsonObject | undefined;
-      const progress = buildProgress(checkpoint, (chapter.particles as JsonObject[]).length);
-      return {
-        chapter_id: chapter.chapter_id,
+    const commandChapters = command.chapters as JsonObject[];
+    let projection: JsonObject;
+    if (command.action === "resume" && previous?.service_state === "paused") {
+      const previousChapters = Array.isArray(previous.chapters) ? previous.chapters as JsonObject[] : [];
+      const sameChapterContext = previousChapters.length === commandChapters.length
+        && previousChapters.every((chapter, index) => (
+          chapter.chapter_id === commandChapters[index]?.chapter_id
+          && chapter.candidate_version_id === commandChapters[index]?.chapter_version_id
+        ));
+      if (!sameChapterContext) {
+        fail(
+          "INVALID_CHECKPOINT",
+          "The persisted resume request no longer matches the paused in-memory chapter context.",
+          409,
+        );
+      }
+      projection = structuredClone(previous);
+      projection.service_state = "running";
+      projection.updated_at = now();
+    } else {
+      const chapters = commandChapters.map((chapter) => {
+        const checkpoint = chapter.checkpoint as JsonObject | undefined;
+        const progress = buildProgress(checkpoint, (chapter.particles as JsonObject[]).length);
+        return {
+          chapter_id: chapter.chapter_id,
+          l1a_unit_id: scope.l1a_unit_id,
+          chapter_index: chapter.chapter_index,
+          candidate_version_id: chapter.chapter_version_id,
+          candidate_plot_sim_json: buildPlot(checkpoint, chapter),
+          deduction_progress_json: progress,
+          deduction_locked: false,
+        };
+      });
+      projection = {
+        book: {
+          id: scope.book_id,
+          current_l1a_id: scope.l1a_unit_id,
+          token_budget: FP008_TOKEN_BUDGET,
+          token_budget_version: FP008_TOKEN_BUDGET_VERSION,
+        },
         l1a_unit_id: scope.l1a_unit_id,
-        chapter_index: chapter.chapter_index,
-        candidate_version_id: chapter.chapter_version_id,
-        candidate_plot_sim_json: buildPlot(checkpoint, chapter),
-        deduction_progress_json: progress,
-        deduction_locked: false,
-      };
-    });
-    const projection: JsonObject = {
-      book: {
-        id: scope.book_id,
-        current_l1a_id: scope.l1a_unit_id,
+        chapters,
+        token_consumed: chapters.reduce((sum, chapter) => (
+          sum + Number((chapter.deduction_progress_json as JsonObject).token_consumed)
+        ), 0),
         token_budget: FP008_TOKEN_BUDGET,
         token_budget_version: FP008_TOKEN_BUDGET_VERSION,
-      },
-      l1a_unit_id: scope.l1a_unit_id,
-      chapters,
-      token_consumed: chapters.reduce((sum, chapter) => (
-        sum + Number((chapter.deduction_progress_json as JsonObject).token_consumed)
-      ), 0),
-      token_budget: FP008_TOKEN_BUDGET,
-      token_budget_version: FP008_TOKEN_BUDGET_VERSION,
-      token_budget_exceeded: chapters.some((chapter) => (
-        (chapter.deduction_progress_json as JsonObject).token_budget_exceeded === true
-      )),
-      deduction_complete: false,
-      service_state: "running",
-      updated_at: now(),
-    };
+        token_budget_exceeded: chapters.some((chapter) => (
+          (chapter.deduction_progress_json as JsonObject).token_budget_exceeded === true
+        )),
+        deduction_complete: false,
+        service_state: "running",
+        updated_at: now(),
+      };
+    }
     if ((projection.token_consumed as number) >= FP008_TOKEN_BUDGET) projection.token_budget_exceeded = true;
     const truthState = candidateTruthState(command);
-    for (const chapterProjection of chapters) {
+    for (const chapterProjection of projection.chapters as JsonObject[]) {
       const plot = chapterProjection.candidate_plot_sim_json as JsonObject;
       applyCandidateTruthLedger(truthState, plot.candidate_truth_ledger, "candidate_plot_sim_json.candidate_truth_ledger");
     }
