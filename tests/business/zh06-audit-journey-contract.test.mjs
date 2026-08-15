@@ -1720,6 +1720,14 @@ test("ZH06 persists the FP010 audited handoff package and returns a real boolean
   }
   assert.match(fp010Prompt(), /asset_type 为 hook 时必须提供整数 countdown_deadline/u);
   assert.match(fp010Prompt(), /asset_type 为 foreshadow 时必须提供非空 fulfillment_window/u);
+  assert.match(
+    fp010Prompt(),
+    /"asset_type": "hook", "asset_name": "资产名称", "asset_description": "资产内容与事件依据", "countdown_deadline": 12/u,
+  );
+  assert.match(
+    fp010Prompt(),
+    /"asset_type": "foreshadow", "asset_name": "资产名称", "asset_description": "资产内容与事件依据", "fulfillment_window": "第12-15章"/u,
+  );
   assert.match(store.parameters.query, /ELSE false\s+END AS objective_persistence_ok/u);
   assert.doesNotMatch(store.parameters.query, /\)::boolean\s+END AS objective_persistence_ok/u);
 });
