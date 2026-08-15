@@ -1083,12 +1083,12 @@ test("ZH06 persists the objective result before routing its P0 gate", () => {
   const auditResponse = node(value, "Respond：审计与写回完成");
 
   assert.deepEqual(presentation.credentials.openAiApi, {
-    id: "ZpJ7ejgoXbQb5xUW",
-    name: "RelayCove account",
+    id: "ktkbgOI2RQI4Y8QK",
+    name: "OpenAI account",
   });
   assert.deepEqual(objectiveAudit.credentials.openAiApi, {
-    id: "ZpJ7ejgoXbQb5xUW",
-    name: "RelayCove account",
+    id: "ktkbgOI2RQI4Y8QK",
+    name: "OpenAI account",
   });
 
   // FP009, FP010, and both FP011 reviews need the same scoped candidate plus
@@ -1450,6 +1450,82 @@ test("ZH06 FP010 repairs only the isolated structural noise observed in executio
       /FP010_OUTPUT_INVALID: objective audit must be JSON/u,
     );
   }
+});
+
+test("ZH06 FP010 repairs the unescaped evidence citation observed in execution 3751", () => {
+  const parser = node(workflow(), "JSON修复 (2)");
+  const checks = Array.from({ length: 9 }, (_, index) => ({
+    check_id: `审查-${String(index + 1).padStart(2, "0")}`,
+    severity: index < 5 ? "P0" : "P1",
+    pass: true,
+    findings: "通过",
+    evidence: {},
+  }));
+  const citation = `world_setting":"${String.fromCodePoint(0x566c, 0x58f0, 0x85fb, 0x7fa4)}`;
+  checks[0] = { ...checks[0], evidence: { deduction_reference: citation } };
+  const audit = {
+    has_p0_blocker: false,
+    checks,
+    p0_items_json: [],
+    audit_findings_jsonb: {},
+    return_route_suggestion_jsonb: {},
+    audited_handoff_package: {
+      package_schema_version: 1,
+      formalization_eligible: true,
+      world_changes: [],
+      character_live_state_changes: [],
+      relation_changes: [],
+      memories: [],
+      narrative_assets: [],
+    },
+    assets: [],
+  };
+  const wellFormed = JSON.stringify(audit, null, 2);
+  const escapedCitation = JSON.stringify(citation).slice(1, -1);
+  const execution3751Content = wellFormed.replace(escapedCitation, citation);
+  const envelope = {
+    statusCode: 200,
+    data: JSON.stringify({ choices: [{ message: { content: execution3751Content } }] }),
+  };
+
+  const recovered = runObjectiveParser(parser.parameters.jsCode, audit, envelope);
+  assert.equal(recovered[0].json.audit_pass, true);
+  assert.equal(
+    recovered[0].json.objective_audit.checks[0].evidence.deduction_reference,
+    citation,
+  );
+});
+
+test("ZH06 FP010 derives handoff eligibility from the complete objective pass tuple", () => {
+  const parser = node(workflow(), "JSON修复 (2)");
+  const checks = Array.from({ length: 9 }, (_, index) => ({
+    check_id: `审查-${String(index + 1).padStart(2, "0")}`,
+    severity: index < 5 ? "P0" : "P1",
+    pass: true,
+    findings: "通过",
+    evidence: {},
+  }));
+  const audit = {
+    has_p0_blocker: false,
+    checks,
+    p0_items_json: [],
+    audit_findings_jsonb: {},
+    return_route_suggestion_jsonb: {},
+    audited_handoff_package: {
+      package_schema_version: 1,
+      formalization_eligible: false,
+      world_changes: [],
+      character_live_state_changes: [],
+      relation_changes: [],
+      memories: [],
+      narrative_assets: [],
+    },
+    assets: [],
+  };
+
+  const output = runObjectiveParser(parser.parameters.jsCode, audit);
+  assert.equal(output[0].json.audit_pass, true);
+  assert.equal(output[0].json.objective_audit.audited_handoff_package.formalization_eligible, true);
 });
 
 test("ZH06 FP010 derives fixed check severity from the V7 check ID when execution 3581 mislabels it", () => {
