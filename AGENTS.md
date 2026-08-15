@@ -189,7 +189,7 @@ Functional QA 与 data/RPC QA 可合并为一个 review role；user-operation QA
 
 新书页面默认 `1000000` total words、`2000` words/chapter；expected chapters=`ceil(total/chapter)`，initial L1A target=`ceil(chapters/3)`，二者为只读 projection，不持久化重复 count，也不在创建书籍时生成 167 条 L1A。
 
-`target_words/chapter_words` 与一次 L1A deduction attempt 固定 `1000000` token budget 分离。
+`target_words/chapter_words` 与一次 L1A deduction attempt 固定 `10000000` token budget 分离。
 
 FR-087 percentages 只约束 FP013-01 candidate-generation，不定义 PostgreSQL `change_limit`、HTTP 422 或 formal-write eligibility；V7 未定义 server-verifiable comparison basis/algorithm/threshold 前，enhancement persistence 保持 fail-closed。
 

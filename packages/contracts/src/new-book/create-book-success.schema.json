@@ -25,7 +25,7 @@
       "required": ["stage_code", "token_budget"],
       "properties": {
         "stage_code": { "const": "design" },
-        "token_budget": { "const": 1000000 }
+        "token_budget": { "const": 10000000 }
       }
     }
   }

@@ -234,8 +234,8 @@ test("live ZH05 preserves its topology and current deduction input guards", (t) 
   assert.match(functionDefinition, /v_l1a uuid/);
   assert.match(functionDefinition, /p_request->'chapters'/);
   assert.match(functionDefinition, /L1A_CHAPTER_SCOPE_REJECTED/);
-  assert.match(functionDefinition, /fixed 3000000 token budget/);
-  assert.match(functionDefinition, /mvp-fixed-3000000/);
+  assert.match(functionDefinition, /fixed 10000000 token budget/);
+  assert.match(functionDefinition, /mvp-fixed-10000000/);
   assert.match(functionDefinition, /candidate_truth_ledger/);
   assert.match(functionDefinition, /v_action = 'replan'/);
   assert.match(functionDefinition, /return_direction/);

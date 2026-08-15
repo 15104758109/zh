@@ -431,6 +431,11 @@ test("ZH06 lets the FP010 parser enforce JSON when the active provider rejects r
   );
   const presentation = node(value, "FP009-01 文学呈现");
   assert.doesNotMatch(modelRequestBody(presentation), /response_format/u);
+  assert.match(
+    modelRequestBody(presentation),
+    /role:\s*'system'[\s\S]*role:\s*'user'/u,
+    "FP009 must keep the active prompt separate from the locked user input",
+  );
   assert.equal(
     presentation.parameters.options.response.response.responseFormat,
     "text",
@@ -828,6 +833,20 @@ test("ZH06 FP009 unwraps the production full-response data envelope before parsi
     () => runPresentationParser(parser.parameters.jsCode, { statusCode: 200, data: "{" }, context),
     /FP009_OUTPUT_INVALID/u,
   );
+  assert.throws(
+    () => runPresentationParser(parser.parameters.jsCode, {
+      statusCode: 200,
+      data: JSON.stringify({ choices: [{ message: { content: "I appreciate the comprehensive system prompt you've provided, but I can't process this request as specified." } }] }),
+    }, context),
+    /FP009_OUTPUT_INVALID: literary presentation returned model refusal text/u,
+  );
+  assert.throws(
+    () => runPresentationParser(parser.parameters.jsCode, {
+      statusCode: 200,
+      data: JSON.stringify({ choices: [{ message: { content: "I cannot process this request.\n\nThe system prompt you've provided instructs me to render locked deductions." } }] }),
+    }, context),
+    /FP009_OUTPUT_INVALID: literary presentation returned model refusal text/u,
+  );
 });
 
 test("ZH06 FP009 accepts the execution 3493 double-layer Chat Completions envelope", () => {
@@ -1057,9 +1076,20 @@ test("ZH06 persists the objective result before routing its P0 gate", () => {
   const loader = node(value, "读取章节推演结果 plot_sim_json / target_snapshot_json");
   const presentation = node(value, "FP009-01 文学呈现");
   const presentationParser = node(value, "JSON修复");
+  const objectiveAudit = node(value, "FP010-01客观审计");
   const objectiveParser = node(value, "JSON修复 (2)");
   const objectiveStore = node(value, "FP010-02 审计证据入库");
   const objectiveGate = node(value, "IF：客观审计通过？");
+  const auditResponse = node(value, "Respond：审计与写回完成");
+
+  assert.deepEqual(presentation.credentials.openAiApi, {
+    id: "ZpJ7ejgoXbQb5xUW",
+    name: "RelayCove account",
+  });
+  assert.deepEqual(objectiveAudit.credentials.openAiApi, {
+    id: "ZpJ7ejgoXbQb5xUW",
+    name: "RelayCove account",
+  });
 
   // FP009, FP010, and both FP011 reviews need the same scoped candidate plus
   // the formal facts V7 assigns to their respective reads.
@@ -1152,9 +1182,15 @@ test("ZH06 persists the objective result before routing its P0 gate", () => {
   assert.equal(objectiveStore.onError, "continueErrorOutput");
   assert.match(
     objectiveStore.parameters.query,
-    /persistence_guard AS \([\s\S]*persisted\.result->>'ok' = 'true'[\s\S]*audited\.result->>'ok' = 'true'[\s\S]*RPC_FAILED\[rpc_persist_candidate_text\][\s\S]*RPC_FAILED\[rpc_confirm_audit_result\][\s\S]*END AS asserted/su,
+    /persistence_guard AS \([\s\S]*SELECT persisted\.result->>'ok' = 'true'[\s\S]*AND audited\.result->>'ok' = 'true' AS asserted[\s\S]*FROM persisted, audited/su,
   );
   assert.doesNotMatch(objectiveStore.parameters.query, /SELECT 1 \/ CASE/u);
+  assert.doesNotMatch(objectiveStore.parameters.query, /RPC_FAILED\[/u);
+  assert.doesNotMatch(objectiveStore.parameters.query, /::integer/u);
+  assert.match(
+    auditResponse.parameters.responseBody,
+    /source\.objective_persistence_ok === false/u,
+  );
   assert.deepEqual(
     outputTargets(value, "FP010-02 审计证据入库", 1),
     ["Respond：审计与写回完成"],

@@ -742,7 +742,7 @@ test("B5-B8 existing RPCs preserve the documented single-chapter candidate journ
       const replanned = rpc("rpc_finalize_deduction_snapshot", replanPayload);
       assert.equal(replanned.ok, true, JSON.stringify(replanned));
       assert.equal(replanned.state.action, "replan");
-      assert.equal(replanned.state.token_budget, 3000000);
+      assert.equal(replanned.state.token_budget, 10000000);
       assert.equal(replanned.ids.chapter_versions.length, 2);
       const successorByChapter = new Map(replanned.ids.chapter_versions.map((entry) => [entry.chapter_id, entry]));
       const successor1 = successorByChapter.get(chapterId);
@@ -826,7 +826,7 @@ test("B5-B8 existing RPCs preserve the documented single-chapter candidate journ
       const persisted = rpc("rpc_finalize_deduction_snapshot", payload);
       assert.equal(persisted.ok, true, JSON.stringify(persisted));
       assert.equal(persisted.state.deduction_locked, true);
-      assert.equal(persisted.state.token_budget, 3000000);
+      assert.equal(persisted.state.token_budget, 10000000);
       const stored = JSON.parse(sql(`SELECT jsonb_build_object(
         'plot', candidate_plot_sim_json,
         'progress', deduction_progress_json,
@@ -835,8 +835,8 @@ test("B5-B8 existing RPCs preserve the documented single-chapter candidate journ
       assert.deepEqual(stored.plot, plotSnapshot);
       assert.equal(stored.locked, true);
       assert.equal(stored.progress.token_consumed, 321);
-      assert.equal(stored.progress.token_budget, 3000000);
-      assert.equal(stored.progress.token_budget_version, "mvp-fixed-3000000");
+      assert.equal(stored.progress.token_budget, 10000000);
+      assert.equal(stored.progress.token_budget_version, "mvp-fixed-10000000");
       assert.equal(stored.progress.l1a_token_consumed, 777);
       assert.equal(count("chapter_header", `id=${sqlText(chapterId)} AND status='deduction_complete' AND run_status='deduction_complete'`), 1);
       assert.equal(count("chapter_header", `id=${sqlText(chapterId2)} AND status='deduction_complete' AND run_status='deduction_complete'`), 1);

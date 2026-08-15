@@ -140,7 +140,7 @@ test("published new-book envelopes stay closed and use the six V7 primary genres
   assert.equal(error.properties.error.properties.code.type, "string");
 
   const success = schemas[4];
-  assert.equal(success.properties.state.properties.token_budget.const, 1000000);
+  assert.equal(success.properties.state.properties.token_budget.const, 10000000);
 });
 
 test("book and managed-skill controls use the creator-approved genres without guessing builtin remaps", () => {

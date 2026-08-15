@@ -439,11 +439,11 @@ runtimeTest("B1 atomically creates and replays the complete formal initial packa
   assert.equal(created.ok, true, JSON.stringify(created));
   assert.match(created.book_id, /^[0-9a-f-]{36}$/i);
   assert.equal(created.state.stage_code, "design");
-  assert.equal(created.state.token_budget, 3000000);
+  assert.equal(created.state.token_budget, 10000000);
   createdBookId = created.book_id;
   initialL1aId = created.ids.initial_l1a_id;
 
-  assert.equal(count("book_project", `id='${createdBookId}' AND token_budget=3000000 AND token_budget_version='mvp-fixed-3000000'`), 1);
+  assert.equal(count("book_project", `id='${createdBookId}' AND token_budget=10000000 AND token_budget_version='mvp-fixed-10000000'`), 1);
   assert.equal(count("character", `book_id='${createdBookId}' AND is_formal AND is_active AND is_valid AND NOT is_shadow`), 2);
   assert.equal(count("world_state", `book_id='${createdBookId}' AND setting_layer='initial' AND is_formal AND is_active AND is_valid AND NOT is_shadow`), 7);
   assert.equal(Number(sql(`SELECT count(DISTINCT board_type) FROM public.world_state WHERE book_id='${createdBookId}'`)), 7);

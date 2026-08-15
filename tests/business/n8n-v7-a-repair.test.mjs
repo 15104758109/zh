@@ -151,7 +151,7 @@ test("model behavior material follows the V7 budget, freeze, and char-task owner
   const f2 = prompt.slice(f1End, f3Start);
   const f3 = prompt.slice(f3Start, f3End);
 
-  assert.match(prompt, /固定\s*1000000/);
+  assert.match(prompt, /固定\s*10000000/);
   assert.match(prompt, /FP004-04[^\n]*冻结/);
   assert.ok(
     fp008Start >= 0 && f1Start > fp008Start && charTasksStart > f1Start,
