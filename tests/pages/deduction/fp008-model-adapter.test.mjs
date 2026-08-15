@@ -176,7 +176,8 @@ test("the model adapter keeps only the same director's controlled history", asyn
   assert.match(requests[0].body.messages.at(-1).content, /non-protagonist task must include staged_goal_injected/u);
   assert.match(requests[0].body.messages.at(-1).content, /protagonist task must not populate staged_goal_injected/u);
   assert.match(requests[1].body.messages.at(-1).content, /director convergence result/u);
-  assert.match(requests[1].body.messages.at(-1).content, /selected event's participating characters/u);
+  assert.match(requests[1].body.messages.at(-1).content, /char_a_code.*char_b_code/u);
+  assert.match(requests[1].body.messages.at(-1).content, /both char_a_code and char_b_code.*participating_chars/u);
   assert.match(requests[1].body.messages.at(-1).content, /selected events_in_round/u);
   assert.match(requests[1].body.messages.at(-1).content, /unselected candidate action/u);
   assert.match(requests[1].body.messages.at(-1).content, /all eight live-state keys/u);
@@ -456,8 +457,8 @@ test("the model adapter estimates its full next request and bounds an unconfigur
   const firstBodyBytes = new TextEncoder().encode(JSON.stringify(requests[0])).byteLength;
   assert.equal(
     firstEstimate,
-    Math.ceil(firstBodyBytes / 4) + requests[0].max_tokens,
-    "budget estimates must conservatively convert UTF-8 bytes to tokens",
+    firstBodyBytes + requests[0].max_tokens,
+    "the reserve must remain safe for UTF-8 content without assuming four bytes per token",
   );
   const secondEstimate = invoke.estimateTokenUsage({
     ...base,
@@ -468,6 +469,52 @@ test("the model adapter estimates its full next request and bounds an unconfigur
   assert.equal(requests[0].max_tokens, 32000);
   assert.ok(firstEstimate > 32000);
   assert.ok(secondEstimate > firstEstimate, "the reserve must include the retained director history");
+});
+
+test("all four character roles inherit the same NODE_05 output limit", async () => {
+  const requests = [];
+  const invoke = createOpenAiCompatibleModelInvoker({
+    resolveCredential: async () => "secret-value",
+    fetchImpl: async (_url, init) => {
+      requests.push(JSON.parse(init.body));
+      return modelResponse({ accepted: true });
+    },
+  });
+  const roleTypes = ["protagonist", "antagonist", "supporting", "ensemble"];
+  const configuredBinding = {
+    ...binding(),
+    node_code: "NODE_05",
+    parameters_jsonb: { timeout_ms: 5000, max_tokens: 7777 },
+  };
+  const defaultBinding = {
+    ...binding(),
+    node_code: "NODE_05",
+    parameters_jsonb: { timeout_ms: 5000 },
+  };
+
+  for (const roleType of roleTypes) {
+    await invoke({
+      nodeCode: "NODE_05",
+      mode: "character_respond",
+      binding: configuredBinding,
+      sessionKey: `configured-${roleType}`,
+      continueSession: false,
+      input: { character: { char_code: roleType, role_type: roleType } },
+    });
+  }
+  for (const roleType of roleTypes) {
+    await invoke({
+      nodeCode: "NODE_05",
+      mode: "character_respond",
+      binding: defaultBinding,
+      sessionKey: `default-${roleType}`,
+      continueSession: false,
+      input: { character: { char_code: roleType, role_type: roleType } },
+    });
+  }
+
+  assert.deepEqual(requests.slice(0, 4).map((request) => request.max_tokens), [7777, 7777, 7777, 7777]);
+  assert.deepEqual(requests.slice(4).map((request) => request.max_tokens), [32000, 32000, 32000, 32000]);
 });
 
 test("the default runtime adapter uses a bounded Node HTTPS transport", async () => {
@@ -734,6 +781,53 @@ test("JSON repair accepts one complete root with a repairable syntax error", asy
 
     assert.deepEqual(reply.output, { accepted: true });
   }
+});
+
+test("JSON repair completes a director's partial character live-state snapshot from the same candidate context", async () => {
+  const baseline = {
+    philosophy_live_json: { belief: "verify" },
+    emotion_state_json: { mood: "guarded" },
+    drive_live_json: { priority: "protect" },
+    trigger_state_json: { pressure: "deadline" },
+    goal_state_json: { current: "secure-proof" },
+    pressure_level: 3,
+    current_goal_txt: "Secure the proof.",
+    current_emo_tag: "guarded",
+  };
+  const invoke = createOpenAiCompatibleModelInvoker({
+    resolveCredential: async () => "secret-value",
+    fetchImpl: async () => modelResponse({
+      state_diff: [{
+        entity_type: "character_live_state",
+        entity_id: "character-1",
+        after: { emotion_state_json: { mood: "resolved" }, current_emo_tag: "resolved" },
+      }, {
+        entity_type: "character_live_state",
+        entity_id: "unknown-character",
+        after: { emotion_state_json: { mood: "unchanged" } },
+      }],
+    }),
+  });
+
+  const reply = await invoke({
+    nodeCode: "NODE_06",
+    mode: "director_converge",
+    binding: binding(),
+    sessionKey: "partial-live-state-repair",
+    continueSession: false,
+    input: {
+      candidate_state_context: {
+        characters: [{ character_id: "character-1", live_state_json: baseline }],
+      },
+    },
+  });
+
+  assert.deepEqual(reply.output.state_diff[0].after, {
+    ...baseline,
+    emotion_state_json: { mood: "resolved" },
+    current_emo_tag: "resolved",
+  });
+  assert.deepEqual(reply.output.state_diff[1].after, { emotion_state_json: { mood: "unchanged" } });
 });
 
 test("JSON repair rejects truncated and multiple top-level values without merging them", async () => {

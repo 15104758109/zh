@@ -55,6 +55,10 @@ type NodeHttpsRequestInit = Readonly<{
 type NodeHttpsRequestImpl = (url: URL, init: NodeHttpsRequestInit, timeoutMs: number) => Promise<Response>;
 const TRANSIENT_PROVIDER_STATUSES = new Set([429, 502, 503, 504]);
 const MAX_PROVIDER_ATTEMPTS = 3;
+const LIVE_STATE_KEYS = [
+  "philosophy_live_json", "emotion_state_json", "drive_live_json", "trigger_state_json",
+  "goal_state_json", "pressure_level", "current_goal_txt", "current_emo_tag",
+] as const;
 
 function transportCategory(error: unknown): "timeout" | "connection_reset" | "connection_refused" | "dns" | "network" | "other" {
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
@@ -326,12 +330,52 @@ function parseModelOutput(content: unknown): unknown {
   );
 }
 
+function repairConvergenceLiveStateSnapshot(outputValue: unknown, inputValue: unknown): unknown {
+  const output = object(outputValue);
+  const input = object(inputValue);
+  const candidateState = object(input?.candidate_state_context);
+  if (!output || !Array.isArray(output.state_diff) || !candidateState || !Array.isArray(candidateState.characters)) {
+    return outputValue;
+  }
+
+  const baselineByCharacterId = new Map<string, JsonObject>();
+  for (const candidate of candidateState.characters) {
+    const character = object(candidate);
+    const characterId = typeof character?.character_id === "string" ? character.character_id : null;
+    const liveState = object(character?.live_state_json);
+    if (characterId && liveState) baselineByCharacterId.set(characterId, liveState);
+  }
+
+  let repaired = false;
+  const stateDiff = output.state_diff.map((entry) => {
+    const diff = object(entry);
+    if (diff?.entity_type !== "character_live_state" || typeof diff.entity_id !== "string") return entry;
+    const after = object(diff.after);
+    const baseline = baselineByCharacterId.get(diff.entity_id);
+    if (!after || !baseline) return entry;
+
+    const completedAfter = { ...after };
+    let completed = false;
+    for (const key of LIVE_STATE_KEYS) {
+      if (!Object.hasOwn(completedAfter, key) && Object.hasOwn(baseline, key)) {
+        completedAfter[key] = structuredClone(baseline[key]);
+        completed = true;
+      }
+    }
+    if (!completed) return entry;
+    repaired = true;
+    return { ...diff, after: completedAfter };
+  });
+
+  return repaired ? { ...output, state_diff: stateDiff } : outputValue;
+}
+
 function modeContract(mode: ModelInvocation["mode"]): string {
   if (mode === "director_distribute") {
     return "Run only FP008-02 F1. The input does not contain full role settings; do not request, infer, or fabricate them. Return one JSON object with exactly one top-level field: char_tasks (an array containing exactly one isolated task for each participating character). Every non-protagonist task must include staged_goal_injected; a protagonist task must not populate staged_goal_injected. Do not return convergence fields.";
   }
   if (mode === "director_converge") {
-    return "Run only FP008-02 F3/F4. Return one director convergence result object. A relation change may name only characters in its selected event's participating characters. Every state_diff.event_ids value must name only event_id values from this response's selected events_in_round, never an unselected candidate action, alternate path, or prior-particle event; use an empty state_diff when no selected event supports a state change. Do not return char_tasks. Copy particle sequence counters from the input unchanged. Every character_live_state state_diff.after must include all eight live-state keys (philosophy_live_json, emotion_state_json, drive_live_json, trigger_state_json, goal_state_json, pressure_level, current_goal_txt, current_emo_tag); copy an unchanged value from candidate_state_context rather than omitting the key.";
+    return "Run only FP008-02 F3/F4. Return one director convergence result object. Each candidate_state_context.relations entry identifies char_a_id, char_b_id, char_a_code, and char_b_code. A relation_diff entry may be output only when every referenced event_ids event has both char_a_code and char_b_code in its participating_chars; otherwise leave that relation unchanged and omit it. Every state_diff.event_ids value must name only event_id values from this response's selected events_in_round, never an unselected candidate action, alternate path, or prior-particle event; use an empty state_diff when no selected event supports a state change. Do not return char_tasks. Copy particle sequence counters from the input unchanged. Every character_live_state state_diff.after must include all eight live-state keys (philosophy_live_json, emotion_state_json, drive_live_json, trigger_state_json, goal_state_json, pressure_level, current_goal_txt, current_emo_tag); copy an unchanged value from candidate_state_context rather than omitting the key.";
   }
   return "Run only FP008-02 F2 for the supplied character. Return one character deduction result object, not char_tasks or a director convergence result.";
 }
@@ -628,6 +672,9 @@ export function createOpenAiCompatibleModelInvoker({
     let output: unknown;
     try {
       output = parseModelOutput(responseContent);
+      if (invocation.mode === "director_converge") {
+        output = repairConvergenceLiveStateSnapshot(output, invocation.input);
+      }
     } catch (error) {
       if (error instanceof DeductionServiceError && error.code === "MODEL_OUTPUT_INVALID") {
         emitAttempt({
@@ -680,8 +727,7 @@ export function createOpenAiCompatibleModelInvoker({
   invoke.estimateTokenUsage = (invocation) => {
     const prepared = prepareRequest(invocation, directorSessions);
     const requestBytes = new TextEncoder().encode(JSON.stringify(prepared.body)).byteLength;
-    const estimatedInputTokens = Math.ceil(requestBytes / 4);
-    return estimatedInputTokens + Number(prepared.body.max_tokens);
+    return requestBytes + Number(prepared.body.max_tokens);
   };
   return invoke;
 }

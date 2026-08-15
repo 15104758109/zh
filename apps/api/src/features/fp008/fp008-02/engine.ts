@@ -35,8 +35,8 @@ const FORBIDDEN_OUTPUT_KEYS = new Set([
   "novel_text",
 ]);
 
-export const FP008_TOKEN_BUDGET = 3_000_000;
-export const FP008_TOKEN_BUDGET_VERSION = "mvp-fixed-3000000";
+export const FP008_TOKEN_BUDGET = 10_000_000;
+export const FP008_TOKEN_BUDGET_VERSION = "mvp-fixed-10000000";
 export const FP008_DEFAULT_MODEL_MAX_TOKENS = 32_000;
 
 type JsonObject = Record<string, unknown>;
@@ -115,6 +115,7 @@ export class DeductionServiceError extends Error {
 
 class BudgetReached extends Error {}
 class ModelCallBlocked extends Error {}
+class PauseReached extends Error {}
 
 function isExhaustedProviderFailure(error: DeductionServiceError): boolean {
   if (error.code === "MODEL_PROVIDER_UNAVAILABLE" || error.code === "MODEL_PROVIDER_TIMEOUT") return true;
@@ -836,11 +837,74 @@ function directorCandidateStateContext(
         return typeof charA === "string" && typeof charB === "string"
           && participantIds.has(charA) && participantIds.has(charB);
       })
-      .map(([relation_state_id, current_state]) => ({
-        relation_state_id,
-        current_state: structuredClone(current_state),
-      })),
+      .map(([relation_state_id, current_state]) => {
+        const [charA, charB] = state.relationParticipants.get(relation_state_id) ?? [];
+        const charACode = charA ? state.characterCodes.get(charA) : undefined;
+        const charBCode = charB ? state.characterCodes.get(charB) : undefined;
+        if (!charA || !charB || !charACode || !charBCode) {
+          fail("CANDIDATE_TRUTH_DRIFT", "A candidate relation lacks its formal role mapping.", 409);
+        }
+        return {
+          relation_state_id,
+          char_a_id: charA,
+          char_b_id: charB,
+          char_a_code: charACode,
+          char_b_code: charBCode,
+          current_state: structuredClone(current_state),
+        };
+      }),
   };
+}
+
+function relationConvergenceRepairFeedback(
+  value: unknown,
+  state: CandidateTruthState,
+): JsonObject | null {
+  const result = value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as JsonObject
+    : null;
+  const events = Array.isArray(result?.events_in_round) ? result.events_in_round : null;
+  const relationDiff = Array.isArray(result?.relation_diff) ? result.relation_diff : null;
+  if (!events || !relationDiff) return null;
+
+  const participantsByEvent = new Map<string, Set<string>>();
+  for (const eventValue of events) {
+    const event = eventValue !== null && typeof eventValue === "object" && !Array.isArray(eventValue)
+      ? eventValue as JsonObject
+      : null;
+    const eventId = typeof event?.event_id === "string" ? event.event_id : null;
+    const participants = Array.isArray(event?.participating_chars) ? event.participating_chars : null;
+    if (!eventId || !participants || participants.some((participant) => typeof participant !== "string")) return null;
+    participantsByEvent.set(eventId, new Set(participants));
+  }
+
+  const constraints: JsonObject[] = [];
+  const seen = new Set<string>();
+  for (const diffValue of relationDiff) {
+    const diff = diffValue !== null && typeof diffValue === "object" && !Array.isArray(diffValue)
+      ? diffValue as JsonObject
+      : null;
+    const relationId = typeof diff?.relation_state_id === "string" ? diff.relation_state_id : null;
+    if (!relationId || seen.has(relationId)) continue;
+    seen.add(relationId);
+    const [charA, charB] = state.relationParticipants.get(relationId) ?? [];
+    const charACode = charA ? state.characterCodes.get(charA) : undefined;
+    const charBCode = charB ? state.characterCodes.get(charB) : undefined;
+    if (!charA || !charB || !charACode || !charBCode) continue;
+    constraints.push({
+      relation_state_id: relationId,
+      char_a_code: charACode,
+      char_b_code: charBCode,
+      allowed_event_ids: [...participantsByEvent.entries()]
+        .filter(([, participants]) => participants.has(charACode) && participants.has(charBCode))
+        .map(([eventId]) => eventId),
+      omit_relation_change_when_empty: true,
+    });
+  }
+  return constraints.length ? {
+    repair_reason: "Each relation change must cite only shared selected events.",
+    relation_change_constraints: constraints,
+  } : null;
 }
 
 function validateDistribution(value: unknown, chapter: JsonObject, particle: JsonObject): Map<string, JsonObject> {
@@ -1410,6 +1474,7 @@ export function createDeductionEngine({
   const active = new Set<string>();
   const pauseRequests = new Set<string>();
   const observedCallUsage = new Map<string, number>();
+  const inFlightReservations = new Map<string, number>();
 
   function getProjection(scopeValue: unknown): JsonObject | null {
     const projection = projections.get(scopeKey(normalizeScope(scopeValue)));
@@ -1452,7 +1517,11 @@ export function createDeductionEngine({
         observedCallUsage.get(runKey),
         estimatedUsage,
       );
-      if ((projection.token_consumed as number) + reserve > FP008_TOKEN_BUDGET) throw new BudgetReached();
+      const inFlightReserved = inFlightReservations.get(runKey) ?? 0;
+      if ((projection.token_consumed as number) + inFlightReserved + reserve > FP008_TOKEN_BUDGET) {
+        throw new BudgetReached();
+      }
+      inFlightReservations.set(runKey, inFlightReserved + reserve);
       try {
         const reply = await invokeModel(invocation);
         const replyObject = object(reply, "model_reply");
@@ -1517,6 +1586,10 @@ export function createDeductionEngine({
           engine_attempt: attempt + 1, outcome: "retry", error_category: "transport_or_internal",
           error_code: null, provider_status: null, retry_scheduled: true,
         });
+      } finally {
+        const remaining = (inFlightReservations.get(runKey) ?? 0) - reserve;
+        if (remaining > 0) inFlightReservations.set(runKey, remaining);
+        else inFlightReservations.delete(runKey);
       }
     }
     throw new ModelCallBlocked();
@@ -1532,6 +1605,10 @@ export function createDeductionEngine({
     const bindings = command.model_bindings as Record<"NODE_05" | "NODE_06", JsonObject>;
     const chapterInputs = command.chapters as JsonObject[];
     const chapterProjections = projection.chapters as JsonObject[];
+    const executionKey = scopeKey(scope);
+    const pauseBeforeSemanticRetry = () => {
+      if (pauseRequests.has(executionKey)) throw new PauseReached();
+    };
     let activeTruthState = truthState;
 
     try {
@@ -1565,6 +1642,7 @@ export function createDeductionEngine({
           let distributionOutputRetries = 0;
           let distributionSessionReset = false;
           let convergenceOutputRetries = 0;
+          let convergenceRepair: JsonObject | null = null;
           let retrySequence = 0;
           let tasks: Map<string, JsonObject> | null = null;
           let characterResults: JsonObject[] | null = null;
@@ -1601,6 +1679,7 @@ export function createDeductionEngine({
                   && distributionOutputRetries < 2) {
                   // Do not feed an already parsed but semantically invalid
                   // assistant reply back into the next F1 attempt.
+                  pauseBeforeSemanticRetry();
                   resetDirectorSession();
                   distributionOutputRetries += 1;
                   retrySequence += 1;
@@ -1612,7 +1691,7 @@ export function createDeductionEngine({
               packageCharacterTasks(tasks, records);
               if (projection.token_budget_exceeded === true) throw new BudgetReached();
 
-              characterResults = await Promise.all(participants.map(async (character) => {
+              const settledCharacterResults = await Promise.allSettled(participants.map(async (character) => {
                 const code = character.char_code as string;
                 const task = tasks?.get(code);
                 if (!task) fail("MODEL_OUTPUT_INVALID", `Missing task for ${code}.`, 502);
@@ -1654,10 +1733,17 @@ export function createDeductionEngine({
                     if (!(error instanceof DeductionServiceError)
                       || error.code !== "MODEL_OUTPUT_INVALID"
                       || roleOutputAttempt === 2) throw error;
+                    pauseBeforeSemanticRetry();
                   }
                 }
                 throw new Error("Unreachable character output retry state.");
               }));
+              const successfulCharacterResults: JsonObject[] = [];
+              for (const settledResult of settledCharacterResults) {
+                if (settledResult.status === "rejected") throw settledResult.reason;
+                successfulCharacterResults.push(settledResult.value);
+              }
+              characterResults = successfulCharacterResults;
               if (projection.token_budget_exceeded === true) throw new BudgetReached();
             }
 
@@ -1670,6 +1756,7 @@ export function createDeductionEngine({
               ))
             ));
             if (!allSafeActions) {
+              pauseBeforeSemanticRetry();
               tasks = null;
               characterResults = null;
               lastConvergence = null;
@@ -1699,6 +1786,7 @@ export function createDeductionEngine({
                 },
                 token_consumed: projection.token_consumed,
                 token_budget: FP008_TOKEN_BUDGET,
+                ...(convergenceRepair ? { convergence_repair: convergenceRepair } : {}),
               },
             }, projection, chapterProjection);
             try {
@@ -1718,12 +1806,17 @@ export function createDeductionEngine({
               ));
             } catch (error) {
               if (error instanceof DeductionServiceError && error.code === "P0_ACTION_SELECTED") {
+                pauseBeforeSemanticRetry();
                 resetDirectorSession();
                 retrySequence += 1;
                 continue;
               }
               if (error instanceof DeductionServiceError && error.code === "MODEL_OUTPUT_INVALID"
                 && convergenceOutputRetries < 2) {
+                if (error.message === "A relation change must reference an event containing both roles.") {
+                  convergenceRepair = relationConvergenceRepairFeedback(convergenceOutput, activeTruthState);
+                }
+                pauseBeforeSemanticRetry();
                 resetDirectorSession();
                 convergenceOutputRetries += 1;
                 retrySequence += 1;
@@ -1731,6 +1824,7 @@ export function createDeductionEngine({
               }
               throw error;
             }
+            convergenceRepair = null;
             const passes = selfCheckPasses(lastConvergence.self_check);
             if (lastConvergence.particle_status === "completed" && passes && lastConvergence.retry_required === false) {
               try {
@@ -1743,6 +1837,10 @@ export function createDeductionEngine({
                 if (error instanceof DeductionServiceError
                   && error.code === "MODEL_OUTPUT_INVALID"
                   && convergenceOutputRetries < 2) {
+                  if (error.message === "A relation change must reference an event containing both roles.") {
+                    convergenceRepair = relationConvergenceRepairFeedback(lastConvergence, activeTruthState);
+                  }
+                  pauseBeforeSemanticRetry();
                   resetDirectorSession();
                   convergenceOutputRetries += 1;
                   tasks = null;
@@ -1763,6 +1861,7 @@ export function createDeductionEngine({
             if (!passes) {
               selfCheckFailures += 1;
               if (selfCheckFailures >= 3) break;
+              pauseBeforeSemanticRetry();
               resetDirectorSession();
               tasks = null;
               characterResults = null;
@@ -1772,6 +1871,7 @@ export function createDeductionEngine({
             if (lastConvergence.particle_status === "blocked") {
               fail("MODEL_OUTPUT_INVALID", "Only the engine can block a particle after three failed self-checks.", 502);
             }
+            pauseBeforeSemanticRetry();
             resetDirectorSession();
             retrySequence += 1;
           }
@@ -1827,6 +1927,12 @@ export function createDeductionEngine({
       projection.service_state = projection.deduction_complete === true ? "completed" : "paused";
       projection.updated_at = now();
     } catch (error) {
+      if (error instanceof PauseReached) {
+        pauseRequests.delete(executionKey);
+        projection.service_state = "paused";
+        projection.updated_at = now();
+        return;
+      }
       if (error instanceof BudgetReached) {
         projection.service_state = "paused";
         projection.token_budget_exceeded = true;
@@ -1909,6 +2015,7 @@ export function createDeductionEngine({
     } finally {
       active.delete(key);
       pauseRequests.delete(key);
+      inFlightReservations.delete(String(scope.l1a_unit_id));
       for (const chapter of command.chapters as JsonObject[]) {
         invokeModel.clearSession?.(sessionKey(scope, chapter));
       }

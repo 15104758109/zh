@@ -392,8 +392,8 @@ test("both entry paths read the selected current L1A through parameterized stabl
     assert.match(query, /public\.v_prompt_runtime_binding/);
     assert.match(query, /NODE_05/);
     assert.match(query, /NODE_06/);
-    assert.match(query, /token_budget = 3000000/);
-    assert.match(query, /mvp-fixed-3000000/);
+    assert.match(query, /token_budget = 10000000/);
+    assert.match(query, /mvp-fixed-10000000/);
     assert.match(query, /jsonb_array_elements\(a\.chapters\)/);
     assert.match(query, /forbid_lines_active/);
     assert.match(query, /jsonb_typeof/);
@@ -868,8 +868,8 @@ test("the FP008 resume path reuses the persisted particle input without a model 
     scope_ok: true,
     request: { action: "resume" },
     scope: { local_operator_id: operator, book_id: book, l1a_unit_id: l1a },
-    token_budget: 3000000,
-    token_budget_version: "mvp-fixed-3000000",
+    token_budget: 10000000,
+    token_budget_version: "mvp-fixed-10000000",
     chapters: [{
       chapter_id: chapter,
       chapter_version_id: version,
@@ -910,8 +910,8 @@ test("the FP008 resume path reuses the persisted particle input without a model 
           current_particle_index: 1,
           token_consumed: 120,
           remaining_particles: 2,
-          token_budget: 3000000,
-          token_budget_version: "mvp-fixed-3000000",
+          token_budget: 10000000,
+          token_budget_version: "mvp-fixed-10000000",
           token_budget_exceeded: false,
           deduction_complete: false,
           reject_count: 0,
@@ -988,7 +988,7 @@ test("the FP008 resume path reuses the persisted particle input without a model 
   assert.deepEqual(mappedChapter.checkpoint, context.chapters[0].checkpoint);
   assert.equal(mappedChapter.checkpoint.deduction_progress_json.current_particle_index, 1);
   assert.equal(mappedChapter.checkpoint.deduction_progress_json.remaining_particles, 2);
-  assert.equal(mappedChapter.checkpoint.deduction_progress_json.token_budget, 3000000);
+  assert.equal(mappedChapter.checkpoint.deduction_progress_json.token_budget, 10000000);
   assert.deepEqual(mapped.json.engine_request.world_resistance_refs, context.l1a.world_resistance_refs);
 
   const calls = [];
@@ -1010,7 +1010,7 @@ test("the FP008 resume path reuses the persisted particle input without a model 
   assert.equal(serviceChapter.deduction_progress_json.current_particle_index, 3);
   assert.equal(serviceChapter.deduction_progress_json.remaining_particles, 0);
   assert.equal(serviceChapter.deduction_progress_json.token_consumed, 1800120);
-  assert.equal(serviceChapter.deduction_progress_json.token_budget, 3000000);
+  assert.equal(serviceChapter.deduction_progress_json.token_budget, 10000000);
   assert.equal(serviceChapter.deduction_progress_json.token_budget_exceeded, false);
   assert.equal(serviceChapter.candidate_plot_sim_json.particles_records.length, 3);
   assert.deepEqual(calls.map((call) => call.mode), [
@@ -1115,8 +1115,8 @@ test("the ZH05 start mapper emits a command accepted by the FP008-02 validator",
     scope_ok: true,
     request: { action: "start" },
     scope: { local_operator_id: operator, book_id: book, l1a_unit_id: l1a },
-    token_budget: 3000000,
-    token_budget_version: "mvp-fixed-3000000",
+    token_budget: 10000000,
+    token_budget_version: "mvp-fixed-10000000",
     chapters: [{
       chapter_id: chapter,
       chapter_version_id: version,
@@ -1319,8 +1319,8 @@ test("FP008-01 exposes formal character IDs required by its particle output cont
     scope_ok: true,
     request: { action: "start" },
     scope: { local_operator_id: operator, book_id: book, l1a_unit_id: l1a },
-    token_budget: 3000000,
-    token_budget_version: "mvp-fixed-3000000",
+    token_budget: 10000000,
+    token_budget_version: "mvp-fixed-10000000",
     runtime_bindings: {
       "FP008-01": {
         model_name: "test-model",
@@ -1451,8 +1451,8 @@ test("FP008-01 uses the same-particle reader target reveal contract for an empty
       book_id: "abcdefab-1234-4abc-8abc-abcdefabcdef",
       l1a_unit_id: "22222222-3333-4444-8555-666666666666",
     },
-    token_budget: 3000000,
-    token_budget_version: "mvp-fixed-3000000",
+    token_budget: 10000000,
+    token_budget_version: "mvp-fixed-10000000",
     chapters: [{
       chapter_id: chapter,
       chapter_version_id: version,
@@ -1557,8 +1557,8 @@ test("FP008-01 rejects model participants outside the authoritative formal chara
     scope_ok: true,
     request: { action: "start" },
     scope: { local_operator_id: operator, book_id: book, l1a_unit_id: l1a },
-    token_budget: 3000000,
-    token_budget_version: "mvp-fixed-3000000",
+    token_budget: 10000000,
+    token_budget_version: "mvp-fixed-10000000",
     chapters: [{
       chapter_id: chapter,
       chapter_version_id: version,
@@ -1989,8 +1989,8 @@ test("FP008-03 sends a complete P0 preaudit result back to the existing whole-L1
     engine_request: {
       action: "start",
       scope,
-      token_budget: 3000000,
-      token_budget_version: "mvp-fixed-3000000",
+      token_budget: 10000000,
+      token_budget_version: "mvp-fixed-10000000",
       chapters: [{
         chapter_id: "11111111-1111-4111-8111-111111111111",
         chapter_version_id: "22222222-2222-4222-8222-222222222222",
@@ -2200,10 +2200,16 @@ test("FP008-03 emits risk hints and routes both entry paths without a page appro
   assert.equal(manualConditions[0].rightValue, true);
 });
 
-test("FP008-03 receives each chapter's complete scene evidence and preserves the resource boundary", async () => {
+test("FP008-03 separates the active system/user template and renders only the V7 audit projection", async () => {
   const workflow = await readWorkflow();
   const promptMaterial = await readFile(promptMaterialPath, "utf8");
-  const preaudit = workflow.nodes.find(candidate => candidate.id === "27389b02-a256-4603-9cba-84e9e65f7743");
+  const preaudit = workflow.nodes.find(candidate => candidate.id === "zh05-fp008-03-resume-relaycove");
+  assert.match(preaudit.parameters.jsonBody, /const placeholder = \(name\) => '\{' \+ '\{ ' \+ name \+ ' ' \+ '\}' \+ '\}'/u);
+  assert.equal(
+    preaudit.parameters.jsonBody.match(/\}\}/gu)?.length,
+    1,
+    "the resume preaudit must not embed prompt placeholders inside its n8n expression",
+  );
   const sceneConditionPackage = {
     scene_location: "maintenance well entrance",
     participant_chars: ["lead"],
@@ -2221,7 +2227,21 @@ test("FP008-03 receives each chapter's complete scene evidence and preserves the
       "FP008-03": {
         model_name: "test-model",
         provider_base_url: "https://model.example/v1",
-        prompt_text: "preaudit prompt",
+        prompt_text: [
+          "You are the pre-audit system.",
+          "````".slice(0, 3),
+          "",
+          "#### User Prompt",
+          "",
+          "````".slice(0, 3),
+          "candidate={{ candidate_plot_sim_json }}",
+          "target={{ target_snapshot_json }}",
+          "scene={{ scene_condition_package_json }}",
+          "knowledge={{ characters_knowledge_boundary_json }}",
+          "````".slice(0, 3),
+          "",
+          "**数据契约**：不应进入模型。",
+        ].join("\n"),
         api_key_ref: "local-secure-ref:test",
         temperature: 0.2,
       },
@@ -2239,15 +2259,34 @@ test("FP008-03 receives each chapter's complete scene evidence and preserves the
     ],
   };
 
+  const engineResult = {
+    chapters: [{
+      chapter_id: "chapter-1",
+      candidate_version_id: "version-1",
+      candidate_plot_sim_json: { particles_records: [{ particle_id: "P001" }] },
+    }],
+  };
   const request = runExpressionWithNodes(preaudit.parameters.jsonBody, {
     service_ok: true,
-    engine_result: { chapters: [] },
+    engine_result: engineResult,
   }, {
     "读取拆解结果1": { context },
   });
-  const input = JSON.parse(request.messages[0].content.split("\nINPUT=")[1]);
 
-  assert.deepEqual(input.chapters, context.chapters);
+  assert.equal(request.messages.length, 2);
+  assert.deepEqual(request.messages[0], {
+    role: "system",
+    content: "You are the pre-audit system.",
+  });
+  assert.equal(request.messages[1].role, "user");
+  assert.ok(request.messages[1].content.includes('candidate=[{"chapter_id":"chapter-1","candidate_version_id":"version-1","candidate_plot_sim_json":'));
+  assert.ok(request.messages[1].content.includes('target=[{"chapter_id":"chapter-1","target_snapshot_json":'));
+  assert.ok(request.messages[1].content.includes('scene=[{"chapter_id":"chapter-1","scene_condition_package_json":'));
+  assert.ok(request.messages[1].content.includes('knowledge=[{"character_id":"lead","char_code":null,"knowledge_boundary_json":'));
+  assert.ok(request.messages[1].content.includes("正式世界设定登记（world_state）"));
+  assert.ok(request.messages[1].content.includes('"atom_type":"geo","atom_key":"maintenance well"'));
+  assert.doesNotMatch(request.messages[1].content, /\{\{\s*[a-z_]+\s*\}\}/u);
+  assert.doesNotMatch(request.messages[1].content, /数据契约|provider_base_url|api_key_ref/u);
   assert.match(promptMaterial, /available_resource_codes.*仅核验.*资源/u);
   assert.match(promptMaterial, /地理.*职业.*规则/u);
 });

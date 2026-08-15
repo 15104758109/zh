@@ -20,6 +20,20 @@ test("DEDUCTION describes paused service states and a rejected pause intent in C
   assert.match(runtimeModule.deductionRunStatusText("paused", false), /推演已暂停/);
 });
 
+test("DEDUCTION keeps a later deduction failure distinct from a rejected pause intent", async () => {
+  assert.equal(
+    runtimeModule.deductionRunStatusText("paused", false, { message: "The current model service is unavailable." }, "resume"),
+    "推演请求未完成：The current model service is unavailable.",
+  );
+
+  const module = await readFile(modulePath, "utf8");
+  const handler = module.match(/function requestDeductionPause\(runtime\) \{[\s\S]*?\n\}/);
+  assert.ok(handler, "pause handler is present");
+  assert.match(handler[0], /runtime\.pauseError = error/);
+  assert.doesNotMatch(handler[0], /runtime\.lastCommand = "pause"/);
+  assert.match(module, /const statusError = runtime\.pauseError \?\? runtime\.commandError/);
+});
+
 test("DEDUCTION keeps the existing resume command available for recoverable backend errors", () => {
   const chapter = {
     status: "deduction_partial",
@@ -64,6 +78,38 @@ test("DEDUCTION keeps the existing resume command available for recoverable back
     }, { code: "MODEL_OUTPUT_INVALID" }),
     false,
     "budget exhaustion remains non-resumable",
+  );
+});
+
+test("DEDUCTION opens the resumable chapter when a paused L1A has no explicit active chapter", () => {
+  const resumable = {
+    chapter_id: "chapter-2",
+    status: "deduction_partial",
+    run_status: "deduction_partial",
+    deduction_locked: false,
+    target_snapshot_json: {
+      particles_json: [{ particle_id: "particle-1" }],
+      scene_condition_package: { scene_location: "documented scene" },
+    },
+    candidate_plot_sim_json: {
+      deduction_input_snapshot: {
+        particles: [{ particle_id: "particle-1" }],
+        participating_chars: [{ char_id: "character-1" }],
+      },
+      particles_records: [],
+    },
+    deduction_progress_json: { current_particle_index: 0 },
+  };
+  const result = {
+    book: { active_chapter_json: null },
+    chapters: [{ chapter_id: "chapter-1", deduction_locked: true }, resumable],
+  };
+
+  assert.equal(runtimeModule.chooseInitialChapter(result, { chapterId: null }), "chapter-2");
+  assert.equal(runtimeModule.chooseInitialChapter(result, { chapterId: "chapter-1" }), "chapter-1");
+  assert.equal(
+    runtimeModule.chooseInitialChapter({ ...result, book: { active_chapter_json: { chapter_id: "chapter-1" } } }, { chapterId: null }),
+    "chapter-1",
   );
 });
 

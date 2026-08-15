@@ -860,6 +860,52 @@ test("resume continues a persisted candidate truth ledger from its prior candida
   }]);
 });
 
+test("an accepted pause stops before a semantic retry without recording an incomplete particle", async () => {
+  const input = command("resume");
+  input.chapters[0].checkpoint = checkpoint(1);
+  const calls = [];
+  let releaseConvergence;
+  const convergenceRelease = new Promise((resolve) => { releaseConvergence = resolve; });
+  let reportConvergenceStarted;
+  const convergenceStarted = new Promise((resolve) => { reportConvergenceStarted = resolve; });
+  const deduction = createDeductionEngine({
+    invokeModel: async (invocation) => {
+      calls.push(invocation);
+      if (invocation.mode === "director_distribute") {
+        return { output: distribution(invocation.input.particle.particle_id), usage: { total_tokens: 5 } };
+      }
+      if (invocation.mode === "character_respond") {
+        return { output: characterResult(), usage: { total_tokens: 5 } };
+      }
+      reportConvergenceStarted();
+      await convergenceRelease;
+      const completed = Number(invocation.input.particle.particle_id.split("-").at(-1));
+      const output = convergence(invocation.input.particle.particle_id, completed);
+      output.self_check.hook = false;
+      return { output, usage: { total_tokens: 5 } };
+    },
+  });
+
+  const running = deduction.execute(input);
+  await convergenceStarted;
+  const accepted = deduction.requestPause(input.scope);
+  assert.equal(accepted.service_state, "pause_requested");
+  releaseConvergence();
+  const paused = await running;
+
+  assert.equal(paused.service_state, "paused");
+  assert.equal(paused.token_budget_exceeded, false);
+  assert.deepEqual(calls.map((call) => call.mode), [
+    "director_distribute", "character_respond", "director_converge",
+  ]);
+  assert.equal(paused.chapters[0].deduction_progress_json.current_particle_index, 1);
+  assert.equal(paused.chapters[0].deduction_progress_json.remaining_particles, 2);
+  assert.deepEqual(
+    paused.chapters[0].candidate_plot_sim_json.particles_records.map((record) => record.particle_id),
+    ["particle-1"],
+  );
+});
+
 test("F5 gives the next particle its role-scoped candidate state and memory", async () => {
   const initialProjection = { source: "initial_live_state_projection" };
   const finalLiveState = {
@@ -1305,7 +1351,7 @@ test("engine retries an invalid director convergence before blocking its particl
 
 test("a relation change may only name characters who appear in its selected event", async () => {
   const input = command();
-  input.characters.push({
+  const supporting = {
     character_id: IDS.successor,
     char_code: "P002",
     role_type: "supporting",
@@ -1317,13 +1363,56 @@ test("a relation change may only name characters who appear in its selected even
     live_state_source: "initial_live_state_projection",
     live_state_json: { source: "initial_live_state_projection" },
     active_memory_json: [],
-  });
+  };
+  const outsider = {
+    ...structuredClone(supporting),
+    character_id: "99999999-aaaa-4bbb-8ccc-dddddddddddd",
+    char_code: "P003",
+  };
+  input.characters.push(supporting, outsider);
   input.chapters[0].participating_chars.push({
     char_id: IDS.successor,
     char_code: "P002",
     role_type: "supporting",
     activation_reason: "required",
   });
+  const relationState = {
+    trust: 5,
+    intimacy: 0,
+    power_balance: 0,
+    dependence: 0,
+    hostility: 0,
+    common_goal: 0,
+    secret_known: 0,
+    emotional_bond: 0,
+    relation_type: "ally",
+    relation_hierarchy: "peer",
+    relation_origin: null,
+    relation_overview: null,
+    change_event_json: {},
+  };
+  const participatingRelationId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+  input.relations = [
+    {
+      relation_state_id: participatingRelationId,
+      char_a_id: IDS.character,
+      char_b_id: IDS.successor,
+      ...relationState,
+      is_formal: true,
+      is_valid: true,
+      is_shadow: false,
+    },
+    {
+      relation_state_id: "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff",
+      char_a_id: IDS.character,
+      char_b_id: outsider.character_id,
+      ...relationState,
+      is_formal: true,
+      is_valid: true,
+      is_shadow: false,
+    },
+  ];
+  const directorInputs = [];
 
   const deduction = createDeductionEngine({
     invokeModel: async (invocation) => {
@@ -1361,20 +1450,41 @@ test("a relation change may only name characters who appear in its selected even
           usage: { total_tokens: 5 },
         };
       }
+      directorInputs.push(structuredClone(invocation.input));
       const result = convergence(invocation.input.particle.particle_id, 1);
       result.relation_diff = [{
-        char_a: "P001",
-        char_b: "P002",
-        dimension: "trust",
-        before: 5,
-        after: 3,
-        event_id: `event-${invocation.input.particle.particle_id}`,
+        relation_state_id: participatingRelationId,
+        after: { ...relationState, trust: 3 },
+        change_event: { event_id: `event-${invocation.input.particle.particle_id}` },
+        event_ids: [`event-${invocation.input.particle.particle_id}`],
       }];
       return { output: result, usage: { total_tokens: 5 } };
     },
   });
 
-  await assert.rejects(deduction.execute(input), (error) => error.code === "MODEL_OUTPUT_INVALID");
+  await assert.rejects(
+    deduction.execute(input),
+    (error) => error.code === "MODEL_OUTPUT_INVALID"
+      && error.message === "A relation change must reference an event containing both roles.",
+  );
+  assert.deepEqual(directorInputs[0].candidate_state_context.relations, [{
+    relation_state_id: participatingRelationId,
+    char_a_id: IDS.character,
+    char_b_id: IDS.successor,
+    char_a_code: "P001",
+    char_b_code: "P002",
+    current_state: relationState,
+  }]);
+  assert.deepEqual(directorInputs[1].convergence_repair, {
+    repair_reason: "Each relation change must cite only shared selected events.",
+    relation_change_constraints: [{
+      relation_state_id: participatingRelationId,
+      char_a_code: "P001",
+      char_b_code: "P002",
+      allowed_event_ids: [],
+      omit_relation_change_when_empty: true,
+    }],
+  });
 });
 
 test("engine rejects missing resume state, restart checkpoints, and checkpoint drift", async () => {
@@ -1547,7 +1657,8 @@ test("engine allows a bounded final particle when its conservative reserve fits"
 
 test("engine stops before a growing model call can cross the fixed L1A budget", async () => {
   const calls = [];
-  const usages = [400000, 400000, 400000, 400000, 400000, 800000, 900000];
+  const chargedPerCall = (FP008_TOKEN_BUDGET - 100000) / 6;
+  const usages = Array.from({ length: 6 }, () => chargedPerCall);
   const invokeModel = async (invocation) => {
     calls.push(invocation);
     const usage = usages[calls.length - 1];
@@ -1566,25 +1677,134 @@ test("engine stops before a growing model call can cross the fixed L1A budget", 
 
   assert.equal(result.service_state, "paused");
   assert.equal(result.token_budget_exceeded, true);
-  assert.equal(result.token_consumed, 2800000);
+  assert.equal(result.token_consumed, FP008_TOKEN_BUDGET - 100000);
   assert.ok(result.token_consumed <= FP008_TOKEN_BUDGET);
   assert.equal(calls.length, 6, "the seventh request must be held before it can exceed the L1A budget");
   assert.equal(result.chapters[0].candidate_plot_sim_json.particles_records.length, 2);
 });
 
+test("parallel character calls reserve the shared L1A budget and settle before pause", async () => {
+  const input = command("resume");
+  const supportingCharacters = [
+    { character_id: IDS.successor, char_code: "P002" },
+    { character_id: "88888888-aaaa-4bbb-8ccc-cccccccccccc", char_code: "P003" },
+  ].map((identity) => ({
+    ...structuredClone(input.characters[0]),
+    ...identity,
+    role_type: "supporting",
+  }));
+  input.characters.push(...supportingCharacters);
+  input.chapters[0].participating_chars.push(...supportingCharacters.map((character) => ({
+    char_id: character.character_id,
+    char_code: character.char_code,
+    role_type: character.role_type,
+    activation_reason: "required",
+  })));
+  const stored = checkpoint(2, {
+    token_consumed: FP008_TOKEN_BUDGET - 270000,
+    token_budget_exceeded: false,
+  });
+  stored.candidate_plot_sim_json.deduction_input_snapshot.participating_chars = structuredClone(
+    input.chapters[0].participating_chars,
+  );
+  input.chapters[0].checkpoint = stored;
+
+  let releaseRoles;
+  const roleRelease = new Promise((resolve) => { releaseRoles = resolve; });
+  let reportTwoStarted;
+  const twoRolesStarted = new Promise((resolve) => { reportTwoStarted = resolve; });
+  let roleCalls = 0;
+  let settledRoleCalls = 0;
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const calls = [];
+  const invokeModel = async (invocation) => {
+    calls.push(invocation);
+    if (invocation.mode === "director_distribute") {
+      const particleId = invocation.input.particle.particle_id;
+      return {
+        output: {
+          char_tasks: [
+            ...distribution(particleId).char_tasks,
+            ...supportingCharacters.map((character) => ({
+              char_code: character.char_code,
+              task: {
+                particle_id: particleId,
+                isolation_confirmed: true,
+                dramatic_enhancement: {
+                  supporting_staged_goal: "support",
+                  antagonist_control_intent: null,
+                  ensemble_pressure_direction: null,
+                  peak_conflict_moment: null,
+                  enhancement_feedback: null,
+                },
+                staged_goal_injected: "support",
+                visible_situation: "visible",
+                emotion_phase_hint: "setup",
+                last_round_summary: null,
+              },
+            })),
+          ],
+        },
+        usage: { total_tokens: 10000 },
+      };
+    }
+    if (invocation.mode === "character_respond") {
+      roleCalls += 1;
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      if (roleCalls === 2) reportTwoStarted();
+      try {
+        await roleRelease;
+        return {
+          output: { ...characterResult(), char_code: invocation.input.character.char_code },
+          usage: { total_tokens: 90000 },
+        };
+      } finally {
+        inFlight -= 1;
+        settledRoleCalls += 1;
+      }
+    }
+    throw new Error("director convergence must not start after the budget reservation fails");
+  };
+  invokeModel.estimateTokenUsage = (invocation) => (
+    invocation.mode === "character_respond" ? 100000 : 32000
+  );
+  const deduction = createDeductionEngine({ invokeModel });
+
+  const running = deduction.execute(input);
+  await twoRolesStarted;
+  assert.equal(roleCalls, 2, "only the two character calls with legal reservations may start");
+  releaseRoles();
+  const result = await running;
+
+  assert.equal(result.service_state, "paused");
+  assert.equal(result.token_budget_exceeded, true);
+  assert.ok(result.token_consumed <= FP008_TOKEN_BUDGET);
+  assert.equal(maxInFlight, 2, "legal character calls must remain parallel");
+  assert.equal(settledRoleCalls, 2, "execute must await every started character call");
+  assert.deepEqual(calls.map((call) => call.mode), [
+    "director_distribute", "character_respond", "character_respond",
+  ]);
+  const tokenTotalAtReturn = result.token_consumed;
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(deduction.getProjection(input.scope).token_consumed, tokenTotalAtReturn);
+});
+
 test("engine emits a persistence-ready partial checkpoint after a budget pause", async () => {
   const input = command();
   input.chapters.push(chapter(IDS.chapter2, IDS.version2, 2));
+  const usagePerFirstChapterCall = (FP008_TOKEN_BUDGET - 100000) / 9;
   const invokeModel = Object.assign(
     async (invocation) => {
       if (invocation.mode === "director_distribute") {
-        return { output: distribution(invocation.input.particle.particle_id), usage: { total_tokens: 300000 } };
+        return { output: distribution(invocation.input.particle.particle_id), usage: { total_tokens: usagePerFirstChapterCall } };
       }
       if (invocation.mode === "character_respond") {
-        return { output: characterResult(), usage: { total_tokens: 300000 } };
+        return { output: characterResult(), usage: { total_tokens: usagePerFirstChapterCall } };
       }
       const completed = Number(invocation.input.particle.particle_id.split("-").at(-1));
-      return { output: convergence(invocation.input.particle.particle_id, completed), usage: { total_tokens: 300000 } };
+      return { output: convergence(invocation.input.particle.particle_id, completed), usage: { total_tokens: usagePerFirstChapterCall } };
     },
     {
       estimateTokenUsage: (invocation) => invocation.input.scope.book_id === IDS.book
@@ -2505,18 +2725,19 @@ test("a selected observable A-to-B event is the only prior-round delivery that r
 test("a budget pause gives each completed chapter a persistence-ready summary", async () => {
   const input = command();
   input.chapters.push(chapter(IDS.chapter2, IDS.version2, 2));
+  const usagePerFirstChapterCall = (FP008_TOKEN_BUDGET - 100000) / 9;
   const invokeModel = Object.assign(
     async (invocation) => {
       if (invocation.mode === "director_distribute") {
-        return { output: distribution(invocation.input.particle.particle_id), usage: { total_tokens: 300000 } };
+        return { output: distribution(invocation.input.particle.particle_id), usage: { total_tokens: usagePerFirstChapterCall } };
       }
       if (invocation.mode === "character_respond") {
-        return { output: characterResult(), usage: { total_tokens: 300000 } };
+        return { output: characterResult(), usage: { total_tokens: usagePerFirstChapterCall } };
       }
       const completed = Number(invocation.input.particle.particle_id.split("-").at(-1));
       return {
         output: convergence(invocation.input.particle.particle_id, completed),
-        usage: { total_tokens: 300000 },
+        usage: { total_tokens: usagePerFirstChapterCall },
       };
     },
     {

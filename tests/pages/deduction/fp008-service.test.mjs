@@ -144,8 +144,8 @@ function command(overrides = {}) {
   return {
     action: "start",
     scope: { local_operator_id: OPERATOR, book_id: BOOK, l1a_unit_id: L1A },
-    token_budget: 3000000,
-    token_budget_version: "mvp-fixed-3000000",
+    token_budget: 10000000,
+    token_budget_version: "mvp-fixed-10000000",
     chapters: [{
       chapter_id: CHAPTER,
       chapter_version_id: VERSION,
@@ -254,8 +254,8 @@ function checkpoint({
       current_particle_index: current,
       remaining_particles: remainingParticles,
       token_consumed: tokenConsumed,
-      token_budget: 3000000,
-      token_budget_version: "mvp-fixed-3000000",
+      token_budget: 10000000,
+      token_budget_version: "mvp-fixed-10000000",
       token_budget_exceeded: tokenBudgetExceeded,
       deduction_complete: deductionComplete,
       reject_count: rejectCount,
@@ -637,7 +637,7 @@ test("resume rejects checkpoint completion drift and preserves a conservative bu
   for (const invalidCheckpoint of [
     checkpoint({ deductionComplete: true }),
     checkpoint({ current: 3, deductionComplete: false }),
-    checkpoint({ tokenConsumed: 3000000, tokenBudgetExceeded: false }),
+    checkpoint({ tokenConsumed: 10000000, tokenBudgetExceeded: false }),
   ]) {
     const resume = command({ action: "resume" });
     resume.chapters[0].checkpoint = invalidCheckpoint;

@@ -285,12 +285,16 @@ function selectedParticle(runtime, chapter) {
   return records.find((record) => record?.particle_id === runtime.selectedParticleId) || null;
 }
 
-function chooseInitialChapter(result, context) {
+export function chooseInitialChapter(result, context) {
   const chapters = asArray(result.chapters);
   const requested = context.chapterId;
   if (requested && chapters.some((chapter) => String(chapter.chapter_id).toLowerCase() === requested)) return requested;
   const active = asObject(result.book?.active_chapter_json).chapter_id;
   if (active && chapters.some((chapter) => chapter.chapter_id === active)) return active;
+  const resumable = chapters.find((chapter) => deductionCommandAction(chapter) === "resume");
+  if (resumable) return resumable.chapter_id;
+  const startable = chapters.find((chapter) => deductionCommandAction(chapter) === "start");
+  if (startable) return startable.chapter_id;
   return chapters.length === 1 ? chapters[0].chapter_id : null;
 }
 
@@ -498,18 +502,20 @@ function renderControls(runtime, chapter) {
       : deductionCommandAction(chapter) || "unavailable";
   const runStatus = runtime.root.querySelector("#deduction-run-status");
   if (runStatus) {
-    const hasCommandError = Boolean(runtime.commandError?.message);
-    runStatus.textContent = exhaustedBudget && !hasCommandError
+    const statusError = runtime.pauseError ?? runtime.commandError;
+    const statusAction = runtime.pauseError ? "pause" : runtime.lastCommand;
+    const hasStatusError = Boolean(statusError?.message);
+    runStatus.textContent = exhaustedBudget && !hasStatusError
       ? "本次 L1A 推演预算已用尽，已保存的颗粒仅供查看。"
       : deductionRunStatusText(
         serviceState || chapter?.run_status || chapter?.status,
         chapter?.deduction_locked,
-        runtime.commandError,
-        runtime.lastCommand,
+        statusError,
+        statusAction,
       );
-    runStatus.classList.toggle("text-error", hasCommandError);
+    runStatus.classList.toggle("text-error", hasStatusError);
     runStatus.setAttribute("aria-live", "polite");
-    if (hasCommandError) runStatus.setAttribute("role", "alert");
+    if (hasStatusError) runStatus.setAttribute("role", "alert");
     else runStatus.removeAttribute("role");
   }
 
@@ -584,6 +590,7 @@ function startDeduction(runtime) {
   runtime.commandPending = true;
   runtime.pausePending = false;
   runtime.pauseRequested = false;
+  runtime.pauseError = null;
   runtime.commandError = null;
   runtime.lastCommand = action;
   renderControls(runtime, chapter);
@@ -614,6 +621,7 @@ function startDeduction(runtime) {
       runtime.commandPending = false;
       runtime.pausePending = false;
       runtime.pauseRequested = false;
+      runtime.pauseError = null;
       renderControls(runtime, selectedChapter(runtime));
       if (deductionFailureRecoveryAction(selectedChapter(runtime), runtime.commandError) === "restart") {
         openFailureRecoveryModal(runtime);
@@ -691,6 +699,7 @@ function requestFailureRecovery(runtime) {
   runtime.commandPending = true;
   runtime.pausePending = false;
   runtime.pauseRequested = false;
+  runtime.pauseError = null;
   runtime.commandError = null;
   runtime.lastCommand = action;
   renderControls(runtime, chapter);
@@ -716,6 +725,7 @@ function requestFailureRecovery(runtime) {
       runtime.commandPending = false;
       runtime.pausePending = false;
       runtime.pauseRequested = false;
+      runtime.pauseError = null;
       renderControls(runtime, selectedChapter(runtime));
       if (deductionFailureRecoveryAction(selectedChapter(runtime), runtime.commandError) === "restart") {
         openFailureRecoveryModal(runtime);
@@ -760,6 +770,7 @@ function requestCreatorReplan(runtime) {
   runtime.commandPending = true;
   runtime.pausePending = false;
   runtime.pauseRequested = false;
+  runtime.pauseError = null;
   runtime.commandError = null;
   runtime.lastCommand = "replan";
   runtime.replanNavigationStarted = false;
@@ -788,6 +799,7 @@ function requestCreatorReplan(runtime) {
       runtime.commandPending = false;
       runtime.pausePending = false;
       runtime.pauseRequested = false;
+      runtime.pauseError = null;
       renderControls(runtime, selectedChapter(runtime));
       if (!runtime.reviewNavigationStarted && !runtime.replanNavigationStarted) {
         loadProjection(runtime, { background: true, scheduleNext: true });
@@ -801,8 +813,7 @@ function requestDeductionPause(runtime) {
   if (runtime.pausePending === true || runtime.pauseRequested === true) return;
   if (runtime.commandPending !== true && serviceState !== "running") return;
   runtime.pausePending = true;
-  runtime.commandError = null;
-  runtime.lastCommand = "pause";
+  runtime.pauseError = null;
   renderControls(runtime, chapter);
   void sendDeductionPauseIntent(runtime.context, {
     fetchImpl: runtime.fetchImpl,
@@ -812,7 +823,7 @@ function requestDeductionPause(runtime) {
       runtime.pauseRequested = true;
     })
     .catch((error) => {
-      runtime.commandError = error;
+      runtime.pauseError = error;
       runtime.pauseRequested = false;
     })
     .finally(() => {
