@@ -384,6 +384,37 @@ function validScore() {
   return { immersion: { score: 8, evidence: "The scene remains clear and emotionally grounded." } };
 }
 
+function v7ReaderScore(evidence = "The candidate text establishes the documented emotional pressure.") {
+  return {
+    "阅读体验评分": {
+      "E1_沉浸感": { "得分": 3, "原文依据": evidence },
+      "E2_阅读流畅度": { "得分": 2, "原文依据": evidence },
+    },
+    "心理共鸣评分": {
+      "D1_生存焦虑": { "得分": 2, "原文依据": evidence },
+    },
+    "风险预警指标": {
+      "R1_空心深刻": { "得分": 0, "原文依据": "" },
+    },
+    "分数汇总": { "体验总分": 5, "共鸣总分": 2, "风险扣分": 0, "最终计算得分": 7 },
+    "全局综合评级": 7,
+    "机器写作指纹": [],
+    "吐槽点预测": [],
+    "建议修复行动": [],
+  };
+}
+
+function v7CommercialScore() {
+  return {
+    "连载牵引力": { "末尾钩子强度": 6, "信息递进评级": "中", "跳出风险点": [] },
+    "商业点兑现": { "卖点兑现率": "3/3", "原文依据": "The candidate advances the documented commercial promise." },
+    "节奏评估": { "情绪曲线匹配度": "匹配", "高潮间距合理性": "合理", "缓冲章评价": "不适用" },
+    "可读性审计": [],
+    "综合商业评级": 7.2,
+    "商业修复建议": [],
+  };
+}
+
 function prepareReturnCandidate(fixture, candidate, label) {
   expectOk(rpc("rpc_confirm_audit_result", validObjective(fixture, candidate, `${label}-objective`)));
   expectOk(rpc("rpc_record_chapter_review_evidence", reviewPayload(fixture, candidate, "reader", `${label}-reader`, validScore())));
@@ -609,47 +640,45 @@ test("V7 B5-B8 data-quality gates reject malformed audit and return evidence", {
       assert.equal(Number(sql(`SELECT count(*) FROM public.chapter_header WHERE id=${sqlText(target.chapterId)} AND status='confirmed' AND confirmation_status='creator_confirmed'`)), 1);
     });
 
-    await t.test("reader evidence must include non-empty evidence text", () => {
+    await t.test("V7 reader dimensions retain aggregates but require evidence for non-zero scores", () => {
       expectOk(rpc("rpc_confirm_audit_result", validObjective(fixture, candidate("reader-evidence"), "reader-objective")));
+      expectOk(rpc("rpc_record_chapter_review_evidence", reviewPayload(
+        fixture,
+        candidate("reader-evidence"),
+        "reader",
+        "reader-v7-evidence",
+        v7ReaderScore(),
+      )));
       const response = rpc("rpc_record_chapter_review_evidence", reviewPayload(
         fixture,
         candidate("reader-evidence"),
         "reader",
         "reader-empty-evidence",
-        { immersion: { score: 8, evidence: "" } },
+        v7ReaderScore(""),
       ));
       expectError(response, "REVIEW_INCOMPLETE");
     });
 
-    await t.test("commercial evidence must include non-empty evidence text", () => {
+    await t.test("V7 commercial evidence accepts its aggregate commercial score", () => {
       expectOk(rpc("rpc_confirm_audit_result", validObjective(fixture, candidate("commercial-evidence"), "commercial-objective")));
-      const response = rpc("rpc_record_chapter_review_evidence", reviewPayload(
+      expectOk(rpc("rpc_record_chapter_review_evidence", reviewPayload(
         fixture,
         candidate("commercial-evidence"),
         "commercial",
-        "commercial-empty-evidence",
-        { commercial_fit: { score: 7, evidence: "" } },
-      ));
-      expectError(response, "REVIEW_INCOMPLETE");
+        "commercial-v7-evidence",
+        v7CommercialScore(),
+      )));
     });
 
-    await t.test("reader and commercial non-zero scalar scores cannot bypass evidence", () => {
+    await t.test("reader non-zero scalar dimensions cannot bypass evidence", () => {
       const reader = rpc("rpc_record_chapter_review_evidence", reviewPayload(
         fixture,
         candidate("reader-evidence"),
         "reader",
         "reader-scalar-evidence",
-        { immersion: 8 },
+        { "阅读体验评分": { "E1_沉浸感": 8 } },
       ));
       expectError(reader, "REVIEW_INCOMPLETE");
-      const commercial = rpc("rpc_record_chapter_review_evidence", reviewPayload(
-        fixture,
-        candidate("commercial-evidence"),
-        "commercial",
-        "commercial-scalar-evidence",
-        { commercial_fit: 7 },
-      ));
-      expectError(commercial, "REVIEW_INCOMPLETE");
     });
 
     await t.test("internal review evidence cannot write creator confirmation", () => {

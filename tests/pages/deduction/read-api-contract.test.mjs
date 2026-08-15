@@ -102,6 +102,83 @@ test("a refresh never turns an unpersisted FP008 runtime pause into a resumable 
   assert.equal(deductionCommandAction(refreshedChapter), "start");
 });
 
+test("a paused completed snapshot for a formalized chapter cannot reject the next deduction projection", () => {
+  const currentChapter = {
+    chapter_id: "55555555-6666-4777-8888-999999999999",
+    candidate_version_id: "66666666-7777-4888-8999-aaaaaaaaaaaa",
+    l1a_unit_id: "22222222-3333-4444-8555-666666666666",
+    status: "plan_ready",
+    run_status: "plan_ready",
+    deduction_locked: false,
+  };
+  const databaseResult = {
+    ok: true,
+    result: {
+      book: { id: "abcdefab-1234-4abc-8abc-abcdefabcdef", current_l1a_id: currentChapter.l1a_unit_id },
+      chapters: [currentChapter],
+    },
+  };
+  const runtimeResult = {
+    book: { id: databaseResult.result.book.id, current_l1a_id: currentChapter.l1a_unit_id },
+    service_state: "paused",
+    chapters: [{
+      chapter_id: "33333333-4444-4555-8666-777777777777",
+      candidate_version_id: "44444444-5555-4666-8777-888888888888",
+      l1a_unit_id: currentChapter.l1a_unit_id,
+      deduction_progress_json: { deduction_complete: true, current_particle_index: 8 },
+    }, currentChapter],
+  };
+
+  assert.deepEqual(mergeDeductionRuntime(structuredClone(databaseResult), runtimeResult), databaseResult);
+});
+
+test("a paused incomplete snapshot outside the database projection remains a mismatch", () => {
+  const chapter = {
+    chapter_id: "33333333-4444-4555-8666-777777777777",
+    candidate_version_id: "44444444-5555-4666-8777-888888888888",
+    l1a_unit_id: "22222222-3333-4444-8555-666666666666",
+  };
+  const databaseResult = {
+    ok: true,
+    result: { book: { id: "abcdefab-1234-4abc-8abc-abcdefabcdef", current_l1a_id: chapter.l1a_unit_id }, chapters: [chapter] },
+  };
+  const runtimeResult = {
+    book: { id: databaseResult.result.book.id, current_l1a_id: chapter.l1a_unit_id },
+    service_state: "paused",
+    chapters: [{
+      chapter_id: "55555555-6666-4777-8888-999999999999",
+      candidate_version_id: "66666666-7777-4888-8999-aaaaaaaaaaaa",
+      l1a_unit_id: chapter.l1a_unit_id,
+      deduction_progress_json: { deduction_complete: false },
+    }],
+  };
+
+  assert.throws(() => mergeDeductionRuntime(databaseResult, runtimeResult), /FP008_RUNTIME_CHAPTER_MISMATCH/u);
+});
+
+test("a paused snapshot for the current chapter cannot change its candidate version", () => {
+  const chapter = {
+    chapter_id: "33333333-4444-4555-8666-777777777777",
+    candidate_version_id: "44444444-5555-4666-8777-888888888888",
+    l1a_unit_id: "22222222-3333-4444-8555-666666666666",
+  };
+  const databaseResult = {
+    ok: true,
+    result: { book: { id: "abcdefab-1234-4abc-8abc-abcdefabcdef", current_l1a_id: chapter.l1a_unit_id }, chapters: [chapter] },
+  };
+  const runtimeResult = {
+    book: { id: databaseResult.result.book.id, current_l1a_id: chapter.l1a_unit_id },
+    service_state: "paused",
+    chapters: [{
+      ...chapter,
+      candidate_version_id: "55555555-6666-4777-8888-999999999999",
+      deduction_progress_json: { deduction_complete: true },
+    }],
+  };
+
+  assert.throws(() => mergeDeductionRuntime(databaseResult, runtimeResult), /FP008_RUNTIME_CHAPTER_MISMATCH/u);
+});
+
 test("a running FP008 projection exposes a separate display overlay without replacing persisted data", () => {
   const chapter = {
     chapter_id: "33333333-4444-4555-8666-777777777777",

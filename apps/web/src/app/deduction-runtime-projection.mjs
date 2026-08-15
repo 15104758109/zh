@@ -17,18 +17,29 @@ export function mergeDeductionRuntime(databaseResult, runtimeResult) {
     throw new Error("FP008_RUNTIME_SCOPE_MISMATCH");
   }
 
+  const runtimeState = typeof runtimeResult.service_state === "string" ? runtimeResult.service_state : null;
   const databaseChapters = Array.isArray(databaseResult.result.chapters) ? databaseResult.result.chapters : [];
   const runtimeChapters = Array.isArray(runtimeResult.chapters) ? runtimeResult.chapters : [];
-  const byIdentity = new Map(databaseChapters.map((chapter) => [chapterIdentity(chapter), chapter]));
+  const byChapterId = new Map(databaseChapters.map((chapter) => [String(chapter?.chapter_id).toLowerCase(), chapter]));
+  const matchedRuntimeChapters = [];
 
   for (const runtimeChapter of runtimeChapters) {
-    const chapter = byIdentity.get(chapterIdentity(runtimeChapter));
-    if (!chapter || String(runtimeChapter?.l1a_unit_id).toLowerCase() !== String(databaseBook.current_l1a_id).toLowerCase()) {
+    if (String(runtimeChapter?.l1a_unit_id).toLowerCase() !== String(databaseBook.current_l1a_id).toLowerCase()) {
       throw new Error("FP008_RUNTIME_CHAPTER_MISMATCH");
     }
+    const chapter = byChapterId.get(String(runtimeChapter?.chapter_id).toLowerCase());
+    if (!chapter) {
+      // After RPC-015 formalizes a completed chapter, v_chapter_progress no
+      // longer projects it while FP008 can still retain its paused snapshot.
+      if (runtimeState === "paused" && runtimeChapter?.deduction_progress_json?.deduction_complete === true) continue;
+      throw new Error("FP008_RUNTIME_CHAPTER_MISMATCH");
+    }
+    if (chapterIdentity(runtimeChapter) !== chapterIdentity(chapter)) {
+      throw new Error("FP008_RUNTIME_CHAPTER_MISMATCH");
+    }
+    matchedRuntimeChapters.push([runtimeChapter, chapter]);
   }
 
-  const runtimeState = typeof runtimeResult.service_state === "string" ? runtimeResult.service_state : null;
   if (!visibleRuntimeStates.has(runtimeState)) return databaseResult;
 
   const runtimeBlockedCode = typeof runtimeResult.blocked_code === "string"
@@ -37,8 +48,7 @@ export function mergeDeductionRuntime(databaseResult, runtimeResult) {
   const runtimeL1aTokenConsumed = Number(runtimeResult.token_consumed);
   const hasRuntimeL1aTokenConsumed = Number.isFinite(runtimeL1aTokenConsumed)
     && runtimeL1aTokenConsumed >= 0;
-  for (const runtimeChapter of runtimeChapters) {
-    const chapter = byIdentity.get(chapterIdentity(runtimeChapter));
+  for (const [runtimeChapter, chapter] of matchedRuntimeChapters) {
     chapter.runtime_service_state = runtimeState;
     chapter.runtime_blocked_code = runtimeBlockedCode;
     if (hasRuntimeL1aTokenConsumed) chapter.runtime_l1a_token_consumed = runtimeL1aTokenConsumed;

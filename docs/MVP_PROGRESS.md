@@ -1,22 +1,20 @@
 # V7 MVP 当前进度
 
-更新时间：2026-08-14（PDT）
+更新时间：2026-08-15（PDT）
 
 ## 真实用户旅程
 
-- MVP 当前为 **0/10 个正式章节**。验收书 `d2173b3a-75a4-49df-9528-dfc08f9f6eb8` 的第 1 章候选 `5c766357-4d65-4d45-ba0a-2f7a5482302f` 已锁定推演，但尚未形成正文、审计记录或正式章。
-- 从真实审核页“开始生成正文”发起的 execution `3748` 已真实经过 FP009、FP010；它证明 Nano 能到达客观审计，但模型先后输出了缺失资产元数据、未转义证据内引号及错误的 `formalization_eligible`。
-- ZH06 `ed2280fe-25ab-401f-a700-d2a79d40c369` 已发布版本 `9c67e0e6-307d-4ca0-92b8-d765ecd80ed5`：拒答不能进入正文；FP010 只修复观察到的证据内引号；`formalization_eligible` 由完整 P0/P1 审查结果派生。合同测试 `66/66 PASS`。
-- execution `3753` 在完整模型输出阶段超过六分钟且无下游节点数据，重启同一 `n8n-server` 后标记为 `crashed`。页面刷新恢复为可点击的“开始生成正文”，浏览器无应用 console error。
-- PostgreSQL 当前状态：候选 `prose_text` 长度 `0`、`deduction_locked=true`、`audit_attempt_log=0`、正式章 `0`。没有通过直写或伪造结果继续旅程。
+- MVP 当前为 **1/10 个正式章节**。验收书 `d2173b3a-75a4-49df-9528-dfc08f9f6eb8` 的第 1 章版本 `5c766357-4d65-4d45-ba0a-2f7a5482302f` 已从真实页面进入 ZH06，依次通过 FP009、FP010、FP011、FP012、FP013，并由 `rpc_commit_chapter` 正式写入。
+- 当前真实 execution `3779` 停在 FP012-02 创作者确认等待：章节和版本均为 `formal`、`valid`，`review_decision=Y`，`confirmation_status=unconfirmed`，`run_status=awaiting_creator_confirmation`。这是 V7 的创作者确认常态，不是后端暂停故障。
+- 已修复正式化后旧 FP008 paused snapshot 使 `/api/books/.../deduction` 误报 `RPC_UNAVAILABLE` 的投影缺陷。真实接口恢复 200，刷新审核页可读取下一章候选和已正式的审计投影；不把内存 paused 状态伪装成可恢复检查点。
+- 真实 `/audit` 页面可显示正式正文与三类审计结果；当前“继续下一章/退回当前章”仍禁用，因为 execution `3779` 的初始 webhook 响应没有返回页面合同要求的 signed `wait_route`，不能安全调用等待回调。
 
-## 当前运行时状态
+## 当前运行时阻断
 
-- FP016 `复杂任务` 当前 active 为 OpenRouter Nano v47，FP010 节点温度为 `0.2`；受控连接测试可返回 HTTP 200，但不能证明完整 FP009/FP010 输出可用。
-- OpenRouter Super 已两次在完整正文调用阶段超过六分钟；Nano 既有可解析但不完整的 FP010 输出，也有当前完整调用无下游输出。当前工程 P0 是外部模型完整输出不稳定，不是页面暂停、PostgreSQL 状态或 JSON 解析器。
-- 无运行中的 n8n execution。FP016 和每次 ZH06 发布前的数据库/workflow 备份均保留为本地 `.tmp-*` 回退材料。
-- 辅助功能已纳入最终验收：世界设定助手、角色设定助手和前端变体必须在一本文档合法的新书且 FP004-04 锁定前完成；FP015-02 技能评价与优化保持 `REFERENCE_ONLY`，验收为零模型、零写库。当前验收书已进入 production，不倒退解锁补测。
+- ZH06 live workflow `ed2280fe-25ab-401f-a700-d2a79d40c369` 的 `activeVersionId=2f07958b-997a-4e25-9a99-a13ecaa1bcad`。现有 Respond 节点在 FP012-01 的并行分支执行，早于 `rpc_commit_chapter` 与 FP012-02 Wait；即使 `$execution.resumeUrl` 可用，提前返回会让创作者拿到尚未进入等待的地址，形成竞态。
+- 恢复创作者继续/退回需要将既有成功响应连接到 `FP013-02` 成功后，并保留同一 Wait 节点与签名 `$execution.resumeUrl`。这是一处既有 n8n 连线调整，需按 AGENTS 的审批边界执行、发布读回并以新的真实页面旅程复验。
+- FP016 的模型配置不再是当前第 1 章的首个阻断：本次 FP012-01 真实主编输出为合法 Y。模型输出可靠性仍须在后续章节持续观察，优先保持 JSON 解析与 V7 DTO fail-closed，不从 reasoning 伪造业务裁决。
 
 ## 最小下一步
 
-为 OpenRouter 受控凭据找到一次能完成真实 FP009/FP010 输出的模型配置，再从当前审核页重试并检查 FP010-02、PostgreSQL 与刷新恢复；之后才开始同一本书的主观审计、正式化和连续十章验收。主链稳定后，创建一本文档合法的新书串行验收世界、角色和变体辅助流程。
+获得该最小 ZH06 连线调整的批准后：备份 live workflow，重连已存在的 `FP013-02正文入库 -> Respond：审计与写回完成` 成功出口并移除 FP012-01 的提前成功响应，发布读回；从同一本书真实页面重新触发下一章节，验证 signed `wait_route`、`/audit` 按钮、continue/return 回调、PostgreSQL 和刷新恢复。之后继续同一本书的连续 10 章验收。

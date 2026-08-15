@@ -6494,14 +6494,23 @@ BEGIN
      OR (v_phase = 'editorial' AND jsonb_typeof(v_decision) IS DISTINCT FROM 'object') THEN
     RETURN public.v7_error('REVIEW_INCOMPLETE', 'Reader/commercial evidence needs score_json and editorial evidence needs decision_json.');
   END IF;
-  IF v_phase IN ('reader', 'commercial') AND EXISTS (
+  IF v_phase = 'reader' AND EXISTS (
     SELECT 1
-    FROM jsonb_each(v_score) AS dimension(key, value)
+    FROM jsonb_each(v_score) AS score_group(group_key, group_value)
+    CROSS JOIN LATERAL jsonb_each(
+      CASE
+        WHEN jsonb_typeof(score_group.group_value) = 'object' THEN score_group.group_value
+        ELSE '{}'::jsonb
+      END
+    ) AS dimension(key, value)
     WHERE (
-        jsonb_typeof(dimension.value) = 'number'
+        score_group.group_key IN ('阅读体验评分', '心理共鸣评分', '风险预警指标')
+        AND jsonb_typeof(dimension.value) = 'number'
         AND (dimension.value #>> '{}')::numeric <> 0
       )
       OR (
+        score_group.group_key IN ('阅读体验评分', '心理共鸣评分', '风险预警指标')
+        AND
         jsonb_typeof(dimension.value) = 'object'
         AND (
         (
