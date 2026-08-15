@@ -907,6 +907,22 @@ function relationConvergenceRepairFeedback(
   } : null;
 }
 
+function convergenceValidationRepairFeedback(
+  error: DeductionServiceError,
+  value: unknown,
+  state: CandidateTruthState,
+): JsonObject {
+  if (error.message === "A relation change must reference an event containing both roles.") {
+    const relationFeedback = relationConvergenceRepairFeedback(value, state);
+    if (relationFeedback) return relationFeedback;
+  }
+  return {
+    repair_reason: "The preceding director convergence response failed schema validation.",
+    validation_error: error.message,
+    repair_instruction: "Regenerate the complete director convergence object. Do not invent missing business values; omit an optional change when it cannot include every required field.",
+  };
+}
+
 function validateDistribution(value: unknown, chapter: JsonObject, particle: JsonObject): Map<string, JsonObject> {
   assertNoForbiddenOutput(value, "director_distribution");
   const envelope = object(value, "director_distribution");
@@ -1813,9 +1829,7 @@ export function createDeductionEngine({
               }
               if (error instanceof DeductionServiceError && error.code === "MODEL_OUTPUT_INVALID"
                 && convergenceOutputRetries < 2) {
-                if (error.message === "A relation change must reference an event containing both roles.") {
-                  convergenceRepair = relationConvergenceRepairFeedback(convergenceOutput, activeTruthState);
-                }
+                convergenceRepair = convergenceValidationRepairFeedback(error, convergenceOutput, activeTruthState);
                 pauseBeforeSemanticRetry();
                 resetDirectorSession();
                 convergenceOutputRetries += 1;
@@ -1837,9 +1851,7 @@ export function createDeductionEngine({
                 if (error instanceof DeductionServiceError
                   && error.code === "MODEL_OUTPUT_INVALID"
                   && convergenceOutputRetries < 2) {
-                  if (error.message === "A relation change must reference an event containing both roles.") {
-                    convergenceRepair = relationConvergenceRepairFeedback(lastConvergence, activeTruthState);
-                  }
+                  convergenceRepair = convergenceValidationRepairFeedback(error, lastConvergence, activeTruthState);
                   pauseBeforeSemanticRetry();
                   resetDirectorSession();
                   convergenceOutputRetries += 1;

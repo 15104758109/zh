@@ -55,6 +55,11 @@ export function buildFp008Service({
   const app = Fastify({ logger, bodyLimit: 20 * 1024 * 1024 });
 
   app.addHook("onRequest", async (request, reply) => {
+    // FP008 can await several model calls before emitting its single JSON DTO.
+    // Keep the Docker-to-host socket alive without changing that response contract.
+    if (request.method === "POST" && request.url.startsWith("/fp008-02")) {
+      request.raw.socket.setKeepAlive?.(true, 30_000);
+    }
     const origin = localBrowserOrigin(request.headers.origin);
     if (origin) {
       reply.header("access-control-allow-origin", origin);

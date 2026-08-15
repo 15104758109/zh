@@ -1414,6 +1414,78 @@ test("director convergence rejects malformed or out-of-scope state and relation 
   }
 });
 
+test("director convergence rejects a partial memory change without retaining a checkpoint", async () => {
+  const deduction = createDeductionEngine({
+    invokeModel: async (invocation) => {
+      if (invocation.mode === "director_distribute") {
+        return { output: distribution(invocation.input.particle.particle_id), usage: { total_tokens: 5 } };
+      }
+      if (invocation.mode === "character_respond") {
+        return { output: characterResult(), usage: { total_tokens: 5 } };
+      }
+      const output = convergence(invocation.input.particle.particle_id, 1);
+      output.memory_changes = [{
+        character_id: IDS.character,
+        memory_type: "event",
+        memory_content: "The route was held at a cost.",
+        importance: 0.7,
+        decay_rate: 0.2,
+        event_ids: [`event-${invocation.input.particle.particle_id}`],
+      }];
+      return { output, usage: { total_tokens: 5 } };
+    },
+  });
+  const input = command();
+
+  await assert.rejects(
+    deduction.execute(input),
+    (error) => error?.code === "MODEL_OUTPUT_INVALID"
+      && error?.message === "memory_changes[].truth_status is required.",
+  );
+  assert.equal(deduction.getProjection(input.scope), null);
+});
+
+test("director convergence retries a partial memory change with a non-inventive repair instruction", async () => {
+  const directorInputs = [];
+  let firstConvergence = true;
+  const deduction = createDeductionEngine({
+    invokeModel: async (invocation) => {
+      if (invocation.mode === "director_distribute") {
+        return { output: distribution(invocation.input.particle.particle_id), usage: { total_tokens: 5 } };
+      }
+      if (invocation.mode === "character_respond") {
+        return { output: characterResult(), usage: { total_tokens: 5 } };
+      }
+      directorInputs.push(structuredClone(invocation.input));
+      const output = convergence(
+        invocation.input.particle.particle_id,
+        Number(invocation.input.particle.particle_id.split("-").at(-1)),
+      );
+      if (firstConvergence) {
+        firstConvergence = false;
+        output.memory_changes = [{
+          character_id: IDS.character,
+          memory_type: "event",
+          memory_content: "The route was held at a cost.",
+          importance: 0.7,
+          decay_rate: 0.2,
+          event_ids: [`event-${invocation.input.particle.particle_id}`],
+        }];
+      }
+      return { output, usage: { total_tokens: 5 } };
+    },
+  });
+
+  const result = await deduction.execute(command());
+
+  assert.equal(result.deduction_complete, true);
+  assert.deepEqual(directorInputs[1].convergence_repair, {
+    repair_reason: "The preceding director convergence response failed schema validation.",
+    validation_error: "memory_changes[].truth_status is required.",
+    repair_instruction: "Regenerate the complete director convergence object. Do not invent missing business values; omit an optional change when it cannot include every required field.",
+  });
+});
+
 test("engine retries an invalid director convergence before blocking its particle", async () => {
   const calls = [];
   let convergenceAttempts = 0;

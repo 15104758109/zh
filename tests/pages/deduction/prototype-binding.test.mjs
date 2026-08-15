@@ -82,6 +82,63 @@ test("DEDUCTION keeps the existing resume command available for recoverable back
   );
 });
 
+test("DEDUCTION does not let a stale running projection hide a recoverable command error", () => {
+  const chapter = {
+    status: "deduction_partial",
+    run_status: "deduction_partial",
+    deduction_locked: false,
+    runtime_service_state: "running",
+    target_snapshot_json: {
+      particles_json: [{ particle_id: "particle-1" }],
+      scene_condition_package: { scene_location: "documented scene" },
+    },
+    candidate_plot_sim_json: {
+      deduction_input_snapshot: {
+        particles: [{ particle_id: "particle-1" }],
+        participating_chars: [{ char_id: "character-1" }],
+      },
+      particles_records: [{ particle_id: "particle-1", particle_status: "completed" }],
+    },
+    deduction_progress_json: { current_particle_index: 1 },
+  };
+
+  assert.equal(
+    runtimeModule.deductionControlMode(chapter, {
+      commandError: { code: "MODEL_OUTPUT_INVALID" },
+      serviceState: "running",
+    }),
+    "resume",
+  );
+  assert.equal(
+    runtimeModule.deductionControlMode(chapter, {
+      commandError: { code: "SCOPE_REJECTED" },
+      serviceState: "running",
+    }),
+    "unavailable",
+  );
+});
+
+test("DEDUCTION clears only the runtime display overlay after a failed command refresh", () => {
+  const result = runtimeModule.deductionPersistedProjection({
+    book: { title: "book", runtime_service_state: "running", runtime_blocked_code: "MODEL_OUTPUT_INVALID" },
+    chapters: [{
+      chapter_id: "chapter-1",
+      deduction_progress_json: { current_particle_index: 1 },
+      runtime_service_state: "running",
+      runtime_blocked_code: "MODEL_OUTPUT_INVALID",
+      runtime_l1a_token_consumed: 500,
+      runtime_deduction_progress_json: { current_particle_index: 3 },
+      runtime_candidate_plot_sim_json: { particles_records: [{ particle_id: "runtime" }] },
+    }],
+  });
+
+  assert.deepEqual(result.book, { title: "book" });
+  assert.deepEqual(result.chapters, [{
+    chapter_id: "chapter-1",
+    deduction_progress_json: { current_particle_index: 1 },
+  }]);
+});
+
 test("DEDUCTION opens the resumable chapter when a paused L1A has no explicit active chapter", () => {
   const resumable = {
     chapter_id: "chapter-2",
@@ -209,6 +266,7 @@ test("DEDUCTION retains prototype anchors while binding the approved read projec
   assert.match(module, /deductionFailureRecoveryAction/);
   assert.match(module, /deductionFailureRecoveryAction\(chapter, runtime\.commandError\)/);
   assert.match(module, /deductionFailureRecoveryAction\(selectedChapter\(runtime\), runtime\.commandError\)/);
+  assert.match(module, /if \(runtime\.commandError\) \{\s*stopPolling\(runtime\);\s*void loadProjection\(runtime, \{ background: true \}\);/);
   assert.match(client, /MODEL_CALL_FAILED/);
   assert.match(module, /requestFailureRecovery/);
   assert.match(module, /creatorReplanAction/);

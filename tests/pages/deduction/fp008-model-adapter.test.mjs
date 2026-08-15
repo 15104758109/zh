@@ -74,6 +74,9 @@ test("the FP008 F3/F4 system prompt requires an exact dual_spiral_verdict key", 
   assert.match(systemPrompt, /`dual_spiral_verdict`.*`dual_spiral_verrix`/su);
   assert.match(systemPrompt, /除上述字段外不得输出顶层字段/u);
   assert.match(systemPrompt, /events_in_round|state_diff|alt_paths/u);
+  assert.match(systemPrompt, /Every memory_changes entry must include all seven required keys/u);
+  assert.match(systemPrompt, /truth_status must be exactly true, misremembered, or false/u);
+  assert.match(systemPrompt, /No partial memory entry is allowed; an empty memory_changes array is valid/u);
 });
 
 test("the local resolver reads only the production injection for the approved credential reference", async () => {
@@ -393,7 +396,7 @@ test("the diagnostic request observer exposes one node prompt for isolated model
   assert.equal(requests[0].nodeCode, "NODE_05");
   assert.equal(requests[0].call_id, 1);
   assert.equal(requests[0].mode, "character_respond");
-  assert.equal(requests[0].system_prompt, "prompt-sentinel");
+  assert.match(requests[0].system_prompt, /^prompt-sentinel\n\nRuntime output contract:\nRun only FP008-02 F2/u);
   assert.match(requests[0].user_input, /character_respond/u);
   assert.equal(requests[0].message_count, 2);
   assert.equal(requests[0].max_tokens, 2048);
@@ -735,6 +738,8 @@ test("the FP008 adapter scopes marked prompt material to the invoking role", asy
   assert.doesNotMatch(directorPrompt, /F2_ONLY|F5_ONLY/u);
   assert.match(characterPrompt, /MODE_DISPATCH|F2_ONLY/u);
   assert.doesNotMatch(characterPrompt, /F1_ONLY|F3_ONLY|F5_ONLY/u);
+  assert.match(characterPrompt, /Do not output reasoning/u);
+  assert.match(requests[1].messages.at(-1).content, /Do not output reasoning/u);
 });
 
 test("JSON repair accepts BOM, fenced JSON, and one object surrounded by prose", async () => {
@@ -828,6 +833,56 @@ test("JSON repair completes a director's partial character live-state snapshot f
     current_emo_tag: "resolved",
   });
   assert.deepEqual(reply.output.state_diff[1].after, { emotion_state_json: { mood: "unchanged" } });
+});
+
+test("JSON repair completes a director's partial relation snapshot from the same candidate context", async () => {
+  const baseline = {
+    trust: 4,
+    intimacy: 3,
+    power_balance: 0,
+    dependence: 2,
+    hostility: 1,
+    common_goal: 5,
+    secret_known: 2,
+    emotional_bond: 3,
+    relation_type: "allies",
+    relation_hierarchy: "equal",
+    relation_origin: "shared proof",
+    relation_overview: "They protect the same evidence.",
+    change_event_json: { event_id: "before" },
+  };
+  const invoke = createOpenAiCompatibleModelInvoker({
+    resolveCredential: async () => "secret-value",
+    fetchImpl: async () => modelResponse({
+      relation_diff: [{
+        relation_state_id: "relation-1",
+        after: { trust: 5, change_event_json: { event_id: "after" } },
+      }, {
+        relation_state_id: "unknown-relation",
+        after: { trust: 5 },
+      }],
+    }),
+  });
+
+  const reply = await invoke({
+    nodeCode: "NODE_06",
+    mode: "director_converge",
+    binding: binding(),
+    sessionKey: "partial-relation-repair",
+    continueSession: false,
+    input: {
+      candidate_state_context: {
+        relations: [{ relation_state_id: "relation-1", current_state: baseline }],
+      },
+    },
+  });
+
+  assert.deepEqual(reply.output.relation_diff[0].after, {
+    ...baseline,
+    trust: 5,
+    change_event_json: { event_id: "after" },
+  });
+  assert.deepEqual(reply.output.relation_diff[1].after, { trust: 5 });
 });
 
 test("JSON repair rejects truncated and multiple top-level values without merging them", async () => {

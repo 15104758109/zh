@@ -634,18 +634,41 @@ test("both FP008-03 paths use the configured OpenAI-compatible chat endpoint and
     },
   ];
 
+  const sceneConditionPackage = {
+    scene_location: "maintenance well entrance",
+    participant_chars: ["character-1"],
+  };
   const context = {
     runtime_bindings: {
       "FP008-03": {
         model_name: "test-model",
         provider_base_url: "https://model.example/v1",
-        prompt_text: "preaudit prompt",
+        prompt_text: [
+          "#### System Prompt",
+          "",
+          "```",
+          "preaudit system",
+          "```",
+          "",
+          "#### User Prompt",
+          "",
+          "```",
+          "candidate={{ candidate_plot_sim_json }}",
+          "target={{ target_snapshot_json }}",
+          "scene={{ scene_condition_package_json }}",
+          "knowledge={{ characters_knowledge_boundary_json }}",
+          "```",
+        ].join("\n"),
         api_key_ref: "local-secure-ref:test",
         temperature: 0.3,
       },
     },
-    chapters: [{ chapter_id: "chapter-1" }],
-    characters: [{ character_id: "character-1" }],
+    chapters: [{
+      chapter_id: "chapter-1",
+      target_snapshot_json: { goals: ["preserve the formal evidence boundary"] },
+      scene_condition_package: sceneConditionPackage,
+    }],
+    characters: [{ character_id: "character-1", knowledge_boundary_json: { knows: [] } }],
     world_state: [{ world_id: "world-1" }],
   };
   const risk_hints = ["AUDIT-02", "AUDIT-03", "AUDIT-05", "AUDIT-06", "AUDIT-09"]
@@ -664,16 +687,29 @@ test("both FP008-03 paths use the configured OpenAI-compatible chat endpoint and
       runExpressionWithNodes(audit.parameters.url, { service_ok: true }, namedNodes),
       "https://model.example/v1/chat/completions",
     );
-    const request = runExpressionWithNodes(audit.parameters.jsonBody, {
+    const request = JSON.parse(runExpressionWithNodes(audit.parameters.jsonBody, {
       service_ok: true,
-      engine_result: { chapters: [] },
+      engine_result: {
+        chapters: [{
+          chapter_id: "chapter-1",
+          candidate_version_id: "version-1",
+          candidate_plot_sim_json: { particles_records: [] },
+        }],
+      },
       redacted_error: null,
-    }, namedNodes);
+    }, namedNodes));
     assert.equal(request.model, "test-model");
     assert.equal(request.temperature, 0.3);
-    assert.equal(request.messages.length, 1);
-    assert.match(request.messages[0].content, /^preaudit prompt\nINPUT=/);
-    assert.doesNotMatch(request.messages[0].content, /runtime_bindings|api_key_ref|local-secure-ref/u);
+    if (audit.id === "27389b02-a256-4603-9cba-84e9e65f7743") {
+      assert.equal(request.messages.length, 2);
+      assert.deepEqual(request.messages[0], { role: "system", content: "preaudit system" });
+      assert.match(request.messages[1].content, /candidate=\[\{"chapter_id":"chapter-1"/u);
+      assert.doesNotMatch(request.messages[1].content, /runtime_bindings|api_key_ref|local-secure-ref/u);
+    } else {
+      assert.equal(request.messages.length, 1);
+      assert.match(request.messages[0].content, /^#### System Prompt/u);
+      assert.doesNotMatch(request.messages[0].content, /runtime_bindings|api_key_ref|local-secure-ref/u);
+    }
     assert.match(audit.parameters.jsonBody, /CONFIG_CONTRACT_BLOCKED/);
     assert.equal(audit.parameters.options.response.response.fullResponse, true);
     assert.equal(audit.parameters.options.response.response.neverError, true);
@@ -722,11 +758,11 @@ test("FP008-03 start audit keeps failed service input out of the model request",
     }, namedNodes),
     /MODEL_OUTPUT_INVALID/u,
   );
-  const request = runExpressionWithNodes(audit.parameters.jsonBody, {
+  const request = JSON.parse(runExpressionWithNodes(audit.parameters.jsonBody, {
     service_ok: true,
     redacted_error: null,
     engine_result: { chapters: [] },
-  }, namedNodes);
+  }, namedNodes));
   assert.equal(request.model, "test-model");
   assert.match(request.messages[0].content, /^preaudit prompt\nINPUT=/u);
 });
@@ -2080,7 +2116,10 @@ test("FP008-03 emits risk hints and routes both entry paths without a page appro
   assert.match(activePreaudit?.parameters.jsonBody ?? "", /runtime_bindings/);
   assert.match(activePreaudit?.parameters.jsonBody ?? "", /FP008-03/);
   assert.match(activePreaudit?.parameters.jsonBody ?? "", /prompt_text/);
-  assert.match(activePreaudit?.parameters.jsonBody ?? "", /deduction_result/);
+  assert.match(activePreaudit?.parameters.jsonBody ?? "", /candidate_plot_sim_json/);
+  assert.match(activePreaudit?.parameters.jsonBody ?? "", /target_snapshot_json/);
+  assert.match(activePreaudit?.parameters.jsonBody ?? "", /scene_condition_package_json/);
+  assert.match(activePreaudit?.parameters.jsonBody ?? "", /characters_knowledge_boundary_json/);
   assert.equal(activePreaudit?.parameters.options?.response?.response?.fullResponse, true);
   assert.equal(activePreaudit?.onError, "continueRegularOutput");
   assert.match(activeNormalizer?.parameters.jsCode ?? "", /choices\?\.\[0\]\?\.message\?\.content/);
@@ -2203,7 +2242,11 @@ test("FP008-03 emits risk hints and routes both entry paths without a page appro
 test("FP008-03 separates the active system/user template and renders only the V7 audit projection", async () => {
   const workflow = await readWorkflow();
   const promptMaterial = await readFile(promptMaterialPath, "utf8");
-  const preaudit = workflow.nodes.find(candidate => candidate.id === "zh05-fp008-03-resume-relaycove");
+  const preaudit = workflow.nodes.find(candidate => candidate.id === "27389b02-a256-4603-9cba-84e9e65f7743");
+  const relayCovePreaudit = workflow.nodes.find(candidate => candidate.id === "zh05-fp008-03-resume-relaycove");
+  assert.ok(preaudit);
+  assert.ok(relayCovePreaudit);
+  assert.equal(preaudit.parameters.jsonBody, relayCovePreaudit.parameters.jsonBody);
   assert.match(preaudit.parameters.jsonBody, /const placeholder = \(name\) => '\{' \+ '\{ ' \+ name \+ ' ' \+ '\}' \+ '\}'/u);
   assert.equal(
     preaudit.parameters.jsonBody.match(/\}\}/gu)?.length,
@@ -2266,12 +2309,12 @@ test("FP008-03 separates the active system/user template and renders only the V7
       candidate_plot_sim_json: { particles_records: [{ particle_id: "P001" }] },
     }],
   };
-  const request = runExpressionWithNodes(preaudit.parameters.jsonBody, {
+  const request = JSON.parse(runExpressionWithNodes(preaudit.parameters.jsonBody, {
     service_ok: true,
     engine_result: engineResult,
   }, {
     "读取拆解结果1": { context },
-  });
+  }));
 
   assert.equal(request.messages.length, 2);
   assert.deepEqual(request.messages[0], {
@@ -2289,6 +2332,30 @@ test("FP008-03 separates the active system/user template and renders only the V7
   assert.doesNotMatch(request.messages[1].content, /数据契约|provider_base_url|api_key_ref/u);
   assert.match(promptMaterial, /available_resource_codes.*仅核验.*资源/u);
   assert.match(promptMaterial, /地理.*职业.*规则/u);
+});
+
+test("FP008-03 classifies blank or bodyless HTTP-200 preaudit replies as recoverable output failures", async () => {
+  const workflow = await readWorkflow();
+  const normalizer = workflow.nodes.find(candidate => candidate.id === "a30059fc-13f2-4fa5-a002-30e34b746b45");
+  assert.ok(normalizer);
+
+  for (const response of [
+    { data: " \n\t ", statusCode: 200 },
+    { headers: { "content-type": "application/json" }, statusCode: 200, statusMessage: "OK" },
+  ]) {
+    const [normalized] = runCodeNode(normalizer.parameters.jsCode, response, {
+      "JSON修复4": { service_ok: true, engine_result: { chapters: [] }, redacted_error: null },
+      "JSON修复3": { mapping_ok: true, engine_request: { action: "resume", chapters: [] } },
+    });
+
+    assert.equal(normalized.json.preaudit_valid, false);
+    assert.equal(normalized.json.route_to_storage, false);
+    assert.equal(normalized.json.rpc_request, null);
+    assert.deepEqual(normalized.json.redacted_error, {
+      code: "MODEL_OUTPUT_INVALID",
+      message: "The current model response is invalid.",
+    });
+  }
 });
 
 test("a resumed FP008-03 P0 returns the entire L1A to the existing restart branch", async () => {

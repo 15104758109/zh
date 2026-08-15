@@ -118,6 +118,35 @@ export function deductionResumeAfterError(chapter, error) {
     && deductionCommandAction(chapter) === "resume";
 }
 
+export function deductionControlMode(chapter, {
+  commandError = null,
+  pauseRequested = false,
+  pausePending = false,
+  commandPending = false,
+  serviceState = null,
+} = {}) {
+  if (commandError) return deductionResumeAfterError(chapter, commandError) ? "resume" : "unavailable";
+  if (pauseRequested || pausePending || serviceState === "pause_requested") return "pause_requested";
+  if (commandPending || serviceState === "running") return "pause";
+  return deductionCommandAction(chapter) || "unavailable";
+}
+
+export function deductionPersistedProjection(result) {
+  const book = { ...(asObject(result?.book)) };
+  delete book.runtime_service_state;
+  delete book.runtime_blocked_code;
+  const chapters = Array.isArray(result?.chapters) ? result.chapters.map((chapter) => {
+    const projection = { ...asObject(chapter) };
+    delete projection.runtime_service_state;
+    delete projection.runtime_blocked_code;
+    delete projection.runtime_l1a_token_consumed;
+    delete projection.runtime_deduction_progress_json;
+    delete projection.runtime_candidate_plot_sim_json;
+    return projection;
+  }) : [];
+  return { ...asObject(result), book, chapters };
+}
+
 function budgetExhausted(chapter) {
   return deductionDisplayProgress(chapter).token_budget_exceeded === true;
 }
@@ -495,11 +524,13 @@ function renderControls(runtime, chapter) {
   setText(runtime.root, "[data-progress-total]", `/ ${chapterRecords(chapter).length}`);
   const serviceState = chapter?.runtime_service_state || runtime.result.book?.runtime_service_state || null;
   const exhaustedBudget = budgetExhausted(chapter);
-  const controlMode = runtime.pauseRequested === true || runtime.pausePending === true || serviceState === "pause_requested"
-    ? "pause_requested"
-    : runtime.commandPending === true || serviceState === "running"
-      ? "pause"
-      : deductionCommandAction(chapter) || "unavailable";
+  const controlMode = deductionControlMode(chapter, {
+    commandError: runtime.commandError,
+    pauseRequested: runtime.pauseRequested,
+    pausePending: runtime.pausePending,
+    commandPending: runtime.commandPending,
+    serviceState,
+  });
   const runStatus = runtime.root.querySelector("#deduction-run-status");
   if (runStatus) {
     const statusError = runtime.pauseError ?? runtime.commandError;
@@ -626,7 +657,12 @@ function startDeduction(runtime) {
       if (deductionFailureRecoveryAction(selectedChapter(runtime), runtime.commandError) === "restart") {
         openFailureRecoveryModal(runtime);
       }
-      if (!runtime.reviewNavigationStarted) loadProjection(runtime, { background: true, scheduleNext: true });
+      if (runtime.commandError) {
+        stopPolling(runtime);
+        void loadProjection(runtime, { background: true });
+      } else if (!runtime.reviewNavigationStarted) {
+        loadProjection(runtime, { background: true, scheduleNext: true });
+      }
     });
 }
 
@@ -1114,7 +1150,7 @@ async function loadProjection(runtime, { background = false, scheduleNext = fals
       signal: runtime.controller.signal,
     });
     const scoped = scopeDeductionProjection(runtime.context, fetched);
-    const result = scoped.result;
+    const result = runtime.commandError ? deductionPersistedProjection(scoped.result) : scoped.result;
     runtime.context = scoped.context;
     const previousParticle = runtime.selectedParticleId;
     runtime.result = result;

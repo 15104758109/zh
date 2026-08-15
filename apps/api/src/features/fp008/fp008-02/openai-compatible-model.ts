@@ -59,6 +59,11 @@ const LIVE_STATE_KEYS = [
   "philosophy_live_json", "emotion_state_json", "drive_live_json", "trigger_state_json",
   "goal_state_json", "pressure_level", "current_goal_txt", "current_emo_tag",
 ] as const;
+const RELATION_SNAPSHOT_KEYS = [
+  "trust", "intimacy", "power_balance", "dependence", "hostility", "common_goal",
+  "secret_known", "emotional_bond", "relation_type", "relation_hierarchy", "relation_origin",
+  "relation_overview", "change_event_json",
+] as const;
 
 function transportCategory(error: unknown): "timeout" | "connection_reset" | "connection_refused" | "dns" | "network" | "other" {
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
@@ -330,24 +335,35 @@ function parseModelOutput(content: unknown): unknown {
   );
 }
 
-function repairConvergenceLiveStateSnapshot(outputValue: unknown, inputValue: unknown): unknown {
+function repairConvergenceStateSnapshots(outputValue: unknown, inputValue: unknown): unknown {
   const output = object(outputValue);
   const input = object(inputValue);
   const candidateState = object(input?.candidate_state_context);
-  if (!output || !Array.isArray(output.state_diff) || !candidateState || !Array.isArray(candidateState.characters)) {
+  if (!output || !candidateState) {
     return outputValue;
   }
 
   const baselineByCharacterId = new Map<string, JsonObject>();
-  for (const candidate of candidateState.characters) {
-    const character = object(candidate);
-    const characterId = typeof character?.character_id === "string" ? character.character_id : null;
-    const liveState = object(character?.live_state_json);
-    if (characterId && liveState) baselineByCharacterId.set(characterId, liveState);
+  if (Array.isArray(candidateState.characters)) {
+    for (const candidate of candidateState.characters) {
+      const character = object(candidate);
+      const characterId = typeof character?.character_id === "string" ? character.character_id : null;
+      const liveState = object(character?.live_state_json);
+      if (characterId && liveState) baselineByCharacterId.set(characterId, liveState);
+    }
+  }
+  const baselineByRelationId = new Map<string, JsonObject>();
+  if (Array.isArray(candidateState.relations)) {
+    for (const candidate of candidateState.relations) {
+      const relation = object(candidate);
+      const relationId = typeof relation?.relation_state_id === "string" ? relation.relation_state_id : null;
+      const currentState = object(relation?.current_state);
+      if (relationId && currentState) baselineByRelationId.set(relationId, currentState);
+    }
   }
 
   let repaired = false;
-  const stateDiff = output.state_diff.map((entry) => {
+  const stateDiff = Array.isArray(output.state_diff) ? output.state_diff.map((entry) => {
     const diff = object(entry);
     if (diff?.entity_type !== "character_live_state" || typeof diff.entity_id !== "string") return entry;
     const after = object(diff.after);
@@ -365,9 +381,28 @@ function repairConvergenceLiveStateSnapshot(outputValue: unknown, inputValue: un
     if (!completed) return entry;
     repaired = true;
     return { ...diff, after: completedAfter };
-  });
+  }) : output.state_diff;
+  const relationDiff = Array.isArray(output.relation_diff) ? output.relation_diff.map((entry) => {
+    const diff = object(entry);
+    if (typeof diff?.relation_state_id !== "string") return entry;
+    const after = object(diff.after);
+    const baseline = baselineByRelationId.get(diff.relation_state_id);
+    if (!after || !baseline) return entry;
 
-  return repaired ? { ...output, state_diff: stateDiff } : outputValue;
+    const completedAfter = { ...after };
+    let completed = false;
+    for (const key of RELATION_SNAPSHOT_KEYS) {
+      if (!Object.hasOwn(completedAfter, key) && Object.hasOwn(baseline, key)) {
+        completedAfter[key] = structuredClone(baseline[key]);
+        completed = true;
+      }
+    }
+    if (!completed) return entry;
+    repaired = true;
+    return { ...diff, after: completedAfter };
+  }) : output.relation_diff;
+
+  return repaired ? { ...output, state_diff: stateDiff, relation_diff: relationDiff } : outputValue;
 }
 
 function modeContract(mode: ModelInvocation["mode"]): string {
@@ -375,9 +410,9 @@ function modeContract(mode: ModelInvocation["mode"]): string {
     return "Run only FP008-02 F1. The input does not contain full role settings; do not request, infer, or fabricate them. Return one JSON object with exactly one top-level field: char_tasks (an array containing exactly one isolated task for each participating character). Every non-protagonist task must include staged_goal_injected; a protagonist task must not populate staged_goal_injected. Do not return convergence fields.";
   }
   if (mode === "director_converge") {
-    return "Run only FP008-02 F3/F4. Return one director convergence result object. Each candidate_state_context.relations entry identifies char_a_id, char_b_id, char_a_code, and char_b_code. A relation_diff entry may be output only when every referenced event_ids event has both char_a_code and char_b_code in its participating_chars; otherwise leave that relation unchanged and omit it. Every state_diff.event_ids value must name only event_id values from this response's selected events_in_round, never an unselected candidate action, alternate path, or prior-particle event; use an empty state_diff when no selected event supports a state change. Do not return char_tasks. Copy particle sequence counters from the input unchanged. Every character_live_state state_diff.after must include all eight live-state keys (philosophy_live_json, emotion_state_json, drive_live_json, trigger_state_json, goal_state_json, pressure_level, current_goal_txt, current_emo_tag); copy an unchanged value from candidate_state_context rather than omitting the key.";
+    return "Run only FP008-02 F3/F4. Return one director convergence result object. Each candidate_state_context.relations entry identifies char_a_id, char_b_id, char_a_code, and char_b_code. A relation_diff entry may be output only when every referenced event_ids event has both char_a_code and char_b_code in its participating_chars; otherwise leave that relation unchanged and omit it. Every relation_diff.after must include the complete relation snapshot (trust, intimacy, power_balance, dependence, hostility, common_goal, secret_known, emotional_bond, relation_type, relation_hierarchy, relation_origin, relation_overview, change_event_json); copy an unchanged value from candidate_state_context.relations[].current_state rather than omitting it. Every memory_changes entry must include all seven required keys: character_id, memory_type, memory_content, truth_status, importance, decay_rate, event_ids. truth_status must be exactly true, misremembered, or false. No partial memory entry is allowed; an empty memory_changes array is valid. Every state_diff.event_ids value must name only event_id values from this response's selected events_in_round, never an unselected candidate action, alternate path, or prior-particle event; use an empty state_diff when no selected event supports a state change. Do not return char_tasks. Copy particle sequence counters from the input unchanged. Every character_live_state state_diff.after must include all eight live-state keys (philosophy_live_json, emotion_state_json, drive_live_json, trigger_state_json, goal_state_json, pressure_level, current_goal_txt, current_emo_tag); copy an unchanged value from candidate_state_context rather than omitting the key.";
   }
-  return "Run only FP008-02 F2 for the supplied character. Return one character deduction result object, not char_tasks or a director convergence result.";
+  return "Run only FP008-02 F2 for the supplied character. Return one compact character deduction result object, not char_tasks or a director convergence result. Do not output reasoning, a task restatement, Chinese-key examples, Markdown, or any prose outside the exact English-key JSON contract. Use concise factual values while retaining every required field and the documented 2-3 candidate actions.";
 }
 
 function section(prompt: string, start: string, end: string): string | null {
@@ -420,14 +455,15 @@ function prepareRequest(
   const priorDirectorMessages = directorInvocation && invocation.continueSession
     ? directorSessions.get(invocation.sessionKey) ?? []
     : [];
+  const outputContract = modeContract(invocation.mode);
   const currentInput = JSON.stringify({
     mode: invocation.mode,
-    output_contract: modeContract(invocation.mode),
+    output_contract: outputContract,
     input: invocation.input,
   });
   const messages: JsonObject[] = [{
     role: "system",
-    content: scopedFp008Prompt(prompt, invocation.nodeCode),
+    content: `${scopedFp008Prompt(prompt, invocation.nodeCode)}\n\nRuntime output contract:\n${outputContract}`,
   }, ...priorDirectorMessages, {
     role: "user",
     content: currentInput,
@@ -673,7 +709,7 @@ export function createOpenAiCompatibleModelInvoker({
     try {
       output = parseModelOutput(responseContent);
       if (invocation.mode === "director_converge") {
-        output = repairConvergenceLiveStateSnapshot(output, invocation.input);
+        output = repairConvergenceStateSnapshots(output, invocation.input);
       }
     } catch (error) {
       if (error instanceof DeductionServiceError && error.code === "MODEL_OUTPUT_INVALID") {
