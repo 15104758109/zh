@@ -413,14 +413,24 @@ test("ZH06 retries transient model transport failures before parsing", () => {
 
 test("ZH06 lets the FP010 parser enforce JSON when the active provider rejects response_format", () => {
   const value = workflow();
-  for (const name of [
+  const subjectiveReviewNodes = [
     "FP011-01读者审计",
     "FP011-02 商业审计",
+  ];
+  for (const name of [
+    ...subjectiveReviewNodes,
     "FP012-01 主编决策",
   ]) {
     const model = node(value, name);
     assert.match(modelRequestBody(model), /response_format[\s\S]*json_object/u, name);
     assert.equal(model.parameters.options.response.response.responseFormat, "json", name);
+  }
+  for (const name of subjectiveReviewNodes) {
+    assert.match(
+      modelRequestBody(node(value, name)),
+      /reasoning:\s*\{\s*effort:\s*'none'\s*\}/u,
+      `${name} must reserve its response budget for the V7 review DTO`,
+    );
   }
   const objective = node(value, "FP010-01客观审计");
   assert.doesNotMatch(modelRequestBody(objective), /response_format/u);

@@ -53,7 +53,7 @@ test("ZH06 resolves the active audit bindings at its existing input node", () =>
   const value = workflow();
   assert.equal(value.nodes.length, 31);
   assert.equal(Object.keys(value.connections ?? {}).length, 29);
-  assert.equal(edgeCount(value), 38);
+  assert.equal(edgeCount(value), 39);
 
   const loader = nodeById(value, loaderNodeId);
   const query = loader.parameters.query;
