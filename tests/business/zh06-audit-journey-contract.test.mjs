@@ -1387,6 +1387,50 @@ test("ZH06 FP010 parser consumes only the full Chat Completions response envelop
   }
 });
 
+test("ZH06 FP010 validates a well-formed multi-string audit before repair fallback", () => {
+  const parser = workflow().nodes.find(
+    (candidate) => candidate.id === "0e329fca-f483-4ec1-aaf3-4812e88d4239",
+  );
+  assert.ok(parser, "missing FP010 parser node");
+  const checkPrefix = String.fromCodePoint(0x5ba1, 0x67e5, 0x2d);
+  const audit = {
+    has_p0_blocker: true,
+    checks: [{
+      check_id: `${checkPrefix}01`,
+      severity: "P0",
+      pass: false,
+      findings: "objective failure",
+      evidence: {},
+    }],
+    p0_items_json: [],
+    audit_findings_jsonb: {
+      preset_emotion_nodes: ["pressure", "resolve"],
+      actual_realized_nodes: ["pressure"],
+    },
+    return_route_suggestion_jsonb: {},
+    audited_handoff_package: {
+      package_schema_version: 1,
+      formalization_eligible: false,
+      world_changes: [],
+      character_live_state_changes: [],
+      relation_changes: [],
+      memories: [],
+      narrative_assets: [],
+    },
+    assets: [],
+  };
+  const response = {
+    statusCode: 200,
+    data: JSON.stringify({ choices: [{ message: { content: JSON.stringify(audit, null, 2) } }] }),
+  };
+
+  assert.throws(
+    () => runObjectiveParser(parser.parameters.jsCode, audit, response),
+    /all objective checks 01-09 require a P0\/P1 label and boolean pass result/u,
+  );
+  assert.match(parser.parameters.jsCode, /return JSON\.parse\(text\)/u);
+});
+
 test("ZH06 FP010 repairs only the isolated structural noise observed in execution 3578", () => {
   const parser = node(workflow(), "JSON修复 (2)");
   const checks = Array.from({ length: 9 }, (_, index) => ({
