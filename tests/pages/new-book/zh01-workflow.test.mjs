@@ -571,8 +571,7 @@ test("FP001-03 maps world-board atom types to the canonical V7 values", () => {
         atom_type: "profession",
         atom_key: "profession.smelting",
         item_name: "熔炼",
-        item_content: { summary: "受晶核约束的物质重构。", purpose: "制造与修复。", cost_mechanism: "晶核消耗", is_system: false },
-        affordance_dims: ["技术阻力"],
+        item_content: { summary: "受晶核约束的物质重构。", purpose: "制造与修复。", cost_mechanism: "晶核消耗", is_system: false, affordance_dims: ["技术阻力"] },
       }],
     },
   };
@@ -584,6 +583,8 @@ test("FP001-03 maps world-board atom types to the canonical V7 values", () => {
 
   assert.equal(result.status, "preview");
   assert.equal(result.incremental_updates.world_state[0].atom_type, "job");
+  assert.deepEqual(result.incremental_updates.world_state[0].affordance_dims, ["技术阻力"]);
+  assert.equal(Object.hasOwn(result.incremental_updates.world_state[0].item_content, "affordance_dims"), false);
 });
 
 test("FP001-03 restores omitted rule fields only when the creator explicitly supplied them", () => {
