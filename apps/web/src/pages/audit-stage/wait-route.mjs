@@ -65,6 +65,28 @@ export function readAuditWaitRoute(storage, scope) {
   }
 }
 
+export function readReusableAuditWaitRoute(storage, scope) {
+  const scoped = readAuditWaitRoute(storage, scope);
+  if (scoped) return scoped;
+  if (!storage || typeof storage.key !== "function" || !Number.isInteger(storage.length)) return null;
+
+  const normalized = normalizedScope(scope);
+  const prefix = `${STORAGE_PREFIX}:${normalized.bookId}:`;
+  const routes = new Set();
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (typeof key !== "string" || !key.startsWith(prefix)) continue;
+    const value = storage.getItem(key);
+    if (!value) continue;
+    try {
+      routes.add(validateAuditWaitRoute(value));
+    } catch {
+      // Ignore malformed stale session entries; they are never submitted.
+    }
+  }
+  return routes.size === 1 ? [...routes][0] : null;
+}
+
 export function clearAuditWaitRoute(storage, scope) {
   if (!storage || typeof storage.removeItem !== "function") return;
   storage.removeItem(auditWaitRouteStorageKey(scope));

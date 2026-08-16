@@ -1,8 +1,8 @@
 import "../prototype/common/book-context.js";
 import {
   AuditWaitRouteError,
-  clearAuditWaitRoute,
   readAuditWaitRoute,
+  readReusableAuditWaitRoute,
   validateAuditWaitRoute,
 } from "./wait-route.mjs";
 
@@ -447,11 +447,13 @@ function showReadyState(root) {
 
 function scopedWaitRoute(runtime) {
   const projection = runtime.projection;
-  return readAuditWaitRoute(runtime.sessionStorage, {
+  const scope = {
     bookId: projection.book.id,
     chapterId: projection.chapter.chapter_id,
     chapterVersionId: projection.chapter.chapter_version_id,
-  });
+  };
+  return readAuditWaitRoute(runtime.sessionStorage, scope)
+    || readReusableAuditWaitRoute(runtime.sessionStorage, scope);
 }
 
 function setChapterDropdownOpen(runtime, open) {
@@ -681,11 +683,6 @@ async function submitAuditConfirmation(runtime) {
     await sendAuditConfirmationIntent(runtime.context, runtime.projection, waitRoute, {
       fetchImpl: runtime.fetchImpl,
     });
-    clearAuditWaitRoute(runtime.sessionStorage, {
-      bookId: runtime.projection.book.id,
-      chapterId: runtime.projection.chapter.chapter_id,
-      chapterVersionId: runtime.projection.chapter.chapter_version_id,
-    });
     runtime.confirmed = true;
     runtime.submittedAction = "continue";
     setNotice(runtime.root, "submitted", "继续请求已提交，系统将按顺序开始同一 L1A 的下一章。" );
@@ -722,11 +719,6 @@ async function submitAuditReturn(runtime) {
   try {
     await sendAuditReturnIntent(runtime.context, runtime.projection, waitRoute, reason, {
       fetchImpl: runtime.fetchImpl,
-    });
-    clearAuditWaitRoute(runtime.sessionStorage, {
-      bookId: runtime.projection.book.id,
-      chapterId: runtime.projection.chapter.chapter_id,
-      chapterVersionId: runtime.projection.chapter.chapter_version_id,
     });
     runtime.confirmed = true;
     runtime.submittedAction = "return";

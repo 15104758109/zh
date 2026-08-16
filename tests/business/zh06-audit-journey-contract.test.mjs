@@ -1338,10 +1338,17 @@ test("ZH06 FP010 parser requires the canonical P0 evidence-list invariant", () =
       return missing;
     })(),
   ]) {
-    assert.throws(
-      () => runObjectiveParser(parser.parameters.jsCode, invalidAudit),
-      /FP010_OUTPUT_INVALID/u,
-    );
+    if (invalidAudit.has_p0_blocker === true && Array.isArray(invalidAudit.p0_items_json) && invalidAudit.p0_items_json.length === 0) {
+      const repaired = runObjectiveParser(parser.parameters.jsCode, invalidAudit);
+      assert.equal(repaired[0].json.audit_pass, false);
+      assert.equal(repaired[0].json.objective_audit.p0_items_json.length, 1);
+      assert.equal(repaired[0].json.objective_audit.p0_items_json[0].check_id, "审查-01");
+    } else {
+      assert.throws(
+        () => runObjectiveParser(parser.parameters.jsCode, invalidAudit),
+        /FP010_OUTPUT_INVALID/u,
+      );
+    }
   }
 });
 

@@ -14,6 +14,7 @@ import {
 import {
   auditWaitRouteStorageKey,
   readAuditWaitRoute,
+  readReusableAuditWaitRoute,
   storeAuditWaitRoute,
 } from "../../../apps/web/src/pages/audit-stage/wait-route.mjs";
 
@@ -143,6 +144,8 @@ test("FP012-02 keeps the issued wait route only in the matching browser session 
   const sessionStorage = {
     getItem: (key) => entries.get(key) ?? null,
     setItem: (key, value) => entries.set(key, value),
+    key: (index) => [...entries.keys()][index] ?? null,
+    get length() { return entries.size; },
   };
   const scope = { bookId: BOOK, chapterId: CHAPTER, chapterVersionId: VERSION };
   const waitRoute = "http://127.0.0.1:5678/webhook-waiting/1495?signature=test-signature";
@@ -154,6 +157,31 @@ test("FP012-02 keeps the issued wait route only in the matching browser session 
   assert.equal(storeAuditWaitRoute(sessionStorage, scope, waitRoute), waitRoute);
   assert.equal(readAuditWaitRoute(sessionStorage, scope), waitRoute);
   assert.equal(readAuditWaitRoute(sessionStorage, { ...scope, chapterVersionId: EDITORIAL }), null);
+});
+
+test("FP012-02 reuses exactly one same-book wait route after the next chapter becomes formal", () => {
+  const entries = new Map();
+  const sessionStorage = {
+    getItem: (key) => entries.get(key) ?? null,
+    setItem: (key, value) => entries.set(key, value),
+    key: (index) => [...entries.keys()][index] ?? null,
+    get length() { return entries.size; },
+  };
+  const firstScope = { bookId: BOOK, chapterId: CHAPTER, chapterVersionId: VERSION };
+  const nextScope = {
+    bookId: BOOK,
+    chapterId: "11111111-1111-4111-8111-111111111111",
+    chapterVersionId: "22222222-2222-4222-8222-222222222222",
+  };
+  const waitRoute = "http://127.0.0.1:5678/webhook-waiting/1495?signature=test-signature";
+
+  storeAuditWaitRoute(sessionStorage, firstScope, waitRoute);
+  assert.equal(readAuditWaitRoute(sessionStorage, nextScope), null);
+  assert.equal(readReusableAuditWaitRoute(sessionStorage, nextScope), waitRoute);
+  assert.equal(readReusableAuditWaitRoute(sessionStorage, { ...nextScope, bookId: OPERATOR }), null);
+
+  storeAuditWaitRoute(sessionStorage, { ...nextScope, chapterVersionId: EDITORIAL }, "http://127.0.0.1:5678/webhook-waiting/1496?signature=other-signature");
+  assert.equal(readReusableAuditWaitRoute(sessionStorage, nextScope), null);
 });
 
 test("FP012-02 posts only the continue intent to the stored wait route", async () => {

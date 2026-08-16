@@ -95,7 +95,7 @@ test("AUDIT_STAGE keeps prototype anchors and binds the scoped audit projection 
   assert.match(module, /sendAuditConfirmationIntent/);
   assert.match(module, /auditNextAction/);
   assert.match(module, /readAuditWaitRoute/);
-  assert.match(module, /clearAuditWaitRoute/);
+  assert.match(module, /readReusableAuditWaitRoute/);
   assert.match(module, /button\.removeAttribute\("onclick"\)/);
   assert.match(module, /context: \["无法确认当前作品"/);
   assert.match(module, /import "\.\.\/prototype\/common\/book-context\.js"/);
