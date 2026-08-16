@@ -1368,7 +1368,7 @@
         <div class="quick-prompts" id="quickPrompts"></div>
         <form class="chat-input">
           <textarea id="chatInput" class="ui-textarea" placeholder="请输入回答或拓展需求，例如：主角要在资源枯竭世界里靠剑修体系破局"></textarea>
-          <button class="btn btn-primary ui-button ui-button-primary" type="submit" onclick="window.__newBookPreviewFromChat?.(event)"><span class="material-symbols-outlined">send</span>发送</button>
+          <button class="btn btn-primary ui-button ui-button-primary" type="submit"><span class="material-symbols-outlined">send</span>发送</button>
         </form>
       </aside>
 
@@ -1499,18 +1499,40 @@
         return map[value] || value || "";
       }
 
+      function canonicalAffordanceDims(card) {
+        const topLevel = Array.isArray(card?.affordance_dims) ? card.affordance_dims : [];
+        const itemContent = isObject(card?.item_content) ? card.item_content : {};
+        const atomValue = isObject(card?.atom_value_jsonb) ? card.atom_value_jsonb : {};
+        const source = topLevel.length
+          ? topLevel
+          : Array.isArray(itemContent.affordance_dims)
+            ? itemContent.affordance_dims
+            : Array.isArray(atomValue.affordance_dims)
+              ? atomValue.affordance_dims
+              : [];
+        return source.filter((value) => typeof value === "string" && value.trim());
+      }
+
       function normalizeWorldStep(step) {
         if (!step) return;
         const categories = step.categories || [];
         step.cards = (step.cards || []).map((card) => {
           const category = worldCategoryName(card.category || card.board_type);
           const text = card.text ?? card.description ?? "";
+          const affordanceDims = canonicalAffordanceDims(card);
+          const itemContent = isObject(card.item_content) ? { ...card.item_content } : card.item_content;
+          const atomValue = isObject(card.atom_value_jsonb) ? { ...card.atom_value_jsonb } : card.atom_value_jsonb;
+          if (isObject(itemContent)) delete itemContent.affordance_dims;
+          if (isObject(atomValue)) delete atomValue.affordance_dims;
           return {
             ...card,
             category,
             board_type: card.board_type || category,
             text,
             description: card.description ?? text,
+            ...(isObject(itemContent) ? { item_content: itemContent } : {}),
+            ...(isObject(atomValue) ? { atom_value_jsonb: atomValue } : {}),
+            affordance_dims: affordanceDims,
             bindTo: Array.isArray(card.bindTo) ? card.bindTo.map(worldCategoryName) : categories.filter((name) => name !== category)
           };
         });
@@ -3778,7 +3800,7 @@
       if (window.__openStageEditor) window.__openStageEditor();
     }
   </script>
-<script src="/pages/new-book/new-book-bridge.mjs?v=20260816-world-board-gate-1"></script>
+<script src="/pages/new-book/new-book-bridge.mjs?v=20260816-chat-submit-listener-1"></script>
 <script>
 // V7_NEW_BOOK_BRIDGE_MOUNTED
 (function(){

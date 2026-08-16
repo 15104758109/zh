@@ -220,6 +220,43 @@ test("the geography candidate adapter normalizes the FP001 geography label to V7
   assert.deepEqual(states.map((state) => state.atom_type), ["geo"]);
 });
 
+test("restored world candidates promote legacy affordance dimensions into the V7 top-level field", () => {
+  const categorySource = page.slice(
+    page.indexOf("function worldCategoryName"),
+    page.indexOf("function canonicalAffordanceDims"),
+  );
+  const normalizeSource = page.slice(
+    page.indexOf("function canonicalAffordanceDims"),
+    page.indexOf("function bookCommercialScore"),
+  );
+  const data = {};
+  const normalizeWorldStep = new Function(
+    "isObject",
+    "data",
+    "getWorldStep",
+    `${categorySource}\n${normalizeSource}\nreturn normalizeWorldStep;`,
+  )(
+    (value) => value !== null && typeof value === "object" && !Array.isArray(value),
+    data,
+    () => null,
+  );
+  const step = {
+    categories: ["规则"],
+    cards: [{
+      category: "规则",
+      item_content: { summary: "晶核守恒", affordance_dims: ["能量转移"] },
+      atom_value_jsonb: { rule_type: "天道", affordance_dims: ["能量转移"] },
+    }],
+    bindings: [],
+  };
+
+  normalizeWorldStep(step);
+
+  assert.deepEqual(step.cards[0].affordance_dims, ["能量转移"]);
+  assert.equal("affordance_dims" in step.cards[0].item_content, false);
+  assert.equal("affordance_dims" in step.cards[0].atom_value_jsonb, false);
+});
+
 test("the new-book adapter normalizes prototype profession, phenomenon, and disaster candidates to V7 atoms", () => {
   const mappingSource = bridge.slice(
     bridge.indexOf("const WORLD_BOARD_TYPES"),
@@ -476,7 +513,7 @@ test("the chat form is listener-owned and cannot navigate while waiting for ZH01
   assert.match(bridge, /function bindChatForm\(\)/);
   assert.match(bridge, /form\.removeAttribute\("onsubmit"\)/);
   assert.match(bridge, /form\.addEventListener\("submit", submitPreview\)/);
-  assert.match(page, /onclick="window\.__newBookPreviewFromChat\?\.\(event\)"/);
+  assert.doesNotMatch(page, /onclick="window\.__newBookPreviewFromChat\?\.\(event\)"/);
   assert.match(bridge, /window\.__newBookPreviewFromChat = submitPreview/);
   assert.match(bridge, /void previewFromChat\(event\)\.catch/);
 
@@ -1086,7 +1123,7 @@ test("the prototype shell exposes local draft recovery and explicit front-end st
 });
 
 test("existing prototype controls bind to real actions without a parallel page tree", () => {
-  assert.match(page, /<script src="\/pages\/new-book\/new-book-bridge\.mjs\?v=20260816-chat-form-rebind-1"><\/script>/);
+  assert.match(page, /<script src="\/pages\/new-book\/new-book-bridge\.mjs\?v=20260816-chat-submit-listener-1"><\/script>/);
   assert.doesNotMatch(page, /<script type="module" src="\/pages\/new-book\/new-book-bridge\.mjs/);
   assert.doesNotMatch(bridge, /^export\s/m);
   for (const handler of ["sendChat", "runIntegrityAnalysis", "aiAddWorldItem", "charAdd", "startProduction", "openWorkbench"]) {
