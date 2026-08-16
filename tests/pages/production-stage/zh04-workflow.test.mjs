@@ -1545,7 +1545,7 @@ test("ZH04 rejects a truncated scene-package JSON object before presentation", (
   assert.equal(truncated.scene_condition_package, null);
   assert.equal(truncated.redacted_error.code, "INVALID_REQUEST");
 
-  const fenced = executeCode(materializationFix, {
+  const finalFenced = executeCode(materializationFix, {
     $: () => ({ first: () => ({ json: {
       context: {
         scope_ok: true,
@@ -1554,10 +1554,38 @@ test("ZH04 rejects a truncated scene-package JSON object before presentation", (
         data_debt: [],
       },
     } }) }),
-    $json: completionText(`\`\`\`json\n${completeOutput}\n\`\`\``),
+    $json: completionText(`模型分析：先核对场景约束。\n{"draft":"not a DTO"}\n\`\`\`json\n${completeOutput}\n\`\`\``),
   })[0].json;
-  assert.equal(fenced.materialization_ready, false);
-  assert.equal(fenced.scene_condition_package, null);
+  assert.equal(finalFenced.materialization_ready, true);
+  assert.equal(finalFenced.scene_condition_package.scene_location, sceneConditionPackage.scene_location);
+
+  const trailingText = executeCode(materializationFix, {
+    $: () => ({ first: () => ({ json: {
+      context: {
+        scope_ok: true,
+        scope,
+        l1a_unit: { scene_location: sceneConditionPackage.scene_location, participant_chars_json: sceneConditionPackage.participant_chars },
+        data_debt: [],
+      },
+    } }) }),
+    $json: completionText(`\`\`\`json\n${completeOutput}\n\`\`\`\n继续说明`),
+  })[0].json;
+  assert.equal(trailingText.materialization_ready, false);
+  assert.equal(trailingText.scene_condition_package, null);
+
+  const multipleRoots = executeCode(materializationFix, {
+    $: () => ({ first: () => ({ json: {
+      context: {
+        scope_ok: true,
+        scope,
+        l1a_unit: { scene_location: sceneConditionPackage.scene_location, participant_chars_json: sceneConditionPackage.participant_chars },
+        data_debt: [],
+      },
+    } }) }),
+    $json: completionText(`${completeOutput}\n{"draft":"not a DTO"}`),
+  })[0].json;
+  assert.equal(multipleRoots.materialization_ready, false);
+  assert.equal(multipleRoots.scene_condition_package, null);
 });
 
 test("FP005 treats active forbid lines as the current L1A outline boundary only", () => {
