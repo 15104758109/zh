@@ -518,6 +518,54 @@ test("FP001-03 returns an incomplete world candidate to the normal dialogue path
   assert.equal(Object.hasOwn(returned.incremental_updates, "world_state"), false);
 });
 
+test("FP001-03 restores omitted rule fields only when the creator explicitly supplied them", () => {
+  const dialogue = {
+    missing_items: [],
+    chat_message: "请审阅晶核规则候选，并说明它怎样限制行动？",
+    lock_respected: true,
+    incremental_updates: {
+      world_state: [{
+        board_type: "规则",
+        atom_type: "rule",
+        atom_key: "rule.energy_conservation",
+        item_name: "晶核守恒与熔炼代价",
+        item_content: {
+          summary: "晶核能量只会转移或耗散。",
+          purpose: "限制熔炼的能量消耗。",
+        },
+        affordance_dims: ["能量约束"],
+      }],
+    },
+    stage_completion: { "创作原点": 1, "世界设定": 0.2, "角色设定": 0, "冲突种子": 0 },
+  };
+  const sources = (creatorMessage) => ({
+    [names.skillReader]: { correlation_id: "preview-explicit-rule-fields", creator_message: creatorMessage },
+    [names.dialogue]: { output: JSON.stringify(dialogue) },
+    [names.commercial]: { output: "not-json" },
+  });
+
+  const repaired = runCode(
+    names.validator,
+    {},
+    sources("rule_type=天道，apply_scope=全世界，violate_cost=生命风险。"),
+  )[0].json;
+  assert.deepEqual(repaired.incremental_updates.world_state[0].item_content, {
+    summary: "晶核能量只会转移或耗散。",
+    purpose: "限制熔炼的能量消耗。",
+    rule_type: "天道",
+    apply_scope: "全世界",
+    violate_cost: "生命风险",
+  });
+
+  const withheld = runCode(names.validator, {}, sources("晶核能量守恒。"))[0].json;
+  assert.equal(Object.hasOwn(withheld.incremental_updates, "world_state"), false);
+  assert.deepEqual(withheld.missing_fields, [
+    "world_state[0].item_content.violate_cost",
+    "world_state[0].item_content.apply_scope",
+    "world_state[0].item_content.rule_type",
+  ]);
+});
+
 test("FP001-03 rejects fractional relation dimensions outside the V7 integer scale", () => {
   const result = runCode(names.validator, {}, {
     [names.skillReader]: { correlation_id: "preview-relation-scale" },
