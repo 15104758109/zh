@@ -517,6 +517,7 @@ test("FP001-03 normalizes a top-level world candidate without preserving cross-b
     danger_level: "high",
     location_text: "近地轨道的旧维护环。",
   });
+  assert.equal(returned.incremental_updates.world_state[0].atom_type, "geo");
   assert.equal(Object.hasOwn(returned.incremental_updates.world_state[0], "danger_level"), false);
   assert.equal(Object.hasOwn(returned.incremental_updates.world_state[0], "location_text"), false);
 });
@@ -556,6 +557,33 @@ test("FP001-03 recovers a partial top-level resource response only when it does 
   const blocked = runCode(names.validator, {}, sources([1]))[0].json;
   assert.equal(blocked.status, "BLOCKED");
   assert.equal(blocked.code, "PREVIEW_OUTPUT_INVALID");
+});
+
+test("FP001-03 maps world-board atom types to the canonical V7 values", () => {
+  const dialogue = {
+    chat_message: "请审阅两条能力候选，并说明哪条更适合当前阶段？",
+    lock_respected: true,
+    missing_items: [],
+    stage_completion: { "创作原点": 1, "世界设定": 0.4, "角色设定": 0, "冲突种子": 0 },
+    incremental_updates: {
+      world_state: [{
+        board_type: "职业",
+        atom_type: "profession",
+        atom_key: "profession.smelting",
+        item_name: "熔炼",
+        item_content: { summary: "受晶核约束的物质重构。", purpose: "制造与修复。", cost_mechanism: "晶核消耗", is_system: false },
+        affordance_dims: ["技术阻力"],
+      }],
+    },
+  };
+  const result = runCode(names.validator, {}, {
+    [names.skillReader]: { correlation_id: "preview-canonical-atom-type" },
+    [names.dialogue]: { output: JSON.stringify(dialogue) },
+    [names.commercial]: { output: "not-json" },
+  })[0].json;
+
+  assert.equal(result.status, "preview");
+  assert.equal(result.incremental_updates.world_state[0].atom_type, "job");
 });
 
 test("FP001-03 restores omitted rule fields only when the creator explicitly supplied them", () => {
