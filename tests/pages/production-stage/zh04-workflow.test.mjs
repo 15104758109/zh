@@ -931,12 +931,12 @@ test("ZH04 validates its candidate and uses active bindings only for generation 
 
 test("ZH04 keeps the presentation candidate in memory and refuses execution fields before approval", () => {
   const presentationFix = node(ids.presentationFix)?.parameters.jsCode ?? "";
-  const context = { request: { action: "generate" }, scope_ok: true };
+  const context = { request: { action: "generate" }, scope_ok: true, book: { next_chapter_index: 3 } };
   const upstream = { context, materialization_ready: true, data_debt: [], redacted_error: null };
   const validPlan = {
     plot_retained: [], small_arc_sequence: [], emotion_arc: {}, foreshadow_layers: {},
     hook_positions: [], hotpoint_positions: [], revelation_plan: {},
-    chapter_division: [{ chapter_seq: 1, emotion_target: { rhythm: "抑" } }],
+    chapter_division: [{ chapter_seq: 3, emotion_target: { rhythm: "抑" } }],
   };
   const execute = (plan) => executeCode(presentationFix, {
     $: () => ({ first: () => ({ json: upstream }) }),
@@ -955,13 +955,13 @@ test("ZH04 keeps the presentation candidate in memory and refuses execution fiel
   assert.equal(JSON.stringify(nestedCompletion.l1a_presentation_plan), JSON.stringify(validPlan));
   const noRhythmSource = {
     ...validPlan,
-    chapter_division: [1, 2, 3].map((chapter_seq) => ({ chapter_seq, emotion_target: { rhythm: "未提供" } })),
+    chapter_division: [3, 4, 5].map((chapter_seq) => ({ chapter_seq, emotion_target: { rhythm: "未提供" } })),
   };
   assert.equal(execute(noRhythmSource).presentation_ready, true,
     "an absent V7 emotion rhythm must not be treated as three repeated rhythms");
   const repeatedDefinedRhythm = {
     ...validPlan,
-    chapter_division: [1, 2, 3].map((chapter_seq) => ({ chapter_seq, emotion_target: { rhythm: "抑" } })),
+    chapter_division: [3, 4, 5].map((chapter_seq) => ({ chapter_seq, emotion_target: { rhythm: "抑" } })),
   };
   assert.equal(execute(repeatedDefinedRhythm).presentation_ready, false,
     "three explicit identical rhythms remain invalid");
@@ -969,6 +969,12 @@ test("ZH04 keeps the presentation candidate in memory and refuses execution fiel
   assert.equal(rejected.presentation_ready, false);
   assert.equal(rejected.l1a_presentation_plan, null);
   assert.equal(rejected.redacted_error.code, "INVALID_REQUEST");
+  const locallyNumbered = execute({
+    ...validPlan,
+    chapter_division: [{ chapter_seq: 1, emotion_target: { rhythm: "抑" } }],
+  });
+  assert.equal(locallyNumbered.presentation_ready, false,
+    "chapter_seq must be the next globally available chapter index, not the L1A-local ordinal");
 });
 
 test("ZH04 auto branch carries the validated scene package into chapter plans", () => {
@@ -1017,6 +1023,20 @@ test("ZH04 auto branch carries the validated scene package into chapter plans", 
   assert.equal(reorderedOutput.mapping_ok, true,
     "unique core particle references with the same set and count may use execution-step order");
   assert.equal(JSON.stringify(reorderedOutput.rpc_request.chapter_plans[0].chapter_implementation_json.execution_steps[0].core_particles), JSON.stringify(["P006", "P005"]));
+  const orphanEmptyStep = structuredClone(chapterPlans);
+  orphanEmptyStep.chapter_plans[0].chapter_implementation_json.execution_steps.push({
+    step_id: "orphan-empty-step",
+    core_particles: [],
+    how_applied: "This unbound step must not enter the persistence contract.",
+  });
+  const compactedOutput = run(sceneConditionPackage, orphanEmptyStep);
+  assert.equal(compactedOutput.mapping_ok, true,
+    "an execution step with an explicitly empty core_particles array is an unbound projection and is removed");
+  assert.equal(compactedOutput.rpc_request.chapter_plans[0].chapter_implementation_json.execution_steps.length, 1);
+  const missingCoreParticles = structuredClone(chapterPlans);
+  missingCoreParticles.chapter_plans[0].chapter_implementation_json.execution_steps.push({ step_id: "missing-core-particles" });
+  assert.equal(run(sceneConditionPackage, missingCoreParticles).mapping_ok, false,
+    "the repair must not infer a missing particle mapping");
   const completeAutoJson = JSON.stringify(chapterPlans);
   const truncated = run(sceneConditionPackage, chapterPlans, completeAutoJson.slice(0, -1));
   assert.equal(truncated.mapping_ok, false, "a truncated automatic JSON object must not enter RPC-007");

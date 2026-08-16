@@ -1561,6 +1561,14 @@ test("ZH06 FP010 repairs only the isolated structural noise observed in executio
     [],
   );
 
+  const adjacentChecks = wellFormed.replace(
+    '\n    },\n    {\n      "check_id": "\u5ba1\u67e5-02"',
+    '\n    }\n    {\n      "check_id": "\u5ba1\u67e5-02"',
+  );
+  const commaRecovered = runObjectiveParser(parser.parameters.jsCode, audit, envelope(adjacentChecks));
+  assert.equal(commaRecovered[0].json.objective_audit.checks.length, 9);
+  assert.equal(commaRecovered[0].json.audit_pass, true);
+
   for (const content of [
     wellFormed.slice(0, -1),
     `${wellFormed}\n${wellFormed}`,
