@@ -566,6 +566,41 @@ test("FP001-03 restores omitted rule fields only when the creator explicitly sup
   ]);
 });
 
+test("FP001-03 restores explicit fields for the candidate's own world board only", () => {
+  const dialogue = {
+    missing_items: [],
+    chat_message: "请审阅启动资源候选，并说明最先要节省什么？",
+    lock_respected: true,
+    incremental_updates: {
+      world_state: [{
+        board_type: "资源",
+        atom_type: "resource",
+        atom_key: "resource.low_grade_cores",
+        item_name: "低阶晶核启动物资",
+        item_content: { summary: "工业园内可清点的低阶晶核。", purpose: "为熔炼提供有限启动能量。" },
+        affordance_dims: ["资源约束"],
+      }],
+    },
+    stage_completion: { "创作原点": 1, "世界设定": 0.2, "角色设定": 0, "冲突种子": 0 },
+  };
+  const result = runCode(names.validator, {}, {
+    [names.skillReader]: {
+      correlation_id: "preview-explicit-resource-fields",
+      creator_message: "scarcity_level=枯竭中，usability=铸造与能量，rule_type=天道。",
+    },
+    [names.dialogue]: { output: JSON.stringify(dialogue) },
+    [names.commercial]: { output: "not-json" },
+  })[0].json;
+
+  assert.deepEqual(result.incremental_updates.world_state[0].item_content, {
+    summary: "工业园内可清点的低阶晶核。",
+    purpose: "为熔炼提供有限启动能量。",
+    scarcity_level: "枯竭中",
+    usability: "铸造与能量",
+  });
+  assert.equal(Object.hasOwn(result.incremental_updates.world_state[0].item_content, "rule_type"), false);
+});
+
 test("FP001-03 rejects fractional relation dimensions outside the V7 integer scale", () => {
   const result = runCode(names.validator, {}, {
     [names.skillReader]: { correlation_id: "preview-relation-scale" },
