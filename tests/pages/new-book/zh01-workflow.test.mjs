@@ -469,7 +469,7 @@ test("preview normalizer converts only explicitly missing empty fields to null",
   assert.equal(unlisted.code, "PREVIEW_OUTPUT_INVALID");
 });
 
-test("FP001-03 returns an incomplete world candidate to the normal dialogue path", () => {
+test("FP001-03 normalizes a top-level world candidate without preserving cross-board L1 fields", () => {
   const dialogue = {
     missing_items: [],
     chat_message: "请确认这处地理设定是否符合创作意图。",
@@ -511,11 +511,51 @@ test("FP001-03 returns an incomplete world candidate to the normal dialogue path
 
   const returned = runCode(names.validator, {}, sources(misplaced))[0].json;
   assert.equal(returned.status, "preview");
-  assert.deepEqual(returned.missing_fields, [
-    "world_state[0].item_content.danger_level",
-    "world_state[0].item_content.location_text",
-  ]);
-  assert.equal(Object.hasOwn(returned.incremental_updates, "world_state"), false);
+  assert.deepEqual(returned.incremental_updates.world_state[0].item_content, {
+    summary: "环轨居住站的维护区域。",
+    purpose: "限制无授权人员进入核心轨道。",
+    danger_level: "high",
+    location_text: "近地轨道的旧维护环。",
+  });
+  assert.equal(Object.hasOwn(returned.incremental_updates.world_state[0], "danger_level"), false);
+  assert.equal(Object.hasOwn(returned.incremental_updates.world_state[0], "location_text"), false);
+});
+
+test("FP001-03 recovers a partial top-level resource response only when it does not touch a locked stage", () => {
+  const response = {
+    world_state: [{
+      atom_key: "resource.industrial_waste",
+      board_type: "resource",
+      atom_type: "resource",
+      item_name: "工业园废料",
+      item_content: { summary: "可清点的废钢与低阶晶核。", purpose: "为熔炼和制造提供有限材料。" },
+      scarcity_level: "枯竭中",
+      usability: "铸造与能量",
+      danger_level: 1,
+    }],
+    missing_items: [],
+    stage_completion: { "创作原点": 1, "世界设定": 0.2, "角色设定": 0, "冲突种子": 0 },
+  };
+  const sources = (lockedStages) => ({
+    [names.skillReader]: { correlation_id: "preview-partial-resource", form_data: { locked_stages: lockedStages } },
+    [names.dialogue]: { output: JSON.stringify(response) },
+    [names.commercial]: { output: "not-json" },
+  });
+
+  const recovered = runCode(names.validator, {}, sources([0]))[0].json;
+  assert.equal(recovered.status, "preview");
+  assert.equal(recovered.lock_respected, true);
+  assert.match(recovered.chat_message, /是否/u);
+  assert.deepEqual(recovered.incremental_updates.world_state[0].item_content, {
+    summary: "可清点的废钢与低阶晶核。",
+    purpose: "为熔炼和制造提供有限材料。",
+    scarcity_level: "枯竭中",
+    usability: "铸造与能量",
+  });
+
+  const blocked = runCode(names.validator, {}, sources([1]))[0].json;
+  assert.equal(blocked.status, "BLOCKED");
+  assert.equal(blocked.code, "PREVIEW_OUTPUT_INVALID");
 });
 
 test("FP001-03 restores omitted rule fields only when the creator explicitly supplied them", () => {
