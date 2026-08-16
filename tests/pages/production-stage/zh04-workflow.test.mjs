@@ -292,6 +292,8 @@ test("FP007 model prompts declare the V7 forbid-content and dialogue closures", 
     assert.match(body, /must_not_reveal/u);
     assert.match(body, /D-01.*D-02.*D-03/u);
     assert.match(body, /dialogue_coverage/u);
+    assert.match(body, /DIALOGUE CLOSURE/u);
+    assert.match(body, /D-01.*D-02.*D-03/u);
   }
 });
 
