@@ -411,6 +411,19 @@ const WORLD_L1_FIELDS = Object.freeze({
   event: ["event_era"],
 });
 
+const WORLD_BOARD_KEYS = Object.freeze({
+  "规则": "rule",
+  "地理": "geography",
+  "资源": "resource",
+  "势力": "faction",
+  "职业": "profession",
+  "职业/超能": "profession",
+  "怪物": "monster",
+  "怪物/灾难": "monster",
+  "大事": "event",
+  "大事记": "event",
+});
+
 function completeWorldL1Value(value) {
   if (value === null || value === undefined) return false;
   if (typeof value === "string") return value.trim().length > 0;
@@ -421,7 +434,8 @@ function completeWorldL1Value(value) {
 
 function completeWorldState(value) {
   const atomTypes = ["rule", "fact", "resource", "event", "faction", "job", "monster", "geo"];
-  const requiredL1Fields = WORLD_L1_FIELDS[value?.board_type] || [];
+  const boardKey = WORLD_BOARD_KEYS[value?.board_type] || value?.board_type;
+  const requiredL1Fields = WORLD_L1_FIELDS[boardKey] || [];
   return Boolean(
     value?.board_type
     && requiredL1Fields.length > 0
