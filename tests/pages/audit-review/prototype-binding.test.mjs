@@ -11,6 +11,7 @@ import {
   isAuditRecoveryCandidate,
   isPresentationCandidate,
   clearRecoveredPresentationFailure,
+  pendingCreatorConfirmationSelection,
   presentationReleaseState,
   presentationSelection,
   resolveAuditReviewContext,
@@ -95,6 +96,7 @@ test("AUDIT_REVIEW preserves prototype anchors and binds the L1A presentation en
   assert.equal(legacyRouteNames["audit_stage.html"], "audit");
   assert.match(html, /整个 L1A 重推方向与建议/);
   assert.match(server, /next_presentation/);
+  assert.match(server, /pending_creator_confirmation/);
   assert.match(server, /confirmation_status IS DISTINCT FROM 'creator_confirmed'/);
   assert.doesNotMatch(module, /static_mock|静态批准预览|退回成功/);
 });
@@ -225,6 +227,36 @@ test("FP009 keeps the authoritative current L1A visible while a chapter is selec
     "L1A-07 反向渗透",
   );
   assert.equal(currentL1aLabel({ current_l1a_id: "not-a-label" }), null);
+});
+
+test("a formal unconfirmed chapter restores the existing audit confirmation page after refresh", () => {
+  const pending = pendingCreatorConfirmationSelection({
+    book: { current_l1a: { id: L1A } },
+    pending_creator_confirmation: {
+      l1a_unit_id: L1A,
+      chapter_id: "815fe390-94e1-4a51-947b-6db2412b5a11",
+      chapter_version_id: "987409eb-05b4-43d8-b557-60d782ca8387",
+      version_state: "formal",
+      confirmation_status: "unconfirmed",
+      continuation_available: true,
+    },
+  });
+
+  assert.deepEqual(pending, {
+    chapter_id: "815fe390-94e1-4a51-947b-6db2412b5a11",
+    candidate_version_id: "987409eb-05b4-43d8-b557-60d782ca8387",
+  });
+  assert.equal(pendingCreatorConfirmationSelection({
+    book: { current_l1a: { id: L1A } },
+    pending_creator_confirmation: {
+      l1a_unit_id: L1A,
+      chapter_id: pending.chapter_id,
+      chapter_version_id: pending.candidate_version_id,
+      version_state: "formal",
+      confirmation_status: "creator_confirmed",
+      continuation_available: true,
+    },
+  }), null);
 });
 
 test("FP009 presentation intent keeps only the selected L1A and book scope", () => {

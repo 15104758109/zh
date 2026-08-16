@@ -207,6 +207,29 @@ export function presentationSelection(result) {
   };
 }
 
+export function pendingCreatorConfirmationSelection(result) {
+  const l1a = asObject(result?.book?.current_l1a);
+  const chapter = asObject(result?.pending_creator_confirmation);
+  const l1aId = String(l1a.id || "").toLowerCase();
+  const chapterL1aId = String(chapter.l1a_unit_id || "").toLowerCase();
+  const chapterId = String(chapter.chapter_id || "").toLowerCase();
+  const versionId = String(chapter.chapter_version_id || "").toLowerCase();
+  if (!UUID_PATTERN.test(l1aId)
+    || !UUID_PATTERN.test(chapterL1aId)
+    || !UUID_PATTERN.test(chapterId)
+    || !UUID_PATTERN.test(versionId)
+    || chapterL1aId !== l1aId
+    || chapter.version_state !== "formal"
+    || chapter.confirmation_status !== "unconfirmed"
+    || chapter.continuation_available !== true) {
+    return null;
+  }
+  return {
+    chapter_id: chapterId,
+    candidate_version_id: versionId,
+  };
+}
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -879,6 +902,13 @@ async function loadProjection(runtime, { background = false, scheduleNext = fals
     });
     const result = fetched;
     runtime.result = result;
+    const pendingConfirmation = pendingCreatorConfirmationSelection(result);
+    if (pendingConfirmation) {
+      const destination = buildAuditStageUrl(runtime.context, pendingConfirmation);
+      if (typeof runtime.navigate === "function") runtime.navigate(destination);
+      else globalThis.location?.assign(destination);
+      return;
+    }
     const selection = presentationSelection(result);
     const available = selectableL1as(runtime);
     runtime.selectedL1aId = runtime.selectedL1aId && available.some((l1a) => l1a.id === runtime.selectedL1aId)

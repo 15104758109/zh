@@ -233,6 +233,44 @@ WITH scoped_book AS (
   WHERE COALESCE((row_json->>'is_next_presentation')::boolean, false)
   ORDER BY chapter_index
   LIMIT 1
+), pending_creator_confirmation AS (
+  SELECT jsonb_build_object(
+    'chapter_id', cv.chapter_id,
+    'chapter_version_id', cv.id,
+    'l1a_unit_id', h.l1a_unit_id,
+    'chapter_index', h.chapter_index,
+    'title', h.title,
+    'version_state', cv.version_state,
+    'confirmation_status', h.confirmation_status,
+    'continuation_available', NOT EXISTS (
+      SELECT 1
+      FROM public.chapter_header AS later
+      JOIN public.chapter_version AS later_version
+        ON later_version.chapter_id = later.id
+       AND later_version.book_id = later.book_id
+       AND later_version.version_state = 'formal'
+       AND later_version.is_formal
+       AND later_version.is_valid
+       AND NOT later_version.is_shadow
+      WHERE later.book_id = h.book_id
+        AND later.l1a_unit_id = h.l1a_unit_id
+        AND later.chapter_index > h.chapter_index
+    )
+  ) AS row_json
+  FROM public.chapter_version AS cv
+  JOIN public.chapter_header AS h ON h.id = cv.chapter_id
+  JOIN scoped_book AS b ON b.id = cv.book_id
+  WHERE b.current_l1a_id IS NOT NULL
+    AND h.l1a_unit_id = b.current_l1a_id
+    AND cv.version_state = 'formal'
+    AND cv.is_formal
+    AND cv.is_valid
+    AND NOT cv.is_shadow
+    AND h.is_finalized
+    AND h.confirmation_status = 'unconfirmed'
+    AND NULLIF(btrim(cv.prose_text), '') IS NOT NULL
+  ORDER BY h.chapter_index DESC
+  LIMIT 1
 ), character_rows AS (
   SELECT COALESCE(c.char_code, c.id::text) AS sort_key,
          jsonb_build_object(
@@ -268,6 +306,7 @@ SELECT COALESCE(
         ),
         'chapters', COALESCE((SELECT jsonb_agg(row_json ORDER BY chapter_index) FROM chapter_rows), '[]'::jsonb),
         'next_presentation', (SELECT row_json FROM next_presentation),
+        'pending_creator_confirmation', (SELECT row_json FROM pending_creator_confirmation),
         'characters', COALESCE((SELECT jsonb_agg(row_json ORDER BY sort_key) FROM character_rows), '[]'::jsonb)
       )
     )
