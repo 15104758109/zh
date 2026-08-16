@@ -113,7 +113,7 @@ test("FP001-03 keeps the V1 chat model contract required for dynamic provider bi
   assert.equal(typeof model.parameters.model, "string");
   assert.equal(Object.hasOwn(model.parameters, "responsesApiEnabled"), false);
   assert.equal(Object.hasOwn(model.parameters, "builtInTools"), false);
-  assert.equal(model.parameters.options.responseFormat, "json_object");
+  assert.equal(Object.hasOwn(model.parameters.options, "responseFormat"), false);
   assert.equal(model.parameters.options.timeout, 60000);
 
   const validator = node(names.validator).parameters.jsCode;
@@ -469,7 +469,7 @@ test("preview normalizer converts only explicitly missing empty fields to null",
   assert.equal(unlisted.code, "PREVIEW_OUTPUT_INVALID");
 });
 
-test("FP001-03 rejects world L1 fields outside their item_content contract", () => {
+test("FP001-03 returns an incomplete world candidate to the normal dialogue path", () => {
   const dialogue = {
     missing_items: [],
     chat_message: "请确认这处地理设定是否符合创作意图。",
@@ -507,12 +507,15 @@ test("FP001-03 rejects world L1 fields outside their item_content contract", () 
   };
   candidate.danger_level = "high";
   candidate.location_text = "近地轨道的旧维护环。";
-  misplaced.missing_items = ["world_state[0].item_content.violate_cost"];
+  misplaced.missing_items = [];
 
-  const rejected = runCode(names.validator, {}, sources(misplaced))[0].json;
-  assert.equal(rejected.status, "BLOCKED");
-  assert.equal(rejected.code, "PREVIEW_OUTPUT_INVALID");
-  assert.equal(Object.hasOwn(rejected, "incremental_updates"), false);
+  const returned = runCode(names.validator, {}, sources(misplaced))[0].json;
+  assert.equal(returned.status, "preview");
+  assert.deepEqual(returned.missing_fields, [
+    "world_state[0].item_content.danger_level",
+    "world_state[0].item_content.location_text",
+  ]);
+  assert.equal(Object.hasOwn(returned.incremental_updates, "world_state"), false);
 });
 
 test("FP001-03 rejects fractional relation dimensions outside the V7 integer scale", () => {

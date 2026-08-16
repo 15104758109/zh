@@ -1086,7 +1086,7 @@ test("the prototype shell exposes local draft recovery and explicit front-end st
 });
 
 test("existing prototype controls bind to real actions without a parallel page tree", () => {
-  assert.match(page, /<script src="\/pages\/new-book\/new-book-bridge\.mjs\?v=20260726-candidate-advice-1"><\/script>/);
+  assert.match(page, /<script src="\/pages\/new-book\/new-book-bridge\.mjs\?v=20260816-chat-form-rebind-1"><\/script>/);
   assert.doesNotMatch(page, /<script type="module" src="\/pages\/new-book\/new-book-bridge\.mjs/);
   assert.doesNotMatch(bridge, /^export\s/m);
   for (const handler of ["sendChat", "runIntegrityAnalysis", "aiAddWorldItem", "charAdd", "startProduction", "openWorkbench"]) {

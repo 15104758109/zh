@@ -622,20 +622,22 @@ function restoreDraft() {
 }
 
 function candidateMessage(result, application) {
+  const responseMessage = typeof result.chat_message === "string" ? result.chat_message.trim() : "";
+  const withResponse = (notice) => responseMessage ? `${responseMessage}\n\n${notice}` : notice;
   const lockedStages = window.__newBookRuntime?.lockedStages?.() || [];
   const skippedLockedStages = Array.isArray(application?.skipped_locked_stages)
     ? application.skipped_locked_stages.filter(Boolean)
     : [];
   if (lockedStages.length) {
-    return "系统仅允许把本轮候选合并到未锁定的本地草稿；当前已锁定阶段保持不变。请在阶段面板核对本轮结果。";
+    return withResponse("系统仅允许把本轮候选合并到未锁定的本地草稿；当前已锁定阶段保持不变。请在阶段面板核对本轮结果。");
   }
   if (skippedLockedStages.length) {
-    return `本轮模型建议涉及已锁定的${skippedLockedStages.join("、")}，浏览器已忽略这些改写；锁定阶段未改变。未锁定阶段的候选已照常显示，请核对后再锁定。`;
+    return withResponse(`本轮模型建议涉及已锁定的${skippedLockedStages.join("、")}，浏览器已忽略这些改写；锁定阶段未改变。未锁定阶段的候选已照常显示，请核对后再锁定。`);
   }
   if (result.lock_respected === false) {
-    return "本轮模型建议含有对已锁定阶段的改写，系统已忽略这些内容；锁定阶段未改变。未锁定阶段的候选已照常显示，请核对后再锁定。";
+    return withResponse("本轮模型建议含有对已锁定阶段的改写，系统已忽略这些内容；锁定阶段未改变。未锁定阶段的候选已照常显示，请核对后再锁定。");
   }
-  return result.chat_message || "后端已返回本地候选草稿。";
+  return responseMessage || "后端已返回本地候选草稿。";
 }
 
 function projectPreview(result) {
@@ -787,7 +789,10 @@ async function previewFromChat(event) {
 }
 
 function bindChatForm() {
-  const form = document.querySelector("form.chat-input");
+  bindChatFormElement(document.querySelector("form.chat-input"));
+}
+
+function bindChatFormElement(form, force = false) {
   if (!form) return;
   form.removeAttribute("onsubmit");
   const submitPreview = (event) => {
@@ -799,7 +804,9 @@ function bindChatForm() {
     });
   };
   window.__newBookPreviewFromChat = submitPreview;
-  if (form.dataset.newBookChatBound === "true") return;
+  if (!force && form.dataset.newBookChatBound === "true") return;
+  if (form.__newBookChatBound === true) return;
+  form.__newBookChatBound = true;
   form.dataset.newBookChatBound = "true";
   form.addEventListener("submit", submitPreview);
 }
@@ -876,7 +883,11 @@ function bindExistingControls() {
   bindCreateButtons();
   new MutationObserver((records) => {
     records.forEach((record) => record.addedNodes.forEach((node) => {
-      if (node.nodeType === Node.ELEMENT_NODE) bindCreateButtons(node);
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        bindCreateButtons(node);
+        if (node.matches?.("form.chat-input")) bindChatFormElement(node, true);
+        node.querySelectorAll?.("form.chat-input").forEach((form) => bindChatFormElement(form, true));
+      }
     }));
   }).observe(document.body, { childList: true, subtree: true });
 }
