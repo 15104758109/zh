@@ -526,7 +526,8 @@ function renderControls(runtime, chapter) {
   const exhaustedBudget = budgetExhausted(chapter);
   const controlMode = deductionControlMode(chapter, {
     commandError: runtime.commandError,
-    pauseRequested: runtime.pauseRequested,
+    // The acknowledgement only applies while the service is settling a pause.
+    pauseRequested: runtime.pauseRequested && serviceState !== "paused",
     pausePending: runtime.pausePending,
     commandPending: runtime.commandPending,
     serviceState,

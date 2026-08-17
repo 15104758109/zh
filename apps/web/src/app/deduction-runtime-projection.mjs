@@ -1,4 +1,4 @@
-const visibleRuntimeStates = new Set(["running", "blocked", "failed"]);
+const visibleRuntimeStates = new Set(["running", "paused", "blocked", "failed"]);
 
 function runtimeObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
@@ -6,6 +6,18 @@ function runtimeObject(value) {
 
 function chapterIdentity(chapter) {
   return `${String(chapter?.chapter_id).toLowerCase()}:${String(chapter?.candidate_version_id).toLowerCase()}`;
+}
+
+function resumablePausedCheckpoint(chapters) {
+  return chapters.some((chapter) => {
+    const progress = runtimeObject(chapter?.deduction_progress_json);
+    const input = runtimeObject(chapter?.candidate_plot_sim_json)?.deduction_input_snapshot;
+    return progress?.deduction_complete !== true
+      && Number.isInteger(progress?.current_particle_index)
+      && progress.current_particle_index > 0
+      && Array.isArray(input?.particles) && input.particles.length > 0
+      && Array.isArray(input?.participating_chars) && input.participating_chars.length > 0;
+  });
 }
 
 export function mergeDeductionRuntime(databaseResult, runtimeResult) {
@@ -40,6 +52,7 @@ export function mergeDeductionRuntime(databaseResult, runtimeResult) {
     matchedRuntimeChapters.push([runtimeChapter, chapter]);
   }
 
+  if (runtimeState === "paused" && !resumablePausedCheckpoint(runtimeChapters)) return databaseResult;
   if (!visibleRuntimeStates.has(runtimeState)) return databaseResult;
 
   const runtimeBlockedCode = typeof runtimeResult.blocked_code === "string"

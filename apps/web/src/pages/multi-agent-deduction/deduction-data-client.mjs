@@ -218,6 +218,19 @@ export function deductionCommandAction(chapter) {
   const particles = Array.isArray(target?.particles_json) ? target.particles_json : [];
   const scene = target?.scene_condition_package;
   if (!particles.length || !scene || typeof scene !== "object" || Array.isArray(scene)) return null;
+  const runtimeProgress = chapter.runtime_service_state === "paused"
+    ? chapter.runtime_deduction_progress_json
+    : null;
+  const runtimeInput = chapter.runtime_service_state === "paused"
+    ? chapter.runtime_candidate_plot_sim_json?.deduction_input_snapshot
+    : null;
+  if (runtimeProgress && typeof runtimeProgress === "object"
+    && runtimeProgress.deduction_complete !== true
+    && Number.isInteger(runtimeProgress.current_particle_index)
+    && runtimeProgress.current_particle_index > 0
+    && runtimeInput && typeof runtimeInput === "object"
+    && Array.isArray(runtimeInput.particles) && runtimeInput.particles.length > 0
+    && Array.isArray(runtimeInput.participating_chars) && runtimeInput.participating_chars.length > 0) return "resume";
   const progress = chapter?.deduction_progress_json && typeof chapter.deduction_progress_json === "object"
     ? chapter.deduction_progress_json
     : {};
