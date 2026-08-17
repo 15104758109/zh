@@ -96,7 +96,7 @@ test("ZH04 LLM nodes use their active binding and block before a provider call w
     assert.doesNotMatch(serialized, /deepseek|gpt-5\.6-luna/iu);
     assert.doesNotMatch(serialized, /JSON\?\?/u);
     assert.deepEqual(node.credentials, {
-      openAiApi: { id: "ktkbgOI2RQI4Y8QK", name: "OpenAI account" },
+      openAiApi: { id: "ZpJ7ejgoXbQb5xUW", name: "RelayCove account" },
     });
   }
 });

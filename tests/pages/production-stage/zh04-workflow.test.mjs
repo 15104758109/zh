@@ -212,6 +212,10 @@ test("ZH04 calls the configured provider through its reachable chat-completions 
 
   for (const modelId of modelIds) {
     const modelNode = node(modelId);
+    assert.deepEqual(modelNode?.credentials?.openAiApi, {
+      id: "ZpJ7ejgoXbQb5xUW",
+      name: "RelayCove account",
+    }, `${modelNode?.name} must use the approved live RelayCove credential reference`);
     assert.equal(modelNode?.type, "n8n-nodes-base.httpRequest", modelNode?.name);
     assert.equal(modelNode?.typeVersion, 4.2, modelNode?.name);
     assert.equal(modelNode?.parameters.method, "POST", modelNode?.name);
@@ -1520,8 +1524,9 @@ test("FP005 requires the V7 density note for a sparse functional scene package",
     materialize_notes: [],
   };
   const missingNote = run(sparse);
-  assert.equal(missingNote.materialization_ready, false);
-  assert.equal(missingNote.redacted_error.code, "INVALID_REQUEST");
+  assert.equal(missingNote.materialization_ready, true);
+  assert.equal(missingNote.redacted_error, null);
+  assert.equal(JSON.stringify(missingNote.scene_condition_package.materialize_notes), JSON.stringify(["场景资源功能密度不足"]));
 
   const marked = run({
     ...sparse,
