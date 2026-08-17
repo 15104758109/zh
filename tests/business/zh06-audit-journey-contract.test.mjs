@@ -1111,12 +1111,12 @@ test("ZH06 persists the objective result before routing its P0 gate", () => {
   const auditResponse = node(value, "Respond：审计与写回完成");
 
   assert.deepEqual(presentation.credentials.openAiApi, {
-    id: "ktkbgOI2RQI4Y8QK",
-    name: "OpenAI account",
+    id: "ZpJ7ejgoXbQb5xUW",
+    name: "RelayCove account",
   });
   assert.deepEqual(objectiveAudit.credentials.openAiApi, {
-    id: "ktkbgOI2RQI4Y8QK",
-    name: "OpenAI account",
+    id: "ZpJ7ejgoXbQb5xUW",
+    name: "RelayCove account",
   });
 
   // FP009, FP010, and both FP011 reviews need the same scoped candidate plus

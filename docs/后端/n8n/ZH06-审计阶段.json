@@ -162,8 +162,8 @@
       "name": "FP009-01 文学呈现",
       "credentials": {
         "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
+          "id": "ZpJ7ejgoXbQb5xUW",
+          "name": "RelayCove account"
         }
       },
       "retryOnFail": true,
@@ -201,8 +201,8 @@
       "name": "FP010-01客观审计",
       "credentials": {
         "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
+          "id": "ZpJ7ejgoXbQb5xUW",
+          "name": "RelayCove account"
         }
       },
       "retryOnFail": true,
@@ -599,8 +599,8 @@
       "name": "FP013-01 文风增强",
       "credentials": {
         "openAiApi": {
-          "id": "ktkbgOI2RQI4Y8QK",
-          "name": "OpenAI account"
+          "id": "ZpJ7ejgoXbQb5xUW",
+          "name": "RelayCove account"
         }
       },
       "onError": "continueRegularOutput"

@@ -52,8 +52,8 @@ function edgeCount(value) {
 test("ZH06 resolves the active audit bindings at its existing input node", () => {
   const value = workflow();
   assert.equal(value.nodes.length, 31);
-  assert.equal(Object.keys(value.connections ?? {}).length, 29);
-  assert.equal(edgeCount(value), 39);
+  assert.equal(Object.keys(value.connections ?? {}).length, 30);
+  assert.equal(edgeCount(value), 40);
 
   const loader = nodeById(value, loaderNodeId);
   const query = loader.parameters.query;
@@ -85,8 +85,15 @@ test("ZH06 audit and presentation LLM nodes dynamically use their corresponding 
     assert.match(node.parameters.jsonBody, /choices|messages/u, `${fp} must send a Chat Completions request`);
     assert.match(serialized, /CONFIG_CONTRACT_BLOCKED/u);
     assert.doesNotMatch(serialized, /deepseek|gpt-5\.6-luna/iu);
+    const usesRelayCove = [
+      "8fc054d6-81f4-4c24-a7c8-a1215523b9fb",
+      "b11fc283-6990-4fb9-bba6-96f55b25d670",
+      "b11e8ec4-b0d1-43c2-a8c4-7f2aec19a950",
+    ].includes(id);
     assert.deepEqual(node.credentials, {
-      openAiApi: { id: "ktkbgOI2RQI4Y8QK", name: "OpenAI account" },
+      openAiApi: usesRelayCove
+        ? { id: "ZpJ7ejgoXbQb5xUW", name: "RelayCove account" }
+        : { id: "ktkbgOI2RQI4Y8QK", name: "OpenAI account" },
     });
   }
 
