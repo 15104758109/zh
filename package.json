@@ -9,6 +9,7 @@
     "pnpm": ">=9 <10"
   },
   "scripts": {
+    "start": "pnpm dev:web",
     "dev:web": "pnpm --filter @zhreplan/web dev",
     "typecheck": "tsc --project tsconfig.base.json --noEmit",
     "build": "pnpm typecheck && pnpm --filter @zhreplan/web build",

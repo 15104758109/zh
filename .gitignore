@@ -23,6 +23,7 @@ id_ed25519*
 !apps/api/src/features/fp008/fp008-02/env-credential-resolver.mjs
 
 # Local caches and dependency folders
+/.tmp-*
 .cache/
 .tmp/
 tmp/
