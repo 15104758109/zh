@@ -4,17 +4,19 @@
 
 ## 真实用户旅程
 
-- 验收书《熔炼末世：文明重启》`fa26bdb2-6c0c-446a-8739-d85ec39990aa` 在同一 book/operator/L1A 上已完成第 1 至第 8 章的真实生产、审计、正式写入和作者确认。
+- 验收书《熔炼末世：文明重启》`fa26bdb2-6c0c-446a-8739-d85ec39990aa` 在同一 book/operator/L1A 上已完成第 1 至第 10 章的真实生产、审计、正式写入和刷新恢复。当前 10 个章节版本均为 `formal / valid / non-shadow / chief-editor Y`，最新客观审计均为 completed、无 P0、无返回路由。
 - 第 4 章 `ffdf2151-9e68-417d-b117-ca1efad8f821`，正式版本 `d9d52b5b-8ce7-472c-a80c-4eda06222e8f`。`4047` 在 FP012-02 正常等待后恢复为 `success`，章节状态为 `creator_confirmed`。
 - 第 5、6 章已由同一书的 L1A `73df8587-6d93-4a78-8011-add9f55ad5f5` 经 ZH05 `4080` 完成真实推演，并在 ZH06 `4114` 中真实经过 FP009 至 FP013、正式写入和作者继续确认；当前作品已有 6 章正式章节。该 L1A 已正常完成。
 - L1A `dd559013-19eb-4cd0-ad2d-fb6ff0f2ce92` 的第 7、8 章候选均已通过既有 deduction/audit/作者确认链路；第 8 章 `ad21b7d8-3216-49b4-9298-af4dc29413be`、版本 `112ea96c-0e26-4b69-acce-7daf56821c4f` 由 ZH06 `4130` 完成 FP009 至 FP013 并正式写入。
 - `/deduction-review` 已能在刷新后识别 current L1A 上正式、有效、非影子且待作者确认的章节，并跳转到既有 scoped `/audit` 页面；它不拼接或暴露签名回调。该恢复经过真实 API、浏览器刷新和 PostgreSQL 状态核验。
+- L1A `61201fd4-1873-4dc5-851b-4040b4314843` 的第 9 章经 ZH05 `4135` 真实完成锁定推演（`deduction_complete`，token budget `10000000`），随后从 `/deduction-review` 进入 ZH06。首次客观审计将角色越过信息边界留存为业务 P0，系统按 V7 自动重写同版本，第二次客观审计、读者、商业与主编审计通过；刷新 `/audit` 后恢复正式正文和作者继续操作。
+- 第 9 章作者继续后，同一 L1A 的第 10 章在真实生产链路中生成锁定推演与候选正文。页面的“继续正文呈现”恢复缺失审计证据；客观、读者、商业与主编审计通过，正式版本 `235c7598-9efa-4948-8a23-ac41f0ff1016` 经浏览器刷新恢复，控制台无错误。第 11 章保持候选状态，未作为 10 章验收的一部分继续生产。
 
 ## 当前运行时阻断
 
-- RelayCove 模型目录当前不包含 Claude Haiku；`gpt-5.6-luna` 与 `gpt-5.6-terra` 已通过无业务数据的 Chat Completions JSON 探针。复杂任务仍由已验证的 Terra binding 承担，模型目录不声明免费/价格能力。
-- RelayCove Terra 已经独立命令、ZH00 受控连接测试和真实 ZH06 `4114` 验证。复杂任务模板 active v70 指向 `gpt-5.6-terra`；ZH06 的 FP009、FP010、FP013 凭据映射与模板一致。无当前工程 P0 阻断。
+- RelayCove 模型目录当前不包含 Claude Haiku；`gpt-5.6-luna` 与 `gpt-5.6-terra` 已通过无业务数据的 Chat Completions JSON 探针。更新后的本地测试供应商目录可读取 `gpt-5.6`、`gpt-5.6-luna`、`gpt-5.6-sol`、`gpt-5.6-terra` 等模型；复杂任务仍由已验证的 Terra binding 承担，模型目录不声明免费/价格能力。
+- RelayCove Terra 已经独立命令、ZH00 受控连接测试和真实 ZH06 `4114`、第 9/10 章旅程验证。复杂任务模板 active v70 指向 `gpt-5.6-terra`；ZH06 的 FP009、FP010、FP013 凭据映射与模板一致。无当前工程 P0 阻断。
 
 ## 最小下一步
 
-从既有生产页面生成第 9、10 章候选，按同一页面、n8n、PostgreSQL 与刷新恢复链路完成正文推演、审计和作者确认。
+MVP 十章验收已完成。下一个产品动作应在新的最小书范围内处理非阻断可靠性回归，优先检查长运行 n8n execution 的最终完成投影，不扩张 V7 状态或流程。
