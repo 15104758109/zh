@@ -1581,6 +1581,56 @@ test("ZH06 FP010 repairs only the isolated structural noise observed in executio
   }
 });
 
+test("ZH06 FP010 preserves repeated evidence objects observed in execution 4126", () => {
+  const parser = node(workflow(), "JSON修复 (2)");
+  const checks = Array.from({ length: 9 }, (_, index) => ({
+    check_id: `审查-${String(index + 1).padStart(2, "0")}`,
+    severity: index < 5 ? "P0" : "P1",
+    pass: true,
+    findings: "通过",
+    evidence: {},
+  }));
+  const evidence = [
+    { text_excerpt: "管廊的墙面沥青泛着潮湿的暗光。", deduction_reference: "目标快照 E101", field: "情绪" },
+    { text_excerpt: "她将电池压进裂口。", deduction_reference: "目标快照 C201", field: "行动" },
+  ];
+  checks[0] = { ...checks[0], evidence };
+  const audit = {
+    has_p0_blocker: false,
+    checks,
+    p0_items_json: [],
+    audit_findings_jsonb: {},
+    return_route_suggestion_jsonb: {},
+    audited_handoff_package: {
+      package_schema_version: 1,
+      formalization_eligible: true,
+      world_changes: [],
+      character_live_state_changes: [],
+      relation_changes: [],
+      memories: [],
+      narrative_assets: [],
+    },
+    assets: [],
+  };
+  const valid = JSON.stringify(audit);
+  const expected = `"evidence":${JSON.stringify(evidence)}`;
+  const repeatedObjects = `"evidence":${JSON.stringify(evidence[0])},${JSON.stringify(evidence[1])}`;
+  const malformed = valid.replace(expected, repeatedObjects);
+  assert.notEqual(malformed, valid, "fixture must reproduce the repeated-object evidence shape");
+  const response = {
+    statusCode: 200,
+    data: JSON.stringify({ choices: [{ message: { content: malformed } }] }),
+  };
+
+  const output = runObjectiveParser(parser.parameters.jsCode, audit, response);
+  assert.equal(output[0].json.audit_pass, true);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(output[0].json.objective_audit.checks[0].evidence)),
+    evidence,
+  );
+  assert.match(parser.parameters.jsCode, /const repeatedEvidenceObjects/u);
+});
+
 test("ZH06 FP010 repairs the unescaped evidence citation observed in execution 3751", () => {
   const parser = node(workflow(), "JSON修复 (2)");
   const checks = Array.from({ length: 9 }, (_, index) => ({
