@@ -265,6 +265,15 @@ test("both FP008-03 preaudit paths preserve provider failures instead of blaming
       code: "MODEL_PROVIDER_UNAVAILABLE",
       message: "The current model service is unavailable.",
     });
+
+    const [bodylessGatewayFailure] = runCodeNode(node(normalizerName).parameters.jsCode, {
+      statusCode: 502,
+    }, namedNodes);
+    assert.equal(bodylessGatewayFailure.json.audit_pass, false);
+    assert.deepEqual(bodylessGatewayFailure.json.redacted_error, {
+      code: "MODEL_PROVIDER_UNAVAILABLE",
+      message: "The current model service is unavailable.",
+    });
   }
 });
 
