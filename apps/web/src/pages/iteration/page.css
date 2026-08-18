@@ -73,4 +73,45 @@
 .contract-panel p { margin: 0; color: color-mix(in oklab, var(--color-base-content) 62%, transparent); font-size: 12px; line-height: 1.55; }
 .toast-container { position: fixed; right: 20px; bottom: 18px; z-index: 100; }
 @media (max-width: 980px) { .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .iteration-grid { grid-template-columns: 1fr; } }
-@media (max-width: 620px) { .iteration-main { padding-inline: 16px; } .iteration-header { padding-inline: 16px; } .iteration-header-title h1 { font-size: 14px; } .book-badge { max-width: 155px; } .book-badge #header-book-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .page-intro { align-items: flex-start; flex-direction: column; } .stepper { gap: 7px; font-size: 11px; } .step-button { font-size: 11px; } .metric-grid { grid-template-columns: 1fr 1fr; gap: 9px; } .metric-card { min-height: 88px; padding: 11px; } .metric-card strong { font-size: 20px; } .detail-fields { grid-template-columns: 1fr; } .action-bar { justify-content: stretch; } .action-bar .ui-button { flex: 1 1 120px; } }
+@media (max-width: 767px) {
+  .iteration-main {
+    width: calc(100vw - var(--sidebar-w));
+    max-width: calc(100vw - var(--sidebar-w));
+    min-width: 0;
+    padding: 82px 14px 24px;
+    overflow-x: hidden;
+  }
+  .iteration-header {
+    width: calc(100vw - var(--sidebar-w));
+    max-width: calc(100vw - var(--sidebar-w));
+    min-width: 0;
+    padding-inline: 12px;
+    gap: 12px;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .iteration-header::-webkit-scrollbar { display: none; }
+  .iteration-header-title,
+  .iteration-header-actions {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  .iteration-header-title h1 { font-size: 14px; }
+  .iteration-header-actions { gap: 6px; }
+  .book-badge { max-width: 140px; }
+  .book-badge #header-book-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .page-intro { align-items: stretch; flex-direction: column; gap: 12px; }
+  .page-intro h2 { font-size: 21px; }
+  .page-intro .ui-button { width: 100%; }
+  .stepper { justify-content: flex-start; gap: 7px; overflow-x: auto; white-space: nowrap; }
+  .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .metric-card { min-height: 88px; padding: 11px; }
+  .metric-card strong { font-size: 20px; }
+  .iteration-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .work-panel { min-width: 0; }
+  .detail-fields { grid-template-columns: minmax(0, 1fr); }
+  .action-bar { justify-content: stretch; }
+  .action-bar .ui-button { flex: 1 1 120px; min-width: 0; }
+  .contract-panel { min-width: 0; }
+}

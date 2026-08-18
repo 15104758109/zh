@@ -120,9 +120,8 @@
             border-color: currentColor !important;
             background-color: var(--pill-active-bg) !important;
         }
-            /* 顶栏随侧栏折叠隐藏 */
-        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
-        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+            /* 顶栏始终保留；侧栏折叠只改变其左边界。 */
+        .header-glass { transition: left .2s ease; }
         .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
         .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
@@ -1081,11 +1080,15 @@
     updateCliffhangerCards(); // 直观呈递 5 项参数
     switchCliffhanger(2); // 默认高亮中间第二个断章点
 
+    let regenerateReturnFocus = null;
+
     function openRegenerateModal() {
         const modal = document.getElementById('regenerate-modal');
         if (modal) {
+            regenerateReturnFocus = document.activeElement;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+            modal.setAttribute('aria-hidden', 'false');
             document.getElementById('replan-suggestion').focus();
         }
     }
@@ -1095,9 +1098,19 @@
         if (modal) {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+            modal.setAttribute('aria-hidden', 'true');
             document.getElementById('replan-suggestion').value = '';
+            if (regenerateReturnFocus?.isConnected && !regenerateReturnFocus.hasAttribute('disabled')) {
+                regenerateReturnFocus.focus();
+            }
+            regenerateReturnFocus = null;
         }
     }
+
+    document.addEventListener('keydown', (event) => {
+        const modal = document.getElementById('regenerate-modal');
+        if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) closeRegenerateModal();
+    });
 
     function submitReplanDirection() {
         const suggestion = document.getElementById('replan-suggestion').value.trim();
@@ -1108,7 +1121,7 @@
 
         const confirmBtn = document.getElementById('confirm-replan-btn');
         confirmBtn.disabled = true;
-        confirmBtn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>发送中...</span>`;
+        confirmBtn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>发送中…</span>`;
 
         setTimeout(() => {
             closeRegenerateModal();
@@ -1150,7 +1163,7 @@
 </script>
 
 <!-- Regenerate suggestions modal -->
-<div id="regenerate-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 transition-all duration-300">
+<div id="regenerate-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 transition-all duration-300" role="dialog" aria-modal="true" aria-label="退回整个 L1A 推演修改方向建议" aria-hidden="true">
     <div class="w-[500px] bg-base-100 border border-base-content/10 rounded-box p-6 shadow-2xl relative overflow-hidden">
         <div class="absolute -right-16 -top-16 w-32 h-32 bg-primary/10 rounded-full blur-3xl"></div>
         <div class="flex items-center justify-between mb-4 pb-2 border-b border-base-content/10">
@@ -1158,19 +1171,19 @@
                 <span class="material-symbols-outlined text-primary text-[20px]">assignment_return</span>
                 退回整个 L1A 推演修改方向建议
             </h3>
-            <button onclick="closeRegenerateModal()" class="text-base-content/60 hover:text-base-content transition-colors">
-                <span class="material-symbols-outlined text-[20px]">close</span>
+            <button type="button" onclick="closeRegenerateModal()" aria-label="关闭退回方案对话框" class="text-base-content/60 hover:text-base-content transition-colors">
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
             </button>
         </div>
         <div class="space-y-4">
             <div class="space-y-2">
-                <label class="text-[10px] text-base-content/60 uppercase font-semibold tracking-normal">整个 L1A 重推方向与建议</label>
-                <textarea id="replan-suggestion" rows="4" class="ui-textarea w-full bg-base-200 border border-base-content/10 rounded-box p-3 text-xs text-base-content placeholder-gray-600 focus:outline-none focus:border-primary transition-colors resize-none" placeholder="请输入对当前整个 L1A 重新推演的建议及故事线调整方向..."></textarea>
+                <label for="replan-suggestion" class="text-[10px] text-base-content/60 uppercase font-semibold tracking-normal">整个 L1A 重推方向与建议</label>
+                <textarea id="replan-suggestion" name="replan_suggestion" autocomplete="off" rows="4" class="ui-textarea w-full bg-base-200 border border-base-content/10 rounded-box p-3 text-xs text-base-content placeholder-gray-600 focus:outline-none focus:border-primary transition-colors resize-none" placeholder="请输入对当前整个 L1A 重新推演的建议及故事线调整方向…"></textarea>
             </div>
 
             <div class="flex justify-end gap-3 pt-2">
-                <button onclick="closeRegenerateModal()" class="btn btn-outline border-base-content/10 hover:bg-base-content/5 btn-sm text-xs">取消</button>
-                <button id="confirm-replan-btn" class="btn btn-primary btn-sm flex items-center gap-2" data-interaction="approve_or_return_preview navigate_to_deduction" disabled>
+                <button type="button" onclick="closeRegenerateModal()" class="btn btn-outline border-base-content/10 hover:bg-base-content/5 btn-sm text-xs">取消</button>
+                <button id="confirm-replan-btn" type="button" class="btn btn-primary btn-sm flex items-center gap-2" data-interaction="approve_or_return_preview navigate_to_deduction" disabled>
                     <span>确认退回</span>
                 </button>
             </div>
@@ -1179,7 +1192,7 @@
 </div>
 
 <!-- Toast Container -->
-<div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
+<div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <section class="ui-state-overlay" data-audit-review-state-overlay hidden aria-live="polite">
     <div class="ui-state-panel">

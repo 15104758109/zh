@@ -22,13 +22,75 @@
           padding-top: 4rem !important;
           margin-top: 0 !important;
         }
-        /* 顶栏随侧栏折叠隐藏 */
-        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
-        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        /* 顶栏始终保留；侧栏折叠只改变其左边界。 */
+        .header-glass { transition: left .2s ease; }
         .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
         .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
         .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        @media (max-width: 767px) {
+          #main-content,
+          #main-content > *,
+          #main-content [data-region] {
+            min-width: 0;
+            max-width: 100%;
+          }
+          #main-content > .flex-1.flex.gap-6 {
+            flex-direction: column;
+            gap: 16px;
+            overflow: visible;
+          }
+          #main-content > .flex-1.flex.gap-6 > .flex-1 {
+            width: 100%;
+            min-width: 0;
+            overflow: visible;
+          }
+          #main-content [data-region="run_summary"] {
+            flex-direction: column;
+            gap: 12px;
+          }
+          #main-content [data-region="run_summary"] > .ui-card,
+          #main-content [data-region="trope_summary"] {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+          }
+          #main-content [data-region="run_summary"] .ui-card {
+            max-height: none;
+          }
+          #main-content > .flex.gap-6.min-h-\[660px\] {
+            flex-direction: column;
+            min-height: 0;
+            gap: 16px;
+          }
+          #chapter-detail-grid {
+            width: 100%;
+            min-width: 0;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 12px;
+          }
+          #chapter-detail-grid > .ui-card,
+          #chapter-detail-grid > div {
+            min-width: 0;
+            padding: 16px;
+          }
+          #main-content > .flex.gap-6.min-h-\[660px\] > .w-\[380px\] {
+            width: 100%;
+            min-width: 0;
+            padding-right: 0;
+          }
+          #production-add-character-btn,
+          .production-action-button {
+            width: 100%;
+            min-width: 0;
+          }
+          #main-content [data-region="approval_actions"] {
+            flex-wrap: wrap;
+          }
+          #main-content [data-region="approval_actions"] > button {
+            flex: 1 1 140px;
+          }
+        }
 </style>
     <script src="/vendor/tailwindcss-browser-4.js"></script>
 </head>
@@ -121,11 +183,11 @@
 <h2 class="font-bold text-base-content opacity-85 text-xs flex items-center gap-1.5">L1A 选择</h2>
 </div>
 <div class="relative w-full" id="l1a-dropdown-container">
-<div class="flex items-center bg-base-content/40 border border-base-content/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-primary/40 shadow-sm hover:shadow-md transition-all" id="l1a-dropdown-trigger">
+<button type="button" class="flex w-full items-center bg-base-content/40 border border-base-content/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-primary/40 shadow-sm hover:shadow-md transition-all" id="l1a-dropdown-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="l1a-dropdown">
 <span class="font-code-sm font-bold text-primary text-sm" id="l1a-current-label">读取中</span>
 <span class="text-[10px] text-base-content opacity-50 ml-2 truncate" id="l1a-current-title" data-full-text title="正在读取当前生产范围">正在读取当前生产范围</span>
 <span class="material-symbols-outlined text-base-content opacity-60 text-[16px] ml-auto">expand_more</span>
-</div>
+</button>
 <div class="hidden absolute top-6 left-0 right-0 mt-1 glass-panel bg-cyber-surface/95 rounded-lg shadow-2xl z-50 max-h-[220px] overflow-y-auto custom-scrollbar" id="l1a-dropdown">
 <div class="sticky top-0 bg-cyber-surface px-3 py-1.5 border-b border-dashed border-base-content/10 text-[9px] text-base-content opacity-60/50 font-label-caps">L1A 列表</div>
 <div class="p-1">
@@ -145,7 +207,7 @@
 </div>
 </div>
 <div class="production-approval-actions mt-auto pt-4 flex gap-2" data-region="approval_actions">
-<button disabled aria-disabled="true" class="production-action-button ui-button ui-button-quiet flex-1 min-w-0 py-2.5 rounded-xl border border-base-content/10 text-base-content opacity-60 hover:text-base-content hover:bg-base-content/5 transition-all flex items-center justify-center gap-1.5 font-bold text-xs whitespace-nowrap">
+<button id="regenerate-candidate-btn" type="button" disabled aria-disabled="true" class="production-action-button ui-button ui-button-quiet flex-1 min-w-0 py-2.5 rounded-xl border border-base-content/10 text-base-content opacity-60 hover:text-base-content hover:bg-base-content/5 transition-all flex items-center justify-center gap-1.5 font-bold text-xs whitespace-nowrap">
 <span class="material-symbols-outlined text-[16px]">refresh</span>重新生成
 </button>
 <button id="plan-generation-btn" disabled aria-disabled="true" class="production-action-button ui-button ui-button-primary flex-1 min-w-0 py-2.5 rounded-xl bg-primary text-primary-content hover:bg-primary/90 transition-all flex items-center justify-center gap-1.5 font-bold text-xs whitespace-nowrap">
@@ -444,30 +506,30 @@
     }
     window.showToast = showToast;
 </script>
-<div id="toast-container" class="toast-container"></div>
+<div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- 重新生成模态弹窗 -->
-<div id="regenerate-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-neutral/60 backdrop-blur-sm">
+<div id="regenerate-modal" class="fixed inset-0 z-[160] hidden items-center justify-center bg-neutral/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="regenerate-modal-title" aria-describedby="regenerate-modal-detail" aria-hidden="true">
     <div class="glass-panel w-[460px] rounded-box p-6 flex flex-col gap-4 border border-base-content/10 shadow-2xl relative bg-base-100">
-        <button class="absolute top-4 right-4 text-base-content opacity-60 hover:text-base-content transition-colors" onclick="closeRegenerateModal()">
+        <button id="close-regenerate-modal" type="button" aria-label="关闭退回方案对话框" class="absolute top-4 right-4 text-base-content opacity-60 hover:text-base-content transition-colors">
             <span class="material-symbols-outlined text-[20px]">close</span>
         </button>
         <div class="flex items-center gap-2 mb-1">
             <span class="material-symbols-outlined text-primary text-[22px]">psychology_alt</span>
-            <h3 class="font-headline-sm text-sm font-semibold text-primary">退回操作暂不可用</h3>
+            <h3 id="regenerate-modal-title" class="font-headline-sm text-sm font-semibold text-primary">退回候选方案</h3>
         </div>
-        <p class="font-code-sm text-[11px] text-base-content opacity-60 leading-relaxed">
-            当前稳定合同不支持从生产页面提交退回方向；页面不会发送、记录或伪造任何退回结果。
+        <p id="regenerate-modal-detail" class="font-code-sm text-[11px] text-base-content opacity-60 leading-relaxed">
+            说明需要调整的方向。提交后，当前未批准的候选方案将被退回，您可据此重新生成。
         </p>
         <div class="flex flex-col gap-2">
-            <label class="font-label-caps text-[10px] text-base-content opacity-60/80">退回方向</label>
-            <textarea id="re-deduction-direction" disabled class="ui-textarea w-full h-28 bg-base-content/40 border border-base-content/10 rounded-lg p-3 text-xs text-base-content focus:border-primary/50 focus:ring-0 placeholder:text-base-content opacity-60/30 font-code-sm" placeholder="退回合同待接入"></textarea>
+            <label for="re-deduction-direction" class="font-label-caps text-[10px] text-base-content opacity-60/80">退回方向</label>
+            <textarea id="re-deduction-direction" name="re_deduction_direction" autocomplete="off" class="ui-textarea w-full h-28 bg-base-content/40 border border-base-content/10 rounded-lg p-3 text-xs text-base-content focus:border-primary/50 focus:ring-0 placeholder:text-base-content opacity-60/30 font-code-sm" placeholder="例如：强化冲突升级与角色目标的因果关系"></textarea>
         </div>
 
         <div class="flex justify-end gap-2 mt-2">
-            <button class="px-4 py-2 rounded-lg bg-base-300 hover:bg-base-200 text-base-content opacity-60 text-[11px] font-medium transition-colors" onclick="closeRegenerateModal()">取消</button>
-            <button id="submit-replan-btn" disabled class="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-content text-[11px] font-medium transition-all shadow-[0_0_10px_rgba(173,198,255,0.2)] flex items-center gap-1" onclick="submitReplanDirection()">
-                合同未接入
+            <button id="cancel-regenerate-modal" type="button" class="px-4 py-2 rounded-lg bg-base-300 hover:bg-base-200 text-base-content opacity-60 text-[11px] font-medium transition-colors">取消</button>
+            <button id="submit-replan-btn" type="button" disabled class="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-content text-[11px] font-medium transition-all shadow-[0_0_10px_rgba(173,198,255,0.2)] flex items-center gap-1">
+                确认退回
             </button>
         </div>
     </div>

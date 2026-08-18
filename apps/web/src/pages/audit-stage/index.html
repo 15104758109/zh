@@ -242,13 +242,60 @@
         .status-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; }
 
         .glow-success { box-shadow: 0 0 15px rgba(16, 185, 129, 0.15); }
-            /* 顶栏随侧栏折叠隐藏 */
-        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
-        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+            /* 顶栏始终保留；侧栏折叠只改变其左边界。 */
+        .header-glass { transition: left .2s ease; }
         .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
         .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
         .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        @media (max-width: 767px) {
+            [data-audit-stage-root] {
+                min-width: 0;
+                max-width: 100%;
+                padding: 12px;
+                overflow-y: auto;
+            }
+            [data-audit-stage-mock-content] {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 12px;
+                min-width: 0;
+            }
+            [data-audit-stage-mock-content] > [data-purpose="text-editor-container"],
+            [data-audit-stage-mock-content] > [data-purpose="review-sidebar"] {
+                grid-column: 1 / -1;
+                width: 100%;
+                min-width: 0;
+                max-width: 100%;
+            }
+            #editor-panel {
+                padding: 16px;
+            }
+            #editor-panel > .flex.justify-between {
+                flex-wrap: wrap;
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+            #editor-panel > .flex.justify-between > :last-child {
+                width: 100%;
+                min-width: 0;
+                flex-wrap: wrap;
+            }
+            #editor-panel > .flex.justify-between > :last-child > * {
+                min-width: 0;
+            }
+            #editor-panel .max-w-4xl {
+                max-width: 100%;
+            }
+            [data-purpose="review-sidebar"] {
+                overflow: visible;
+            }
+            [data-purpose="review-sidebar"] .ui-segmented {
+                flex-wrap: wrap;
+            }
+            [data-purpose="review-sidebar"] .dim-tab-btn {
+                min-width: 0;
+            }
+        }
 </style>
     <script src="/vendor/tailwindcss-browser-4.js"></script>
     <link rel="stylesheet" href="/pages/audit-stage/page.css">
@@ -319,7 +366,6 @@
             </div>
 
             </div>
-            </div>
 
             <div class="h-8 w-[1px] bg-base-content/5 mx-1"></div>
         </div>
@@ -387,8 +433,8 @@
     <!-- 右侧阅读器控制器 -->
     <div class="flex items-center gap-3">
         <!-- 章节总字数 -->
-        <div class="bg-black/5 px-3 py-1.5 rounded border border-base-content/5 text-success-content font-semibold text-xs tracking-wider transition-colors" id="editor-word-count">
-            总字数：12,450 字
+        <div class="bg-black/5 px-3 py-1.5 rounded border border-base-content/5 text-success-content font-semibold text-xs tracking-wider transition-colors" id="editor-word-count" aria-live="polite">
+            正在读取字数投影…
         </div>
 
         <!-- 大中小字号直选 -->
@@ -736,10 +782,6 @@
         document.getElementById('current-chapter-title').textContent = title;
         document.querySelector('#chapter-select-container').previousElementSibling.textContent = 'Chapter ' + (chNum < 10 ? '00' : '0') + chNum;
 
-        // 更新字数
-        const wordCounts = { 29: '12,450', 30: '9,812', 31: '14,022' };
-        document.getElementById('editor-word-count').textContent = '总字数：' + (wordCounts[chNum] || '10,000') + ' 字';
-
         // 关闭下拉
         document.getElementById('chapter-select-dropdown').classList.add('hidden');
         showToast('已加载 ' + title, 'success');
@@ -1005,15 +1047,32 @@
         return false;
     }
     // 6.5. 重新渲染弹窗控制与修正方向提交
+    let replanReturnFocus = null;
+
     function openReplanModal() {
-        document.getElementById('replan-modal').classList.remove('hidden');
-        document.getElementById('replan-modal').classList.add('flex');
+        const modal = document.getElementById('replan-modal');
+        if (!modal) return;
+        replanReturnFocus = document.activeElement;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.setAttribute('aria-hidden', 'false');
+        document.getElementById('replan-suggestion')?.focus();
     }
 
     function closeReplanModal() {
-        document.getElementById('replan-modal').classList.add('hidden');
-        document.getElementById('replan-modal').classList.remove('flex');
+        const modal = document.getElementById('replan-modal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modal.setAttribute('aria-hidden', 'true');
+        if (replanReturnFocus?.isConnected && !replanReturnFocus.hasAttribute('disabled')) replanReturnFocus.focus();
+        replanReturnFocus = null;
     }
+
+    document.addEventListener('keydown', (event) => {
+        const modal = document.getElementById('replan-modal');
+        if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) closeReplanModal();
+    });
 
     function submitReplanDirection() {
         showToast('审计退回编排合同尚未接入，不能提交修正方向。', 'error');
@@ -1191,7 +1250,7 @@
 
 
 <!-- Re-render/Replan suggestions modal -->
-<div id="replan-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-neutral/60 backdrop-blur-sm transition-all duration-300" data-region="enhancement">
+<div id="replan-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-neutral/60 backdrop-blur-sm transition-all duration-300" data-region="enhancement" role="dialog" aria-modal="true" aria-label="退回重新渲染修正内容" aria-hidden="true">
     <div class="w-[500px] bg-base-100 border border-base-content/10 rounded-box p-6 shadow-2xl relative overflow-hidden">
         <div class="absolute -right-16 -top-16 w-32 h-32 bg-warning/10 rounded-full blur-3xl"></div>
         <div class="flex items-center justify-between mb-4 pb-2 border-b border-base-content/5">
@@ -1199,19 +1258,19 @@
                 <span class="material-symbols-outlined text-warning text-[20px]">autorenew</span>
                 <span>退回重新渲染修正内容</span>
             </h3>
-            <button onclick="closeReplanModal()" class="text-base-content opacity-60 hover:text-base-content transition-colors">
-                <span class="material-symbols-outlined text-[20px]">close</span>
+            <button type="button" onclick="closeReplanModal()" aria-label="关闭重新渲染对话框" class="text-base-content opacity-60 hover:text-base-content transition-colors">
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
             </button>
         </div>
         <div class="space-y-4">
             <div class="space-y-2">
-                <label class="text-[10px] text-base-content opacity-60 uppercase font-semibold tracking-wider">修正建议与调整方向</label>
-                <textarea id="replan-suggestion" rows="4" class="ui-textarea w-full bg-base-content/40 border border-base-content/10 rounded-box p-3 text-xs text-base-content placeholder-on-surface-variant/40 focus:outline-none focus:border-warning/50 transition-colors resize-none" placeholder="请输入针对本章重新渲染的具体修正意见、文风微调方向或情感补强建议..."></textarea>
+                <label for="replan-suggestion" class="text-[10px] text-base-content opacity-60 uppercase font-semibold tracking-wider">修正建议与调整方向</label>
+                <textarea id="replan-suggestion" name="replan_suggestion" autocomplete="off" rows="4" class="ui-textarea w-full bg-base-content/40 border border-base-content/10 rounded-box p-3 text-xs text-base-content placeholder-on-surface-variant/40 focus:outline-none focus:border-warning/50 transition-colors resize-none" placeholder="请输入针对本章重新渲染的具体修正意见、文风微调方向或情感补强建议…"></textarea>
             </div>
 
             <div class="flex justify-end gap-3 pt-2">
-                <button onclick="closeReplanModal()" class="px-4 py-2 border border-base-content/5 hover:bg-base-content/5 rounded-lg text-xs text-base-content opacity-60 hover:text-base-content transition-all">取消</button>
-                <button id="confirm-replan-btn" onclick="showReturnedState()" data-interaction="show_returned_state" class="px-5 py-2 bg-warning hover:bg-warning/80 text-neutral-content text-xs font-semibold rounded-lg flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(255,171,0,0.25)]" disabled aria-disabled="true" data-contract-unavailable="true" title="审计退回编排合同尚未接入">
+                <button type="button" onclick="closeReplanModal()" class="px-4 py-2 border border-base-content/5 hover:bg-base-content/5 rounded-lg text-xs text-base-content opacity-60 hover:text-base-content transition-all">取消</button>
+                <button id="confirm-replan-btn" onclick="showReturnedState()" data-interaction="show_returned_state" type="button" class="px-5 py-2 bg-warning hover:bg-warning/80 text-neutral-content text-xs font-semibold rounded-lg flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(255,171,0,0.25)]" disabled aria-disabled="true" data-contract-unavailable="true" title="审计退回编排合同尚未接入">
                     <span>确认重新渲染</span>
                 </button>
             </div>
@@ -1220,7 +1279,7 @@
 </div>
 
 <!-- Toast Container -->
-<div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
+<div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script type="module" src="/pages/audit-stage/index.mjs"></script>
 </body>

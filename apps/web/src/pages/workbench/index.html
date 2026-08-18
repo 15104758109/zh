@@ -26,13 +26,20 @@
         .main-content { flex: 1 1 auto; min-width: 0; }
         .node-path { fill: none; stroke: color-mix(in oklab, var(--color-base-content) 18%, transparent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
         .node-path.active { stroke: var(--color-primary); stroke-width: 2; }
-        /* 顶栏随侧栏折叠隐藏 */
-        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
-        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        /* 顶栏始终保留；侧栏折叠只改变其左边界。 */
+        .header-glass { transition: left .2s ease; }
         .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
         .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
         .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        @media (max-width: 767px) {
+            .workbench-workspace { flex-direction: column; min-height: 0; overflow: visible; }
+            .workbench-canvas-panel,
+            .workbench-config-panel { width: 100%; min-width: 0; flex: 0 0 auto; }
+            .workbench-canvas-panel { min-height: 380px; }
+            #canvasViewport { min-height: 340px; height: 340px; }
+            .workbench-config-panel { min-height: 500px; }
+        }
 </style>
 </head>
 <body class="ui-page flex h-screen bg-base-200 selection:bg-primary/30 selection:text-base-content">
@@ -78,15 +85,15 @@
                 <div class="flex flex-col gap-2 mb-3">
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
-                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                        <div id="sw-auto-production" class="settings-switch" role="switch" aria-checked="false" aria-disabled="true" aria-label="生产阶段自动化" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
-                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                        <div id="sw-auto-audit" class="settings-switch" role="switch" aria-checked="false" aria-disabled="true" aria-label="审计阶段自动化" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
-                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                        <div id="sw-auto-iteration" class="settings-switch" role="switch" aria-checked="false" aria-disabled="true" aria-label="提示词迭代自动化" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
                     </div>
                 </div>
                 <div class="mt-3 pt-2 border-t border-base-content/5">
@@ -151,24 +158,24 @@
         </div>
 
 <!-- Workspace: Canvas and Config -->
-<div class="flex-1 flex gap-4 min-h-[500px]">
+<div class="workbench-workspace flex-1 flex gap-4 min-h-[500px]">
 <!-- Left Canvas Container -->
-<div class="ui-card flex-1 bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden relative">
+<div class="workbench-canvas-panel ui-card flex-1 bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden relative">
 <div class="h-12 border-b border-base-content/5 flex items-center justify-between px-4 shrink-0 bg-base-100">
 <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-text-dark"></span><span id="canvasHeaderTitle" class="text-base font-bold text-base-content opacity-70">生产流程节点设置</span></div>
 <div class="flex items-center gap-2"><div class="relative" id="stageDropdownContainer">
-  <button class="flex items-center gap-1 px-2 py-1 bg-base-content/5 border border-base-content/5 rounded-md text-sm text-base-content opacity-85 hover:bg-base-300 transition-colors" onclick="document.getElementById('stageDropdown').classList.toggle('hidden')">
+  <button id="stageDropdownTrigger" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="stageDropdown" class="flex items-center gap-1 px-2 py-1 bg-base-content/5 border border-base-content/5 rounded-md text-sm text-base-content opacity-85 hover:bg-base-300 transition-colors">
     <span class="material-symbols-outlined text-[12px]">auto_awesome</span><span id="currentStageText">设计阶段</span><span class="material-symbols-outlined text-[12px]">expand_more</span>
   </button>
-  <div id="stageDropdown" class="absolute top-6 right-0 mt-1 w-32 bg-base-100 border border-base-content/5 rounded-md shadow-xl hidden z-50 py-1">
-    <div class="px-3 py-1.5 text-sm text-base-content opacity-85 hover:bg-base-200 cursor-pointer" onclick="selectStage('设计阶段')">设计阶段</div>
-    <div class="px-3 py-1.5 text-sm text-base-content opacity-85 hover:bg-base-200 cursor-pointer" onclick="selectStage('生产阶段')">生产阶段</div>
-    <div class="px-3 py-1.5 text-sm text-base-content opacity-85 hover:bg-base-200 cursor-pointer" onclick="selectStage('审计阶段')">审计阶段</div>
-    <div class="px-3 py-1.5 text-sm text-base-content opacity-85 hover:bg-base-200 cursor-pointer" onclick="selectStage('迭代管理')">迭代管理</div>
+  <div id="stageDropdown" role="menu" class="absolute top-6 right-0 mt-1 w-32 bg-base-100 border border-base-content/5 rounded-md shadow-xl hidden z-50 py-1">
+    <button type="button" role="menuitem" class="w-full px-3 py-1.5 text-left text-sm text-base-content opacity-85 hover:bg-base-200" onclick="selectStage('设计阶段')">设计阶段</button>
+    <button type="button" role="menuitem" class="w-full px-3 py-1.5 text-left text-sm text-base-content opacity-85 hover:bg-base-200" onclick="selectStage('生产阶段')">生产阶段</button>
+    <button type="button" role="menuitem" class="w-full px-3 py-1.5 text-left text-sm text-base-content opacity-85 hover:bg-base-200" onclick="selectStage('审计阶段')">审计阶段</button>
+    <button type="button" role="menuitem" class="w-full px-3 py-1.5 text-left text-sm text-base-content opacity-85 hover:bg-base-200" onclick="selectStage('迭代管理')">迭代管理</button>
     <div class="border-t border-base-content/5 my-1"></div>
-    <div class="px-3 py-1.5 text-sm text-base-content opacity-60 hover:bg-base-200 cursor-pointer font-medium" onclick="selectStage('独立节点')">独立节点</div>
+    <button type="button" role="menuitem" class="w-full px-3 py-1.5 text-left text-sm text-base-content opacity-60 hover:bg-base-200 font-medium" onclick="selectStage('独立节点')">独立节点</button>
   </div>
-</div><button class="w-6 h-6 flex items-center justify-center bg-base-content/5 border border-base-content/5 rounded-md text-base-content opacity-70 hover:text-base-content transition-colors"><span class="material-symbols-outlined text-[12px]">refresh</span></button></div>
+</div><button type="button" aria-label="重新读取当前有效配置" class="w-6 h-6 flex items-center justify-center bg-base-content/5 border border-base-content/5 rounded-md text-base-content opacity-70 hover:text-base-content transition-colors"><span class="material-symbols-outlined text-[12px]" aria-hidden="true">refresh</span></button></div>
 </div>
 <div id="canvasViewport" class="flex-1 min-h-[480px] relative overflow-hidden bg-base-200 rounded-box" style="cursor: grab;">
 <div id="canvasContent" class="absolute bg-grid transform-gpu origin-top-left" style="width: 10000px; height: 10000px; left: 0; top: 0; transform: translate(0px, 0px) scale(1);">
@@ -456,7 +463,7 @@
 </div>
 </div>
 <!-- Right Configuration Panel -->
-<div class="w-[300px] bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden shrink-0">
+<div class="workbench-config-panel w-[300px] bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden shrink-0">
 <div class="h-12 border-b border-base-content/5 flex items-center px-4 shrink-0"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-base-content opacity-70">tune</span><span id="rightPanelTitle" class="text-base font-bold text-base-content opacity-70">角色受限推演</span></div></div>
 <div class="p-4 flex flex-col gap-4 flex-1 overflow-y-auto">
 <p id="workbenchRuntimeState" class="ui-inline-status ui-inline-status--loading" role="status" aria-live="polite">正在读取本地工作台状态…</p>
@@ -465,14 +472,14 @@
         <span class="material-symbols-outlined text-[12px] text-primary">description</span>
         <span>提示词编辑器 (双击进行编辑)</span>
     </label>
-    <div id="promptEditor" class="textarea textarea-bordered ui-textarea bg-base-100 p-4 flex-1 min-h-[220px] overflow-y-auto font-mono text-[11px] text-base-content opacity-80 leading-relaxed shadow-sm cursor-pointer transition-all duration-200 hover:border-primary/30 outline-none" title="双击进行编辑">
+    <div id="promptEditor" class="textarea textarea-bordered ui-textarea bg-base-100 p-4 flex-1 min-h-[220px] overflow-y-auto font-mono text-[11px] text-base-content opacity-80 leading-relaxed shadow-sm cursor-pointer transition-all duration-200 hover:border-primary/30 outline-none" title="双击进行编辑" role="textbox" tabindex="0" aria-label="提示词编辑器" aria-multiline="true">
         <!-- Loaded dynamically by JS -->
     </div>
 </div>
 <div class="flex flex-col gap-2 mt-auto pt-4 border-t border-base-content/5">
-<label class="text-[11px] text-base-content opacity-70 font-medium">模型的模板</label>
+<label for="workbenchTemplateSelect" class="text-[11px] text-base-content opacity-70 font-medium">模型的模板</label>
 <div class="relative">
-<select id="workbenchTemplateSelect" onchange="onWorkbenchTemplateChange(this.value)" class="ui-select w-full text-sm cursor-pointer">
+<select id="workbenchTemplateSelect" name="workbench_template" autocomplete="off" onchange="onWorkbenchTemplateChange(this.value)" class="ui-select w-full text-sm cursor-pointer">
 <option>感性文字</option>
 <option>简单逻辑</option>
 <option>重复指令</option>
@@ -493,7 +500,7 @@
 </div></div></div>
 
 <!-- Modal -->
-<div id="modelSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral/60 hidden">
+<div id="modelSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral/60 hidden" role="dialog" aria-modal="true" aria-labelledby="model-settings-title" aria-hidden="true">
 <div class="ui-modal ui-modal-wide p-0 w-[700px] h-[580px] max-h-[calc(100vh-32px)] flex overflow-hidden">
 <div class="w-40 bg-base-100 border-r border-base-content/5 flex flex-col">
 <div class="p-4 text-sm font-bold text-base-content opacity-70 border-b border-base-content/5">模板分类</div>
@@ -501,18 +508,18 @@
 <!-- Dynamic Category Buttons -->
 </div>
 </div>
-<div class="flex-1 p-6 flex flex-col gap-4 bg-base-100 relative shadow-sm border border-base-content/5">
-<button id="closeModalBtn" class="ui-icon-button ui-button-quiet absolute top-4 right-4" aria-label="关闭模型设置"><span class="material-symbols-outlined text-[20px]">close</span></button>
-<h2 class="text-base font-bold text-base-content mb-1">模型配置<span id="modalConfigTitle" class="hidden">简单逻辑</span></h2>
-<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">运营商名称</label><input type="text" id="modalProviderInput" class="ui-field" value="" /></div>
-<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">连接地址 (Base URL)</label><input type="text" id="modalBaseUrlInput" class="ui-field" value="" /></div>
-<div class="flex flex-col gap-1.5"><label class="text-[11px] text-base-content opacity-70">API Key</label><div class="relative"><input type="password" id="modalApiKeyInput" class="ui-field w-full" value="" /><button id="toggleEyeBtn" class="ui-icon-button ui-button-quiet absolute right-2 top-1/2 -translate-y-1/2" aria-label="显示或隐藏 API Key"><span class="material-symbols-outlined text-[14px]">visibility</span></button></div></div>
+<form id="model-settings-form" onsubmit="event.preventDefault()" class="flex-1 p-6 flex flex-col gap-4 bg-base-100 relative shadow-sm border border-base-content/5">
+<button id="closeModalBtn" type="button" class="ui-icon-button ui-button-quiet absolute top-4 right-4" aria-label="关闭模型设置"><span class="material-symbols-outlined text-[20px]">close</span></button>
+<h2 id="model-settings-title" class="text-base font-bold text-base-content mb-1">模型配置<span id="modalConfigTitle" class="hidden">简单逻辑</span></h2>
+<div class="flex flex-col gap-1.5"><label for="modalProviderInput" class="text-[11px] text-base-content opacity-70">运营商名称</label><input type="text" id="modalProviderInput" name="provider" autocomplete="organization" class="ui-field" value="" /></div>
+<div class="flex flex-col gap-1.5"><label for="modalBaseUrlInput" class="text-[11px] text-base-content opacity-70">连接地址 (Base URL)</label><input type="url" id="modalBaseUrlInput" name="base_url" autocomplete="url" class="ui-field" value="" /></div>
+<div class="flex flex-col gap-1.5"><label for="modalApiKeyInput" class="text-[11px] text-base-content opacity-70">API Key</label><div class="relative"><input type="password" id="modalApiKeyInput" name="api_key" autocomplete="new-password" class="ui-field w-full" value="" /><button id="toggleEyeBtn" type="button" class="ui-icon-button ui-button-quiet absolute right-2 top-1/2 -translate-y-1/2" aria-label="显示或隐藏 API Key"><span class="material-symbols-outlined text-[14px]" aria-hidden="true">visibility</span></button></div></div>
 <div class="flex flex-col gap-1.5">
-    <label class="text-[11px] text-base-content opacity-70">选择模型</label>
+    <label for="modalModelSelect" class="text-[11px] text-base-content opacity-70">选择模型</label>
     <div class="flex gap-2">
-        <input id="modalModelSelect" list="modalModelChoices" class="ui-field flex-1" autocomplete="off" />
+        <input id="modalModelSelect" list="modalModelChoices" name="model" class="ui-field flex-1" autocomplete="off" />
         <datalist id="modalModelChoices"></datalist>
-        <button id="fetchModelsBtn" onclick="fetchModelList(event)" class="ui-button ui-button-quiet ui-button-small shrink-0">
+        <button id="fetchModelsBtn" type="button" onclick="fetchModelList(event)" class="ui-button ui-button-quiet ui-button-small shrink-0">
             <span class="material-symbols-outlined text-[14px]" id="fetchIcon">sync</span>
             <span id="fetchText">获取清单</span>
         </button>
@@ -529,10 +536,10 @@
     <!-- Temperature (left col) -->
     <div class="flex-1 flex flex-col gap-1.5">
         <div class="flex justify-between items-center">
-            <label class="text-[11px] text-base-content opacity-70">温度设置 (Temperature)</label>
+            <label for="modalTempRange" class="text-[11px] text-base-content opacity-70">温度设置 (Temperature)</label>
             <span id="tempValDisplay" class="text-[11px] text-base-content opacity-80 font-mono">0.7</span>
         </div>
-        <input id="modalTempRange" type="range" min="0" max="2" step="0.1" value="0.7" oninput="document.getElementById('tempValDisplay').innerText=this.value" class="w-full accent-primary h-1 bg-base-300 rounded-lg appearance-none cursor-pointer" />
+        <input id="modalTempRange" type="range" min="0" max="2" step="0.1" value="0.7" name="temperature" autocomplete="off" oninput="document.getElementById('tempValDisplay').innerText=this.value" class="w-full accent-primary h-1 bg-base-300 rounded-lg appearance-none cursor-pointer" />
         <div class="flex justify-between text-[9px] text-base-content opacity-50 px-0.5">
             <span>0 (严格)</span>
             <span class="text-base-content opacity-60 font-semibold">建议区间 (0.5 - 0.9)</span>
@@ -541,9 +548,9 @@
     </div>
     <!-- Reasoning Strength (right col) -->
     <div class="w-[180px] flex flex-col gap-1.5 shrink-0">
-        <label class="text-[11px] text-base-content opacity-70">推理强度 (Reasoning)</label>
+        <label for="modalReasoningSelect" class="text-[11px] text-base-content opacity-70">推理强度 (Reasoning)</label>
         <div class="relative">
-            <select id="modalReasoningSelect" class="ui-select w-full appearance-none">
+            <select id="modalReasoningSelect" name="reasoning" autocomplete="off" class="ui-select w-full appearance-none">
                 <option value="none">无推理 (None)</option>
                 <option value="low">低强度 (Low)</option>
                 <option value="medium">中强度 (Medium)</option>
@@ -554,12 +561,12 @@
     </div>
 </div>
 <div class="flex justify-end gap-3 mt-auto pt-4 border-t border-base-content/5">
-<button id="testConnectionBtn" onclick="testConnection(event)" class="ui-button ui-button-quiet ui-button-small">
+<button id="testConnectionBtn" type="button" onclick="testConnection(event)" class="ui-button ui-button-quiet ui-button-small">
     <span class="material-symbols-outlined text-[14px]" id="testIcon">bolt</span>
     <span id="testText">测试连接</span>
 </button>
-<button id="saveModelConfigurationBtn" onclick="saveModalConfiguration()" class="ui-button ui-button-primary ui-button-small">保存配置</button>
-</div></div></div></div>
+<button id="saveModelConfigurationBtn" type="button" onclick="saveModalConfiguration()" class="ui-button ui-button-primary ui-button-small">保存配置</button>
+</div></form></div></div>
 
 <script type="text/plain" data-prototype-mock="disabled">
 document.addEventListener('DOMContentLoaded', () => {
@@ -881,7 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('addCategoryContainer');
         if (!container) return;
         container.innerHTML = `
-            <input type="text" id="newCategoryInput" onkeydown="handleNewCategoryKey(event)" onblur="cancelAddCategory()" class="w-full bg-base-100 border border-primary rounded-md px-2 py-1.5 text-xs text-base-content focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder-gray-600" placeholder="录入名称回车..." autofocus />
+            <input type="text" id="newCategoryInput" name="new_category" autocomplete="off" aria-label="新分类名称" onkeydown="handleNewCategoryKey(event)" onblur="cancelAddCategory()" class="w-full bg-base-100 border border-primary rounded-md px-2 py-1.5 text-xs text-base-content focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder-gray-600" placeholder="录入名称回车…" autofocus />
         `;
         const input = document.getElementById('newCategoryInput');
         if (input) input.focus();
@@ -1009,6 +1016,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const toast = document.createElement('div');
         toast.id = 'premium-toast';
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        toast.setAttribute('aria-atomic', 'true');
         toast.className = 'fixed top-6 left-1/2 transform -translate-x-1/2 z-[200] px-5 py-3 rounded-box border border-base-content/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-2.5 transition-all duration-300 translate-y-[-20px] opacity-0 bg-base-100/85 backdrop-blur-md';
 
         toast.innerHTML = `
@@ -1458,13 +1468,13 @@ document.addEventListener('DOMContentLoaded', () => {
     </script>
 
     <!-- New Book Modal HTML -->
-    <div id="newBookModal" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral/60 backdrop-blur-sm hidden">
+    <div id="newBookModal" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral/60 backdrop-blur-sm hidden" role="dialog" aria-modal="true" aria-labelledby="new-book-modal-title" aria-hidden="true">
         <div class="ui-modal w-[550px] flex flex-col overflow-hidden p-6 relative">
             <button onclick="closeNewBookModal()" class="ui-icon-button ui-button-quiet absolute top-4 right-4" aria-label="关闭新书构思弹窗">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
 
-            <h2 class="text-lg font-bold text-base-content mb-6 flex items-center gap-2">
+            <h2 id="new-book-modal-title" class="text-lg font-bold text-base-content mb-6 flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">add_box</span>
                 <span>新建新书构思</span>
             </h2>
@@ -1472,15 +1482,15 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="flex flex-col gap-4 overflow-y-auto max-h-[400px] pr-1">
                 <!-- Book Title -->
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">书名</label>
-                    <input type="text" id="modalBookTitle" placeholder="如：科幻末日生存指南" class="ui-field" />
+                    <label for="modalBookTitle" class="text-xs text-base-content opacity-70 font-medium">书名</label>
+                    <input type="text" id="modalBookTitle" name="book_title" autocomplete="off" placeholder="如：科幻末日生存指南" class="ui-field" />
                 </div>
 
                 <!-- Target Words -->
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">目标字数</label>
+                    <label for="modalTargetWords" class="text-xs text-base-content opacity-70 font-medium">目标字数</label>
                     <div class="flex items-center gap-2">
-                        <input type="number" id="modalTargetWords" value="100" placeholder="如 100" class="ui-field flex-1" />
+                        <input type="number" id="modalTargetWords" name="target_words" autocomplete="off" inputmode="numeric" value="100" placeholder="如 100" class="ui-field flex-1" />
                         <span class="text-xs text-base-content opacity-70 font-bold">万字</span>
                     </div>
                 </div>

@@ -74,12 +74,12 @@
       const classes = [item.id === active ? "active" : "", href ? "" : "opacity-40 pointer-events-none"].filter(Boolean).join(" ");
       const classAttribute = classes ? ` class="${classes}"` : "";
       const currentAttribute = item.id === active ? ` aria-current="page"` : "";
-      return `<li><a${hrefAttribute}${segmentAttribute} aria-label="${item.ariaLabel}"${disabledAttributes}${classAttribute}${currentAttribute}><span class="material-symbols-outlined">${item.icon}</span><span class="sidebar-text">${item.label}</span></a></li>`;
+      return `<li><a${hrefAttribute}${segmentAttribute} aria-label="${item.ariaLabel}"${disabledAttributes}${classAttribute}${currentAttribute}><span class="material-symbols-outlined" aria-hidden="true">${item.icon}</span><span class="sidebar-text">${item.label}</span></a></li>`;
     }).join("");
 
     sidebar.innerHTML = `
       <div class="sidebar-brand">
-        <div class="brand-mark"><span class="material-symbols-outlined">${brandIcon}</span></div>
+        <div class="brand-mark"><span class="material-symbols-outlined" aria-hidden="true">${brandIcon}</span></div>
         <div class="sidebar-text">
           <div class="brand-title">纵横</div>
           <div class="brand-subtitle sidebar-subtitle">Narrative-Engine</div>
@@ -99,7 +99,7 @@
     toggle.type = "button";
     toggle.setAttribute("aria-label", "折叠侧栏");
     toggle.setAttribute("aria-controls", "sidebarMenu");
-    toggle.innerHTML = '<span class="material-symbols-outlined" id="sidebarIcon"></span>';
+    toggle.innerHTML = '<span class="material-symbols-outlined" id="sidebarIcon" aria-hidden="true"></span>';
     toggle.addEventListener("click", () => {
       if (typeof window.toggleSidebar === "function") window.toggleSidebar();
     });

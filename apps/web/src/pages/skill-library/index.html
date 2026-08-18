@@ -20,9 +20,8 @@
     
     <style>
         /* 继承自全局 theme.css 共享主题样式 */
-            /* 顶栏随侧栏折叠隐藏 */
-        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
-        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+            /* 顶栏始终保留；侧栏折叠只改变其左边界。 */
+        .header-glass { transition: left .2s ease; }
         .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
         .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
@@ -143,8 +142,8 @@
                     <!-- Dropdown Filter & Search (Left side) -->
                     <div class="flex items-center gap-4">
                         <div class="flex items-center gap-3">
-                            <label class="text-xs text-base-content opacity-70 font-semibold uppercase tracking-wider">题材/分类筛选:</label>
-                            <select id="genre-filter-select" onchange="handleGenreFilterChange(this.value)" class="select select-bordered bg-base-100 text-xs rounded-box px-3 py-1.5 text-base-content focus:outline-none focus:border-primary cursor-pointer min-w-[140px] font-medium transition-colors select-sm">
+                            <label for="genre-filter-select" class="text-xs text-base-content opacity-70 font-semibold uppercase tracking-wider">题材/分类筛选:</label>
+                            <select id="genre-filter-select" name="skill_genre_filter" autocomplete="off" onchange="handleGenreFilterChange(this.value)" class="select select-bordered bg-base-100 text-xs rounded-box px-3 py-1.5 text-base-content focus:outline-none focus:border-primary cursor-pointer min-w-[140px] font-medium transition-colors select-sm">
                                 <!-- Dynamic options -->
                             </select>
                         </div>
@@ -152,7 +151,7 @@
                         <!-- Search Box (Moved here to align with dropdown) -->
                         <label class="ui-search-field">
                             <span class="material-symbols-outlined text-[16px] opacity-50">search</span>
-                            <input type="text" id="search-input" oninput="handleSearch()" placeholder="搜索技巧..." class="ui-search-field__input w-40">
+                            <input type="search" id="search-input" name="skill_search" autocomplete="off" oninput="handleSearch()" placeholder="搜索技巧…" class="ui-search-field__input w-40">
                         </label>
                     </div>
                     
@@ -163,7 +162,7 @@
                             <button onclick="triggerImport()" class="btn btn-sm join-item" title="导入技能 JSON">
                                 <span class="material-symbols-outlined text-[16px]">upload</span>导入
                             </button>
-                            <input type="file" id="import-file-input" accept=".json,.csv,application/json,text/csv" class="hidden" onchange="importSkills(event)">
+                            <input type="file" id="import-file-input" name="skill_import_file" autocomplete="off" aria-label="导入技能文件" accept=".json,.csv,application/json,text/csv" class="hidden" onchange="importSkills(event)">
                             
                             <button onclick="exportSkills()" class="btn btn-sm join-item" title="导出 CSV">
                                 <span class="material-symbols-outlined text-[16px]">download</span>导出
@@ -186,7 +185,7 @@
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-2 text-xs text-base-content opacity-70">
                         <span id="pagination-summary"></span>
-                        <select id="page-size-select" class="select select-bordered select-xs bg-base-100 text-xs" onchange="changePageSize(this.value)" aria-label="每页条数">
+                        <select id="page-size-select" name="skill_page_size" autocomplete="off" class="select select-bordered select-xs bg-base-100 text-xs" onchange="changePageSize(this.value)" aria-label="每页条数">
                             <option value="10">10</option>
                             <option value="20" selected>20</option>
                             <option value="50">50</option>
@@ -211,7 +210,7 @@
     <div id="drawerBackdrop" class="fixed inset-0 bg-black/40 z-[90] hidden transition-opacity duration-300 opacity-0" onclick="closeDrawer()"></div>
 
     <!-- Sliding Details Drawer -->
-    <div id="detailDrawer" class="ui-card fixed top-0 right-0 h-full w-[440px] z-[100] bg-base-200 border-l border-base-content/10 shadow-2xl transition-all duration-300 transform translate-x-full flex flex-col" style="background-color: var(--color-base-200) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;">
+    <div id="detailDrawer" class="ui-card fixed top-0 right-0 h-full w-[440px] z-[100] bg-base-200 border-l border-base-content/10 shadow-2xl transition-all duration-300 transform translate-x-full flex flex-col" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true" style="background-color: var(--color-base-200) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;">
         <!-- Drawer Header -->
         <div class="p-6 border-b border-base-content/5 flex items-center justify-between bg-white/2">
             <div class="flex items-center gap-3">
@@ -219,11 +218,11 @@
                 <h2 id="drawerTitle" class="text-base font-bold text-base-content truncate max-w-[180px]">末世+囤货</h2>
             </div>
             <div class="flex items-center gap-1.5">
-                <button id="drawerDeleteBtn" class="text-base-content opacity-70 hover:text-error transition-colors p-1.5 rounded-full hover:bg-base-content/5 cursor-pointer flex items-center justify-center" title="删除">
-                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                <button id="drawerDeleteBtn" type="button" class="text-base-content opacity-70 hover:text-error transition-colors p-1.5 rounded-full hover:bg-base-content/5 cursor-pointer flex items-center justify-center" title="删除" aria-label="删除当前技能">
+                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
                 </button>
-                <button class="text-base-content opacity-70 hover:text-base-content transition-colors p-1.5 rounded-full hover:bg-base-content/5 cursor-pointer flex items-center justify-center" onclick="closeDrawer()">
-                    <span class="material-symbols-outlined text-[20px]">close</span>
+                <button type="button" aria-label="关闭技能详情" class="text-base-content opacity-70 hover:text-base-content transition-colors p-1.5 rounded-full hover:bg-base-content/5 cursor-pointer flex items-center justify-center" onclick="closeDrawer()">
+                    <span class="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
                 </button>
             </div>
         </div>
@@ -241,7 +240,7 @@
                     <span class="material-symbols-outlined text-[14px]">swords</span>
                     <span class="text-[11px] block">冲突写法 (Conflicts)</span>
                 </div>
-                <textarea id="drawerConflictText" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3"></textarea>
+                <textarea id="drawerConflictText" name="skill_conflicts" autocomplete="off" aria-label="技能冲突写法" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3"></textarea>
             </div>
 
             <!-- Warning/Taboo Section (High Visibility - Moved to bottom) -->
@@ -250,7 +249,7 @@
                     <span class="material-symbols-outlined text-[14px] text-warning">gavel</span>
                     <span class="ui-badge ui-badge-warning uppercase tracking-wider">避坑红线 (Taboos)</span>
                 </div>
-                <textarea id="drawerTabooText" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3"></textarea>
+                <textarea id="drawerTabooText" name="skill_taboos" autocomplete="off" aria-label="技能避坑红线" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3"></textarea>
             </div>
         </div>
 
@@ -276,7 +275,7 @@
 </div>
 
 <!-- Add / Edit Skill Modal -->
-<div id="skillFormModal" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 hidden transition-all duration-300">
+<div id="skillFormModal" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 hidden transition-all duration-300" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
     <div id="modalBox" class="ui-modal w-[500px] flex flex-row overflow-hidden p-6 relative transition-all duration-300">
         <!-- Close Button -->
         <button onclick="closeSkillFormModal()" class="ui-icon-button ui-button-quiet absolute top-4 right-4 z-10" aria-label="关闭技能表单">
@@ -292,17 +291,17 @@
             
             <form id="skill-form" onsubmit="event.preventDefault(); submitSkillForm();" class="flex flex-col gap-4 overflow-y-auto max-h-[420px] pr-1">
                 <!-- Hidden inputs -->
-                <input type="hidden" id="form-item-id">
+                <input type="hidden" id="form-item-id" name="skill_item_id" autocomplete="off">
                 
                 <!-- Common fields -->
                 <div class="flex gap-4">
                     <div class="flex-1 flex flex-col gap-1.5">
-                        <label class="text-xs text-base-content opacity-70 font-medium">名称 / 标题</label>
-                        <input type="text" id="form-title" placeholder="如：科幻 + 末世" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                        <label for="form-title" class="text-xs text-base-content opacity-70 font-medium">名称 / 标题</label>
+                        <input type="text" id="form-title" name="skill_title" autocomplete="off" placeholder="如：科幻 + 末世" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                     </div>
                     <div class="w-24 flex flex-col gap-1.5">
-                        <label class="text-xs text-base-content opacity-70 font-medium">推荐评级</label>
-                        <select id="form-rating" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary cursor-pointer w-full">
+                        <label for="form-rating" class="text-xs text-base-content opacity-70 font-medium">推荐评级</label>
+                        <select id="form-rating" name="skill_rating" autocomplete="off" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary cursor-pointer w-full">
                             <option value="SS">SS</option>
                             <option value="S" selected>S</option>
                             <option value="A">A</option>
@@ -313,8 +312,8 @@
                 </div>
     
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium" id="form-tag-label">主分类/标签</label>
-                    <input type="text" id="form-tag" placeholder="如：科幻" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-tag" class="text-xs text-base-content opacity-70 font-medium" id="form-tag-label">主分类/标签</label>
+                    <input type="text" id="form-tag" name="skill_tag" autocomplete="off" placeholder="如：科幻" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
                 
                 <!-- Dynamic fields container -->
@@ -324,12 +323,12 @@
     
                 <!-- Common taboos and conflicts -->
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">避坑红线 (Taboos)</label>
-                    <textarea id="form-taboo" rows="2" placeholder="如：严禁主角圣母心逃避冲突..." required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full resize-none"></textarea>
+                    <label for="form-taboo" class="text-xs text-base-content opacity-70 font-medium">避坑红线 (Taboos)</label>
+                    <textarea id="form-taboo" name="skill_taboo" autocomplete="off" rows="2" placeholder="如：严禁主角圣母心逃避冲突..." required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full resize-none"></textarea>
                 </div>
                 <div class="flex flex-col gap-1.5 mt-3">
-                    <label class="text-xs text-base-content opacity-70 font-medium">冲突写法 (Conflicts)</label>
-                    <textarea id="form-conflict" rows="2" placeholder="如：制造末世规则下的道德两难与资源博弈..." required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full resize-none"></textarea>
+                    <label for="form-conflict" class="text-xs text-base-content opacity-70 font-medium">冲突写法 (Conflicts)</label>
+                    <textarea id="form-conflict" name="skill_conflict" autocomplete="off" rows="2" placeholder="如：制造末世规则下的道德两难与资源博弈..." required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full resize-none"></textarea>
                 </div>
             </form>
             
@@ -357,7 +356,7 @@
                     <p class="text-xs text-base-content opacity-60 font-medium animate-pulse">正在提取因果，诊断技巧结构中...</p>
                 </div>
                 <div id="aiResultArea" class="flex-1 flex flex-col gap-2 overflow-hidden">
-                    <textarea id="aiAdviceText" class="textarea textarea-bordered w-full flex-1 text-xs leading-relaxed font-sans bg-base-100/50 resize-none focus:outline-none" readonly placeholder="这里将为您呈现基于当前表单填写的技巧结构、冲突强度和避坑红线的AI优化诊断报告。"></textarea>
+                    <textarea id="aiAdviceText" name="skill_ai_advice" autocomplete="off" aria-label="技能优化诊断" class="textarea textarea-bordered w-full flex-1 text-xs leading-relaxed font-sans bg-base-100/50 resize-none focus:outline-none" readonly placeholder="这里将为您呈现基于当前表单填写的技巧结构、冲突强度和避坑红线的AI优化诊断报告。"></textarea>
                     <div class="flex items-center justify-between text-[10px] text-base-content opacity-40 px-1 shrink-0">
                         <span>诊断等级: S级叙事模型</span>
                         <span>推演时间: ~1.2s</span>
@@ -374,6 +373,8 @@
     let searchQuery = '';
     window.skillData = {};
     window.activeItem = null; // Currently open drawer item
+    let drawerReturnFocus = null;
+    let skillModalReturnFocus = null;
 
     const DATA_VERSION = 'v4_all_combos_split';
 
@@ -549,7 +550,7 @@
                             <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
                             <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
                         </div>
-                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                        <input type="checkbox" name="skill_enabled" autocomplete="off" aria-label="使用技能 ${escapeHtml(item.title)}" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
                     </div>
                     <div class="space-y-0.5 mt-2">
                         <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${item.essence}">本质: ${item.essence}</p>
@@ -563,7 +564,7 @@
                             <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
                             <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
                         </div>
-                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                        <input type="checkbox" name="skill_enabled" autocomplete="off" aria-label="使用技能 ${escapeHtml(item.title)}" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
                     </div>
                     <div class="space-y-0.5 mt-2">
                         <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed">关键: ${item.keyPoint}</p>
@@ -577,7 +578,7 @@
                             <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
                             <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
                         </div>
-                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                        <input type="checkbox" name="skill_enabled" autocomplete="off" aria-label="使用技能 ${escapeHtml(item.title)}" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
                     </div>
                     <div class="space-y-0.5 mt-2">
                         <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed">策略: ${item.strategy}</p>
@@ -591,7 +592,7 @@
                             <h3 class="text-sm font-bold text-base-content truncate">${item.title}</h3>
                             <span class="badge ${badgeClass} badge-sm font-bold shrink-0">${item.rating}</span>
                         </div>
-                        <input type="checkbox" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
+                        <input type="checkbox" name="skill_enabled" autocomplete="off" aria-label="使用技能 ${escapeHtml(item.title)}" class="toggle toggle-xs toggle-primary shrink-0 cursor-pointer" onclick="event.stopPropagation();" title="使用该技能" checked />
                     </div>
                     <div class="space-y-0.5 mt-2">
                         <p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed">策略: ${item.strategy}</p>
@@ -629,6 +630,11 @@
 
     // Open detailed drawer
     window.openDrawer = function(item) {
+        const drawer = document.getElementById('detailDrawer');
+        if (drawer && drawer.classList.contains('translate-x-full')) {
+            const active = document.activeElement;
+            drawerReturnFocus = active && active !== document.body && typeof active.focus === 'function' ? active : null;
+        }
         window.activeItem = item;
         
         // Toggle active border class on card
@@ -637,7 +643,6 @@
         const selectedCard = document.getElementById(`card-${item.id}`);
         if (selectedCard) selectedCard.classList.add('active-card');
 
-        const drawer = document.getElementById('detailDrawer');
         const backdrop = document.getElementById('drawerBackdrop');
         const dRating = document.getElementById('drawerRating');
         const dTitle = document.getElementById('drawerTitle');
@@ -665,64 +670,64 @@
             fieldsHTML = `
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">副标签组合</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="2">${item.subGenres || item.title}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="副标签组合" class="textarea textarea-bordered w-full text-xs font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="2">${item.subGenres || item.title}</textarea>
                 </div>
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">组合逻辑公式</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.logic}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="组合逻辑公式" class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.logic}</textarea>
                 </div>
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">核心爽点来源</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.attraction}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="核心爽点来源" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.attraction}</textarea>
                 </div>
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">底层情绪本质</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.essence}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="底层情绪本质" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.essence}</textarea>
                 </div>
             `;
         } else if (activeCategory === 'chapter-expansion') {
             fieldsHTML = `
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">适用场景</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="2">${item.scene}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="适用场景" class="textarea textarea-bordered w-full text-xs font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="2">${item.scene}</textarea>
                 </div>
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">情绪节拍弧</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.arc}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="情绪节拍弧" class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.arc}</textarea>
                 </div>
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">关键执行细节</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.keyPoint}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="关键执行细节" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.keyPoint}</textarea>
                 </div>
             `;
         } else if (activeCategory === 'art-presentation') {
             fieldsHTML = `
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">核心意象 (视/听)</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.imagery}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="核心意象" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.imagery}</textarea>
                 </div>
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">感官细节 (嗅/味/触)</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.sensory}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="感官细节" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.sensory}</textarea>
                 </div>
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">叙事表达策略</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.strategy}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="叙事表达策略" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.strategy}</textarea>
                 </div>
             `;
         } else if (activeCategory === 'camera-language') {
             fieldsHTML = `
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">运镜手法与运动</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.movement}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="运镜手法与运动" class="textarea textarea-bordered w-full text-xs leading-relaxed font-mono bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.movement}</textarea>
                 </div>
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">画面意蕴与感官</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.sensory}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="画面意蕴与感官" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.sensory}</textarea>
                 </div>
                 <div class="space-y-1">
                     <span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">情绪策略</span>
-                    <textarea class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.strategy}</textarea>
+                    <textarea name="skill_detail" autocomplete="off" aria-label="情绪策略" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans bg-base-100/30 resize-none focus:outline-none" readonly rows="3">${item.strategy}</textarea>
                 </div>
             `;
         }
@@ -735,6 +740,7 @@
 
         // Slide in drawer
         drawer.classList.remove('translate-x-full');
+        drawer.setAttribute('aria-hidden', 'false');
         backdrop.classList.remove('hidden');
         setTimeout(() => backdrop.classList.add('opacity-100'), 10);
     };
@@ -747,12 +753,16 @@
         if (!drawer || !backdrop) return;
 
         drawer.classList.add('translate-x-full');
+        drawer.setAttribute('aria-hidden', 'true');
         backdrop.classList.remove('opacity-100');
         setTimeout(() => backdrop.classList.add('hidden'), 300);
 
         // Remove active class on cards
         const cards = document.querySelectorAll('.skill-card');
         cards.forEach(c => c.classList.remove('active-card'));
+        const restore = drawerReturnFocus;
+        drawerReturnFocus = null;
+        if (restore?.isConnected && !restore.hasAttribute('disabled')) restore.focus();
     };
 
     // --- Modal CRUD Logic ---
@@ -765,6 +775,8 @@
     }
 
     window.openSkillFormModal = function(mode, itemId) {
+        const active = document.activeElement;
+        skillModalReturnFocus = active && active !== document.body && typeof active.focus === 'function' ? active : null;
         window.modalMode = mode;
         window.modalItemId = itemId;
         
@@ -802,70 +814,78 @@
         if (activeCategory === 'theme-combos') {
             dynamicHTML = `
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">副题材/标签组合</label>
-                    <input type="text" id="form-subgenres" placeholder="如：末世+囤货" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-subgenres" class="text-xs text-base-content opacity-70 font-medium">副题材/标签组合</label>
+                    <input type="text" id="form-subgenres" name="skill_subgenres" autocomplete="off" placeholder="如：末世+囤货" class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">组合逻辑公式</label>
-                    <input type="text" id="form-logic" placeholder="如：资源稀缺 → 囤积快感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-logic" class="text-xs text-base-content opacity-70 font-medium">组合逻辑公式</label>
+                    <input type="text" id="form-logic" name="skill_logic" autocomplete="off" placeholder="如：资源稀缺 → 囤积快感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">核心爽点来源</label>
-                    <input type="text" id="form-attraction" placeholder="如：安全感 / 信息差优势" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-attraction" class="text-xs text-base-content opacity-70 font-medium">核心爽点来源</label>
+                    <input type="text" id="form-attraction" name="skill_attraction" autocomplete="off" placeholder="如：安全感 / 信息差优势" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">底层情绪本质</label>
-                    <input type="text" id="form-essence" placeholder="如：绝对掌控感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-essence" class="text-xs text-base-content opacity-70 font-medium">底层情绪本质</label>
+                    <input type="text" id="form-essence" name="skill_essence" autocomplete="off" placeholder="如：绝对掌控感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
             `;
         } else if (activeCategory === 'chapter-expansion') {
             dynamicHTML = `
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">适用场景</label>
-                    <input type="text" id="form-scene" placeholder="如：打脸 / 战斗 / 对抗场景" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-scene" class="text-xs text-base-content opacity-70 font-medium">适用场景</label>
+                    <input type="text" id="form-scene" name="skill_scene" autocomplete="off" placeholder="如：打脸 / 战斗 / 对抗场景" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">情绪节拍弧</label>
-                    <input type="text" id="form-arc" placeholder="如：压抑 → 加码 → 反击" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-arc" class="text-xs text-base-content opacity-70 font-medium">情绪节拍弧</label>
+                    <input type="text" id="form-arc" name="skill_arc" autocomplete="off" placeholder="如：压抑 → 加码 → 反击" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">关键执行细节</label>
-                    <input type="text" id="form-keypoint" placeholder="如：加码阶段情绪必须拉满" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-keypoint" class="text-xs text-base-content opacity-70 font-medium">关键执行细节</label>
+                    <input type="text" id="form-keypoint" name="skill_keypoint" autocomplete="off" placeholder="如：加码阶段情绪必须拉满" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
             `;
         } else if (activeCategory === 'art-presentation') {
             dynamicHTML = `
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">核心意象 (视/听)</label>
-                    <input type="text" id="form-imagery" placeholder="如：灰蓝冷雨、暗沉铁窗" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-imagery" class="text-xs text-base-content opacity-70 font-medium">核心意象 (视/听)</label>
+                    <input type="text" id="form-imagery" name="skill_imagery" autocomplete="off" placeholder="如：灰蓝冷雨、暗沉铁窗" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">感官细节 (嗅/味/触)</label>
-                    <input type="text" id="form-sensory" placeholder="如：冷茶苦涩、发霉潮湿的气味" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-sensory" class="text-xs text-base-content opacity-70 font-medium">感官细节 (嗅/味/触)</label>
+                    <input type="text" id="form-sensory" name="skill_sensory" autocomplete="off" placeholder="如：冷茶苦涩、发霉潮湿的气味" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">叙事表达策略</label>
-                    <input type="text" id="form-strategy" placeholder="如：多用未完结的短句，或以死物代替哭诉" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-strategy" class="text-xs text-base-content opacity-70 font-medium">叙事表达策略</label>
+                    <input type="text" id="form-strategy" name="skill_strategy" autocomplete="off" placeholder="如：多用未完结的短句，或以死物代替哭诉" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
             `;
         } else if (activeCategory === 'camera-language') {
             dynamicHTML = `
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">运镜手法与运动</label>
-                    <input type="text" id="form-movement" placeholder="如：长焦镜头极限压缩空间感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-movement" class="text-xs text-base-content opacity-70 font-medium">运镜手法与运动</label>
+                    <input type="text" id="form-movement" name="skill_movement" autocomplete="off" placeholder="如：长焦镜头极限压缩空间感" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">画面意蕴与感官</label>
-                    <input type="text" id="form-sensory" placeholder="如：面部局部特写、背后的模糊高墙" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-sensory" class="text-xs text-base-content opacity-70 font-medium">画面意蕴与感官</label>
+                    <input type="text" id="form-sensory" name="skill_sensory" autocomplete="off" placeholder="如：面部局部特写、背后的模糊高墙" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-xs text-base-content opacity-70 font-medium">情绪策略</label>
-                    <input type="text" id="form-strategy" placeholder="如：通过物理空间距离的压缩，渲染逃无可逃的心理" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
+                    <label for="form-strategy" class="text-xs text-base-content opacity-70 font-medium">情绪策略</label>
+                    <input type="text" id="form-strategy" name="skill_strategy" autocomplete="off" placeholder="如：通过物理空间距离的压缩，渲染逃无可逃的心理" required class="bg-base-100 border border-base-content/5 rounded-lg px-3 py-1.5 text-sm text-base-content focus:outline-none focus:border-primary placeholder-gray-600 w-full" />
                 </div>
             `;
         }
         
         formFieldsContainer.innerHTML = dynamicHTML;
+        formFieldsContainer.querySelectorAll('label').forEach((label) => {
+            const control = label.parentElement?.querySelector('input, select, textarea');
+            if (control?.id) label.htmlFor = control.id;
+        });
+        formFieldsContainer.querySelectorAll('input, select, textarea').forEach((control) => {
+            if (control.id) control.name = control.id.replace(/^form-/, 'skill_');
+            control.autocomplete = 'off';
+        });
 
         // Set Title & Mode
         if (mode === 'add') {
@@ -906,6 +926,7 @@
         }
         applySkillFormComponents(modal);
         modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
     };
 
     window.triggerAIAnalysis = function() {
@@ -985,7 +1006,10 @@
 
     window.closeSkillFormModal = function() {
         const modal = document.getElementById('skillFormModal');
-        if (modal) modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+        }
 
         // Reset AI Advice Panel status
         const mBox = document.getElementById('modalBox');
@@ -996,6 +1020,9 @@
             aiPanel.classList.add('w-0', 'opacity-0', 'hidden');
             aiPanel.classList.remove('w-[320px]', 'opacity-100', 'flex');
         }
+        const restore = skillModalReturnFocus;
+        skillModalReturnFocus = null;
+        if (restore?.isConnected && !restore.hasAttribute('disabled')) restore.focus();
     };
 
     window.submitSkillForm = function() {
@@ -1140,6 +1167,9 @@
         
         const toast = document.createElement('div');
         toast.id = 'premium-toast';
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        toast.setAttribute('aria-atomic', 'true');
         toast.className = 'fixed top-6 left-1/2 transform -translate-x-1/2 z-[200] px-5 py-3 rounded-box border border-base-content/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-2.5 transition-all duration-300 translate-y-[-20px] opacity-0 bg-base-100/85 backdrop-blur-md';
         
         toast.innerHTML = `
@@ -1420,6 +1450,9 @@
             const card = document.createElement('div');
             card.id = `card-${item.id}`;
             card.className = 'card bg-base-100 shadow-sm border border-base-content/10 p-5 flex flex-col gap-4 relative skill-card cursor-pointer hover:border-primary transition-all';
+            card.setAttribute('role', 'button');
+            card.tabIndex = 0;
+            card.setAttribute('aria-label', `打开技能详情：${item.title}`);
             const badge = item.rating === 'SS' ? 'badge-ss' : item.rating === 'S' ? 'badge-s' : item.rating === 'A' ? 'badge-a' : item.rating === 'B' ? 'badge-b' : item.rating === 'C' ? 'badge-c' : 'badge-ghost';
             const source = item.sourceType === 'user_managed' ? `用户管理 v${item.version}` : `系统内置 v${item.version}`;
             const status = item.lifecycleStatus;
@@ -1427,6 +1460,11 @@
             const summaryB = category === 'theme-combos' ? `公式: ${item.logic}` : category === 'chapter-expansion' ? `节拍: ${item.arc}` : category === 'art-presentation' ? `意象: ${item.imagery}` : `手法: ${item.movement}`;
             card.innerHTML = `<div class="flex items-center justify-between gap-2"><div class="flex items-center gap-2 truncate"><h3 class="text-sm font-bold text-base-content truncate">${escapeHtml(item.title)}</h3><span class="badge ${badge} badge-sm font-bold shrink-0">${escapeHtml(item.rating)}</span></div></div><div class="flex items-center justify-between gap-2"><span class="badge badge-outline badge-sm text-[10px]">${escapeHtml(source)}</span><span class="text-[10px] text-base-content opacity-50 truncate">${escapeHtml(item.tag || '未分类')} · ${escapeHtml(status)}</span></div><div class="space-y-0.5 mt-2"><p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${escapeHtml(summaryA)}">${escapeHtml(summaryA)}</p><p class="text-[11px] text-base-content opacity-60 truncate leading-relaxed" title="${escapeHtml(summaryB)}">${escapeHtml(summaryB)}</p></div>`;
             card.addEventListener('click', () => window.openDrawer(item));
+            card.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                window.openDrawer(item);
+            });
             grid.appendChild(card);
         });
         container.replaceChildren(grid);
@@ -1440,13 +1478,13 @@
     function drawerTextInput(id, label, value, editable) {
         const readonly = editable ? '' : ' readonly aria-readonly="true"';
         const stateClass = editable ? 'bg-base-100 focus:border-primary' : 'bg-base-100/30 cursor-default';
-        return `<div class="space-y-1"><label for="${id}" class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">${label}</label><input id="${id}" type="text" value="${escapeHtml(drawerValue(value, editable))}" class="input input-bordered w-full text-xs ${stateClass}"${readonly}></div>`;
+        return `<div class="space-y-1"><label for="${id}" class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">${label}</label><input id="${id}" name="${id}" autocomplete="off" type="text" value="${escapeHtml(drawerValue(value, editable))}" class="input input-bordered w-full text-xs ${stateClass}"${readonly}></div>`;
     }
 
     function drawerTextarea(id, label, value, editable, rows = 3) {
         const readonly = editable ? '' : ' readonly aria-readonly="true"';
         const stateClass = editable ? 'bg-base-100 focus:border-primary' : 'bg-base-100/30 cursor-default';
-        return `<div class="space-y-1"><label for="${id}" class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">${label}</label><textarea id="${id}" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans resize-none ${stateClass}" rows="${rows}"${readonly}>${escapeHtml(drawerValue(value, editable))}</textarea></div>`;
+        return `<div class="space-y-1"><label for="${id}" class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">${label}</label><textarea id="${id}" name="${id}" autocomplete="off" class="textarea textarea-bordered w-full text-xs leading-relaxed font-sans resize-none ${stateClass}" rows="${rows}"${readonly}>${escapeHtml(drawerValue(value, editable))}</textarea></div>`;
     }
 
     function drawerRatingSelect(value, editable) {
@@ -1454,11 +1492,13 @@
         const options = ['SS', 'S', 'A', 'B', 'C']
             .map(option => `<option value="${option}"${option === rating ? ' selected' : ''}>${option}</option>`)
             .join('');
-        return `<div class="space-y-1 w-24"><label for="drawer-rating" class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">推荐评级</label><select id="drawer-rating" class="select select-bordered w-full text-xs ${editable ? 'bg-base-100 focus:border-primary' : 'bg-base-100/30 cursor-default'}"${editable ? '' : ' disabled aria-readonly="true"'}>${options}</select></div>`;
+        return `<div class="space-y-1 w-24"><label for="drawer-rating" class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">推荐评级</label><select id="drawer-rating" name="skill_rating" autocomplete="off" class="select select-bordered w-full text-xs ${editable ? 'bg-base-100 focus:border-primary' : 'bg-base-100/30 cursor-default'}"${editable ? '' : ' disabled aria-readonly="true"'}>${options}</select></div>`;
     }
 
+    let drawerMetadataCounter = 0;
     function drawerMetadata(label, value, rows = 2) {
-        return `<div class="space-y-1"><span class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">${label}</span><textarea class="textarea textarea-bordered w-full text-xs bg-base-100/30 resize-none cursor-default" readonly rows="${rows}">${escapeHtml(value)}</textarea></div>`;
+        const fieldId = `drawer-metadata-${++drawerMetadataCounter}`;
+        return `<div class="space-y-1"><label for="${fieldId}" class="text-[11px] text-base-content opacity-50 font-bold uppercase tracking-wider block">${label}</label><textarea id="${fieldId}" name="skill_metadata" autocomplete="off" aria-readonly="true" class="textarea textarea-bordered w-full text-xs bg-base-100/30 resize-none cursor-default" readonly rows="${rows}">${escapeHtml(value)}</textarea></div>`;
     }
 
     function drawerTagDefinition(category) {
@@ -1568,6 +1608,11 @@
     }
 
     window.openDrawer = function(item) {
+        const existingDrawer = document.getElementById('detailDrawer');
+        if (existingDrawer && existingDrawer.classList.contains('translate-x-full')) {
+            const active = document.activeElement;
+            drawerReturnFocus = active && active !== document.body && typeof active.focus === 'function' ? active : null;
+        }
         window.activeItem = item;
         const drawer = document.getElementById('detailDrawer');
         const backdrop = document.getElementById('drawerBackdrop');
@@ -1592,6 +1637,7 @@
         titleInput?.addEventListener('input', () => syncDrawerHeader(titleInput.value.trim(), ratingInput?.value || item.rating));
         ratingInput?.addEventListener('change', () => syncDrawerHeader(titleInput?.value.trim() || item.title, ratingInput.value));
         drawer.classList.remove('translate-x-full');
+        drawer.setAttribute('aria-hidden', 'false');
         backdrop.classList.remove('hidden');
         setTimeout(() => backdrop.classList.add('opacity-100'), 10);
         document.querySelectorAll('.skill-card').forEach(card => card.classList.toggle('active-card', card.id === `card-${item.id}`));
@@ -2072,6 +2118,17 @@
         window.searchQuery = '';
         loadSkills();
     }, { once: true });
+
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const formModal = document.getElementById('skillFormModal');
+        if (formModal && !formModal.classList.contains('hidden')) {
+            window.closeSkillFormModal();
+            return;
+        }
+        const drawer = document.getElementById('detailDrawer');
+        if (drawer && !drawer.classList.contains('translate-x-full')) window.closeDrawer();
+    });
 })();
 </script>
 </body>

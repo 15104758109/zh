@@ -61,6 +61,14 @@ document.addEventListener("click", function(event) {
   }
 });
 
+document.addEventListener("keydown", function(event) {
+  if (event.key !== "Escape") return;
+  var popover = document.getElementById("quick-settings-popover");
+  if (!popover || popover.classList.contains("hidden")) return;
+  popover.classList.add("hidden");
+  document.getElementById("quick-settings-btn")?.focus();
+});
+
 // ---- Toast 通知 ----
 window.showToast = function(message, type) {
   type = type || "info";
@@ -98,3 +106,129 @@ document.addEventListener("click", function(event) {
     }
   }
 });
+
+// ---- 原型页面的基础无障碍补全 ----
+// 保留既有 DOM 与 inline handler，只为运行时新增的原型卡片补上原生控件等价物。
+(function () {
+  var iconLabels = {
+    add: "新增",
+    add_circle: "新增",
+    add_link: "添加绑定",
+    analytics: "分析",
+    arrow_back: "返回",
+    chevron_left: "折叠侧栏",
+    chevron_right: "展开侧栏",
+    close: "关闭",
+    delete: "删除",
+    edit: "编辑",
+    expand_less: "收起",
+    expand_more: "展开",
+    forum: "打开想法收集",
+    menu_book: "作品信息",
+    notifications: "通知中心",
+    refresh: "刷新",
+    send: "发送",
+    settings: "设置",
+    tune: "调整设置"
+  };
+
+  function normalizedText(node) {
+    return String(node && node.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function labelForControl(control) {
+    var text = normalizedText(control);
+    if (iconLabels[text]) return iconLabels[text];
+    var icon = control.querySelector && control.querySelector(".material-symbols-outlined");
+    var iconText = normalizedText(icon);
+    if (iconLabels[iconText]) return iconLabels[iconText];
+    return control.getAttribute("title") || "";
+  }
+
+  function isNativeInteractive(node) {
+    return /^(a|button|input|select|textarea|summary)$/i.test(node.tagName);
+  }
+
+  function isBackdrop(node) {
+    var handler = node.getAttribute("onclick") || "";
+    return /event\.target\s*===\s*this/.test(handler)
+      || /(modal|backdrop)/i.test(node.id || "")
+      || node.classList.contains("modal-backdrop");
+  }
+
+  function enhanceClickable(node) {
+    if (isBackdrop(node)) {
+      // Pure overlays are visual click targets; keep nested dialog content exposed.
+      if (!node.querySelector("[role=dialog], [role=alertdialog]")) node.setAttribute("aria-hidden", "true");
+      return;
+    }
+    if (isNativeInteractive(node) || node.closest("a, button, input, select, textarea, summary")) return;
+    node.setAttribute("role", "button");
+    if (!node.hasAttribute("tabindex")) node.tabIndex = 0;
+    if (!node.hasAttribute("aria-label")) {
+      var label = node.getAttribute("title") || normalizedText(node).slice(0, 80);
+      if (iconLabels[label]) label = iconLabels[label];
+      if (label) node.setAttribute("aria-label", label);
+    }
+    if (node.dataset.prototypeA11yBound === "true") return;
+    node.dataset.prototypeA11yBound = "true";
+    node.addEventListener("keydown", function(event) {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      node.click();
+    });
+  }
+
+  function hasAccessibleName(control) {
+    return control.hasAttribute("aria-label")
+      || control.hasAttribute("aria-labelledby")
+      || (control.labels && control.labels.length > 0)
+      || Boolean(control.closest("label"));
+  }
+
+  function enhanceFormControl(control) {
+    if (hasAccessibleName(control)) return;
+    var label = control.getAttribute("placeholder") || control.getAttribute("title") || control.name || control.id;
+    if (label) control.setAttribute("aria-label", label.replace(/[.…]+$/u, ""));
+  }
+
+  function enhance(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    if (scope.nodeType === Node.ELEMENT_NODE) {
+      if (scope.matches("button")) {
+        if (!hasAccessibleName(scope)) {
+          var scopeLabel = labelForControl(scope);
+          if (scopeLabel) scope.setAttribute("aria-label", scopeLabel);
+        }
+      }
+      if (scope.matches("[onclick]")) enhanceClickable(scope);
+      if (scope.matches("input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea, select")) enhanceFormControl(scope);
+      if (scope.matches(".material-symbols-outlined:not([aria-label])")) scope.setAttribute("aria-hidden", "true");
+    }
+    scope.querySelectorAll("button").forEach(function(button) {
+      if (hasAccessibleName(button)) return;
+      var label = labelForControl(button);
+      if (label) button.setAttribute("aria-label", label);
+    });
+    scope.querySelectorAll("[onclick]").forEach(enhanceClickable);
+    scope.querySelectorAll("input:not([type=hidden]):not([type=checkbox]):not([type=radio]), textarea, select").forEach(enhanceFormControl);
+    scope.querySelectorAll(".material-symbols-outlined:not([aria-label])").forEach(function(icon) {
+      icon.setAttribute("aria-hidden", "true");
+    });
+  }
+
+  function start() {
+    enhance(document);
+    if (!window.MutationObserver) return;
+    new MutationObserver(function(records) {
+      records.forEach(function(record) {
+        record.addedNodes.forEach(function(node) {
+          if (node.nodeType === Node.ELEMENT_NODE) enhance(node);
+        });
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
+  else start();
+})();

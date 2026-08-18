@@ -181,9 +181,8 @@
             color: #f87171;
             background: rgba(239, 68, 68, 0.06);
         }
-            /* 顶栏随侧栏折叠隐藏 */
-        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
-        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+            /* 顶栏始终保留；侧栏折叠只改变其左边界。 */
+        .header-glass { transition: left .2s ease; }
         .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
         .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
@@ -194,6 +193,70 @@
     }
     .scrollbar-hide::-webkit-scrollbar {
         display: none;
+    }
+    @media (max-width: 767px) {
+        .main-content,
+        #main-content,
+        #main-content > * {
+            min-width: 0;
+            max-width: 100%;
+        }
+        #main-content > .ui-workspace-strip {
+            padding-inline: 12px;
+        }
+        #l1a-card-list {
+            min-width: 0;
+            max-width: 100%;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            scrollbar-width: thin;
+        }
+        #main-content > .flex-1.flex {
+            flex-direction: column;
+            overflow-y: auto;
+            min-height: 0;
+        }
+        #l1a-detail-section {
+            width: 100%;
+            min-width: 0;
+        }
+        #l1a-detail-section > .p-6 {
+            padding: 12px;
+        }
+        #l1a-detail-section .ui-card,
+        #l1a-detail-section .flex,
+        #l1a-detail-section .grid {
+            min-width: 0;
+        }
+        #l1a-detail-section > .p-6 > .ui-card:first-child {
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        #l1a-detail-section > .p-6 > .ui-card:first-child > .shrink-0 {
+            width: 100%;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+        #l1a-side-panels {
+            width: 100%;
+            min-width: 0;
+            border-left: 0;
+            border-top: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+        }
+        #l1a-side-panels > * {
+            min-width: 0;
+        }
+        #l1a-side-panels .p-6 {
+            padding: 12px;
+        }
+        #l1a-side-panels .grid-cols-2 {
+            grid-template-columns: minmax(0, 1fr);
+        }
+        #l1a-runtime-state {
+            inset: 64px 0 0 var(--sidebar-w);
+            min-width: 0;
+        }
     }
 </style>
     <script src="/vendor/tailwindcss-browser-4.js"></script>
@@ -438,7 +501,7 @@
 </main>
 
 <!-- Toast Container -->
-<div id="toast-container" class="toast-container"></div>
+<div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script type="module" src="./index.mjs"></script>
 

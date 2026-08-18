@@ -1027,12 +1027,22 @@ function openModelSettings() {
   const bindingTemplate = findBinding()?.effective_value?.template_type;
   if (templateTypes.includes(bindingTemplate)) selectModalTemplate(bindingTemplate);
   const modal = valueFromId("modelSettingsModal");
-  modal?.classList.remove("hidden");
+  if (modal) {
+    state.modelSettingsReturnFocus = document.activeElement;
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+  }
   renderModalCategories(state.modalTemplate);
+  valueFromId("closeModalBtn")?.focus();
 }
 
 function closeModelSettings() {
-  valueFromId("modelSettingsModal")?.classList.add("hidden");
+  const modal = valueFromId("modelSettingsModal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+  if (state.modelSettingsReturnFocus?.isConnected) state.modelSettingsReturnFocus.focus();
+  state.modelSettingsReturnFocus = null;
 }
 
 function installCanvasNavigation() {
@@ -1260,6 +1270,7 @@ function selectStage(stageLabel) {
   text("currentStageText", stage.label);
   text("canvasHeaderTitle", stage.header);
   valueFromId("stageDropdown")?.classList.add("hidden");
+  valueFromId("stageDropdownTrigger")?.setAttribute("aria-expanded", "false");
 
   const nodes = nodesForStage(stage.id);
   document.querySelectorAll(".workflow-node").forEach((node) => {
@@ -1328,8 +1339,15 @@ function installListeners() {
 
   if (refreshButton) {
     setDisabled(refreshButton, false, "重新读取当前有效配置。 ");
+    refreshButton.setAttribute("aria-label", "重新读取当前有效配置");
     refreshButton.addEventListener("click", () => loadProjection());
   }
+  const stageTrigger = valueFromId("stageDropdownTrigger");
+  const stageDropdown = valueFromId("stageDropdown");
+  stageTrigger?.addEventListener("click", () => {
+    const open = stageDropdown?.classList.toggle("hidden") === false;
+    stageTrigger.setAttribute("aria-expanded", String(Boolean(open)));
+  });
   if (templateSelect) {
     templateSelect.addEventListener("change", () => {
       if (templateSelect.value) void bindNodeTemplate(templateSelect.value);
@@ -1340,6 +1358,9 @@ function installListeners() {
   }
   modelTemperature?.addEventListener("input", () => text("tempValDisplay", modelTemperature.value));
   document.querySelectorAll(".workflow-node").forEach((node) => {
+    node.setAttribute("role", "button");
+    node.tabIndex = 0;
+    node.setAttribute("aria-label", `选择流程节点：${titleForNode(node)}`);
     node.addEventListener("click", () => {
       state.activeNodeId = node.id;
       window.activeNodeId = node.id;
@@ -1352,6 +1373,11 @@ function installListeners() {
         if (!activeNodeCode()) setStatus("blocked", nodeSummary());
         else setStatus("ready", `${nodeSummary()} ${budgetSummary()}`);
       });
+    });
+    node.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      node.click();
     });
   });
   document.addEventListener("dblclick", (event) => {
@@ -1369,7 +1395,14 @@ function installListeners() {
   }, true);
   document.addEventListener("keydown", (event) => {
     const prompt = valueFromId("promptEditor");
-    if (!prompt || event.target !== prompt || !state.editingPrompt) return;
+    if (!prompt || event.target !== prompt) return;
+    if (!state.editingPrompt && (event.key === "Enter" || event.key === " " || event.key === "F2")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      beginPromptEdit();
+      return;
+    }
+    if (!state.editingPrompt) return;
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopImmediatePropagation();

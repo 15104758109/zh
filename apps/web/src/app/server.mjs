@@ -324,7 +324,7 @@ async function readAuditProjection(bookId, localOperatorId, chapterId, chapterVe
   const version = uuidLiteral(chapterVersionId);
   const sql = `
 WITH scoped_book AS (
-  SELECT id, title, local_operator_id, current_l1a_id
+  SELECT id, title, local_operator_id, current_l1a_id, chapter_words
   FROM public.book_project
   WHERE id = ${book} AND local_operator_id = ${operator}
 ), scoped_candidate AS (
@@ -340,7 +340,7 @@ WITH scoped_book AS (
     AND NOT h.is_finalized
     AND h.l1a_unit_id = b.current_l1a_id
 ), scoped_formal AS (
-  SELECT cv.id, cv.book_id, cv.chapter_id, cv.prose_text,
+   SELECT cv.id, cv.book_id, cv.chapter_id, cv.prose_text, h.word_count,
          cv.deduction_progress_json, h.chapter_index, h.title,
          h.confirmation_status,
          (
@@ -380,7 +380,9 @@ WITH scoped_book AS (
     c.id AS chapter_version_id,
     c.chapter_index,
     c.title AS chapter_title,
-    c.prose_text,
+     c.prose_text,
+     c.word_count,
+     b.chapter_words,
     c.deduction_progress_json,
     c.confirmation_status,
     c.continuation_available,
@@ -528,9 +530,12 @@ SELECT COALESCE(
           'title', chapter_title,
           'version_state', 'formal',
           'confirmation_status', confirmation_status,
-          'continuation_available', continuation_available,
-          'reject_count', COALESCE(deduction_progress_json->>'reject_count', '0'),
-          'prose_text', prose_text
+           'continuation_available', continuation_available,
+           'reject_count', COALESCE(deduction_progress_json->>'reject_count', '0'),
+           'prose_text', prose_text,
+           'word_count', word_count,
+           'chapter_words', chapter_words,
+           'word_count_delta', word_count - chapter_words
         ),
         'objective', jsonb_build_object(
           'has_p0_blocker', has_p0_blocker,

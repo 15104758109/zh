@@ -675,6 +675,14 @@ function closeReplanModal(runtime) {
   modal.setAttribute("aria-hidden", "true");
   const submit = modal.querySelector("#submit-replan-btn");
   if (submit) delete submit.dataset.replanMode;
+  const restore = runtime.replanReturnFocus;
+  runtime.replanReturnFocus = null;
+  if (restore?.isConnected && !restore.hasAttribute("disabled")) restore.focus();
+}
+
+function captureReplanFocus(runtime, doc) {
+  const active = doc.activeElement;
+  runtime.replanReturnFocus = active && active !== doc.body && typeof active.focus === "function" ? active : null;
 }
 
 function openFailureRecoveryModal(runtime) {
@@ -683,6 +691,7 @@ function openFailureRecoveryModal(runtime) {
   const doc = runtime.root.ownerDocument;
   const modal = doc.querySelector("#regenerate-modal");
   if (!modal) return;
+  captureReplanFocus(runtime, doc);
   const heading = modal.querySelector("h3");
   const detail = modal.querySelector("p");
   const direction = modal.querySelector("#re-deduction-direction");
@@ -708,6 +717,7 @@ function openCreatorReplanModal(runtime) {
   const doc = runtime.root.ownerDocument;
   const modal = doc.querySelector("#regenerate-modal");
   if (!modal) return;
+  captureReplanFocus(runtime, doc);
   const heading = modal.querySelector("h3");
   const detail = modal.querySelector("p");
   const direction = modal.querySelector("#re-deduction-direction");
@@ -911,6 +921,15 @@ function bindDeductionFailureRecovery(runtime) {
     dismiss.addEventListener("click", (event) => {
       event.preventDefault();
       closeReplanModal(runtime);
+    });
+  }
+  const doc = runtime.root.ownerDocument;
+  if (doc && !runtime.replanEscapeBound) {
+    runtime.replanEscapeBound = true;
+    doc.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      const modal = doc.querySelector("#regenerate-modal");
+      if (modal && !modal.classList.contains("hidden")) closeReplanModal(runtime);
     });
   }
 }

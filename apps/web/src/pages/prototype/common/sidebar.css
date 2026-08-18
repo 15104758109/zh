@@ -162,3 +162,35 @@ body.sidebar-collapsed .sidebar-user { justify-content: center; }
 /* ── 页脚随侧栏折叠调整 ── */
 footer.app-footer { transition: left .2s ease; }
 body.sidebar-collapsed footer.app-footer { left: 72px !important; }
+
+/* Mobile keeps the global navigation available without consuming most of the
+ * working viewport. Complex prototype workspaces can then scroll instead of
+ * silently clipping controls outside the viewport. */
+@media (max-width: 767px) {
+  body.ui-page { --sidebar-w: 64px; }
+  .sidebar-glass { width: 64px; padding-inline: 8px; }
+  .sidebar-text,
+  .sidebar-subtitle { display: none !important; }
+  .sidebar-brand,
+  .sidebar-menu li > a,
+  .sidebar-user { justify-content: center; }
+  .sidebar-brand { padding-inline: 0; }
+  .sidebar-menu li > a { padding-inline: 0; }
+  .sidebar-footer { padding-inline: 0; }
+  .sidebar-toggle { display: none; }
+  .main-content {
+    margin-left: var(--sidebar-w);
+    height: 100dvh;
+    overflow-x: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .header-glass {
+    left: var(--sidebar-w);
+    padding-inline: 12px !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .header-glass::-webkit-scrollbar { display: none; }
+  .header-glass > * { flex: 0 0 auto; }
+}

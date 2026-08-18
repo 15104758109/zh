@@ -197,6 +197,7 @@ function renderSelection(root) {
       runtime.selectedL1aId = item.l1a_id;
       runtime.selectionKey = null;
       root.querySelector("#l1a-dropdown")?.classList.add("hidden");
+      root.querySelector("#l1a-dropdown-trigger")?.setAttribute("aria-expanded", "false");
       renderSelection(root);
       renderControls(root);
     });
@@ -267,9 +268,10 @@ async function singleFlight(root, operation) {
 }
 
 function renderControls(root) {
-  const regenerate = [...root.querySelectorAll("button")].find((button) => button.textContent.includes("重新生成"));
+  const document = root.ownerDocument;
+  const regenerate = root.querySelector("#regenerate-candidate-btn");
   const primary = root.querySelector("#plan-generation-btn");
-  const returnButton = root.querySelector("#submit-replan-btn");
+  const returnButton = document.querySelector("#submit-replan-btn");
   const selected = selectedL1a();
   const ready = Boolean(runtime.context && selected && selected.status === "finalized");
   const candidate = Boolean(runtime.candidate && hasChapterDivision(runtime.candidate.l1a_presentation_plan));
@@ -356,12 +358,20 @@ async function approve(root) {
 
 async function returnForRegeneration(root) {
   const candidate = runtime.candidate;
-  const direction = text(root.querySelector("#re-deduction-direction")?.value);
-  if (!candidate || !direction) return;
+  const document = root.ownerDocument;
+  const field = document.querySelector("#re-deduction-direction");
+  const direction = text(field?.value);
+  if (!candidate || !direction) {
+    if (field) {
+      field.setAttribute("aria-invalid", "true");
+      field.focus();
+    }
+    return;
+  }
   await singleFlight(root, async () => {
     await post(productionRequest(runtime.context, "return", { scope: candidate.scope, return_direction: direction }));
     runtime.candidate = null;
-    root.querySelector("#regenerate-modal")?.classList.add("hidden");
+    closeReturnModal(root);
     clearProjection(root, "候选方案已退回，您可以补充方向后重新生成。");
     setOverlay(root, "ready", "", "");
   }).catch((error) => setOverlay(root, "error", "退回未完成", `${error.code || "REQUEST_FAILED"}：${error.message}`, true));
@@ -369,18 +379,34 @@ async function returnForRegeneration(root) {
 
 function openReturnModal(root) {
   if (!runtime.candidate || runtime.busy) return;
-  const modal = root.querySelector("#regenerate-modal");
-  const field = root.querySelector("#re-deduction-direction");
+  const document = root.ownerDocument;
+  const modal = document.querySelector("#regenerate-modal");
+  const field = document.querySelector("#re-deduction-direction");
   if (!modal || !field) return;
+  runtime.returnFocus = document.activeElement;
   modal.classList.remove("hidden");
   modal.classList.add("flex");
+  modal.setAttribute("aria-hidden", "false");
   field.disabled = false;
+  field.removeAttribute("aria-invalid");
   field.value = "";
   field.focus();
 }
 
+function closeReturnModal(root) {
+  const document = root.ownerDocument;
+  const modal = document.querySelector("#regenerate-modal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+  modal.setAttribute("aria-hidden", "true");
+  if (runtime.returnFocus?.isConnected) runtime.returnFocus.focus();
+  runtime.returnFocus = null;
+}
+
 function bindPage({ route } = {}) {
-  const root = document.getElementById("main-content");
+  const pageDocument = globalThis.document;
+  const root = pageDocument.getElementById("main-content");
   if (!root || root.dataset.productionBound) return;
   root.dataset.productionBound = "true";
   root.ownerDocument.querySelectorAll("[onclick]").forEach((item) => item.removeAttribute("onclick"));
@@ -394,11 +420,22 @@ function bindPage({ route } = {}) {
     setOverlay(root, "error", "无法确认当前作品", `${error.code || "CONTEXT_REQUIRED"}：${error.message}`);
   }
   root.querySelector("#plan-generation-btn")?.addEventListener("click", () => runtime.candidate ? approve(root) : generate(root));
-  [...root.querySelectorAll("button")].find((button) => button.textContent.includes("重新生成"))?.addEventListener("click", () => openReturnModal(root));
-  root.querySelector("#submit-replan-btn")?.addEventListener("click", () => returnForRegeneration(root));
+  root.querySelector("#regenerate-candidate-btn")?.addEventListener("click", () => openReturnModal(root));
+  pageDocument.querySelector("#submit-replan-btn")?.addEventListener("click", () => returnForRegeneration(root));
+  pageDocument.querySelector("#close-regenerate-modal")?.addEventListener("click", () => closeReturnModal(root));
+  pageDocument.querySelector("#cancel-regenerate-modal")?.addEventListener("click", () => closeReturnModal(root));
+  pageDocument.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !pageDocument.querySelector("#regenerate-modal")?.classList.contains("hidden")) {
+      closeReturnModal(root);
+    }
+  });
   root.querySelector("[data-action='retry-production-state']")?.addEventListener("click", () => runtime.l1as.length ? generate(root) : loadProjection(root));
-  root.querySelector("#l1a-dropdown-trigger")?.addEventListener("click", () => {
-    if (runtime.l1as.length) root.querySelector("#l1a-dropdown")?.classList.toggle("hidden");
+  root.querySelector("#l1a-dropdown-trigger")?.addEventListener("click", (event) => {
+    if (runtime.l1as.length) {
+      const dropdown = root.querySelector("#l1a-dropdown");
+      const open = dropdown?.classList.toggle("hidden") === false;
+      event.currentTarget.setAttribute("aria-expanded", String(Boolean(open)));
+    }
   });
   renderControls(root);
   if (runtime.context) loadProjection(root);

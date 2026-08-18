@@ -90,6 +90,18 @@
 
 html, body { min-height: 100%; }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 body {
   min-height: 100vh;
   margin: 0;
@@ -102,7 +114,7 @@ body {
 }
 
 button, input, select, textarea { font: inherit; letter-spacing: 0; }
-button, [role="button"], [role="switch"] { cursor: pointer; }
+button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
 :where(a, button, input, select, textarea, [role="button"], [role="switch"]):focus-visible {
   outline: 2px solid #ec0b72;
@@ -382,7 +394,9 @@ button, [role="button"], [role="switch"] { cursor: pointer; }
   place-items: center;
   min-height: 260px;
   padding: 24px;
-  background: rgba(212, 210, 210, .92);
+  /* Availability states must replace, rather than reveal, prototype content. */
+  background: var(--color-base-200, #d4d2d2);
+  isolation: isolate;
 }
 .ui-state-panel {
   box-sizing: border-box;
@@ -398,6 +412,31 @@ button, [role="button"], [role="switch"] { cursor: pointer; }
 .ui-state-title { margin: 0; font-size: 20px; font-weight: 800; line-height: 1.35; }
 .ui-state-detail { margin: 10px 0 0; color: #6d6b6b; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .ui-state-panel > .ui-button { margin-top: 18px; }
+
+/* Prototype pages place their fixed top bar outside the content runtime.
+ * Availability states begin below it so the route controls remain visible. */
+.main-content > .ui-state-overlay {
+  position: fixed;
+  inset: 64px 0 0 var(--sidebar-w);
+  min-height: 0;
+}
+
+@media (max-width: 767px) {
+  .main-content,
+  .main-content > *,
+  .main-content .ui-card,
+  .main-content .ui-panel,
+  .main-content [class*="flex"],
+  .main-content [class*="grid"] {
+    min-width: 0;
+  }
+  .main-content > .ui-state-overlay {
+    max-width: calc(100vw - var(--sidebar-w));
+  }
+  .ui-state-panel {
+    max-width: min(420px, calc(100% - 24px));
+  }
+}
 
 /*
  * Formal page adapter
@@ -609,6 +648,7 @@ button, [role="button"], [role="switch"] { cursor: pointer; }
 }
 .ui-page .ui-inline-status {
   display: block;
+  flex: 0 0 auto;
   min-height: 48px;
   margin: 0;
   padding: 10px 12px;
@@ -619,6 +659,8 @@ button, [role="button"], [role="switch"] { cursor: pointer; }
   font-size: 11px;
   font-weight: 600;
   line-height: 1.55;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .ui-page .ui-inline-status--loading,
 .ui-page .ui-inline-status--blocked { color: #7f5900; border-color: #ffc000; }
@@ -839,4 +881,183 @@ button, [role="button"], [role="switch"] { cursor: pointer; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* Keep the shared top bar usable when the working viewport is narrower than
+ * the desktop prototype. Secondary status controls yield space to the page
+ * navigation and settings action; page content owns its own responsive stack. */
+@media (max-width: 767px) {
+  .header-glass {
+    min-width: 0;
+    gap: 4px;
+    padding-inline: 8px !important;
+  }
+  .header-glass > * { min-width: 0; }
+  .header-glass > :first-child {
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .header-glass > :first-child::-webkit-scrollbar { display: none; }
+  .header-glass > :last-child {
+    flex: 0 1 auto;
+    min-width: 0;
+    gap: 2px !important;
+  }
+  .header-glass [aria-label="通知中心"] { display: none !important; }
+  .header-glass #header-book-name {
+    display: inline-block;
+    max-width: 58px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .header-glass .header-tabs { gap: 1px; padding: 2px; }
+  .header-glass .header-tab { padding-inline: 5px; font-size: 9px; }
+  .header-glass .book-badge {
+    min-width: 0;
+    width: 82px;
+    max-width: 82px;
+    padding-inline: 7px;
+    gap: 4px;
+  }
+  .header-glass .book-badge > .material-symbols-outlined { display: none; }
+  .header-glass .iteration-header-title { min-width: 0; gap: 6px; }
+  .header-glass .iteration-header-title > div { min-width: 0; }
+  .header-glass .iteration-header-title h1 {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .header-glass > :last-child > div:has(> #header-book-name) {
+    width: 82px;
+    min-width: 0;
+    max-width: 82px;
+    overflow: hidden;
+  }
+  .header-glass > :last-child > .relative { flex: 0 0 auto; }
+
+  /* Characters: the prototype's desktop relationship matrix becomes a
+   * stacked flow; no fixed-width column may escape the content viewport. */
+  main[data-character-runtime-content] .px-gutter.pb-6 > .flex.gap-6.items-start {
+    flex-direction: column;
+  }
+  main[data-character-runtime-content] > .px-6.flex.justify-between.items-center,
+  main[data-character-runtime-content] > .flex.justify-between.items-center {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    height: auto !important;
+    flex-wrap: nowrap !important;
+  }
+  main[data-character-runtime-content] > .flex-1 > .px-6.py-sm > h2 {
+    width: 100%;
+    height: auto;
+    flex: 0 0 auto !important;
+  }
+  main[data-character-runtime-content] > .flex-1 > .px-6.py-sm > .ui-segmented {
+    width: 100%;
+    flex: 0 0 auto !important;
+  }
+  main[data-character-runtime-content] .ui-segmented {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    flex-wrap: wrap;
+    padding: 4px;
+    justify-content: flex-start;
+    white-space: nowrap;
+  }
+  main[data-character-runtime-content] .ui-segmented > * {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  main[data-character-runtime-content] [class*="w-[540px]"] {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  main[data-character-runtime-content] .px-gutter.pb-6 > .flex.gap-6.items-start > .flex-1 {
+    width: 100%;
+    min-width: 0;
+  }
+  main[data-character-runtime-content] #char-sect-select,
+  main[data-character-runtime-content] #char-job-select,
+  main[data-character-runtime-content] #rel-char-selector {
+    width: min(100%, 220px);
+    min-width: 0;
+    max-width: 100%;
+  }
+  main[data-character-runtime-content] .flex.justify-between.items-center {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* L1A: keep the chapter strip horizontally scrollable while moving the
+   * detail sidebar below the primary content. */
+  #main-content > .flex-1.flex.overflow-y-auto {
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+  #main-content > .flex-1.flex.overflow-y-auto > .flex-1.flex.flex-col {
+    width: 100%;
+    min-width: 0;
+  }
+  #main-content > .flex-1.flex.overflow-y-auto > .w-80 {
+    width: 100% !important;
+    min-width: 0;
+    border-top: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent);
+    border-left: 0;
+  }
+  #main-content .ui-l1a-card { min-width: 240px; }
+
+  /* Production: summary, scene package and participant controls become one
+   * readable column instead of fixed 380px desktop rails. */
+  main#main-content > .flex-1.flex.gap-6 > .flex-1 > .flex[data-region="run_summary"],
+  main#main-content > .flex-1.flex.gap-6 > .flex-1 > .flex[data-region="execution_plan"] {
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+  }
+  main#main-content [data-region="run_summary"] > [data-region="trope_summary"],
+  main#main-content [data-region="execution_plan"] > [data-region="scene_package"],
+  main#main-content [data-region="execution_plan"] > .w-\[380px\] {
+    width: 100% !important;
+    min-width: 0;
+  }
+  main#main-content [data-region="scene_package"] {
+    grid-template-columns: 1fr;
+  }
+
+  /* Audit: only the revealed contract content is stacked; hidden/error states
+   * remain controlled by the runtime state overlay. */
+  main[data-audit-stage-root] {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+  main[data-audit-stage-root] > [data-audit-stage-mock-content]:not([hidden]) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    height: auto !important;
+    max-width: none !important;
+    gap: 12px !important;
+  }
+  main[data-audit-stage-root] [data-purpose="text-editor-container"],
+  main[data-audit-stage-root] [data-purpose="review-sidebar"] {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Drawers must never be wider than the available content viewport. */
+  body.ui-page #detailDrawer {
+    width: min(480px, calc(100vw - var(--sidebar-w))) !important;
+    max-width: calc(100vw - var(--sidebar-w));
+  }
+  body.ui-page #detailDrawer[class*="w-[440px]"] {
+    width: min(440px, calc(100vw - var(--sidebar-w))) !important;
+  }
 }

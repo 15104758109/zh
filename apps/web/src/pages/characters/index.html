@@ -22,9 +22,15 @@
         .active-card { border-color: var(--color-accent); box-shadow: 0 0 12px oklch(62% 0.194 149.214 / 0.2); }
         .glow-text { text-shadow: 0 1px 4px var(--color-primary-content); }
 
-        /* 顶栏随侧栏折叠隐藏 */
-        .header-glass { transition: left .2s ease, transform .2s ease, opacity .2s ease; }
-        body.sidebar-collapsed .header-glass { transform: translateX(-120%); opacity: 0; pointer-events: none; }
+        /* 顶栏始终保留；侧栏折叠只改变其左边界。 */
+        .header-glass { transition: left .2s ease; }
+        .character-runtime-state {
+            position: fixed;
+            inset: 64px 0 0 var(--sidebar-w);
+            z-index: 55;
+            min-height: 0;
+        }
+        .character-runtime-state[hidden] { display: none; }
         .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
         .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
@@ -111,6 +117,79 @@
             box-shadow: 0 0 10px rgba(77, 142, 255, 0.5);
             border: 2px solid white;
         }
+
+        @media (max-width: 767px) {
+            .main-content,
+            .main-content > main,
+            main[data-character-runtime-content] {
+                min-width: 0;
+                max-width: 100%;
+            }
+            main[data-character-runtime-content] > :first-child {
+                flex-wrap: wrap;
+                align-items: flex-start;
+                gap: 8px;
+                padding-inline: 12px;
+            }
+            main[data-character-runtime-content] > :first-child > h2 {
+                flex: 1 1 100%;
+                min-width: 0;
+            }
+            main[data-character-runtime-content] > :first-child > .ui-segmented {
+                max-width: 100%;
+                min-width: 0;
+                overflow-x: auto;
+                padding: 8px;
+                scrollbar-width: none;
+            }
+            main[data-character-runtime-content] > :first-child > .ui-segmented::-webkit-scrollbar { display: none; }
+            #character-card-list {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                max-width: 100%;
+                padding-bottom: 6px;
+                scrollbar-width: thin;
+            }
+            main[data-character-runtime-content] .px-gutter,
+            main[data-character-runtime-content] .px-gutter > * {
+                min-width: 0;
+            }
+            main[data-character-runtime-content] .px-gutter.pb-6 > .flex.gap-6.items-start {
+                flex-direction: column;
+                gap: 16px;
+            }
+            main[data-character-runtime-content] .px-gutter.pb-6 > .flex.gap-6.items-start > .w-\[540px\],
+            main[data-character-runtime-content] .px-gutter.pb-6 > .flex.gap-6.items-start > .flex-1 {
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+                flex: 0 1 auto;
+            }
+            main[data-character-runtime-content] .px-gutter.pb-6 > .flex.gap-6.items-start .grid-cols-2 {
+                grid-template-columns: minmax(0, 1fr);
+            }
+            main[data-character-runtime-content] .px-gutter.pb-6 > .flex.gap-6.items-start select,
+            main[data-character-runtime-content] .px-gutter.pb-6 > .flex.gap-6.items-start button {
+                max-width: 100%;
+            }
+            main[data-character-runtime-content] .px-gutter.pb-6 > .flex.gap-6.items-start .ui-card {
+                padding: 16px;
+            }
+            main[data-character-runtime-content] .px-gutter.pb-6 > .ui-card {
+                min-width: 0;
+            }
+            main[data-character-runtime-content] .px-gutter.pb-6 > .ui-card > .flex {
+                flex-wrap: wrap;
+            }
+            main[data-character-runtime-content] #character-behavior-input,
+            main[data-character-runtime-content] #character-behavior-start {
+                min-width: 0;
+            }
+            main[data-character-runtime-content] .grid-cols-\[150px_1fr_1fr\] {
+                overflow-x: auto;
+                grid-template-columns: 120px repeat(2, minmax(180px, 1fr));
+            }
+        }
     </style>
     <script src="/vendor/tailwindcss-browser-4.js"></script>
 </head>
@@ -191,7 +270,7 @@
     </header>
 
 <!-- Main Canvas -->
-<main class="flex-1 pt-16 flex flex-col overflow-hidden relative z-10 cyber-grid bg-base-200">
+<main class="flex-1 pt-16 flex flex-col overflow-hidden relative z-10 cyber-grid bg-base-200" data-character-runtime-content hidden inert aria-hidden="true">
     <!-- View Mode Toggle -->
     <div class="px-6 py-sm flex justify-between items-center border-b border-base-content/10 bg-base-200/60 backdrop-blur">
         <h2 class="font-headline-sm text-body-lg font-bold text-base-content flex items-center gap-2">
@@ -234,12 +313,12 @@
 </div>
 <div class="flex justify-between items-center bg-base-200/50 p-3 rounded-lg border border-base-content/10">
 <span class="text-base-content opacity-60 font-code-sm">所属势力</span>
-<select id="char-sect-select" onchange="updateCharSect(this.value)" disabled aria-disabled="true" title="候选写入合同尚未提供。" class="ui-select bg-base-100 border border-base-content/10 rounded px-2 py-1 text-xs text-base-content outline-none cursor-pointer disabled:opacity-50">
+<select id="char-sect-select" name="character_faction" autocomplete="off" aria-label="所属势力" onchange="updateCharSect(this.value)" disabled aria-disabled="true" title="候选写入合同尚未提供。" class="ui-select bg-base-100 border border-base-content/10 rounded px-2 py-1 text-xs text-base-content outline-none cursor-pointer disabled:opacity-50">
 </select>
 </div>
 <div class="flex justify-between items-center bg-base-200/50 p-3 rounded-lg border border-base-content/10">
 <span class="text-base-content opacity-60 font-code-sm">职业</span>
-<select id="char-job-select" onchange="updateCharJob(this.value)" disabled aria-disabled="true" title="候选写入合同尚未提供。" class="ui-select bg-base-100 border border-base-content/10 rounded px-2 py-1 text-xs text-base-content outline-none cursor-pointer disabled:opacity-50">
+<select id="char-job-select" name="character_occupation" autocomplete="off" aria-label="职业" onchange="updateCharJob(this.value)" disabled aria-disabled="true" title="候选写入合同尚未提供。" class="ui-select bg-base-100 border border-base-content/10 rounded px-2 py-1 text-xs text-base-content outline-none cursor-pointer disabled:opacity-50">
 </select>
 </div>
 <div class="flex flex-col gap-1.5 bg-base-200/50 p-3 rounded-lg border border-base-content/10 w-full">
@@ -313,7 +392,7 @@
 <div class="ui-card bg-base-100 shadow-sm border border-base-content/10 rounded-box p-6 flex flex-col">
 <h2 class="font-headline-sm text-headline-sm text-base-content mb-3 flex items-center gap-2">
 <span class="material-symbols-outlined text-primary">hub</span> 关系维度
-<select id="rel-char-selector" onchange="selectRadarChar(this.value)" disabled aria-disabled="true" title="候选关系尚无稳定读取合同。" class="ui-select ml-auto bg-base-200 border border-base-content/10 rounded px-2 py-0.5 text-xs text-base-content font-code-sm outline-none cursor-pointer disabled:opacity-50">
+<select id="rel-char-selector" name="relationship_character" autocomplete="off" aria-label="关系角色" onchange="selectRadarChar(this.value)" disabled aria-disabled="true" title="候选关系尚无稳定读取合同。" class="ui-select ml-auto bg-base-200 border border-base-content/10 rounded px-2 py-0.5 text-xs text-base-content font-code-sm outline-none cursor-pointer disabled:opacity-50">
 <option value="李逍遥">李逍遥</option>
 <option value="赵灵儿">赵灵儿</option>
 <option value="血灵老祖">血灵老祖</option>
@@ -459,7 +538,7 @@
 <span class="material-symbols-outlined text-secondary">science</span> 行为实验
                         </h2>
 <div class="flex gap-2 w-1/2">
-<input id="character-behavior-input" disabled aria-disabled="true" title="行为实验不属于 FP003 已批准范围。" class="ui-field flex-1 bg-base-200 border border-base-content/10 rounded px-3 py-1.5 text-base-content font-body-md focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all disabled:opacity-50" placeholder="输入一个触发事件 (如: 发现掌门是内鬼)" type="text">
+<input id="character-behavior-input" name="character_behavior_trigger" autocomplete="off" aria-label="行为实验触发事件" disabled aria-disabled="true" title="行为实验不属于 FP003 已批准范围。" class="ui-field flex-1 bg-base-200 border border-base-content/10 rounded px-3 py-1.5 text-base-content font-body-md focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all disabled:opacity-50" placeholder="输入一个触发事件 (如: 发现掌门是内鬼)" type="text">
 <button id="character-behavior-start" type="button" disabled aria-disabled="true" title="行为实验不属于 FP003 已批准范围。" class="ui-button ui-button-primary ui-button-small flex items-center gap-1 whitespace-nowrap disabled:opacity-40">
 <span class="material-symbols-outlined text-sm">play_arrow</span> 开始实验
                             </button>
@@ -507,6 +586,13 @@
 </div>
 </div>
 </main>
+<section id="character-runtime-state" class="ui-state-overlay character-runtime-state" role="status" aria-live="polite">
+    <div class="ui-state-panel">
+        <h1 class="ui-state-title" data-state-title>正在读取角色设定</h1>
+        <p class="ui-state-detail" data-state-detail>正在恢复当前作品的角色快照。</p>
+        <button class="ui-button ui-button-primary ui-button-small" data-state-retry type="button" hidden>重新载入</button>
+    </div>
+</section>
 </div>
 
 
@@ -593,11 +679,19 @@
 
             const card = document.createElement('div');
             card.className = `w-64 bg-base-100 border border-base-content/5 rounded-2xl p-5 flex gap-3 cursor-pointer transition-all relative shrink-0 ${isActive ? 'active-card' : 'border-transparent hover:border-base-content/10 shadow-sm'}`;
+            card.setAttribute('role', 'button');
+            card.tabIndex = 0;
+            card.setAttribute('aria-label', `查看角色 ${char.name || '未命名角色'} 的设定`);
             card.onclick = () => {
                 activeCharIndex = index;
                 window.activeCharIndex = activeCharIndex;
                 renderCharacterCards();
                 refreshCharDetail();
+            };
+            card.onkeydown = (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                card.click();
             };
 
             card.innerHTML = `
@@ -631,7 +725,15 @@
         // 增加“AI快速孕育新人物”按钮卡槽
         const addCard = document.createElement('div');
         addCard.className = "w-64 bg-base-content/20 border border-dashed border-base-content/10 rounded-2xl p-5 flex items-center justify-center text-primary opacity-60 opacity-80 shrink-0 cursor-pointer hover:border-primary hover:text-primary hover:opacity-100 hover:bg-base-content/5 transition-all";
+        addCard.setAttribute('role', 'button');
+        addCard.tabIndex = 0;
+        addCard.setAttribute('aria-label', 'AI 快速孕育新人物');
         addCard.onclick = spawnCharacterViaAi;
+        addCard.onkeydown = (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            addCard.click();
+        };
         addCard.innerHTML = `
             <div class="flex flex-col items-center gap-1">
                 <span class="material-symbols-outlined text-[24px] animate-pulse">add_circle</span>
@@ -772,7 +874,7 @@
             const item = document.createElement('label');
             item.className = 'flex items-center gap-2 p-1.5 rounded hover:bg-base-content/5 cursor-pointer text-[11px] text-base-content';
             item.innerHTML = `
-                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleResourceSelection('${opt.name}', this.checked)" class="ui-checkbox accent-secondary rounded border-base-content/10 bg-base-100">
+                <input type="checkbox" name="character_resource" autocomplete="off" aria-label="选择资源 ${opt.name}" ${isChecked ? 'checked' : ''} onchange="toggleResourceSelection('${opt.name}', this.checked)" class="ui-checkbox accent-secondary rounded border-base-content/10 bg-base-100">
                 <span>${opt.name}</span>
                 <span class="text-[9px] text-base-content opacity-50 ml-auto">[${opt.lawLabel}]</span>
             `;
@@ -1539,6 +1641,42 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
         if (status) status.textContent = text;
     }
 
+    const characterStateCopy = {
+        context: ["无法确认当前作品", "请从作品工作流进入角色设定。页面不会采用默认角色或原型数据。"],
+        loading: ["正在读取角色设定", "正在恢复当前作品的角色快照。"],
+        empty: ["暂无角色快照", "当前作品尚未形成可展示的角色设定版本。"],
+        error: ["角色设定暂不可用", "角色快照读取失败，页面没有显示未确认的原型内容。"],
+    };
+
+    function setCharacterContentVisible(visible) {
+        const content = document.querySelector("[data-character-runtime-content]");
+        if (!content) return;
+        content.hidden = !visible;
+        content.inert = !visible;
+        content.setAttribute("aria-hidden", String(!visible));
+    }
+
+    function setCharacterState(state, detail = "", retry = false) {
+        const overlay = document.getElementById("character-runtime-state");
+        if (!overlay) return;
+        const copy = characterStateCopy[state];
+        if (!copy) {
+            overlay.hidden = true;
+            setCharacterContentVisible(true);
+            return;
+        }
+        setCharacterContentVisible(false);
+        overlay.hidden = false;
+        overlay.dataset.kind = state;
+        overlay.setAttribute("role", state === "error" ? "alert" : "status");
+        const title = overlay.querySelector("[data-state-title]");
+        const message = overlay.querySelector("[data-state-detail]");
+        const retryButton = overlay.querySelector("[data-state-retry]");
+        if (title) title.textContent = copy[0];
+        if (message) message.textContent = detail || copy[1];
+        if (retryButton) retryButton.hidden = !retry;
+    }
+
     function bookContext() {
         return window.ZHBookContext?.readMatchingBookContext?.({ requireRoute: true }) || null;
     }
@@ -1870,8 +2008,10 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
                 setStatus("已读取候选快照。");
             } else if (frozen) setStatus("设计已锁定，角色设定仅可查看。");
             else setStatus("已读取正式角色快照。");
+            return true;
         } catch (error) {
             setStatus(error.message || "角色快照读取失败。");
+            return false;
         } finally {
             busy = false;
             updateActionControls();
@@ -1939,6 +2079,7 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
 
     clearPrototypeValues();
     async function bootstrapCharacterPage() {
+        setCharacterState("loading");
         clearPrototypeValues();
         window.renderCharacterCards();
         updateActionControls();
@@ -1947,6 +2088,7 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
             clearPrototypeValues();
             window.renderCharacterCards();
             updateActionControls();
+            setCharacterState("context");
             return;
         }
         const headerBookName = document.getElementById("header-book-name");
@@ -1955,8 +2097,10 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
             headerBookName.textContent = `作品 ${scopedBookId.slice(0, 8)}`;
             headerBookName.title = `当前作品标识：${scopedBookId}`;
         }
-        await readSnapshot("formal");
+        const loaded = await readSnapshot("formal");
+        setCharacterState(loaded ? null : "error", loaded ? "" : "角色快照读取失败，请稍后重试。", !loaded);
     }
+    document.querySelector("[data-state-retry]")?.addEventListener("click", bootstrapCharacterPage);
     window.addEventListener("load", bootstrapCharacterPage, { once: true });
 })();
 </script>

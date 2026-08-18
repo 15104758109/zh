@@ -432,6 +432,9 @@
     .char-card-delete:hover { color: var(--color-error); background: color-mix(in oklab, var(--color-error) 10%, transparent); opacity: 1; }
     .char-card-delete .material-symbols-outlined { font-size: 15px; }
     .char-role-badge { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+    button.char-role-badge, button.char-gender-toggle, button.char-gender-toggle-sm {
+      border: 0; background: transparent; color: inherit; font: inherit;
+    }
     .char-role-badge.protagonist { background: color-mix(in oklab, var(--color-primary) 14%, transparent); color: var(--color-primary); }
     .char-role-badge.supporting { background: color-mix(in oklab, var(--color-accent) 14%, transparent); color: var(--color-accent); }
     .char-role-badge.villain { background: rgba(0,0,0,.08); color: rgba(0,0,0,.6); }
@@ -511,6 +514,7 @@
     }
     .char-bind-tag .material-symbols-outlined { font-size: 11px; cursor: pointer; opacity: .5; }
     .char-bind-tag .material-symbols-outlined:hover { opacity: 1; }
+    .char-bind-tag button { border: 0; padding: 0; color: inherit; background: transparent; }
     .char-relation-section { margin-top: 10px; }
     .char-relation-section > label { font-size: 11px; font-weight: 700; opacity: .55; display: block; margin-bottom: 4px; }
     .char-rel-row {
@@ -551,6 +555,7 @@
       display: block; font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 8px;
       cursor: pointer; white-space: nowrap;
     }
+    button.char-bind-popup-item { width: 100%; border: 0; background: transparent; text-align: left; color: inherit; font: inherit; }
     .char-bind-popup-item:hover { background: color-mix(in oklab, var(--color-accent) 10%, transparent); }
     .char-rel-popup {
       background: rgba(255,255,255,.96); border-radius: 14px;
@@ -573,6 +578,7 @@
       border: 1px solid color-mix(in oklab, var(--color-accent) 20%, transparent);
       color: var(--color-accent); transition: background .12s;
     }
+    button.char-rel-popup-tag { font: inherit; }
     .char-rel-popup-tag:hover { background: color-mix(in oklab, var(--color-accent) 24%, transparent); }
     .char-rel-popup-tag.is-used { opacity: .3; pointer-events: none; }
     .char-philosophy-section { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.35); border: 1px solid rgba(0,0,0,.05); }
@@ -1367,8 +1373,9 @@
         <div class="chat-history scrollbar" id="chatHistory"></div>
         <div class="quick-prompts" id="quickPrompts"></div>
         <form class="chat-input">
-          <textarea id="chatInput" class="ui-textarea" placeholder="请输入回答或拓展需求，例如：主角要在资源枯竭世界里靠剑修体系破局"></textarea>
-          <button class="btn btn-primary ui-button ui-button-primary" type="submit"><span class="material-symbols-outlined">send</span>发送</button>
+          <label class="sr-only" for="chatInput">向 AI 开书助手描述创作需求</label>
+          <textarea id="chatInput" name="creator_message" autocomplete="off" class="ui-textarea" placeholder="请输入回答或拓展需求，例如：主角要在资源枯竭世界里靠剑修体系破局"></textarea>
+          <button class="btn btn-primary ui-button ui-button-primary" type="submit"><span class="material-symbols-outlined" aria-hidden="true">send</span>发送</button>
         </form>
       </aside>
 
@@ -1405,7 +1412,7 @@
   </main>
 
   <div class="modal-backdrop" id="confirmModal">
-    <div class="stage-modal-panel ui-modal locked" id="stageModalPanel">
+    <div class="stage-modal-panel ui-modal locked" id="stageModalPanel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
       <div class="modal-head">
         <div>
           <b id="confirmTitle">01 创作原点</b>
@@ -1423,7 +1430,7 @@
     </div>
   </div>
 
-  <div class="toast-container" id="toastContainer"></div>
+  <div class="toast-container" id="toastContainer" role="status" aria-live="polite" aria-atomic="true"></div>
   <script charset="utf-8" src="./new_book_wizard_data.js?v=20260705-rightpane"></script>
   <script>
     (() => {
@@ -1712,16 +1719,18 @@
 
       function fieldTemplate(field, index) {
         const cls = `field ${field.full ? "full" : ""}`;
-        const bind = `data-field-index="${index}" oninput="window.updateCurrentField(this)" onchange="window.updateCurrentField(this)"`;
-        if (field.type === "textarea") return `<div class="${cls}"><label>${field.label}</label><textarea class="ui-textarea editable-field" ${bind}>${escapeHtml(field.value)}</textarea></div>`;
-        if (field.type === "input") return `<div class="${cls}"><label>${field.label}</label><input class="ui-field editable-field" ${bind} value="${escapeHtml(field.value)}"></div>`;
-        if (field.type === "select") return `<div class="${cls}"><label>${field.label}</label><select class="ui-select editable-field" ${bind}>${field.options.map((option) => `<option value="${escapeHtml(option)}" ${field.value === option ? "selected" : ""}>${escapeHtml(option) || "请选择"}</option>`).join("")}</select></div>`;
+        const fieldId = `stage-field-${index}`;
+        const fieldName = String(field.key || `field_${index}`).replace(/[^a-zA-Z0-9_-]/g, "_");
+        const bind = `id="${fieldId}" name="${fieldName}" autocomplete="off" data-field-index="${index}" oninput="window.updateCurrentField(this)" onchange="window.updateCurrentField(this)"`;
+        if (field.type === "textarea") return `<div class="${cls}"><label for="${fieldId}">${field.label}</label><textarea class="ui-textarea editable-field" ${bind}>${escapeHtml(field.value)}</textarea></div>`;
+        if (field.type === "input") return `<div class="${cls}"><label for="${fieldId}">${field.label}</label><input class="ui-field editable-field" ${bind} value="${escapeHtml(field.value)}"></div>`;
+        if (field.type === "select") return `<div class="${cls}"><label for="${fieldId}">${field.label}</label><select class="ui-select editable-field" ${bind}>${field.options.map((option) => `<option value="${escapeHtml(option)}" ${field.value === option ? "selected" : ""}>${escapeHtml(option) || "请选择"}</option>`).join("")}</select></div>`;
         if (field.type === "tags") {
           const editor = field.key === "targetEmotion"
             ? `<textarea class="ui-textarea editable-field target-emotion-input" ${bind} placeholder="填写希望读者感受到的情绪或思考方向">${escapeHtml(field.value || "")}</textarea>`
             : "";
           const tagAttributes = field.key === "targetEmotion" ? " data-target-emotion-tags" : "";
-          return `<div class="${cls}"><label>${field.label}</label>${editor}${tagList(field, tagAttributes)}</div>`;
+          return `<div class="${cls}"><label${editor ? ` for="${fieldId}"` : ""}>${field.label}</label>${editor}${tagList(field, tagAttributes)}</div>`;
         }
         return "";
       }
@@ -2073,16 +2082,16 @@
                 onclick="event.stopPropagation();window.deleteCharacter('${char.id}')"><span class="material-symbols-outlined">delete</span></button>
             </div>
             <div style="display:flex;align-items:center;gap:6px">
-              <span class="char-role-badge ${roleClass}" title="点击切换角色" style="cursor:pointer"
-                onclick="event.stopPropagation();window.charCycleRole('${char.id}')">${escapeHtml(char.role)}</span>
+              <button type="button" class="char-role-badge ${roleClass}" title="点击切换角色" aria-label="切换 ${escapeHtml(char.name)} 的角色定位" style="cursor:pointer"
+                onclick="event.stopPropagation();window.charCycleRole('${char.id}')">${escapeHtml(char.role)}</button>
               <div style="margin-left:auto;display:flex;align-items:center">
-                <div class="char-gender-toggle" onclick="event.stopPropagation();window.charCycleGender('${char.id}')">
+                <button type="button" class="char-gender-toggle" aria-label="切换 ${escapeHtml(char.name)} 的性别" onclick="event.stopPropagation();window.charCycleGender('${char.id}')">
                   <span class="char-gender-icon i-male ${isMale ? "active" : ""}">♂</span>
                   <span class="char-gender-track" data-state="${isMale ? "0" : "1"}">
                     <span class="char-gender-thumb"></span>
                   </span>
                   <span class="char-gender-icon i-female ${isFemale ? "active" : ""}">♀</span>
-                </div>
+                </button>
               </div>
             </div>
           </div>`;
@@ -2115,13 +2124,13 @@
                 ${boundCards.map(c => `
                   <span class="char-bind-tag">
                     ${escapeHtml(c.title)}
-                    <span class="material-symbols-outlined" onclick="window.charUnbindSlot('${charId}','${field}','${c.id}')">close</span>
+                    <button type="button" aria-label="解除 ${escapeHtml(c.title)} 的绑定" onclick="window.charUnbindSlot('${charId}','${field}','${c.id}')"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
                   </span>
                 `).join('')}
                 <details class="dropdown dropdown-end char-bind-dropdown">
                   <summary class="char-bind-add-btn">+ 添加</summary>
                   <div class="dropdown-content char-bind-popup">
-                    ${free.map(c => `<span class="char-bind-popup-item" onclick="window.charBindSlot('${charId}','${field}','${c.id}')">${escapeHtml(c.title)}</span>`).join('')}
+                    ${free.map(c => `<button type="button" class="char-bind-popup-item" onclick="window.charBindSlot('${charId}','${field}','${c.id}')">${escapeHtml(c.title)}</button>`).join('')}
                   </div>
                 </details>
               </div>
@@ -2152,20 +2161,20 @@
         return `
           <div class="char-detail">
             <div class="char-detail-head">
-              <span style="font-size:14px;font-weight:700;opacity:.55;white-space:nowrap">姓名：</span>
+              <label for="char-name-${escapeHtml(char.id)}" style="font-size:14px;font-weight:700;opacity:.55;white-space:nowrap">姓名：</label>
               <div class="char-name-editor">
-                <input class="input-ghost char-name-input" value="${escapeHtml(char.name)}"
+                <input id="char-name-${escapeHtml(char.id)}" name="character_name_${escapeHtml(char.id)}" autocomplete="off" class="input-ghost char-name-input" value="${escapeHtml(char.name)}"
                   data-char-id="${char.id}" data-char-field="name"
-                  oninput="window.charUpdateField(this)" placeholder="角色姓名">
+                  oninput="window.charUpdateField(this)" aria-label="角色姓名" placeholder="角色姓名">
               </div>
-              <div class="char-gender-toggle-sm" onclick="event.stopPropagation();window.charCycleGender('${char.id}')" title="点击切换性别">
+              <button type="button" class="char-gender-toggle-sm" aria-label="切换 ${escapeHtml(char.name)} 的性别" onclick="event.stopPropagation();window.charCycleGender('${char.id}')" title="点击切换性别">
                 性别：${char.gender ? (char.gender.includes('♂') ? '男' : '女') : '未设定'}
-              </div>
+              </button>
               <div class="char-age-group">
-                <label>年龄：</label>
-                <input class="input-ghost char-age-input" value="${escapeHtml(charAge)}"
+                <label for="char-age-${escapeHtml(char.id)}">年龄：</label>
+                <input id="char-age-${escapeHtml(char.id)}" name="character_age_${escapeHtml(char.id)}" autocomplete="off" class="input-ghost char-age-input" value="${escapeHtml(charAge)}"
                   data-char-id="${char.id}" data-char-field="age"
-                  oninput="window.charUpdateField(this)" placeholder="0">
+                  oninput="window.charUpdateField(this)" inputmode="numeric" aria-label="角色年龄" placeholder="0">
                 <span class="char-age-suffix">岁</span>
               </div>
             </div>
@@ -2177,18 +2186,18 @@
                   ${bindSelectHtml(char.id, 'bindRes', '资源', resCards, bindRes)}
                 </div>
                 <div class="char-bg-field">
-                  <label>外观描述</label>
-                  <textarea class="textarea editable-field" data-char-id="${char.id}" data-char-field="appearance"
+                  <label for="char-appearance-${escapeHtml(char.id)}">外观描述</label>
+                  <textarea id="char-appearance-${escapeHtml(char.id)}" name="character_appearance_${escapeHtml(char.id)}" autocomplete="off" class="textarea editable-field" aria-label="外观描述" data-char-id="${char.id}" data-char-field="appearance"
                     oninput="window.charUpdateField(this)" style="min-height:48px">${escapeHtml(char.appearance || '')}</textarea>
                 </div>
                 <div class="char-bg-field">
-                  <label>角色背景</label>
-                  <textarea class="textarea editable-field" data-char-id="${char.id}" data-char-field="background"
+                  <label for="char-background-${escapeHtml(char.id)}">角色背景</label>
+                  <textarea id="char-background-${escapeHtml(char.id)}" name="character_background_${escapeHtml(char.id)}" autocomplete="off" class="textarea editable-field" aria-label="角色背景" data-char-id="${char.id}" data-char-field="background"
                     oninput="window.charUpdateField(this)" style="min-height:90px">${escapeHtml(char.background || '')}</textarea>
                 </div>
                 <div class="char-obsession-field">
-                  <label>表层执念</label>
-                  <textarea class="textarea editable-field" data-char-id="${char.id}" data-char-field="bio"
+                  <label for="char-bio-${escapeHtml(char.id)}">表层执念</label>
+                  <textarea id="char-bio-${escapeHtml(char.id)}" name="character_bio_${escapeHtml(char.id)}" autocomplete="off" class="textarea editable-field" aria-label="表层执念" data-char-id="${char.id}" data-char-field="bio"
                     oninput="window.charUpdateField(this)" style="min-height:64px">${escapeHtml(char.bio || '')}</textarea>
                 </div>
               </div>

@@ -127,6 +127,14 @@ function objectValue(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
 }
 
+function nonNegativeInteger(value) {
+  return Number.isInteger(value) && value >= 0 ? value : null;
+}
+
+function positiveInteger(value) {
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
 function normalizeAuditChapterQueue(value, currentChapter) {
   const seen = new Set();
   const rows = Array.isArray(value) ? value : [];
@@ -232,6 +240,19 @@ function validateAuditProjection(result, context) {
     chapter_index: chapter.chapter_index,
     title: typeof chapter.title === "string" ? chapter.title : "",
   };
+  const wordCount = nonNegativeInteger(chapter.word_count);
+  const chapterWords = positiveInteger(chapter.chapter_words);
+  const wordCountDelta = Number.isInteger(chapter.word_count_delta)
+    ? chapter.word_count_delta
+    : null;
+  if (wordCount === null || chapterWords === null || wordCountDelta === null
+    || wordCountDelta !== wordCount - chapterWords) {
+    throw new AuditStageError(
+      "AUDIT_PROJECTION_INCOMPLETE",
+      "当前正式章节缺少一致的服务端字数投影，页面不会展示正文。",
+      409,
+    );
+  }
 
   return {
     book: {
@@ -247,6 +268,9 @@ function validateAuditProjection(result, context) {
       continuation_available: chapter.continuation_available === true,
       reject_count: chapter.reject_count,
       prose_text: proseText,
+      word_count: wordCount,
+      chapter_words: chapterWords,
+      word_count_delta: wordCountDelta,
     },
     chapter_queue: normalizeAuditChapterQueue(result?.chapter_queue, currentChapter),
     objective: {
@@ -543,9 +567,19 @@ function renderProse(runtime) {
   const proseContainer = editor?.querySelector("section .space-y-8");
   const wordCount = doc.getElementById("editor-word-count");
   if (wordCount) {
-    wordCount.textContent = projection.chapter.prose_text
-      ? "正式正文"
-      : "正式正文不可用";
+    const count = projection.chapter.word_count;
+    const target = projection.chapter.chapter_words;
+    const delta = projection.chapter.word_count_delta;
+    if (count === null || target === null || delta === null) {
+      wordCount.textContent = "字数投影未返回";
+      wordCount.title = "当前正式章节缺少服务端字数投影。";
+    } else {
+      const formattedCount = new Intl.NumberFormat("zh-CN").format(count);
+      const formattedTarget = new Intl.NumberFormat("zh-CN").format(target);
+      const deltaSign = delta > 0 ? "+" : "";
+      wordCount.textContent = `总字数：${formattedCount} 字，目标 ${formattedTarget} 字（${deltaSign}${delta}）`;
+      wordCount.removeAttribute("title");
+    }
   }
   if (!proseContainer) return;
   const text = projection.chapter.prose_text;

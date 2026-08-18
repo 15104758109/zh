@@ -25,13 +25,16 @@ const VERSION = "987409eb-05b4-43d8-b557-60d782ca8387";
 const EDITORIAL = "50f7330f-8aaf-489f-81dd-b1c44d69f8de";
 
 function projection(overrides = {}) {
-  return {
+  const base = {
     chapter: {
       chapter_id: CHAPTER,
       chapter_version_id: VERSION,
       version_state: "formal",
       continuation_available: true,
       prose_text: "仅用于证明页面读取正式正文，不能随继续请求写回。",
+      word_count: 1994,
+      chapter_words: 2000,
+      word_count_delta: -6,
     },
     objective: {
       has_p0_blocker: false,
@@ -41,7 +44,13 @@ function projection(overrides = {}) {
       decision_json: { verdict: "Y", reject_count_observed: 0, force_manual: false },
       ...overrides.editorial,
     },
+  };
+  return {
+    ...base,
     ...overrides,
+    chapter: { ...base.chapter, ...overrides.chapter },
+    objective: { ...base.objective, ...overrides.objective },
+    editorial: { ...base.editorial, ...overrides.editorial },
   };
 }
 
@@ -114,7 +123,7 @@ test("FP012-02 page refuses an unscoped, candidate, or non-wait confirmation rou
   assert.throws(
     () => buildAuditConfirmationIntent(
       { localOperatorId: OPERATOR, bookId: BOOK },
-      projection({ chapter: { chapter_id: CHAPTER } }),
+      projection({ chapter: { chapter_id: CHAPTER, chapter_version_id: undefined } }),
       "http://127.0.0.1:5678/webhook-waiting/1495?signature=test-signature",
     ),
     (error) => error instanceof AuditStageError && error.code === "INCOMPLETE_CHAPTER_CONTEXT",
@@ -257,6 +266,31 @@ test("audit page reads only the scoped formal projection", async () => {
     `/api/books/${BOOK}/audit?local_operator_id=${OPERATOR}&chapter_id=${CHAPTER}&chapter_version_id=${VERSION}`,
   );
   assert.equal(result.chapter.prose_text, "仅用于证明页面读取正式正文，不能随继续请求写回。");
+  assert.equal(result.chapter.word_count, 1994);
+  assert.equal(result.chapter.chapter_words, 2000);
+  assert.equal(result.chapter.word_count_delta, -6);
+});
+
+test("audit page rejects missing or inconsistent server word-count projection", async () => {
+  for (const chapter of [
+    { ...projection().chapter, word_count: undefined },
+    { ...projection().chapter, word_count: -1, word_count_delta: -2001 },
+    { ...projection().chapter, chapter_words: 0 },
+    { ...projection().chapter, word_count_delta: -5 },
+  ]) {
+    await assert.rejects(
+      fetchAuditProjection(
+        { localOperatorId: OPERATOR, bookId: BOOK, chapterId: CHAPTER, chapterVersionId: VERSION },
+        {
+          fetchImpl: async () => response(200, {
+            ok: true,
+            result: { book: { id: BOOK }, chapter, objective: projection().objective, editorial: projection().editorial },
+          }),
+        },
+      ),
+      (error) => error instanceof AuditStageError && error.code === "AUDIT_PROJECTION_INCOMPLETE",
+    );
+  }
 });
 
 test("audit page keeps the current L1A's other formal chapters selectable", async () => {

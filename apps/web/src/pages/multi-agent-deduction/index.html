@@ -60,15 +60,15 @@
 <div class="flex flex-col gap-2 mb-3">
 <div class="flex items-center justify-between">
 <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
-<input id="sw-auto-production" type="checkbox" class="toggle toggle-sm" data-key="auto_production" disabled>
+<input id="sw-auto-production" name="auto_production" autocomplete="off" aria-label="生产阶段自动化" type="checkbox" class="toggle toggle-sm" data-key="auto_production" disabled>
 </div>
 <div class="flex items-center justify-between">
 <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
-<input id="sw-auto-audit" type="checkbox" class="toggle toggle-sm" data-key="auto_audit" disabled>
+<input id="sw-auto-audit" name="auto_audit" autocomplete="off" aria-label="审计阶段自动化" type="checkbox" class="toggle toggle-sm" data-key="auto_audit" disabled>
 </div>
 <div class="flex items-center justify-between">
 <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
-<input id="sw-auto-iteration" type="checkbox" class="toggle toggle-sm" data-key="auto_iteration" disabled>
+<input id="sw-auto-iteration" name="auto_iteration" autocomplete="off" aria-label="提示词迭代自动化" type="checkbox" class="toggle toggle-sm" data-key="auto_iteration" disabled>
 </div>
 </div>
 <div class="mt-3 pt-2 border-t border-base-300">
@@ -889,7 +889,7 @@
 </script>
 <script type="module" src="/pages/multi-agent-deduction/index.mjs"></script>
 <!-- 重新生成模态弹窗 -->
-<div id="regenerate-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+<div id="regenerate-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="regenerate-modal-title" aria-describedby="regenerate-modal-detail" aria-hidden="true">
 <div class="ui-modal bg-base-100 w-[460px] p-6 flex flex-col gap-4 shadow-2xl relative">
 <button class="absolute top-4 right-4 text-base-content opacity-60 hover:text-base-content transition-colors" onclick="closeRegenerateModal()">
 <span class="material-symbols-outlined text-[20px]">close</span>
@@ -899,7 +899,8 @@
 <h3 id="regenerate-modal-title" class=" text-sm font-semibold text-base-content">重新推演当前 L1A</h3>
 </div>
 <p id="regenerate-modal-detail" class=" text-[11px] text-base-content opacity-60 leading-relaxed">提交方向后，会从第一个颗粒重新推演。已保存的推演结果将不再作为生产输入，本次预算从零累计。</p>
-<textarea id="re-deduction-direction" class="ui-textarea w-full h-28 bg-base-200 border border-base-300 rounded-lg p-3 text-xs text-base-content focus:border-base-content resize-none " placeholder="填写本次重推希望调整的方向" hidden disabled aria-hidden="true">
+<label for="re-deduction-direction" class="sr-only">重推方向</label>
+<textarea id="re-deduction-direction" name="re_deduction_direction" autocomplete="off" class="ui-textarea w-full h-28 bg-base-200 border border-base-300 rounded-lg p-3 text-xs text-base-content focus:border-base-content resize-none " placeholder="填写本次重推希望调整的方向" hidden disabled aria-hidden="true">
 </textarea>
 <div class="flex justify-end gap-2 mt-2">
 <button class="px-4 py-2 rounded-lg bg-base-300 text-base-content opacity-60 text-[11px] font-medium transition-colors" data-action="close-replan">取消</button>
