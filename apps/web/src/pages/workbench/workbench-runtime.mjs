@@ -39,6 +39,8 @@ const state = {
   bookId: null,
   editingPrompt: false,
   modelTestEvidenceId: "",
+  modelSettingsReturnFocus: null,
+  newBookReturnFocus: null,
   modalTemplate: "复杂任务",
   operatorId: "",
   projection: emptyProjection(),
@@ -209,11 +211,8 @@ function nodeConfigurationRestriction(node = activeNode()) {
   if (!node) {
     return "这张画布卡尚未对应一个唯一的可配置业务步骤。可以查看画布，但不会读取或修改 Prompt、模型绑定。";
   }
-  if (node.dataset.contractState === "pending") {
-    return `${relation || "这一步的执行合同尚未接入。"} 当前只能查看这一步与上下游的关系，不能配置或绑定 Prompt、模型。`;
-  }
   if (node.dataset.contractState === "relation") {
-    return `${relation || "这是一个人工闸门或受控写入关系。"} 它不是模型节点，不能配置或绑定 Prompt、模型。`;
+    return relation || "这是一个人工闸门或受控写入关系。它不是模型节点，不能配置或绑定 Prompt、模型。";
   }
   if (node.dataset.referenceOnly === "true") {
     return `${relation || "这是停用的参考流程。"} 当前只能查看，不会读取或修改 Prompt、模型绑定。`;
@@ -226,6 +225,12 @@ function nodeConfigurationRestriction(node = activeNode()) {
 
 function canConfigureActiveNode() {
   return !nodeConfigurationRestriction();
+}
+
+function isConfigurableNode(node) {
+  return Boolean(node?.dataset.nodeCode)
+    && node.dataset.contractState !== "relation"
+    && node.dataset.referenceOnly !== "true";
 }
 
 function selectModalTemplate(templateType) {
@@ -249,7 +254,14 @@ function findModel(templateType) {
 
 function sourceLabel(item) {
   if (!item?.source_config_id) return "未配置";
-  return `${item.source_config_id} / v${item.version ?? "-"}`;
+  const kind = {
+    prompt: "已生效 Prompt",
+    model_template: "已生效模板",
+    node_binding: "已生效绑定",
+  }[item.kind] || "已生效配置";
+  if (item.kind === "node_binding") return kind;
+  const version = item.version === null || item.version === undefined ? "当前版本" : `第 ${item.version} 版`;
+  return `${kind} ${version}`;
 }
 
 function displayProvider(providerBaseUrl) {
@@ -275,7 +287,7 @@ function budgetSummary() {
   const budget = state.projection.budget;
   const value = budget?.effective_value;
   if (!value) return "尚未选择作品；选择作品后会显示该作品固定的 L1A 推演预算。";
-  return `固定 L1A 推演预算：${formatTokens(value.token_budget)}，当前 L1A 已使用 ${formatTokens(value.current_l1a_token_consumed)}，版本 ${value.token_budget_version || budget.version || "-"}，来源 ${budget.source_config_id || "-"}。该预算只读。`;
+  return `固定 L1A 推演预算：${formatTokens(value.token_budget)}，当前 L1A 已使用 ${formatTokens(value.current_l1a_token_consumed)}，预算版本 ${value.token_budget_version || budget.version || "-"}。该预算只读。`;
 }
 
 function nodeSummary() {
@@ -287,10 +299,14 @@ function nodeSummary() {
   const prompt = findPrompt(nodeCode);
   const binding = findBinding(nodeCode);
   const model = findModel(binding?.effective_value?.template_type);
+  const nodeTitle = titleForNode(node) || nodeCode;
   if (!prompt || !binding || !model) {
-    return `${relation ? `${relation} ` : ""}当前步骤 ${nodeCode} 尚未形成完整有效配置。系统不会用原型默认值代替后端数据。`;
+    return `${relation ? `${relation} ` : ""}“${nodeTitle}”尚未形成完整有效配置。系统不会用原型默认值代替后端数据。`;
   }
-  return `${relation ? `${relation} ` : ""}当前步骤 ${nodeCode}：Prompt ${sourceLabel(prompt)}；模型模板 ${sourceLabel(model)}；节点绑定 ${sourceLabel(binding)}。`;
+  if (node?.dataset.runtimeState === "pending") {
+    return `${relation ? `${relation} ` : ""}“${nodeTitle}”已加载当前生效配置；运行流程合同尚未接入，现在不能从页面启动此步骤。`;
+  }
+  return `${relation ? `${relation} ` : ""}“${nodeTitle}”已加载有效 Prompt、模型模板和节点配置。`;
 }
 
 function renderBookContext() {
@@ -300,7 +316,7 @@ function renderBookContext() {
     && state.bookBanner.book_id.toLowerCase() === state.bookId
     ? state.bookBanner
     : null;
-  const title = banner?.title?.trim() || (selected ? "作品横幅未加载" : "未选择本地作品");
+  const title = banner?.title?.trim() || (selected ? "作品信息暂未加载" : "未选择本地作品");
   const progressPercent = numberOrNull(banner?.progress_percent);
   const latestChapter = objectOrEmpty(banner?.latest_chapter);
   const latestSummary = typeof latestChapter.prose_summary === "string" && latestChapter.prose_summary.trim()
@@ -310,7 +326,7 @@ function renderBookContext() {
   text("header-book-name", title);
   text("currentBookTitle", title);
   text("currentBookGenre", banner?.genre_main || (selected ? "作品范围已载入" : "请先创建或选择作品"));
-  text("currentBookState", banner ? bookStageLabel(banner.stage_code) : (selected ? "作品横幅未加载" : "尚无 current_book_context"));
+  text("currentBookState", banner ? bookStageLabel(banner.stage_code) : (selected ? "作品信息暂未加载" : "尚未选择作品"));
   text("currentBookProgressText", formatProgress(progressPercent));
   text("currentBookChapter", formatLatestChapter(latestChapter));
   text("currentBookChapterSummary", latestSummary);
@@ -323,14 +339,80 @@ function renderBookContext() {
   const progress = valueFromId("currentBookProgressBar");
   if (progress) progress.style.width = `${Math.min(100, Math.max(0, progressPercent ?? 0))}%`;
 
-  const bookTrigger = document.querySelector("#bookDropdownContainer > div[onclick]");
+  const bookTrigger = valueFromId("bookDropdownTrigger");
   if (bookTrigger) {
-    bookTrigger.setAttribute("aria-disabled", "true");
-    bookTrigger.tabIndex = -1;
-    bookTrigger.style.cursor = "not-allowed";
-    bookTrigger.style.pointerEvents = "none";
-    bookTrigger.title = "当前接口尚未提供作品列表；请从作品页面选择后再回到总控设置。";
+    setDisabled(bookTrigger, false, banner
+      ? "查看当前作品范围。请从其他作品页面进入其总控设置。"
+      : "查看当前作品范围；可创建新书或从已有作品页面进入总控设置。"
+    );
   }
+  renderBookDropdown();
+}
+
+function selectedBookMenuItems() {
+  const banner = state.bookBanner;
+  if (!state.bookId || !banner || !isUuid(banner.book_id) || banner.book_id.toLowerCase() !== state.bookId) return [];
+  return [{
+    id: state.bookId,
+    title: String(banner.title || "未命名作品").trim() || "未命名作品",
+    subtitle: [banner.genre_main, bookStageLabel(banner.stage_code)].filter(Boolean).join(" · "),
+  }];
+}
+
+function renderBookDropdown() {
+  const options = valueFromId("bookDropdownOptions");
+  const empty = valueFromId("bookDropdownEmpty");
+  if (!options || !empty) return;
+  const books = selectedBookMenuItems();
+  options.replaceChildren();
+  empty.classList.toggle("hidden", books.length !== 0);
+
+  if (books.length === 0 && !state.bookId) {
+    const create = document.createElement("a");
+    create.href = "/books/new";
+    create.className = "block rounded-md px-3 py-2 text-xs font-medium text-primary hover:bg-base-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50";
+    create.textContent = "创建新书";
+    options.append(create);
+    empty.classList.add("hidden");
+    return;
+  }
+
+  for (const book of books) {
+    const option = document.createElement("div");
+    option.className = "book-option-current rounded-md px-3 py-2 text-left";
+    const title = document.createElement("span");
+    title.className = "block truncate text-sm font-semibold";
+    title.textContent = book.title;
+    const subtitle = document.createElement("span");
+    subtitle.className = "mt-0.5 block truncate text-[11px] text-base-content/65";
+    subtitle.textContent = book.subtitle || "当前作品";
+    option.append(title, subtitle);
+    options.append(option);
+
+    // The workbench read contract only supplies the selected book. Give that
+    // one item a real destination instead of presenting a dead list row.
+    const entry = document.createElement("a");
+    entry.href = `/books/${encodeURIComponent(book.id)}/world`;
+    entry.className = "mt-1 flex items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-primary hover:bg-base-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50";
+    entry.textContent = "进入当前作品工作区";
+    options.append(entry);
+  }
+}
+
+function closeBookDropdown({ returnFocus = false } = {}) {
+  const dropdown = valueFromId("bookDropdown");
+  if (!dropdown) return;
+  dropdown.classList.add("hidden");
+  valueFromId("bookDropdownTrigger")?.setAttribute("aria-expanded", "false");
+  if (returnFocus) valueFromId("bookDropdownTrigger")?.focus();
+}
+
+function toggleBookDropdown() {
+  const dropdown = valueFromId("bookDropdown");
+  if (!dropdown) return;
+  const opened = dropdown.classList.toggle("hidden") === false;
+  valueFromId("bookDropdownTrigger")?.setAttribute("aria-expanded", String(opened));
+  if (opened) renderBookDropdown();
 }
 
 function bookStageLabel(stageCode) {
@@ -433,7 +515,7 @@ function renderTemplateDetails() {
   const templateType = binding?.effective_value?.template_type || state.modalTemplate;
   const model = findModel(templateType);
   const value = model?.effective_value || {};
-  text("detailModelName", model ? `${value.model_name || "未配置"} · v${model.version ?? "-"}` : "未配置");
+  text("detailModelName", model ? `${value.model_name || "未配置"} · 第 ${model.version ?? "-"} 版` : "未配置");
   text("detailProviderName", model ? displayProvider(value.provider_base_url) : "未配置");
   const temperature = numberOrNull(binding?.effective_value?.temperature);
   text("detailTemperature", temperature === null ? "未配置" : `${temperature} · ${sourceLabel(binding)}`);
@@ -455,7 +537,7 @@ function renderPrompt() {
   }
   if (!prompt?.effective_value?.prompt_text) {
     editor.dataset.empty = "true";
-    editor.textContent = "尚无 active Prompt；双击填写后可保存为新的 active 版本。";
+    editor.textContent = "当前流程步骤尚未配置提示词。双击填写后可保存为新版本。";
     return;
   }
   delete editor.dataset.empty;
@@ -482,13 +564,6 @@ function renderModalTemplate(templateType = state.modalTemplate) {
     setDisabled(modelSelect, false);
   }
   const provider = valueFromId("modalProviderInput");
-  if (provider) {
-    provider.value = displayProvider(valueFromId("modalBaseUrlInput")?.value || value.provider_base_url);
-    provider.placeholder = "由当前模板连接地址派生";
-    provider.readOnly = true;
-    provider.setAttribute("aria-readonly", "true");
-    provider.title = "运营商名称由当前模型模板的连接地址派生，不单独保存。";
-  }
   const baseUrl = valueFromId("modalBaseUrlInput");
   if (baseUrl) {
     baseUrl.value = value.provider_base_url || "";
@@ -496,6 +571,13 @@ function renderModalTemplate(templateType = state.modalTemplate) {
     baseUrl.removeAttribute("aria-readonly");
     baseUrl.placeholder = "https://provider.example/v1";
     baseUrl.title = "地址变更后必须重新完成受控连接测试。";
+  }
+  if (provider) {
+    provider.value = displayProvider(value.provider_base_url || baseUrl?.value);
+    provider.placeholder = "由当前模板连接地址派生";
+    provider.readOnly = true;
+    provider.setAttribute("aria-readonly", "true");
+    provider.title = "运营商名称由当前模型模板的连接地址派生，不单独保存。";
   }
   const credential = valueFromId("modalApiKeyInput");
   if (credential) {
@@ -565,8 +647,8 @@ function renderModalCategories(selected = state.modalTemplate) {
     button.type = "button";
     button.dataset.category = templateType;
     button.className = templateType === selectedTemplate
-      ? "sidebar-item active w-full text-left px-3 py-2 text-xs font-semibold bg-primary text-primary-content rounded-md shadow-sm transition-all"
-      : "sidebar-item w-full text-left px-3 py-2 text-xs font-semibold rounded-md opacity-70 hover:opacity-100 hover:bg-base-content/5 transition-all";
+      ? "sidebar-item active w-full text-left px-3 py-2 text-xs font-semibold bg-primary text-primary-content rounded-md shadow-sm transition-colors"
+      : "sidebar-item w-full text-left px-3 py-2 text-xs font-semibold text-base-content opacity-80 hover:opacity-100 hover:bg-base-content/5 transition-colors";
     button.textContent = templateType;
     button.addEventListener("click", () => {
       selectModalTemplate(templateType);
@@ -776,7 +858,7 @@ async function finishPromptEdit({ cancelled = false } = {}) {
       setStatus("failure", "Prompt 保存请求已成功返回，但无法重新读取当前有效配置；页面没有将其显示为成功，请刷新后核对。");
       return;
     }
-    setStatus("ready", `Prompt 已保存为 ${edit.nodeCode} 的新 active 版本。${nodeSummary()}`);
+    setStatus("ready", `“${titleForNode()}”的提示词已保存为新版本。${nodeSummary()}`);
   } catch (error) {
     editor.textContent = promptText;
     delete editor.dataset.empty;
@@ -815,7 +897,7 @@ async function bindNodeTemplate(templateType) {
       setStatus("failure", "节点模板绑定请求已成功返回，但无法重新读取当前有效配置；页面没有将其显示为成功，请刷新后核对。");
       return;
     }
-    setStatus("ready", `已将 ${nodeCode} 绑定到“${templateType}”模板。${nodeSummary()}`);
+    setStatus("ready", `已为“${titleForNode()}”绑定“${templateType}”模板。${nodeSummary()}`);
   } catch (error) {
     renderTemplateOptions();
     renderTemplateDetails();
@@ -1022,6 +1104,54 @@ function syncNodeHighlight() {
   });
 }
 
+function setDialogBackgroundInert(inert) {
+  const main = document.querySelector("main");
+  if (main) {
+    // The dialogs live inside main; inert only the background regions so the
+    // open dialog remains clickable and keyboard-operable.
+    [...main.children]
+      .filter((child) => !["modelSettingsModal", "newBookModal"].includes(child.id))
+      .forEach((child) => child.toggleAttribute("inert", inert));
+  }
+  document.querySelector("[data-shared-sidebar]")?.toggleAttribute("inert", inert);
+}
+
+function focusableIn(container) {
+  return [...container.querySelectorAll(
+    "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex='-1'])",
+  )].filter((element) => !element.closest(".hidden"));
+}
+
+function trapDialogFocus(event, dialog) {
+  if (event.key !== "Tab") return;
+  const focusable = focusableIn(dialog);
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable.at(-1);
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function closeStageDropdown({ returnFocus = false } = {}) {
+  valueFromId("stageDropdown")?.classList.add("hidden");
+  valueFromId("stageDropdownTrigger")?.setAttribute("aria-expanded", "false");
+  if (returnFocus) valueFromId("stageDropdownTrigger")?.focus();
+}
+
+function setQuickSettingsOpen(open, { returnFocus = false } = {}) {
+  const popover = valueFromId("quick-settings-popover");
+  const trigger = valueFromId("quick-settings-btn");
+  if (!popover || !trigger) return;
+  popover.classList.toggle("hidden", !open);
+  trigger.setAttribute("aria-expanded", String(open));
+  if (returnFocus) trigger.focus();
+}
+
 function openModelSettings() {
   if (!canConfigureActiveNode()) return notifyUnmappedNode();
   const bindingTemplate = findBinding()?.effective_value?.template_type;
@@ -1031,6 +1161,7 @@ function openModelSettings() {
     state.modelSettingsReturnFocus = document.activeElement;
     modal.classList.remove("hidden");
     modal.setAttribute("aria-hidden", "false");
+    setDialogBackgroundInert(true);
   }
   renderModalCategories(state.modalTemplate);
   valueFromId("closeModalBtn")?.focus();
@@ -1041,6 +1172,7 @@ function closeModelSettings() {
   if (!modal) return;
   modal.classList.add("hidden");
   modal.setAttribute("aria-hidden", "true");
+  setDialogBackgroundInert(false);
   if (state.modelSettingsReturnFocus?.isConnected) state.modelSettingsReturnFocus.focus();
   state.modelSettingsReturnFocus = null;
 }
@@ -1056,6 +1188,22 @@ function installCanvasNavigation() {
   const paint = () => {
     content.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
   };
+  viewport.addEventListener("keydown", (event) => {
+    const step = 48;
+    if (event.key === "Home") {
+      translateX = 0;
+      translateY = 0;
+      scale = 1;
+    } else if (event.key === "ArrowLeft") translateX += step;
+    else if (event.key === "ArrowRight") translateX -= step;
+    else if (event.key === "ArrowUp") translateY += step;
+    else if (event.key === "ArrowDown") translateY -= step;
+    else if (event.key === "+" || event.key === "=") scale = Math.min(3, scale + 0.1);
+    else if (event.key === "-" || event.key === "_") scale = Math.max(0.2, scale - 0.1);
+    else return;
+    event.preventDefault();
+    paint();
+  });
   viewport.addEventListener("wheel", (event) => {
     event.preventDefault();
     const rect = viewport.getBoundingClientRect();
@@ -1167,15 +1315,25 @@ function installNewBookHandoff() {
   };
 
   window.openNewBookModal = () => {
+    state.newBookReturnFocus = document.activeElement;
     modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    setDialogBackgroundInert(true);
     titleInput.value = "";
     targetWordsInput.value = "100";
     selectedMainGenre = "科幻";
     selectedSubGenres = [];
     renderMainGenres();
     renderSubGenres();
+    titleInput.focus();
   };
-  window.closeNewBookModal = () => modal.classList.add("hidden");
+  window.closeNewBookModal = () => {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    setDialogBackgroundInert(false);
+    if (state.newBookReturnFocus?.isConnected) state.newBookReturnFocus.focus();
+    state.newBookReturnFocus = null;
+  };
   window.createNewBook = () => {
     const title = titleInput.value.trim();
     const targetWords = targetWordsInput.value.trim();
@@ -1226,13 +1384,30 @@ function installNewBookHandoff() {
 
 function installModalInteractions() {
   const modal = valueFromId("modelSettingsModal");
+  const newBookModal = valueFromId("newBookModal");
   document.querySelectorAll(".open-modal-btn").forEach((button) => button.addEventListener("click", openModelSettings));
   valueFromId("closeModalBtn")?.addEventListener("click", closeModelSettings);
   modal?.addEventListener("click", (event) => {
     if (event.target === modal) closeModelSettings();
   });
+  newBookModal?.addEventListener("click", (event) => {
+    if (event.target === newBookModal) window.closeNewBookModal?.();
+  });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !modal?.classList.contains("hidden")) closeModelSettings();
+    if (!newBookModal?.classList.contains("hidden")) {
+      if (event.key === "Escape") window.closeNewBookModal?.();
+      else trapDialogFocus(event, newBookModal);
+      return;
+    }
+    if (!modal?.classList.contains("hidden")) {
+      if (event.key === "Escape") closeModelSettings();
+      else trapDialogFocus(event, modal);
+      return;
+    }
+    if (event.key !== "Escape") return;
+    if (!valueFromId("bookDropdown")?.classList.contains("hidden")) closeBookDropdown({ returnFocus: true });
+    else if (!valueFromId("stageDropdown")?.classList.contains("hidden")) closeStageDropdown({ returnFocus: true });
+    else if (!valueFromId("quick-settings-popover")?.classList.contains("hidden")) setQuickSettingsOpen(false, { returnFocus: true });
   });
 }
 
@@ -1324,7 +1499,8 @@ function installPrototypeOverrides() {
   window.toggleAutoSwitch = (key) => void saveBookConfig(key);
   window.toggleQuickSettings = (event) => {
     event?.stopPropagation();
-    valueFromId("quick-settings-popover")?.classList.toggle("hidden");
+    const popover = valueFromId("quick-settings-popover");
+    setQuickSettingsOpen(Boolean(popover?.classList.contains("hidden")));
   };
   window.selectStage = selectStage;
 }
@@ -1334,6 +1510,7 @@ function installListeners() {
   const modelName = valueFromId("modalModelSelect");
   const modelBaseUrl = valueFromId("modalBaseUrlInput");
   const modelTemperature = valueFromId("modalTempRange");
+  const bookTrigger = valueFromId("bookDropdownTrigger");
   const refreshIcon = [...document.querySelectorAll(".material-symbols-outlined")].find((icon) => icon.textContent.trim() === "refresh");
   const refreshButton = refreshIcon?.closest("button");
 
@@ -1348,6 +1525,7 @@ function installListeners() {
     const open = stageDropdown?.classList.toggle("hidden") === false;
     stageTrigger.setAttribute("aria-expanded", String(Boolean(open)));
   });
+  bookTrigger?.addEventListener("click", toggleBookDropdown);
   if (templateSelect) {
     templateSelect.addEventListener("change", () => {
       if (templateSelect.value) void bindNodeTemplate(templateSelect.value);
@@ -1358,6 +1536,14 @@ function installListeners() {
   }
   modelTemperature?.addEventListener("input", () => text("tempValDisplay", modelTemperature.value));
   document.querySelectorAll(".workflow-node").forEach((node) => {
+    if (!isConfigurableNode(node)) {
+      node.classList.remove("cursor-pointer", "hover:border-base-content/10");
+      node.classList.add("cursor-default");
+      node.removeAttribute("role");
+      node.removeAttribute("tabindex");
+      node.removeAttribute("aria-label");
+      return;
+    }
     node.setAttribute("role", "button");
     node.tabIndex = 0;
     node.setAttribute("aria-label", `选择流程节点：${titleForNode(node)}`);
@@ -1370,6 +1556,7 @@ function installListeners() {
         renderTemplateOptions();
         renderTemplateDetails();
         renderPrompt();
+        renderNodeActionAvailability();
         if (!activeNodeCode()) setStatus("blocked", nodeSummary());
         else setStatus("ready", `${nodeSummary()} ${budgetSummary()}`);
       });
@@ -1416,10 +1603,12 @@ function installListeners() {
   }, true);
   document.addEventListener("click", (event) => {
     const stageContainer = valueFromId("stageDropdownContainer");
-    if (stageContainer && !stageContainer.contains(event.target)) valueFromId("stageDropdown")?.classList.add("hidden");
+    if (stageContainer && !stageContainer.contains(event.target)) closeStageDropdown();
+    const bookContainer = valueFromId("bookDropdownContainer");
+    if (bookContainer && !bookContainer.contains(event.target)) closeBookDropdown();
     const quickSettings = valueFromId("quick-settings-popover");
     const quickButton = valueFromId("quick-settings-btn");
-    if (quickSettings && !quickSettings.contains(event.target) && !quickButton?.contains(event.target)) quickSettings.classList.add("hidden");
+    if (quickSettings && !quickSettings.contains(event.target) && !quickButton?.contains(event.target)) setQuickSettingsOpen(false);
     const disabledLink = event.target.closest("a[aria-disabled='true']");
     if (!disabledLink) return;
     event.preventDefault();

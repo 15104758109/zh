@@ -769,14 +769,20 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 
 /* Existing quick-settings controls are part of the shared top bar contract. */
 .settings-switch {
+  display: block;
   position: relative;
   width: 36px;
   height: 20px;
+  padding: 0;
+  border: 0;
   flex-shrink: 0;
   border-radius: 999px;
   background: #bebdbd;
   cursor: pointer;
-  transition: background .15s ease;
+  appearance: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .15s ease;
 }
 .settings-switch::after {
   content: "";
@@ -792,6 +798,7 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 }
 .settings-switch.on { background: #668a70; }
 .settings-switch.on::after { transform: translateX(16px); }
+.settings-switch:focus-visible { outline: 2px solid var(--color-primary, #d81b77); outline-offset: 2px; }
 .settings-btn {
   display: inline-flex;
   align-items: center;
@@ -811,6 +818,8 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 .settings-btn:hover { color: #ffffff; background: #668a70; }
 .settings-switch[aria-disabled="true"],
 .settings-btn[aria-disabled="true"] { opacity: .42; }
+.settings-switch:disabled,
+.settings-btn:disabled { cursor: not-allowed; }
 
 /* Legacy utility hooks used by the static reference page. They no longer
  * expose alternate themes, sizes or fonts; the reference uses one baseline. */

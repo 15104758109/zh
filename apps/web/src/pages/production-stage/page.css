@@ -18,10 +18,16 @@
 
 #production-state-overlay button:focus-visible,
 .production-l1a-option:focus-visible,
-.production-chart-point:focus-visible,
-.production-chapter-tab:focus-visible {
+.production-chart-point:focus-visible {
   outline: 2px solid var(--color-primary, #315efb);
   outline-offset: 2px;
+}
+
+#regenerate-modal > div {
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 button[aria-disabled="true"],
@@ -127,12 +133,11 @@ html[data-production-symbol-fallback="true"] body.sidebar-collapsed #sidebarIcon
 }
 
 .production-chart-point {
-  appearance: none;
   background: var(--color-base-100, #fff);
   border: 2px solid var(--color-primary, #315efb);
   border-radius: 50%;
   color: var(--color-primary, #315efb);
-  cursor: pointer;
+  cursor: default;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
   font-weight: 700;
@@ -155,12 +160,11 @@ html[data-production-symbol-fallback="true"] body.sidebar-collapsed #sidebarIcon
 }
 
 .production-chapter-tab {
-  appearance: none;
   background: var(--color-base-100, #fff);
   border: 1px solid color-mix(in srgb, var(--color-base-content, #161616) 16%, transparent);
   border-radius: 5px;
   color: color-mix(in srgb, var(--color-base-content, #161616) 72%, transparent);
-  cursor: pointer;
+  cursor: default;
   flex: 0 0 auto;
   font-size: 10px;
   padding: 5px 8px;

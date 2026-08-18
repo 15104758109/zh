@@ -17,12 +17,19 @@ test("workbench uses only the mounted runtime and no legacy fallback", () => {
   assert.doesNotMatch(page, /loadNodePrompt/);
 });
 
-test("workbench has no static fake book options while the stable book-list contract is absent", () => {
-  assert.match(page, /当前接口尚未提供作品列表。请从作品页面选择作品后回到这里。/);
+test("workbench describes its current book range without pretending to switch books", () => {
+  assert.match(page, /id="bookDropdownTrigger"[^>]+aria-haspopup="dialog"/);
+  assert.match(page, /id="bookDropdownHint"[^>]*>总控设置只针对当前作品生效/);
+  assert.match(runtime, /function selectedBookMenuItems\(\)/);
+  assert.match(runtime, /function toggleBookDropdown\(\)/);
+  assert.doesNotMatch(page, /id="bookDropdownSearch"/);
+  assert.doesNotMatch(runtime, /function selectBookFromMenu\(/);
   assert.doesNotMatch(page, /data-title="Aetheric Chronicles"/);
   assert.doesNotMatch(page, /data-title="剑域神座"/);
   assert.doesNotMatch(page, /data-title="深渊降临"/);
   assert.match(page, /id="bookDropdown"[^>]*hidden/);
+  assert.match(runtime, /const entry = document\.createElement\("a"\);/);
+  assert.match(runtime, /entry\.href = `\/books\/\$\{encodeURIComponent\(book\.id\)\}\/world`;/);
 });
 
 test("workbench hands off its new-book modal data through the active new-book draft contract", () => {

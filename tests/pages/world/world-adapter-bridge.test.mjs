@@ -87,6 +87,9 @@ test("WORLD displays V7 history read-only and maps explicit deletion intent to R
 test("WORLD preserves the prototype tree and adds only in-place binding anchors", () => {
   for (const id of ["main-content", "world-context-bar", "projection-bar", "world-skeleton-list", "map-canvas", "map-pins-container", "bindingModal", "diffModal"]) assert.match(page, new RegExp(`id="${id}"`));
   for (const id of ["world-adapter-status", "world-version-snapshot", "world-confirm-candidate"]) assert.match(page, new RegExp(`\.id = '${id}'`));
+  assert.match(page, /\.field-input:focus-visible \{ border-color: var\(--color-primary\); outline: 2px solid/);
+  assert.doesNotMatch(page, /\.field-input:focus \{ border-color/);
+  assert.match(page, /#bindingModal > \.ui-modal,[\s\S]*?#diffModal > \.ui-modal,[\s\S]*?\.drop-modal-card \{[\s\S]*?max-width: calc\(100vw - 32px\);[\s\S]*?overscroll-behavior: contain;/);
 });
 
 test("WORLD state overlays hide prototype mock content when data cannot load", () => {

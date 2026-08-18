@@ -786,12 +786,15 @@ function renderActions(runtime) {
   const decisionCopy = decisionPanel?.querySelector("p:not([data-audit-stage-preview])");
   if (decisionCopy) decisionCopy.textContent = editorInstruction(projection);
   const verdict = "主编已放行";
+  const unavailableRouteMessage = "继续或退回所需的受控确认地址尚未返回。页面不会擅自跳转或写入；请刷新当前正式章节后重试。";
   const actionMessage = runtime.submittedAction === "return"
     ? "退回请求已提交，等待后端生成同章后继候选。"
     : runtime.confirmed
       ? "继续请求已提交，等待后端开始下一章。"
       : runtime.confirmationPending
         ? runtime.pendingAction === "return" ? "正在退回当前章节。" : "正在继续下一章。"
+      : action.kind === "continue" && !waitRoute
+        ? unavailableRouteMessage
       : action.message;
   setNotice(root, action.kind, `${verdict}。${actionMessage}`);
 
@@ -799,21 +802,21 @@ function renderActions(runtime) {
   setActionButton(approve, {
     enabled: action.kind === "continue" && hasConfirmRoute,
     label: "继续下一章",
-    title: action.kind === "continue" && hasConfirmRoute ? "按顺序开始下一章文学呈现" : action.message,
+    title: action.kind === "continue" && hasConfirmRoute ? "按顺序开始下一章文学呈现" : action.kind === "continue" ? unavailableRouteMessage : action.message,
     onClick: () => { void submitAuditConfirmation(runtime); },
   });
   const replan = root.ownerDocument.getElementById("replan-chapter-btn");
   setActionButton(replan, {
     enabled: action.kind === "continue" && hasConfirmRoute,
     label: "退回当前章",
-    title: action.kind === "continue" && hasConfirmRoute ? "归档当前正式章节并从同章后继候选重新呈现" : action.message,
+    title: action.kind === "continue" && hasConfirmRoute ? "归档当前正式章节并从同章后继候选重新呈现" : action.kind === "continue" ? unavailableRouteMessage : action.message,
     onClick: () => openReplanModal(root),
   });
   const confirm = root.ownerDocument.getElementById("confirm-replan-btn");
   setActionButton(confirm, {
     enabled: action.kind === "continue" && hasConfirmRoute,
-    label: runtime.confirmationPending && runtime.pendingAction === "return" ? "退回中..." : "确认退回",
-    title: action.kind === "continue" && hasConfirmRoute ? "提交当前正式章节的退回原因" : action.message,
+    label: runtime.confirmationPending && runtime.pendingAction === "return" ? "退回中…" : "确认退回",
+    title: action.kind === "continue" && hasConfirmRoute ? "提交当前正式章节的退回原因" : action.kind === "continue" ? unavailableRouteMessage : action.message,
     onClick: () => { void submitAuditReturn(runtime); },
   });
   root.ownerDocument.querySelectorAll("[onclick='closeReplanModal()']").forEach((button) => {

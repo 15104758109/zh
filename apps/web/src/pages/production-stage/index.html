@@ -138,15 +138,15 @@
                 <div class="flex flex-col gap-2 mb-3">
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
-                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                        <button id="sw-auto-production" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="生产阶段自动化" aria-disabled="true" disabled title="自动化配置请在总控设置中修改" data-key="auto_production"></button>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
-                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                        <button id="sw-auto-audit" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="审计阶段自动化" aria-disabled="true" disabled title="自动化配置请在总控设置中修改" data-key="auto_audit"></button>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
-                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                        <button id="sw-auto-iteration" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="提示词迭代自动化" aria-disabled="true" disabled title="自动化配置请在总控设置中修改" data-key="auto_iteration"></button>
                     </div>
                 </div>
                 <div class="mt-3 pt-2 border-t border-base-content/5">
@@ -510,7 +510,7 @@
 
 <!-- 重新生成模态弹窗 -->
 <div id="regenerate-modal" class="fixed inset-0 z-[160] hidden items-center justify-center bg-neutral/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="regenerate-modal-title" aria-describedby="regenerate-modal-detail" aria-hidden="true">
-    <div class="glass-panel w-[460px] rounded-box p-6 flex flex-col gap-4 border border-base-content/10 shadow-2xl relative bg-base-100">
+    <div class="glass-panel rounded-box p-6 flex flex-col gap-4 border border-base-content/10 shadow-2xl relative bg-base-100">
         <button id="close-regenerate-modal" type="button" aria-label="关闭退回方案对话框" class="absolute top-4 right-4 text-base-content opacity-60 hover:text-base-content transition-colors">
             <span class="material-symbols-outlined text-[20px]">close</span>
         </button>

@@ -387,6 +387,7 @@ function openReturnModal(root) {
   modal.classList.remove("hidden");
   modal.classList.add("flex");
   modal.setAttribute("aria-hidden", "false");
+  root.setAttribute("inert", "");
   field.disabled = false;
   field.removeAttribute("aria-invalid");
   field.value = "";
@@ -400,6 +401,7 @@ function closeReturnModal(root) {
   modal.classList.add("hidden");
   modal.classList.remove("flex");
   modal.setAttribute("aria-hidden", "true");
+  root.removeAttribute("inert");
   if (runtime.returnFocus?.isConnected) runtime.returnFocus.focus();
   runtime.returnFocus = null;
 }
@@ -425,8 +427,23 @@ function bindPage({ route } = {}) {
   pageDocument.querySelector("#close-regenerate-modal")?.addEventListener("click", () => closeReturnModal(root));
   pageDocument.querySelector("#cancel-regenerate-modal")?.addEventListener("click", () => closeReturnModal(root));
   pageDocument.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !pageDocument.querySelector("#regenerate-modal")?.classList.contains("hidden")) {
+    const modal = pageDocument.querySelector("#regenerate-modal");
+    if (modal?.classList.contains("hidden")) return;
+    if (event.key === "Escape") {
       closeReturnModal(root);
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = [...modal.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex='-1'])")];
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && pageDocument.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && pageDocument.activeElement === last) {
+      event.preventDefault();
+      first.focus();
     }
   });
   root.querySelector("[data-action='retry-production-state']")?.addEventListener("click", () => runtime.l1as.length ? generate(root) : loadProjection(root));

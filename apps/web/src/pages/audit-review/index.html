@@ -187,15 +187,15 @@
                 <div class="flex flex-col gap-2 mb-3">
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
-                        <div id="sw-auto-production" class="settings-switch" data-key="auto_production" aria-disabled="true"></div>
+                        <button id="sw-auto-production" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="生产阶段自动化" data-key="auto_production" aria-disabled="true" disabled title="自动化配置请在总控设置中修改"></button>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
-                        <div id="sw-auto-audit" class="settings-switch" data-key="auto_audit" aria-disabled="true"></div>
+                        <button id="sw-auto-audit" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="审计阶段自动化" data-key="auto_audit" aria-disabled="true" disabled title="自动化配置请在总控设置中修改"></button>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
-                        <div id="sw-auto-iteration" class="settings-switch" data-key="auto_iteration" aria-disabled="true"></div>
+                        <button id="sw-auto-iteration" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="提示词迭代自动化" data-key="auto_iteration" aria-disabled="true" disabled title="自动化配置请在总控设置中修改"></button>
                     </div>
                 </div>
                 <div class="mt-3 pt-2 border-t border-base-content/5">
@@ -388,8 +388,7 @@
         </h2>
         <div class="grid grid-cols-2 gap-2.5">
             <!-- 关键事件链 -->
-            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 hover:border-info/50 transition-all duration-300 relative group overflow-hidden cursor-pointer">
-                <div class="absolute inset-0 bg-info/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 relative overflow-hidden">
                 <div class="w-8 h-8 rounded bg-info/10 flex items-center justify-center text-info shrink-0 relative z-10">
                     <span class="material-symbols-outlined text-[18px]">bolt</span>
                 </div>
@@ -397,12 +396,10 @@
                     <p class="text-[11px] text-base-content/60 font-semibold truncate leading-none">关键事件链</p>
                     <p class="text-xs font-bold text-base-content mt-0.5">12 条</p>
                 </div>
-                <span class="material-symbols-outlined text-base-content/60 text-[10px] ml-auto group-hover:text-info transition-colors">chevron_right</span>
             </div>
 
             <!-- 角色变化 -->
-            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 hover:border-secondary/50 transition-all duration-300 relative group overflow-hidden cursor-pointer">
-                <div class="absolute inset-0 bg-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 relative overflow-hidden">
                 <div class="w-8 h-8 rounded bg-secondary/10 flex items-center justify-center text-secondary shrink-0 relative z-10">
                     <span class="material-symbols-outlined text-[18px]">person</span>
                 </div>
@@ -410,12 +407,10 @@
                     <p class="text-[11px] text-base-content/60 font-semibold truncate leading-none">角色变化</p>
                     <p class="text-xs font-bold text-base-content mt-0.5">6 人</p>
                 </div>
-                <span class="material-symbols-outlined text-base-content/60 text-[10px] ml-auto group-hover:text-secondary transition-colors">chevron_right</span>
             </div>
 
             <!-- 关系变化 -->
-            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 hover:border-warning/50 transition-all duration-300 relative group overflow-hidden cursor-pointer">
-                <div class="absolute inset-0 bg-warning/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 relative overflow-hidden">
                 <div class="w-8 h-8 rounded bg-warning/10 flex items-center justify-center text-warning shrink-0 relative z-10">
                     <span class="material-symbols-outlined text-[18px]">groups</span>
                 </div>
@@ -423,12 +418,10 @@
                     <p class="text-[11px] text-base-content/60 font-semibold truncate leading-none">关系变化</p>
                     <p class="text-xs font-bold text-base-content mt-0.5">9 对</p>
                 </div>
-                <span class="material-symbols-outlined text-base-content/60 text-[10px] ml-auto group-hover:text-warning transition-colors">chevron_right</span>
             </div>
 
             <!-- 资源消耗 -->
-            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 hover:border-error/50 transition-all duration-300 relative group overflow-hidden cursor-pointer">
-                <div class="absolute inset-0 bg-error/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 relative overflow-hidden">
                 <div class="w-8 h-8 rounded bg-error/10 flex items-center justify-center text-error shrink-0 relative z-10">
                     <span class="material-symbols-outlined text-[18px]">inventory_2</span>
                 </div>
@@ -436,12 +429,10 @@
                     <p class="text-[11px] text-base-content/60 font-semibold truncate leading-none">资源消耗</p>
                     <p class="text-xs font-bold text-base-content mt-0.5">关键资源 5项</p>
                 </div>
-                <span class="material-symbols-outlined text-base-content/60 text-[10px] ml-auto group-hover:text-error transition-colors">chevron_right</span>
             </div>
 
             <!-- 世界状态改变 (横拉满) -->
-            <div class="col-span-2 bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 hover:border-success/50 transition-all duration-300 relative group overflow-hidden cursor-pointer">
-                <div class="absolute inset-0 bg-success/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="col-span-2 bg-base-200/50 border border-base-content/10 rounded-box p-3 flex items-center gap-2.5 relative overflow-hidden">
                 <div class="w-8 h-8 rounded bg-success/10 flex items-center justify-center text-success shrink-0 relative z-10">
                     <span class="material-symbols-outlined text-[18px]">public</span>
                 </div>
@@ -449,7 +440,6 @@
                     <p class="text-[11px] text-base-content/60 font-semibold truncate leading-none">世界状态改变</p>
                     <p class="text-xs font-bold text-base-content mt-0.5">8 项 (重大改变 2)</p>
                 </div>
-                <span class="material-symbols-outlined text-base-content/60 text-[10px] ml-auto group-hover:text-success transition-colors">chevron_right</span>
             </div>
         </div>
     </section>
@@ -1089,6 +1079,8 @@
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             modal.setAttribute('aria-hidden', 'false');
+            modal.removeAttribute('inert');
+            document.querySelector('main')?.setAttribute('inert', '');
             document.getElementById('replan-suggestion').focus();
         }
     }
@@ -1099,6 +1091,8 @@
             modal.classList.add('hidden');
             modal.classList.remove('flex');
             modal.setAttribute('aria-hidden', 'true');
+            modal.setAttribute('inert', '');
+            document.querySelector('main')?.removeAttribute('inert');
             document.getElementById('replan-suggestion').value = '';
             if (regenerateReturnFocus?.isConnected && !regenerateReturnFocus.hasAttribute('disabled')) {
                 regenerateReturnFocus.focus();
@@ -1109,7 +1103,23 @@
 
     document.addEventListener('keydown', (event) => {
         const modal = document.getElementById('regenerate-modal');
-        if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) closeRegenerateModal();
+        if (!modal || modal.classList.contains('hidden')) return;
+        if (event.key === 'Escape') {
+            closeRegenerateModal();
+            return;
+        }
+        if (event.key !== 'Tab') return;
+        const focusable = [...modal.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex='-1'])")];
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
     });
 
     function submitReplanDirection() {
@@ -1163,9 +1173,8 @@
 </script>
 
 <!-- Regenerate suggestions modal -->
-<div id="regenerate-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 transition-all duration-300" role="dialog" aria-modal="true" aria-label="退回整个 L1A 推演修改方向建议" aria-hidden="true">
-    <div class="w-[500px] bg-base-100 border border-base-content/10 rounded-box p-6 shadow-2xl relative overflow-hidden">
-        <div class="absolute -right-16 -top-16 w-32 h-32 bg-primary/10 rounded-full blur-3xl"></div>
+<div id="regenerate-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 transition-opacity duration-300" role="dialog" aria-modal="true" aria-label="退回整个 L1A 推演修改方向建议" aria-hidden="true" inert>
+    <div class="w-[min(500px,calc(100vw-32px))] max-h-[calc(100dvh-32px)] overflow-y-auto overscroll-contain bg-base-100 border border-base-content/10 rounded-box p-6 shadow-2xl relative">
         <div class="flex items-center justify-between mb-4 pb-2 border-b border-base-content/10">
             <h3 class="text-sm font-semibold flex items-center gap-2 text-base-content">
                 <span class="material-symbols-outlined text-primary text-[20px]">assignment_return</span>

@@ -95,6 +95,13 @@ test("AUDIT_REVIEW preserves prototype anchors and binds the L1A presentation en
   assert.equal(legacyRouteNames["audit_review.html"], "deduction-review");
   assert.equal(legacyRouteNames["audit_stage.html"], "audit");
   assert.match(html, /整个 L1A 重推方向与建议/);
+  assert.match(html, /id="regenerate-modal"[^>]*aria-hidden="true" inert/);
+  assert.match(html, /transition-opacity duration-300/);
+  assert.match(html, /w-\[min\(500px,calc\(100vw-32px\)\)\] max-h-\[calc\(100dvh-32px\)\] overflow-y-auto overscroll-contain/);
+  assert.doesNotMatch(html, /-right-16 -top-16 w-32 h-32 bg-primary\/10 rounded-full blur-3xl/);
+  assert.match(html, /modal\.removeAttribute\('inert'\);/);
+  assert.match(html, /document\.querySelector\('main'\)\?\.setAttribute\('inert', ''\);/);
+  assert.match(html, /const focusable = \[\.\.\.modal\.querySelectorAll/);
   assert.match(server, /next_presentation/);
   assert.match(server, /pending_creator_confirmation/);
   assert.match(server, /confirmation_status IS DISTINCT FROM 'creator_confirmed'/);

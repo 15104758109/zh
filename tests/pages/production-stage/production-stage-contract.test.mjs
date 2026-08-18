@@ -99,6 +99,10 @@ test("production page preserves prototype anchors and exposes only the approved 
   assert.doesNotMatch(module, /localStorage\.setItem|static_mock|setTimeout|\/api\/books/);
   assert.match(css, /#production-state-overlay/);
   assert.match(css, /\.production-l1a-option/);
+  assert.match(css, /#regenerate-modal > div\s*\{[\s\S]*?width:\s*min\(460px, calc\(100vw - 32px\)\)[\s\S]*?overscroll-behavior:\s*contain;/);
+  assert.match(module, /root\.setAttribute\("inert", ""\);/);
+  assert.match(module, /root\.removeAttribute\("inert"\);/);
+  assert.match(module, /const focusable = \[\.\.\.modal\.querySelectorAll\(/);
 });
 
 test("production delegates sidebar toggling to the shared sidebar owner", async () => {

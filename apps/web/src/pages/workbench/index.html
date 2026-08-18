@@ -29,9 +29,33 @@
         /* 顶栏始终保留；侧栏折叠只改变其左边界。 */
         .header-glass { transition: left .2s ease; }
         .header-tabs { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--color-neutral); }
-        .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
+        .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: opacity .15s ease, background-color .15s ease, color .15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
         .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        .workbench-book-banner { gap: 20px; justify-content: flex-start; }
+        .workbench-book-primary { min-width: 320px; flex: 0 1 auto; }
+        .workbench-book-stats { min-width: 0; flex: 0 1 auto; display: grid; grid-template-columns: minmax(180px, 230px) repeat(3, max-content) max-content; align-items: center; gap: 20px; }
+        #currentBookChapter { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .workbench-canvas-panel { min-width: 0; }
+        .workbench-modal-backdrop { background: rgba(16, 15, 15, .46); backdrop-filter: blur(2px); overscroll-behavior: contain; }
+        .workbench-model-modal { width: min(700px, calc(100vw - 32px)); height: min(580px, calc(100dvh - 32px)); }
+        #stageDropdown button:focus-visible,
+        #modalCategoryList button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+        #stageDropdownTrigger { background-color: var(--color-base-100); color: var(--color-base-content); opacity: 1; }
+        #stageDropdownTrigger:hover { background-color: var(--color-base-200); }
+        #workbenchTemplateSelect option,
+        #modalReasoningSelect option { background-color: var(--color-base-100); color: var(--color-base-content); }
+        #modalCategoryList button[data-category] { color: var(--color-base-content); }
+        #modalCategoryList button[data-category].active { color: var(--color-primary-content); opacity: 1; }
+        #bookDropdownTrigger { min-height: 34px; }
+        #bookDropdownOptions { max-height: 220px; overflow-y: auto; }
+        .book-option-current { color: #100f0f; background: #e9e7e7; }
+        .book-option-current:hover, .book-option-current:focus-visible { background: #bebdbd; }
+        @media (max-width: 1100px) {
+            .workbench-book-banner { align-items: flex-start; flex-wrap: wrap; }
+            .workbench-book-primary { flex-basis: 100%; }
+            .workbench-book-stats { width: 100%; grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(74px, auto)) minmax(132px, auto); gap: 14px; }
+        }
         @media (max-width: 767px) {
             .workbench-workspace { flex-direction: column; min-height: 0; overflow: visible; }
             .workbench-canvas-panel,
@@ -39,6 +63,14 @@
             .workbench-canvas-panel { min-height: 380px; }
             #canvasViewport { min-height: 340px; height: 340px; }
             .workbench-config-panel { min-height: 500px; }
+            .workbench-book-banner { gap: 16px; }
+            .workbench-book-stats { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+            .workbench-book-stats > .btn { grid-column: 1 / -1; width: 100%; justify-content: center; margin-right: 0; }
+        }
+        @media (max-width: 560px) {
+            .workbench-model-modal { height: calc(100dvh - 32px); flex-direction: column; overflow-y: auto; }
+            .workbench-model-modal > .workbench-template-sidebar { width: 100%; max-height: 148px; border-right: 0; border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent); }
+            .workbench-model-modal > form { min-height: 430px; padding: 1rem; }
         }
 </style>
 </head>
@@ -64,41 +96,41 @@
             <!-- 当前书籍标识 -->
             <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-base-200/80 border border-base-content/10 text-[11px] font-medium text-base-content/80">
                 <span class="w-1.5 h-1.5 rounded-full bg-success shrink-0"></span>
-                <span class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
+                <span aria-hidden="true" class="material-symbols-outlined text-[13px] opacity-50">menu_book</span>
                 <span id="header-book-name"></span>
             </div>
             <button aria-label="通知中心" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[20px]">notifications</span>
+                <span aria-hidden="true" class="material-symbols-outlined text-[20px]">notifications</span>
             </button>
 
             <!-- 快捷设置齿轮与弹窗 -->
             <div class="relative flex items-center">
-                <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
-                    <span class="material-symbols-outlined text-[20px]">settings</span>
+                <button id="quick-settings-btn" aria-label="快速控制面板" aria-expanded="false" aria-controls="quick-settings-popover" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+                    <span aria-hidden="true" class="material-symbols-outlined text-[20px]">settings</span>
                 </button>
                 <!-- Quick Settings Popover -->
-                        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+                        <div id="quick-settings-popover" role="dialog" aria-label="快速控制" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-opacity duration-300">
                 <div class="flex items-center justify-between mb-3">
                     <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
-                    <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
+                    <span aria-hidden="true" class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
                 </div>
                 <div class="flex flex-col gap-2 mb-3">
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
-                        <div id="sw-auto-production" class="settings-switch" role="switch" aria-checked="false" aria-disabled="true" aria-label="生产阶段自动化" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                        <button id="sw-auto-production" type="button" class="settings-switch" role="switch" aria-checked="false" aria-disabled="true" aria-label="生产阶段自动化" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></button>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
-                        <div id="sw-auto-audit" class="settings-switch" role="switch" aria-checked="false" aria-disabled="true" aria-label="审计阶段自动化" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                        <button id="sw-auto-audit" type="button" class="settings-switch" role="switch" aria-checked="false" aria-disabled="true" aria-label="审计阶段自动化" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></button>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
-                        <div id="sw-auto-iteration" class="settings-switch" role="switch" aria-checked="false" aria-disabled="true" aria-label="提示词迭代自动化" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                        <button id="sw-auto-iteration" type="button" class="settings-switch" role="switch" aria-checked="false" aria-disabled="true" aria-label="提示词迭代自动化" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></button>
                     </div>
                 </div>
                 <div class="mt-3 pt-2 border-t border-base-content/5">
                     <button class="settings-btn w-full" onclick="document.getElementById('quick-settings-popover').classList.add('hidden')">
-                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">check</span>
                         应用当前配置
                     </button>
                 </div>
@@ -112,47 +144,49 @@
     <!-- Scrollable Main Container -->
     <div class="flex-1 overflow-y-auto pt-20 p-4 flex flex-col gap-4">
         <!-- Book Info Banner -->
-        <div class="ui-card bg-base-100 border border-base-content/5 rounded-box p-4 flex items-center justify-between shadow-sm relative z-10 shrink-0">
+        <div class="ui-card workbench-book-banner bg-base-100 border border-base-content/5 rounded-box p-4 flex items-center justify-between shadow-sm relative z-10 shrink-0">
             <div class="absolute left-0 top-0 w-64 h-full bg-gradient-to-r from-[#4f85e5]/10 to-transparent pointer-events-none rounded-box"></div>
-            <div class="flex items-center gap-4 relative z-10 shrink-0">
+            <div class="workbench-book-primary flex items-center gap-4 relative z-10">
                 <div class="w-16 h-20 rounded shadow-md relative overflow-hidden flex flex-col justify-end p-1.5 border border-base-content/10" style="background: linear-gradient(135deg, #f6d365, #ffb347, #84fab0);">
                     <div class="text-[6px] font-bold text-base-content leading-tight uppercase mix-blend-overlay">当前<br>作品</div>
                 </div>
                 <div class="flex flex-col">
                     <div class="flex items-center gap-2 mb-1">
                         <span id="currentBookGenre" class="badge badge-accent badge-sm font-bold">等待有效投影</span>
-                        <span id="currentBookState" class="text-base-content opacity-70 text-[11px]">尚无 current_book_context</span>
+                        <span id="currentBookState" class="text-base-content opacity-70 text-[11px]">尚未选择作品</span>
                     </div>
 
                     <div class="relative" id="bookDropdownContainer">
-                        <div class="flex items-center gap-2 cursor-not-allowed group opacity-70" aria-disabled="true" tabindex="-1" title="当前接口尚未提供作品列表；请从作品页面选择后再回到总控设置。">
+                        <button id="bookDropdownTrigger" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="bookDropdown" class="flex items-center gap-2 text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-md">
                             <h1 id="currentBookTitle" class="text-xl font-bold text-base-content group-hover:text-primary transition-colors">未选择本地作品</h1>
-                            <span class="material-symbols-outlined text-[18px] shrink-0" style="color: var(--color-primary, oklch(var(--p))) !important;">expand_more</span>
-                        </div>
+                            <span aria-hidden="true" class="material-symbols-outlined text-[18px] shrink-0" style="color: var(--color-primary, oklch(var(--p))) !important;">expand_more</span>
+                        </button>
 
-                        <!-- 下拉列表 -->
-                        <div id="bookDropdown" class="absolute top-6 left-0 mt-2 w-64 bg-base-100 border border-base-content/5 rounded-lg shadow-xl hidden z-50 overflow-hidden">
-                            <div class="p-3 text-[11px] text-base-content opacity-60 leading-relaxed">当前接口尚未提供作品列表。请从作品页面选择作品后回到这里。</div>
+                        <!-- 当前后端只返回已选作品的横幅；不要把单项范围伪装成可切换书目。 -->
+                        <div id="bookDropdown" class="absolute top-full left-0 mt-2 w-72 bg-base-100 border border-base-content/10 rounded-lg shadow-xl hidden z-50 overflow-hidden" role="dialog" aria-label="当前作品范围">
+                            <p id="bookDropdownHint" class="border-b border-base-content/10 px-3 py-2 text-[11px] leading-relaxed text-base-content/65">总控设置只针对当前作品生效。请从要查看的作品页面进入其总控设置。</p>
+                            <div id="bookDropdownOptions" class="p-1"></div>
+                            <p id="bookDropdownEmpty" class="hidden p-3 text-[11px] text-base-content/65 leading-relaxed">当前未选择作品。</p>
                         </div>
                     </div>
 
                     <div class="mt-2 flex items-center gap-3">
                         <div class="w-40 h-1.5 bg-base-content/10 rounded-full overflow-hidden relative">
-                            <div id="currentBookProgressBar" class="h-full bg-base-content rounded-full transition-all duration-500" style="width: 0%;"></div>
+                            <div id="currentBookProgressBar" class="h-full bg-base-content rounded-full transition-[width] duration-500" style="width: 0%;"></div>
                         </div>
-                        <span id="currentBookProgressText" class="text-base-content opacity-70 text-xs font-mono transition-all">-</span>
+                        <span id="currentBookProgressText" class="text-base-content opacity-70 text-xs font-mono">-</span>
                     </div>
                 </div>
             </div>
 
-            <div class="flex items-center gap-6 relative z-10 shrink-0">
-                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">最新章节</span><span id="currentBookChapter" class="text-xs font-bold text-warning transition-all">-</span><span id="currentBookChapterSummary" class="text-base-content opacity-50 text-[9px] max-w-32 truncate">等待有效投影</span></div>
-                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">资产数量</span><span id="currentBookAi" class="text-lg font-bold text-success transition-all">-</span></div>
-                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">总字数</span><span id="currentBookWords" class="text-lg font-bold text-base-content transition-all">-</span></div>
-                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">剧情段规划完成度</span><div class="flex items-baseline gap-1"><span id="currentBookL1a" class="text-xl font-bold text-primary transition-all">-</span><span id="currentBookL1aTarget" class="text-base-content opacity-50 text-xs font-mono">待有效投影</span></div></div>
+            <div class="workbench-book-stats relative z-10">
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">最新章节</span><span id="currentBookChapter" class="text-xs font-bold text-warning">-</span><span id="currentBookChapterSummary" class="text-base-content opacity-50 text-[9px] max-w-32 truncate">等待有效投影</span></div>
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">资产数量</span><span id="currentBookAi" class="text-lg font-bold text-success">-</span></div>
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">总字数</span><span id="currentBookWords" class="text-lg font-bold text-base-content">-</span></div>
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">剧情段规划完成度</span><div class="flex items-baseline gap-1"><span id="currentBookL1a" class="text-xl font-bold text-primary">-</span><span id="currentBookL1aTarget" class="text-base-content opacity-50 text-xs font-mono">待有效投影</span></div></div>
                 <!-- 五彩按钮 -->
                 <button onclick="openNewBookModal()" class="btn btn-neutral btn-sm ui-button ui-button-dark ui-button-small h-10 px-5 text-sm font-bold flex items-center gap-1.5 mr-16">
-                    <span class="material-symbols-outlined text-[18px]">add</span>新建书籍
+                    <span aria-hidden="true" class="material-symbols-outlined text-[18px]">add</span>新建书籍
                 </button>
             </div>
         </div>
@@ -162,10 +196,10 @@
 <!-- Left Canvas Container -->
 <div class="workbench-canvas-panel ui-card flex-1 bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden relative">
 <div class="h-12 border-b border-base-content/5 flex items-center justify-between px-4 shrink-0 bg-base-100">
-<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-text-dark"></span><span id="canvasHeaderTitle" class="text-base font-bold text-base-content opacity-70">生产流程节点设置</span></div>
+<div class="flex min-w-0 items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-text-dark"></span><span id="canvasHeaderTitle" class="truncate text-base font-bold text-base-content opacity-70">生产流程节点设置</span><span class="hidden items-center gap-1 text-[10px] text-base-content/60 xl:inline-flex" aria-label="画布图例"><span class="h-1.5 w-1.5 rounded-full bg-primary"></span>可配置模型<span class="ml-1 h-1.5 w-1.5 rounded-full border border-base-content/40"></span>受控关系</span></div>
 <div class="flex items-center gap-2"><div class="relative" id="stageDropdownContainer">
   <button id="stageDropdownTrigger" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="stageDropdown" class="flex items-center gap-1 px-2 py-1 bg-base-content/5 border border-base-content/5 rounded-md text-sm text-base-content opacity-85 hover:bg-base-300 transition-colors">
-    <span class="material-symbols-outlined text-[12px]">auto_awesome</span><span id="currentStageText">设计阶段</span><span class="material-symbols-outlined text-[12px]">expand_more</span>
+    <span aria-hidden="true" class="material-symbols-outlined text-[12px]">auto_awesome</span><span id="currentStageText">设计阶段</span><span aria-hidden="true" class="material-symbols-outlined text-[12px]">expand_more</span>
   </button>
   <div id="stageDropdown" role="menu" class="absolute top-6 right-0 mt-1 w-32 bg-base-100 border border-base-content/5 rounded-md shadow-xl hidden z-50 py-1">
     <button type="button" role="menuitem" class="w-full px-3 py-1.5 text-left text-sm text-base-content opacity-85 hover:bg-base-200" onclick="selectStage('设计阶段')">设计阶段</button>
@@ -177,7 +211,7 @@
   </div>
 </div><button type="button" aria-label="重新读取当前有效配置" class="w-6 h-6 flex items-center justify-center bg-base-content/5 border border-base-content/5 rounded-md text-base-content opacity-70 hover:text-base-content transition-colors"><span class="material-symbols-outlined text-[12px]" aria-hidden="true">refresh</span></button></div>
 </div>
-<div id="canvasViewport" class="flex-1 min-h-[480px] relative overflow-hidden bg-base-200 rounded-box" style="cursor: grab;">
+<div id="canvasViewport" role="region" aria-label="流程图画布。使用方向键平移，加号或减号缩放，Home 键重置视图。" tabindex="0" class="flex-1 min-h-[480px] relative overflow-hidden bg-base-200 rounded-box" style="cursor: grab;">
 <div id="canvasContent" class="absolute bg-grid transform-gpu origin-top-left" style="width: 10000px; height: 10000px; left: 0; top: 0; transform: translate(0px, 0px) scale(1);">
 <svg class="absolute inset-0 w-full h-full pointer-events-none">
 <defs><linearGradient id="active-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.2" /><stop offset="100%" stop-color="var(--color-primary)" stop-opacity="0.8" /></linearGradient></defs>
@@ -218,140 +252,140 @@
 <!-- Nodes -->
 <div id="node-l1a" data-workbench-stage="design" data-node-code="FP004-01" data-relation-text="从已正式世界与角色设定生成剧情段候选；排序与锁定由后续受控步骤处理。" class="workflow-node absolute left-[270px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">verified</span>剧情段规划
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">verified</span>剧情段规划
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">定义跨章节上位约束，锁定情节、情绪与卖点承诺。确保叙事目标的一致性。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP004-01 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP004-01 · LLM · 可绑定</div>
 </div>
 
 <div id="node-deconstruct" data-workbench-stage="production" data-node-code="FP007-01" data-relation-text="读取已物化场景条件和章节方案，产出可执行颗粒；不改变上游正式事实。" class="workflow-node absolute left-[730px] top-[70px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">view_list</span>章节任务拆解
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">view_list</span>章节任务拆解
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">承接剧情段颗粒化拆解，锁定本章硬约束与禁止越界项。为后续推演提供边界。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP007-01 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP007-01 · LLM · 可绑定</div>
 </div>
 
 <div id="node-simulate" data-workbench-stage="production" data-node-code="FP008-02" data-relation-text="只在角色隔离任务包内推演；预算到顶由运行时暂停，不由页面补造结果。" class="workflow-node absolute left-[500px] top-[290px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">hub</span>角色受限推演
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">hub</span>角色受限推演
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">导演与角色代理受限博弈，在约束中生长可信、自然的达成路径。执行角色主观隔离与动机推演。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP008-02 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP008-02 · LLM · 可绑定</div>
 </div>
 
 <div id="node-prose" data-workbench-stage="audit" data-node-code="FP009-01" data-relation-text="将已锁定推演事实呈现为候选正文；只改表达，不改因果与设定。" class="workflow-node absolute left-[20px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">edit_note</span>文学呈现
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">edit_note</span>文学呈现
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">把已锁定的推演事实写成候选正文，不改写上游事实与因果。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP009-01 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP009-01 · LLM · 可绑定</div>
 </div>
 
 <div id="node-audit" data-workbench-stage="audit" data-node-code="FP010-01" data-relation-text="输出客观审计 DTO 和 P0 结论；P0 不能被体验建议覆盖。" class="workflow-node absolute left-[245px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">fact_check</span>逻辑体检
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">fact_check</span>逻辑体检
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">客观设定校验 + 叙事逻辑体检，识别并拦截虚空造物、人物崩坏、信息越权等逻辑硬伤。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP010-01 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP010-01 · LLM · 可绑定</div>
 </div>
 
 <div id="node-commit" data-workbench-stage="audit" data-node-code="FP012-01" data-relation-text="主编裁决只产出 Y/N 与修文方向；人工确认、影子归档和正式入库由后续受控关系完成。" class="workflow-node absolute left-[340px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">save</span>主编裁决
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">save</span>主编裁决
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">输出是否通过与修文方向；人工确认、影子归档和正式入库仍由受控步骤执行。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP012-01 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP012-01 · LLM · 可绑定</div>
 </div>
 
 <!-- V7 stage cards: each bindable card carries exactly one FP node code. -->
 <div id="node-fp001-03" data-workbench-stage="design" data-node-code="FP001-03" data-relation-text="开书对话补全创作意图，并与商业评分并行返回；候选是否确认始终由创作者决定。" class="workflow-node absolute left-[40px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">forum</span>开书对话与设计生成</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">forum</span>开书对话与设计生成</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">围绕创作原点补齐候选设计，不替代创作者确认。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP001-03 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP001-03 · LLM · 可绑定</div>
 </div>
 
 <div id="node-fp001-05" data-workbench-stage="design" data-node-code="FP001-05" data-relation-text="与开书对话并行给出商业评分、阶段分析和冲突建议；分数不是闸门。" class="workflow-node absolute left-[270px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">insights</span>商业评分与阶段分析</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">insights</span>商业评分与阶段分析</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">提供商业参考和跨阶段冲突建议，不阻断创作决策。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP001-05 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP001-05 · LLM · 可绑定</div>
 </div>
 
 <div id="node-fp004-02" data-workbench-stage="design" data-node-code="FP004-02" data-runtime-state="pending" data-relation-text="对候选剧情段执行 LLM 排序；模型和 Prompt 可在统一配置面绑定，确认锁定仍由 FP004-04 受控处理。当前运行流程合同待接入，不能从页面启动。" class="workflow-node absolute left-[500px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">sort</span>三线排序</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">sort</span>三线排序</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">对候选剧情段执行排序建议；可绑定模型和 Prompt，但当前运行流程合同待接入，不能从页面启动。</div>
     <div class="text-[9px] text-warning font-mono">FP004-02 · LLM · 可绑定 / 运行合同待接入</div>
 </div>
 
 <div id="node-fp005-01" data-workbench-stage="production" data-node-code="FP005-01" data-runtime-state="pending" data-relation-text="从已锁定设计事实生成场景条件包；模型和 Prompt 可在统一配置面绑定。当前运行流程合同待接入，页面不会伪造可运行配置，也不能从页面启动。" class="workflow-node absolute left-[40px] top-[70px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">inventory_2</span>场景条件物化</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">inventory_2</span>场景条件物化</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">生成可用场景条件包，禁止暴露未来态和越权信息；可绑定模型和 Prompt，但当前不能从页面启动。</div>
     <div class="text-[9px] text-warning font-mono">FP005-01 · LLM · 可绑定 / 运行合同待接入</div>
 </div>
 
 <div id="node-fp006-01" data-workbench-stage="production" data-node-code="FP006-01" data-relation-text="基于完整场景包生成章节方案候选；用户技能是可选偏好，不形成硬前置。" class="workflow-node absolute left-[270px] top-[70px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">article</span>章节方案生成</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">article</span>章节方案生成</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">基于场景条件和基础技能生成待审阅的章节方案候选。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP006-01 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP006-01 · LLM · 可绑定</div>
 </div>
 
 <div id="node-fp008-01" data-workbench-stage="production" data-node-code="FP008-01" data-runtime-state="pending" data-relation-text="将执行方案拆为角色隔离任务包；模型和 Prompt 可在统一配置面绑定。当前运行流程合同待接入，不能从页面启动。" class="workflow-node absolute left-[270px] top-[290px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">account_tree</span>角色任务分发</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">account_tree</span>角色任务分发</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">把执行方案拆为每个角色的隔离任务包，不向角色泄露全量信息；可绑定模型和 Prompt，但当前不能从页面启动。</div>
     <div class="text-[9px] text-warning font-mono">FP008-01 · LLM · 可绑定 / 运行合同待接入</div>
 </div>
 
 <div id="node-fp011-01" data-workbench-stage="audit" data-node-code="FP011-01" data-relation-text="面向读者体验提供建议；它不能覆盖客观审计的 P0 结论。" class="workflow-node absolute left-[470px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">psychology</span>读者体验建议</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">psychology</span>读者体验建议</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">按画像或通用模式提出体验建议，不改变正文状态。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP011-01 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP011-01 · LLM · 可绑定</div>
 </div>
 
 <div id="node-fp011-02" data-workbench-stage="audit" data-node-code="FP011-02" data-relation-text="提供商业体验建议；建议可采纳或拒绝，不形成硬阻断。" class="workflow-node absolute left-[695px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">storefront</span>商业体验建议</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">storefront</span>商业体验建议</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">提出商业体验建议，不能改变 P0 或代替主编裁决。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP011-02 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP011-02 · LLM · 可绑定</div>
 </div>
 
 <div id="node-fp012-03" data-workbench-stage="audit" data-node-code="FP012-03" data-relation-text="只在第二次拒绝且归档完成后比较两版影子，产出差距 DTO。" class="workflow-node absolute left-[570px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">compare_arrows</span>影子版本差距分析</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">compare_arrows</span>影子版本差距分析</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">比较归档影子版本，报告差距但不覆盖任何版本。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP012-03 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP012-03 · LLM · 可绑定</div>
 </div>
 
 <div id="node-fp013-01" data-workbench-stage="audit" data-node-code="FP013-01" data-relation-text="候选正文可获得增强建议；增强写入因 change_limit 未定义而停用。" class="workflow-node absolute left-[800px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">auto_fix_high</span>文风增强</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">auto_fix_high</span>文风增强</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">生成增强候选与摘要；不会直接写入正式正文。</div>
-    <div class="text-[9px] text-warning font-mono">FP013-01 · 可绑定 / 增强写入停用</div>
+    <div class="text-[9px] text-warning font-mono">FP013-01 · LLM · 可绑定 / 增强写入停用</div>
 </div>
 
 <div id="node-fp014-01" data-workbench-stage="iteration" data-node-code="FP014-01" data-relation-text="对已有 pool 样本做数据债、提示词债或技能债归因；不会自动把失败送入 pool。" class="workflow-node absolute left-[440px] top-[160px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">troubleshoot</span>异常样本分析</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">troubleshoot</span>异常样本分析</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">对已有失败样本做三维归因，形成待审阅的优化建议。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP014-01 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP014-01 · LLM · 可绑定</div>
 </div>
 
 <!-- V7 stage ownership is declared with data-workbench-stage. Only FP015-02 is independent. -->
 <div id="node-ind-rating" data-workbench-stage="independent" data-reference-only="true" data-relation-text="FP015-02 是停用的参考流程；可查看其关系，不能建立模型或 Prompt 绑定。" class="independent-node workflow-node absolute left-[80px] top-[160px] w-[180px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">trending_up</span>技能评级及优化
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">trending_up</span>技能评级及优化
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">对套路与技能组合进行商业化评级评估，提供针对性的内容升级与结构优化建议。</div>
@@ -360,16 +394,16 @@
 
 <div id="node-ind-design" data-workbench-stage="design" data-node-code="FP002-04" data-relation-text="从当前作品意图生成世界设定候选；确认和正式化仍走设计阶段的受控流程。" class="workflow-node absolute left-[500px] top-[50px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">lightbulb</span>世界设定生成助手
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">lightbulb</span>世界设定生成助手
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">根据选定题材与核心爽点，自动设计符合商业化要求的世界设定基础架构与编年史。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP002-04 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP002-04 · LLM · 可绑定</div>
 </div>
 
 <div id="node-ind-world-audit" data-workbench-stage="design" data-contract-state="relation" data-relation-text="世界生成与校验共享 FP002-04 的同一份模型和 Prompt 绑定；这里仅说明关系，不能创建第二份绑定。" class="workflow-node absolute left-[730px] top-[50px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">fact_check</span>世界设定校验助手
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">fact_check</span>世界设定校验助手
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">与世界生成共用同一 FP002-04 配置，只展示校验关系。</div>
@@ -378,83 +412,83 @@
 
 <div id="node-ind-character" data-workbench-stage="design" data-node-code="FP003-04" data-relation-text="基于已确认世界候选生成角色候选；角色正式化和关系写入由受控步骤完成。" class="workflow-node absolute left-[40px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">person_add</span>角色生成助手
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">person_add</span>角色生成助手
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">一键配置角色基本属性、心理状态及核心动机，构建具备高成长空间的角色人设。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP003-04 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP003-04 · LLM · 可绑定</div>
 </div>
 
 <div id="node-ind-l1a-var" data-workbench-stage="design" data-node-code="FP004-05" data-relation-text="为来源剧情段追加独立变体候选；采纳前不进入排序集，也不覆盖来源。" class="workflow-node absolute left-[730px] top-[250px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">alt_route</span>剧情段变体生成助手
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">alt_route</span>剧情段变体生成助手
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">基于核心剧情段大纲智能派生出多条不同的情节变体与世界线走向，提供备选脑洞。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP004-05 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP004-05 · LLM · 可绑定</div>
 </div>
 
 <div id="node-ind-prompt" data-workbench-stage="iteration" data-node-code="FP014-02" data-relation-text="对已归因的失败样本执行候选 Prompt 实验；实验结果不能直接覆盖 active Prompt。" class="workflow-node absolute left-[740px] top-[160px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
     <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs">
-        <span class="material-symbols-outlined text-[14px]">terminal</span>提示词生成助手
+        <span aria-hidden="true" class="material-symbols-outlined text-[14px]">terminal</span>提示词生成助手
     </div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">优化与润色大模型推演所使用的系统提示词，提高推演的准确度与情节流畅性.</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP014-02 · 可绑定</div>
+    <div class="text-[9px] text-primary/70 font-mono">FP014-02 · LLM · 可绑定</div>
 </div>
 
 <!-- Read-only relationship cards make gates and controlled writes visible without turning them into model bindings. -->
 <div id="node-fp004-lock" data-workbench-stage="design" data-contract-state="relation" data-relation-text="FP004-04 由创作者确认后原子锁定剧情段；它不是模型节点，也不能绑定 Prompt 或模板。" class="workflow-node absolute left-[500px] top-[450px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">lock</span>创作者确认并锁定</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">lock</span>创作者确认并锁定</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">排序候选经创作者确认后才冻结为正式剧情段承诺。</div>
     <div class="text-[9px] text-warning font-mono">FP004-04 · 受控写入关系</div>
 </div>
 
 <div id="node-fp006-confirm" data-workbench-stage="production" data-contract-state="relation" data-relation-text="FP006-02 是创作者确认章节方案的闸门；页面只展示前置关系，不能配置模型。" class="workflow-node absolute left-[500px] top-[70px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">how_to_reg</span>章节方案确认</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">how_to_reg</span>章节方案确认</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">创作者确认后，执行方案才可进入后续颗粒拆解。</div>
     <div class="text-[9px] text-warning font-mono">FP006-02 · 人工闸门</div>
 </div>
 
-<div id="node-fp008-checkpoint" data-workbench-stage="production" data-node-code="FP008-03" data-relation-text="对整段 L1A 推演结果独立执行运行时 P0 预检；通过后自动暂存，阻断后从首颗粒重新推演。" class="workflow-node absolute left-[730px] top-[290px] w-[190px] bg-base-100 border border-base-content/5 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-pointer hover:border-base-content/10 transition-colors hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">rule</span>推演运行时预检</div>
+<div id="node-fp008-checkpoint" data-workbench-stage="production" data-contract-state="relation" data-relation-text="FP008-03 是运行时 P0 预检关系；通过后自动暂存，阻断后从首颗粒重新推演。它不是模型节点，不能绑定 Prompt 或模板。" class="workflow-node absolute left-[730px] top-[290px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">rule</span>推演运行时预检</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">独立检查运行时 P0 风险；不产出 FP010 审计结论，未通过自动从首颗粒重新推演。</div>
-    <div class="text-[9px] text-primary/70 font-mono">FP008-03 · 可绑定</div>
+    <div class="text-[9px] text-warning font-mono">FP008-03 · 运行时预检关系</div>
 </div>
 
 <div id="node-fp008-store" data-workbench-stage="production" data-contract-state="relation" data-relation-text="FP008-04 是推演快照受控写入；页面不直接写数据库。" class="workflow-node absolute left-[960px] top-[290px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">database</span>推演快照入库</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">database</span>推演快照入库</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">保存合法检查点，供后续文学呈现读取。</div>
     <div class="text-[9px] text-warning font-mono">FP008-04 · 受控写入</div>
 </div>
 
 <div id="node-fp012-reject" data-workbench-stage="audit" data-contract-state="relation" data-relation-text="FP012-02 是创作者退回闸门；主编裁决不会直接改写正文或归档。" class="workflow-node absolute left-[20px] top-[440px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">assignment_return</span>退回与人工确认</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">assignment_return</span>退回与人工确认</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">创作者决定是否采纳退回链，不由模型代替判断。</div>
     <div class="text-[9px] text-warning font-mono">FP012-02 · 人工闸门</div>
 </div>
 
 <div id="node-fp012-archive" data-workbench-stage="audit" data-contract-state="relation" data-relation-text="FP012-04 归档旧候选并创建后继候选版本；它是受控写入，不是模型绑定。" class="workflow-node absolute left-[245px] top-[440px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">archive</span>影子归档与后继候选</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">archive</span>影子归档与后继候选</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">退回链先产生后继版本，正文重写不能写回旧版本。</div>
     <div class="text-[9px] text-warning font-mono">FP012-04 · 受控写入</div>
 </div>
 
 <div id="node-fp013-store" data-workbench-stage="audit" data-contract-state="relation" data-relation-text="FP013-02 是正式入库闸门；文风增强写入仍受 change_limit 口径限制。" class="workflow-node absolute left-[800px] top-[440px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">save</span>正式入库</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">save</span>正式入库</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">只在受控条件满足后写正式正文与前情提要。</div>
     <div class="text-[9px] text-warning font-mono">FP013-02 · 受控写入</div>
 </div>
 
 <div id="node-fp014-pool" data-workbench-stage="iteration" data-contract-state="relation" data-relation-text="失败样本必须由受控接口产生；当前不根据普通失败自动写入 pool。" class="workflow-node absolute left-[150px] top-[160px] w-[190px] bg-base-100 border border-dashed border-base-content/20 rounded-2xl p-3 shadow-sm z-10 flex flex-col gap-1.5 cursor-default opacity-75 hidden">
-    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span class="material-symbols-outlined text-[14px]">inventory</span>已入池失败样本</div>
+    <div class="flex items-center gap-1.5 node-title text-base-content opacity-85 font-bold text-xs"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">inventory</span>已入池失败样本</div>
     <div class="h-[1px] border-t border-dashed border-base-content/10 my-0.5"></div>
     <div class="text-[10px] text-base-content opacity-70 leading-relaxed">仅展示已受控入池的分析输入，自动入池当前停用。</div>
     <div class="text-[9px] text-warning font-mono">关系输入 · 不可绑定</div>
@@ -463,23 +497,23 @@
 </div>
 </div>
 <!-- Right Configuration Panel -->
-<div class="workbench-config-panel w-[300px] bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden shrink-0">
-<div class="h-12 border-b border-base-content/5 flex items-center px-4 shrink-0"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-base-content opacity-70">tune</span><span id="rightPanelTitle" class="text-base font-bold text-base-content opacity-70">角色受限推演</span></div></div>
-<div class="p-4 flex flex-col gap-4 flex-1 overflow-y-auto">
+<div class="workbench-config-panel w-[340px] bg-base-100 border border-base-content/5 rounded-box flex flex-col shadow-sm overflow-hidden shrink-0">
+<div class="h-12 border-b border-base-content/5 flex items-center px-4 shrink-0"><div class="flex min-w-0 items-center gap-2"><span aria-hidden="true" class="material-symbols-outlined text-[14px] text-base-content opacity-70">tune</span><span id="rightPanelTitle" class="truncate text-base font-bold text-base-content opacity-70">角色受限推演</span></div></div>
+<div class="p-4 flex min-h-0 flex-col gap-4 flex-1 overflow-y-auto">
 <p id="workbenchRuntimeState" class="ui-inline-status ui-inline-status--loading" role="status" aria-live="polite">正在读取本地工作台状态…</p>
-<div class="flex flex-col gap-2 flex-1">
+<div class="flex min-h-0 flex-col gap-2">
     <label class="text-[11px] text-base-content opacity-70 font-medium flex items-center gap-1">
-        <span class="material-symbols-outlined text-[12px] text-primary">description</span>
+        <span aria-hidden="true" class="material-symbols-outlined text-[12px] text-primary">description</span>
         <span>提示词编辑器 (双击进行编辑)</span>
     </label>
-    <div id="promptEditor" class="textarea textarea-bordered ui-textarea bg-base-100 p-4 flex-1 min-h-[220px] overflow-y-auto font-mono text-[11px] text-base-content opacity-80 leading-relaxed shadow-sm cursor-pointer transition-all duration-200 hover:border-primary/30 outline-none" title="双击进行编辑" role="textbox" tabindex="0" aria-label="提示词编辑器" aria-multiline="true">
+    <div id="promptEditor" class="textarea textarea-bordered ui-textarea h-[280px] min-h-[220px] max-h-[320px] shrink-0 overflow-y-auto bg-base-100 p-4 font-mono text-[11px] text-base-content opacity-80 leading-relaxed shadow-sm cursor-pointer transition-colors duration-200 hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" title="双击进行编辑" role="textbox" tabindex="0" aria-label="提示词编辑器" aria-multiline="true">
         <!-- Loaded dynamically by JS -->
     </div>
 </div>
 <div class="flex flex-col gap-2 mt-auto pt-4 border-t border-base-content/5">
-<label for="workbenchTemplateSelect" class="text-[11px] text-base-content opacity-70 font-medium">模型的模板</label>
+<label for="workbenchTemplateSelect" class="text-[11px] text-base-content opacity-70 font-medium">模型模板</label>
 <div class="relative">
-<select id="workbenchTemplateSelect" name="workbench_template" autocomplete="off" onchange="onWorkbenchTemplateChange(this.value)" class="ui-select w-full text-sm cursor-pointer">
+<select id="workbenchTemplateSelect" name="workbench_template" autocomplete="off" onchange="onWorkbenchTemplateChange(this.value)" class="ui-select w-full text-sm cursor-pointer text-base-content bg-base-100">
 <option>感性文字</option>
 <option>简单逻辑</option>
 <option>重复指令</option>
@@ -488,28 +522,28 @@
 </select>
 </div>
 <!-- Model Details Card -->
-<div id="templateDetails" class="mt-2 text-[11px] text-base-content opacity-70 space-y-1.5 p-1 font-medium transition-all duration-200">
+<div id="templateDetails" class="mt-2 text-[11px] text-base-content opacity-70 space-y-1.5 p-1 font-medium">
     <div class="flex justify-between"><span class="text-base-content opacity-50">模型名称:</span><span id="detailModelName" data-full-text class="text-base-content opacity-85 font-mono text-right truncate max-w-[170px]">未配置</span></div>
     <div class="flex justify-between"><span class="text-base-content opacity-50">运营商:</span><span id="detailProviderName" data-full-text class="text-base-content opacity-85 text-right truncate max-w-[170px]">未配置</span></div>
     <div class="flex justify-between"><span class="text-base-content opacity-50">温度:</span><span id="detailTemperature" class="text-base-content opacity-85 font-mono text-right">-</span></div>
 </div>
 </div></div>
 <div class="p-4 pt-0">
-    <button class="open-modal-btn ui-button ui-button-dark ui-button-block ui-button-small"><span class="material-symbols-outlined text-[14px]">tune</span>模型设置</button>
+    <button class="open-modal-btn ui-button ui-button-dark ui-button-block ui-button-small"><span aria-hidden="true" class="material-symbols-outlined text-[14px]">tune</span>模型设置</button>
 </div>
 </div></div></div>
 
 <!-- Modal -->
-<div id="modelSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral/60 hidden" role="dialog" aria-modal="true" aria-labelledby="model-settings-title" aria-hidden="true">
-<div class="ui-modal ui-modal-wide p-0 w-[700px] h-[580px] max-h-[calc(100vh-32px)] flex overflow-hidden">
-<div class="w-40 bg-base-100 border-r border-base-content/5 flex flex-col">
+<div id="modelSettingsModal" class="workbench-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="model-settings-title" aria-hidden="true">
+<div class="ui-modal ui-modal-wide workbench-model-modal p-0 flex overflow-hidden">
+<div class="workbench-template-sidebar w-40 bg-base-100 border-r border-base-content/5 flex flex-col shrink-0">
 <div class="p-4 text-sm font-bold text-base-content opacity-70 border-b border-base-content/5">模板分类</div>
 <div id="modalCategoryList" class="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
 <!-- Dynamic Category Buttons -->
 </div>
 </div>
 <form id="model-settings-form" onsubmit="event.preventDefault()" class="flex-1 p-6 flex flex-col gap-4 bg-base-100 relative shadow-sm border border-base-content/5">
-<button id="closeModalBtn" type="button" class="ui-icon-button ui-button-quiet absolute top-4 right-4" aria-label="关闭模型设置"><span class="material-symbols-outlined text-[20px]">close</span></button>
+<button id="closeModalBtn" type="button" class="ui-icon-button ui-button-quiet absolute top-4 right-4" aria-label="关闭模型设置"><span aria-hidden="true" class="material-symbols-outlined text-[20px]">close</span></button>
 <h2 id="model-settings-title" class="text-base font-bold text-base-content mb-1">模型配置<span id="modalConfigTitle" class="hidden">简单逻辑</span></h2>
 <div class="flex flex-col gap-1.5"><label for="modalProviderInput" class="text-[11px] text-base-content opacity-70">运营商名称</label><input type="text" id="modalProviderInput" name="provider" autocomplete="organization" class="ui-field" value="" /></div>
 <div class="flex flex-col gap-1.5"><label for="modalBaseUrlInput" class="text-[11px] text-base-content opacity-70">连接地址 (Base URL)</label><input type="url" id="modalBaseUrlInput" name="base_url" autocomplete="url" class="ui-field" value="" /></div>
@@ -520,7 +554,7 @@
         <input id="modalModelSelect" list="modalModelChoices" name="model" class="ui-field flex-1" autocomplete="off" />
         <datalist id="modalModelChoices"></datalist>
         <button id="fetchModelsBtn" type="button" onclick="fetchModelList(event)" class="ui-button ui-button-quiet ui-button-small shrink-0">
-            <span class="material-symbols-outlined text-[14px]" id="fetchIcon">sync</span>
+            <span aria-hidden="true" class="material-symbols-outlined text-[14px]" id="fetchIcon">sync</span>
             <span id="fetchText">获取清单</span>
         </button>
     </div>
@@ -550,19 +584,19 @@
     <div class="w-[180px] flex flex-col gap-1.5 shrink-0">
         <label for="modalReasoningSelect" class="text-[11px] text-base-content opacity-70">推理强度 (Reasoning)</label>
         <div class="relative">
-            <select id="modalReasoningSelect" name="reasoning" autocomplete="off" class="ui-select w-full appearance-none">
+            <select id="modalReasoningSelect" name="reasoning" autocomplete="off" class="ui-select w-full appearance-none text-base-content bg-base-100">
                 <option value="none">无推理 (None)</option>
                 <option value="low">低强度 (Low)</option>
                 <option value="medium">中强度 (Medium)</option>
                 <option value="high">高强度 (High)</option>
             </select>
-            <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-base-content opacity-70 pointer-events-none text-[16px]">expand_more</span>
+            <span aria-hidden="true" class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-base-content opacity-70 pointer-events-none text-[16px]">expand_more</span>
         </div>
     </div>
 </div>
 <div class="flex justify-end gap-3 mt-auto pt-4 border-t border-base-content/5">
 <button id="testConnectionBtn" type="button" onclick="testConnection(event)" class="ui-button ui-button-quiet ui-button-small">
-    <span class="material-symbols-outlined text-[14px]" id="testIcon">bolt</span>
+    <span aria-hidden="true" class="material-symbols-outlined text-[14px]" id="testIcon">bolt</span>
     <span id="testText">测试连接</span>
 </button>
 <button id="saveModelConfigurationBtn" type="button" onclick="saveModalConfiguration()" class="ui-button ui-button-primary ui-button-small">保存配置</button>
@@ -809,9 +843,9 @@ document.addEventListener('DOMContentLoaded', () => {
             buttons.forEach(btn => {
                 const catName = btn.getAttribute('data-category');
                 if (catName === category) {
-                    btn.className = "sidebar-item active w-full text-left px-3 py-2 text-xs font-semibold bg-primary text-primary-content rounded-md shadow-sm transition-all";
+                    btn.className = "sidebar-item active w-full text-left px-3 py-2 text-xs font-semibold bg-primary text-primary-content rounded-md shadow-sm transition-colors";
                 } else {
-                    btn.className = "sidebar-item w-full text-left px-3 py-2 text-xs font-semibold rounded-md opacity-70 hover:opacity-100 hover:bg-base-content/5 transition-all";
+                    btn.className = "sidebar-item w-full text-left px-3 py-2 text-xs font-semibold rounded-md opacity-70 hover:opacity-100 hover:bg-base-content/5 transition-colors";
                 }
             });
         }
@@ -856,7 +890,7 @@ document.addEventListener('DOMContentLoaded', () => {
         Object.keys(window.templatesData).forEach(cat => {
             const btn = document.createElement('button');
             btn.setAttribute('data-category', cat);
-            btn.className = "sidebar-item w-full text-left px-3 py-2 text-xs font-semibold rounded-md opacity-70 hover:opacity-100 hover:bg-base-content/5 transition-all";
+            btn.className = "sidebar-item w-full text-left px-3 py-2 text-xs font-semibold rounded-md opacity-70 hover:opacity-100 hover:bg-base-content/5 transition-colors";
             btn.innerText = cat;
             btn.onclick = () => {
                 window.saveCurrentFormToMemory();
@@ -954,7 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         btn.disabled = true;
         btn.classList.add('opacity-60', 'cursor-not-allowed');
-        text.innerText = '获取中...';
+        text.innerText = '获取中…';
         icon.classList.add('animate-spin');
 
         setTimeout(() => {
@@ -963,7 +997,7 @@ document.addEventListener('DOMContentLoaded', () => {
             text.innerText = '获取成功';
             icon.classList.remove('animate-spin');
             icon.innerText = 'done';
-            btn.className = "px-3 py-1.5 bg-success/10 hover:bg-success/20 text-success text-xs font-semibold rounded border border-success/30 transition-all flex items-center gap-1 shrink-0";
+            btn.className = "px-3 py-1.5 bg-success/10 hover:bg-success/20 text-success text-xs font-semibold rounded border border-success/30 transition-colors flex items-center gap-1 shrink-0";
 
             if (!modelsFetched) {
                 const select = document.getElementById('modalModelSelect');
@@ -988,7 +1022,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 text.innerText = '获取清单';
                 icon.innerText = 'sync';
-                btn.className = "px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded border border-primary/30/30 transition-all flex items-center gap-1 shrink-0";
+            btn.className = "px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded border border-primary/30/30 transition-colors flex items-center gap-1 shrink-0";
             }, 2000);
         }, 1000);
     };
@@ -1000,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = document.getElementById('testText');
 
         icon.classList.add('animate-pulse');
-        text.innerText = '测试中...';
+        text.innerText = '测试中…';
 
         setTimeout(() => {
             icon.classList.remove('animate-pulse');
@@ -1019,7 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
         toast.setAttribute('role', 'status');
         toast.setAttribute('aria-live', 'polite');
         toast.setAttribute('aria-atomic', 'true');
-        toast.className = 'fixed top-6 left-1/2 transform -translate-x-1/2 z-[200] px-5 py-3 rounded-box border border-base-content/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-2.5 transition-all duration-300 translate-y-[-20px] opacity-0 bg-base-100/85 backdrop-blur-md';
+        toast.className = 'fixed top-6 left-1/2 transform -translate-x-1/2 z-[200] px-5 py-3 rounded-box border border-base-content/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-2.5 transition-[transform,opacity] duration-300 translate-y-[-20px] opacity-0 bg-base-100/85 backdrop-blur-md';
 
         toast.innerHTML = `
             <span class="w-2 h-2 rounded-full bg-success shadow-[0_0_8px_rgba(78,222,163,0.6)] animate-ping"></span>
@@ -1057,10 +1091,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if(toggleEyeBtn) toggleEyeBtn.addEventListener('click', () => {
         if(apiKeyInput.type === 'password') {
             apiKeyInput.type = 'text';
-            toggleEyeBtn.innerHTML = '<span class="material-symbols-outlined text-[14px]">visibility_off</span>';
+            toggleEyeBtn.innerHTML = '<span aria-hidden="true" class="material-symbols-outlined text-[14px]">visibility_off</span>';
         } else {
             apiKeyInput.type = 'password';
-            toggleEyeBtn.innerHTML = '<span class="material-symbols-outlined text-[14px]">visibility</span>';
+            toggleEyeBtn.innerHTML = '<span aria-hidden="true" class="material-symbols-outlined text-[14px]">visibility</span>';
         }
     });
 
@@ -1097,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
             overlay.classList.remove('hidden');
         }
 
-        statusText.innerText = '正在销毁上一作品本地缓存...';
+        statusText.innerText = '正在销毁上一作品本地缓存…';
         if (tick1) {
             tick1.classList.remove('bg-primary/30');
             tick1.classList.add('bg-primary', 'animate-ping');
@@ -1113,7 +1147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.isPromptEditing = false;
 
         setTimeout(() => {
-            statusText.innerText = '正在隔离当前作品上下文数据并重置沙箱...';
+            statusText.innerText = '正在隔离当前作品上下文数据并重置沙箱…';
             if (tick1) {
                 tick1.classList.remove('animate-ping');
             }
@@ -1126,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionStorage.clear(); // 清空会话存储以防止跨作品交叉数据污染
 
             setTimeout(() => {
-                statusText.innerText = '载入新作品事实层及因果链...';
+                statusText.innerText = '载入新作品事实层及因果链…';
                 if (tick2) {
                     tick2.classList.remove('animate-ping');
                 }
@@ -1468,14 +1502,14 @@ document.addEventListener('DOMContentLoaded', () => {
     </script>
 
     <!-- New Book Modal HTML -->
-    <div id="newBookModal" class="fixed inset-0 z-50 flex items-center justify-center bg-neutral/60 backdrop-blur-sm hidden" role="dialog" aria-modal="true" aria-labelledby="new-book-modal-title" aria-hidden="true">
+    <div id="newBookModal" class="workbench-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="new-book-modal-title" aria-hidden="true">
         <div class="ui-modal w-[550px] flex flex-col overflow-hidden p-6 relative">
             <button onclick="closeNewBookModal()" class="ui-icon-button ui-button-quiet absolute top-4 right-4" aria-label="关闭新书构思弹窗">
-                <span class="material-symbols-outlined text-[20px]">close</span>
+                <span aria-hidden="true" class="material-symbols-outlined text-[20px]">close</span>
             </button>
 
             <h2 id="new-book-modal-title" class="text-lg font-bold text-base-content mb-6 flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary">add_box</span>
+                <span aria-hidden="true" class="material-symbols-outlined text-primary">add_box</span>
                 <span>新建新书构思</span>
             </h2>
 
@@ -1521,15 +1555,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 </button>
             </div>
     <!-- Book Switch Sandbox Isolation Overlay -->
-    <div id="bookSwitchOverlay" class="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-neutral/60 backdrop-blur-sm hidden transition-all duration-300">
+    <div id="bookSwitchOverlay" class="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-neutral/60 backdrop-blur-sm hidden transition-opacity duration-300">
         <div class="flex flex-col items-center gap-4 max-w-sm text-center">
             <!-- Glassmorphic Spinner -->
             <div class="relative w-16 h-16 flex items-center justify-center">
                 <div class="absolute inset-0 rounded-full border-4 border-primary/30/20 border-t-[#4f85e5] animate-spin"></div>
-                <span class="material-symbols-outlined text-primary text-[28px] animate-pulse">lock_reset</span>
+                <span aria-hidden="true" class="material-symbols-outlined text-primary text-[28px] animate-pulse">lock_reset</span>
             </div>
             <div class="space-y-1 mt-2">
-                <h3 class="text-base font-bold text-base-content tracking-wide">构建安全沙箱环境...</h3>
+                <h3 class="text-base font-bold text-base-content tracking-wide">构建安全沙箱环境…</h3>
                 <p id="bookSwitchStatusText" class="text-xs text-base-content opacity-70 font-mono">正在初始化数据隔离层...</p>
             </div>
             <!-- Progress ticks (aesthetic) -->

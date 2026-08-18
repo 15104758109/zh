@@ -26,6 +26,11 @@
         .header-tab { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; white-space: nowrap; color: var(--color-neutral-content); opacity: 0.6; transition: all 0.15s ease; cursor: pointer; }
         .header-tab:hover { opacity: 0.85; }
         .header-tab.active { opacity: 1; background: var(--color-base-300); color: var(--color-base-content); }
+        #modalBox.skill-modal-expanded { width: min(860px, calc(100vw - 32px)); }
+        @media (max-width: 700px) {
+            #modalBox.skill-modal-expanded { flex-direction: column; }
+            #aiAdvicePanel.skill-ai-panel-open { width: 100%; min-height: 260px; }
+        }
 </style>
 </head>
 <body class="ui-page h-screen w-full overflow-hidden flex bg-base-200 selection:bg-primary/30 selection:text-base-content">
@@ -62,11 +67,11 @@
             
             <!-- 快捷设置齿轮与弹窗 -->
             <div class="relative flex items-center">
-                <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+                <button id="quick-settings-btn" aria-label="快速控制面板" aria-expanded="false" aria-controls="quick-settings-popover" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
                     <span class="material-symbols-outlined text-[20px]">settings</span>
                 </button>
                 <!-- Quick Settings Popover -->
-                        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+                        <div id="quick-settings-popover" role="dialog" aria-label="快速控制" aria-hidden="true" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
                 <div class="flex items-center justify-between mb-3">
                     <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
                     <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
@@ -74,15 +79,15 @@
                 <div class="flex flex-col gap-2 mb-3">
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
-                        <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+                        <button id="sw-auto-production" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="生产阶段自动化" aria-disabled="true" disabled title="自动化配置请在总控设置中修改" data-key="auto_production"></button>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
-                        <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+                        <button id="sw-auto-audit" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="审计阶段自动化" aria-disabled="true" disabled title="自动化配置请在总控设置中修改" data-key="auto_audit"></button>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
-                        <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+                        <button id="sw-auto-iteration" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="提示词迭代自动化" aria-disabled="true" disabled title="自动化配置请在总控设置中修改" data-key="auto_iteration"></button>
                     </div>
                 </div>
                 <div class="mt-3 pt-2 border-t border-base-content/5">
@@ -210,7 +215,7 @@
     <div id="drawerBackdrop" class="fixed inset-0 bg-black/40 z-[90] hidden transition-opacity duration-300 opacity-0" onclick="closeDrawer()"></div>
 
     <!-- Sliding Details Drawer -->
-    <div id="detailDrawer" class="ui-card fixed top-0 right-0 h-full w-[440px] z-[100] bg-base-200 border-l border-base-content/10 shadow-2xl transition-all duration-300 transform translate-x-full flex flex-col" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true" style="background-color: var(--color-base-200) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;">
+    <div id="detailDrawer" class="ui-card fixed top-0 right-0 h-full w-[min(440px,calc(100vw-16px))] z-[100] bg-base-200 border-l border-base-content/10 shadow-2xl transition-transform duration-300 transform translate-x-full flex flex-col" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true" inert style="background-color: var(--color-base-200) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;">
         <!-- Drawer Header -->
         <div class="p-6 border-b border-base-content/5 flex items-center justify-between bg-white/2">
             <div class="flex items-center gap-3">
@@ -275,8 +280,8 @@
 </div>
 
 <!-- Add / Edit Skill Modal -->
-<div id="skillFormModal" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 hidden transition-all duration-300" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
-    <div id="modalBox" class="ui-modal w-[500px] flex flex-row overflow-hidden p-6 relative transition-all duration-300">
+    <div id="skillFormModal" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 hidden transition-opacity duration-300" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true" inert>
+        <div id="modalBox" class="ui-modal w-[min(500px,calc(100vw-32px))] max-h-[calc(100dvh-32px)] flex flex-row overflow-y-auto overscroll-contain p-6 relative transition-[width] duration-300">
         <!-- Close Button -->
         <button onclick="closeSkillFormModal()" class="ui-icon-button ui-button-quiet absolute top-4 right-4 z-10" aria-label="关闭技能表单">
             <span class="material-symbols-outlined text-[20px]">close</span>
@@ -741,6 +746,7 @@
         // Slide in drawer
         drawer.classList.remove('translate-x-full');
         drawer.setAttribute('aria-hidden', 'false');
+        drawer.removeAttribute('inert');
         backdrop.classList.remove('hidden');
         setTimeout(() => backdrop.classList.add('opacity-100'), 10);
     };
@@ -754,6 +760,7 @@
 
         drawer.classList.add('translate-x-full');
         drawer.setAttribute('aria-hidden', 'true');
+        drawer.setAttribute('inert', '');
         backdrop.classList.remove('opacity-100');
         setTimeout(() => backdrop.classList.add('hidden'), 300);
 
@@ -927,6 +934,7 @@
         applySkillFormComponents(modal);
         modal.classList.remove('hidden');
         modal.setAttribute('aria-hidden', 'false');
+        modal.removeAttribute('inert');
     };
 
     window.triggerAIAnalysis = function() {
@@ -944,10 +952,9 @@
         if (!mBox || !aiPanel || !aiLoading || !aiResultArea || !aiAdviceText) return;
 
         // Expand modal and show AI panel
-        mBox.classList.remove('w-[500px]');
-        mBox.classList.add('w-[860px]');
+        mBox.classList.add('skill-modal-expanded');
         aiPanel.classList.remove('hidden', 'w-0', 'opacity-0');
-        aiPanel.classList.add('flex', 'w-[320px]', 'opacity-100');
+        aiPanel.classList.add('flex', 'w-[320px]', 'opacity-100', 'skill-ai-panel-open');
 
         // Show Loading State
         aiResultArea.classList.add('hidden');
@@ -1009,16 +1016,16 @@
         if (modal) {
             modal.classList.add('hidden');
             modal.setAttribute('aria-hidden', 'true');
+            modal.setAttribute('inert', '');
         }
 
         // Reset AI Advice Panel status
         const mBox = document.getElementById('modalBox');
         const aiPanel = document.getElementById('aiAdvicePanel');
         if (mBox && aiPanel) {
-            mBox.classList.remove('w-[860px]');
-            mBox.classList.add('w-[500px]');
+            mBox.classList.remove('skill-modal-expanded');
             aiPanel.classList.add('w-0', 'opacity-0', 'hidden');
-            aiPanel.classList.remove('w-[320px]', 'opacity-100', 'flex');
+            aiPanel.classList.remove('w-[320px]', 'opacity-100', 'flex', 'skill-ai-panel-open');
         }
         const restore = skillModalReturnFocus;
         skillModalReturnFocus = null;
@@ -1638,6 +1645,7 @@
         ratingInput?.addEventListener('change', () => syncDrawerHeader(titleInput?.value.trim() || item.title, ratingInput.value));
         drawer.classList.remove('translate-x-full');
         drawer.setAttribute('aria-hidden', 'false');
+        drawer.removeAttribute('inert');
         backdrop.classList.remove('hidden');
         setTimeout(() => backdrop.classList.add('opacity-100'), 10);
         document.querySelectorAll('.skill-card').forEach(card => card.classList.toggle('active-card', card.id === `card-${item.id}`));

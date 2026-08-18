@@ -834,6 +834,7 @@
     .modal-backdrop {
       position: fixed; inset: 0; z-index: 120; display: none; place-items: center;
       background: rgba(40,36,34,.56); backdrop-filter: blur(6px);
+      overscroll-behavior: contain;
       padding: 24px;
     }
     .modal-backdrop.open { display: grid; }
@@ -1075,6 +1076,13 @@
     .toast-item.show { transform: translateX(0); opacity: 1; }
     .toast-container [data-new-book-runtime] {
       position: fixed; top: 84px; right: calc(316px + 40px); max-width: min(420px, calc(100vw - 48px)); pointer-events: none;
+    }
+    @media (max-width: 767px) {
+      .toast-container [data-new-book-runtime] {
+        right: 16px;
+        left: 16px;
+        max-width: none;
+      }
     }
     .toast-success { border-left-color: var(--color-success); }
     .toast-error { border-left-color: var(--color-error); }
@@ -1411,7 +1419,7 @@
     </section>
   </main>
 
-  <div class="modal-backdrop" id="confirmModal">
+  <div class="modal-backdrop" id="confirmModal" aria-hidden="true" inert>
     <div class="stage-modal-panel ui-modal locked" id="stageModalPanel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
       <div class="modal-head">
         <div>
@@ -1481,6 +1489,7 @@
       let viewing = 0;
       const lockedSteps = new Set();
       let modalLocked = true;
+      let confirmReturnFocus = null;
       const uiGet = (id) => document.getElementById(id);
 
       function escapeHtml(value) {
@@ -1672,6 +1681,20 @@
         });
         if (!locked) uiGet("confirmBody")?.querySelector(".editable-field")?.focus();
         syncConfirmAction();
+      }
+
+      function setConfirmModalOpen(open) {
+        const modal = uiGet("confirmModal");
+        if (!modal) return;
+        modal.classList.toggle("open", open);
+        modal.setAttribute("aria-hidden", String(!open));
+        modal.toggleAttribute("inert", !open);
+        if (open) {
+          window.setTimeout(() => uiGet("unlockButton")?.focus(), 0);
+        } else if (confirmReturnFocus?.isConnected) {
+          confirmReturnFocus.focus();
+          confirmReturnFocus = null;
+        }
       }
 
       function syncConfirmAction() {
@@ -2371,7 +2394,8 @@
         if (confirmAction) confirmAction.innerHTML = `<span class="material-symbols-outlined">verified</span>确认锁死`;
         // 进行中步骤(viewing === current)默认可编辑;返回查看已完成步骤(viewing < current)默认锁定,需解锁
         setModalLock(viewing < current);
-        uiGet("confirmModal").classList.add("open");
+        confirmReturnFocus = document.activeElement;
+        setConfirmModalOpen(true);
       }
 
       function openFinalReviewDrawer(item) {
@@ -2598,7 +2622,7 @@
 
       function bind() {
         window.__openStageEditor = openEditor;
-        window.closeConfirmModal = () => uiGet("confirmModal").classList.remove("open");
+        window.closeConfirmModal = () => setConfirmModalOpen(false);
         window.openConfirmModal = () => openEditor(current);
         window.selectWorldCategory = (category) => {
           const item = steps.find((step) => step.key === "world_settings");

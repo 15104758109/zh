@@ -48,7 +48,12 @@ if (document.readyState === "loading") {
 window.toggleQuickSettings = function(event) {
   event.stopPropagation();
   var popover = document.getElementById("quick-settings-popover");
-  if (popover) popover.classList.toggle("hidden");
+  var btn = document.getElementById("quick-settings-btn");
+  if (!popover) return;
+  var open = popover.classList.toggle("hidden") === false;
+  popover.setAttribute("aria-hidden", String(!open));
+  btn?.setAttribute("aria-expanded", String(open));
+  if (open) popover.querySelector("button, input, select, textarea, [href]")?.focus();
 };
 
 document.addEventListener("click", function(event) {
@@ -57,6 +62,8 @@ document.addEventListener("click", function(event) {
   if (popover && !popover.classList.contains("hidden")) {
     if (!popover.contains(event.target) && event.target !== btn && (!btn || !btn.contains(event.target))) {
       popover.classList.add("hidden");
+      popover.setAttribute("aria-hidden", "true");
+      btn?.setAttribute("aria-expanded", "false");
     }
   }
 });
@@ -66,6 +73,8 @@ document.addEventListener("keydown", function(event) {
   var popover = document.getElementById("quick-settings-popover");
   if (!popover || popover.classList.contains("hidden")) return;
   popover.classList.add("hidden");
+  popover.setAttribute("aria-hidden", "true");
+  document.getElementById("quick-settings-btn")?.setAttribute("aria-expanded", "false");
   document.getElementById("quick-settings-btn")?.focus();
 });
 

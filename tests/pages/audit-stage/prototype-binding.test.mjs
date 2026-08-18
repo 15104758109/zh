@@ -121,6 +121,7 @@ test("AUDIT_STAGE keeps prototype anchors and binds the scoped audit projection 
   assert.match(html, /本次推演章节 \(当前 L1A 正式章节\)/);
   assert.match(html, /class="space-y-8 leading-relaxed text-lg max-w-4xl mx-auto"/);
   assert.match(module, /主编已放行/);
+  assert.match(module, /继续或退回所需的受控确认地址尚未返回/);
   assert.match(module, /continue_next_chapter/);
   assert.match(module, /退回当前章/);
   assert.doesNotMatch(module, /主编退回/);

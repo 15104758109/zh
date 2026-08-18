@@ -45,6 +45,11 @@ test("new book starts empty rather than presenting fabricated business content",
   assert.match(page, /尚无对话记录/);
 });
 
+test("new-book runtime status remains readable on a narrow screen", () => {
+  assert.match(page, /\.toast-container \[data-new-book-runtime\][\s\S]*right: calc\(316px \+ 40px\)/);
+  assert.match(page, /@media \(max-width: 767px\)[\s\S]*\.toast-container \[data-new-book-runtime\][\s\S]*right: 16px;[\s\S]*left: 16px;[\s\S]*max-width: none;/);
+});
+
 test("bridge sends the live ZH01 creation shape instead of the superseded request shape", () => {
   assert.match(bridge, /function mapWorldStates/);
   assert.match(bridge, /world_states: worldStates/);

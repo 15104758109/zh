@@ -102,6 +102,7 @@
     box-shadow: -4px 0 24px rgba(0,0,0,0.1);
     transition: transform 0.25s ease; transform: translateX(100%);
     backdrop-filter: blur(8px); display: flex; flex-direction: column;
+    overscroll-behavior: contain;
   }
   #detailDrawer.open { transform: translateX(0); }
 
@@ -117,6 +118,7 @@
     position: fixed; inset: 0; z-index: 130;
     display: flex; align-items: center; justify-content: center;
     background: rgba(0,0,0,0.4); backdrop-filter: blur(3px);
+    overscroll-behavior: contain;
     opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
   }
   #bindingModal.open { opacity: 1; pointer-events: auto; }
@@ -126,6 +128,7 @@
     position: fixed; inset: 0; z-index: 140;
     display: flex; align-items: center; justify-content: center;
     background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+    overscroll-behavior: contain;
     opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
   }
   #diffModal.open { opacity: 1; pointer-events: auto; }
@@ -134,9 +137,18 @@
     width: 100%; background: rgba(255,255,255,0.95);
     border: 1px solid rgba(0,0,0,0.1); border-radius: 8px;
     padding: 7px 11px; font-size: 12px; color: var(--color-base-content);
-    outline: none; transition: border-color 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .field-input:focus { border-color: var(--color-primary); }
+  .field-input:focus-visible { border-color: var(--color-primary); outline: 2px solid color-mix(in oklab, var(--color-primary) 45%, transparent); outline-offset: 1px; }
+
+  #bindingModal > .ui-modal,
+  #diffModal > .ui-modal,
+  .drop-modal-card {
+    max-width: calc(100vw - 32px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 
   .field-label {
     font-size: 10px; font-weight: 600; text-transform: uppercase;
@@ -219,10 +231,12 @@
     display: flex; align-items: center; gap: 4px;
     font-size: 11px; font-weight: 500; color: oklch(45% 0.005 17);
   }
-  .pivot-breadcrumb-item {
-    cursor: pointer; transition: color 0.15s;
+  .pivot-breadcrumb-item { transition: color 0.15s; }
+  button.pivot-breadcrumb-item {
+    cursor: pointer; border: 0; background: transparent; padding: 0; text-align: left;
   }
-  .pivot-breadcrumb-item:hover { color: var(--color-primary); }
+  button.pivot-breadcrumb-item:hover { color: var(--color-primary); }
+  button.pivot-breadcrumb-item:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
   /* 辐射分解树 */
   .tree-branch-container {
@@ -280,6 +294,8 @@
     min-width: 0;
   }
   .world-skeleton-row {
+    width: 100%;
+    text-align: left;
     border: 1px solid rgba(0,0,0,0.06);
     border-left-width: 4px;
     background: rgba(255,255,255,0.72);
@@ -440,6 +456,7 @@
     justify-content: center;
     background: rgba(0,0,0,.38);
     backdrop-filter: blur(3px);
+    overscroll-behavior: contain;
     opacity: 0;
     pointer-events: none;
     transition: opacity .2s ease;
@@ -563,11 +580,11 @@
 
       <!-- 快捷设置齿轮与弹窗 -->
       <div class="relative flex items-center">
-        <button id="quick-settings-btn" aria-label="快速控制面板" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
+        <button id="quick-settings-btn" aria-label="快速控制面板" aria-expanded="false" aria-controls="quick-settings-popover" class="p-2 rounded-full hover:bg-base-content/5 transition-colors text-base-content opacity-80 flex items-center justify-center" onclick="toggleQuickSettings(event)">
           <span class="material-symbols-outlined text-[20px]">settings</span>
         </button>
         <!-- Quick Settings Popover -->
-        <div id="quick-settings-popover" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
+        <div id="quick-settings-popover" role="dialog" aria-label="快速控制" aria-hidden="true" class="hidden absolute top-12 right-0 w-64 rounded-box border bg-base-100 shadow-2xl p-4 z-50 border-base-content/10 transition-all duration-300">
           <div class="flex items-center justify-between mb-3">
             <span class="text-[11px] font-bold text-base-content tracking-widest uppercase opacity-90">快速控制</span>
             <span class="material-symbols-outlined text-primary text-sm animate-pulse">bolt</span>
@@ -577,15 +594,15 @@
           <div class="flex flex-col gap-2 mb-3">
             <div class="flex items-center justify-between">
               <span class="text-[11px] text-base-content font-medium opacity-80">生产阶段自动化</span>
-              <div id="sw-auto-production" class="settings-switch" onclick="toggleAutoSwitch('auto_production', this)" data-key="auto_production"></div>
+              <button id="sw-auto-production" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="生产阶段自动化" aria-disabled="true" disabled title="自动化配置请在总控设置中修改" data-key="auto_production"></button>
             </div>
             <div class="flex items-center justify-between">
               <span class="text-[11px] text-base-content font-medium opacity-80">审计阶段自动化</span>
-              <div id="sw-auto-audit" class="settings-switch" onclick="toggleAutoSwitch('auto_audit', this)" data-key="auto_audit"></div>
+              <button id="sw-auto-audit" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="审计阶段自动化" aria-disabled="true" disabled title="自动化配置请在总控设置中修改" data-key="auto_audit"></button>
             </div>
             <div class="flex items-center justify-between">
               <span class="text-[11px] text-base-content font-medium opacity-80">提示词迭代自动化</span>
-              <div id="sw-auto-iteration" class="settings-switch" onclick="toggleAutoSwitch('auto_iteration', this)" data-key="auto_iteration"></div>
+              <button id="sw-auto-iteration" type="button" class="settings-switch" role="switch" aria-checked="false" aria-label="提示词迭代自动化" aria-disabled="true" disabled title="自动化配置请在总控设置中修改" data-key="auto_iteration"></button>
             </div>
           </div>
 
@@ -739,7 +756,7 @@
 <div id="drawerBackdrop" onclick="closeDrawer()"></div>
 
 <!-- 右侧画像抽屉 -->
-<div id="detailDrawer" role="dialog" aria-modal="true" aria-labelledby="drawer-item-name" aria-hidden="true">
+<div id="detailDrawer" role="dialog" aria-modal="true" aria-labelledby="drawer-item-name" aria-hidden="true" inert>
   <div class="p-5 border-b border-base-content/5 flex items-center justify-between shrink-0 bg-white/40">
     <div class="flex items-center gap-3 min-w-0">
       <span id="drawer-board-icon" class="material-symbols-outlined text-[20px] text-primary">hub</span>
@@ -784,7 +801,7 @@
 </div>
 
 <!-- 新建/编辑绑定弹窗 -->
-<div id="bindingModal" onclick="if(event.target===this) closeBindingModal()" aria-hidden="true">
+<div id="bindingModal" onclick="if(event.target===this) closeBindingModal()" aria-hidden="true" inert>
   <div class="ui-modal bg-base-200 border border-base-content/5 rounded-box w-[540px] flex flex-col overflow-hidden shadow-2xl p-6" role="dialog" aria-modal="true" aria-labelledby="binding-modal-title">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-sm font-bold text-base-content flex items-center gap-2">
@@ -807,7 +824,7 @@
 </div>
 
 <!-- 拖拽绑定确认弹窗 -->
-<div id="dropConfirmModal" onclick="if(event.target===this) closeDropConfirm()" aria-hidden="true">
+<div id="dropConfirmModal" onclick="if(event.target===this) closeDropConfirm()" aria-hidden="true" inert>
   <div class="drop-modal-card" role="dialog" aria-modal="true" aria-labelledby="drop-confirm-title">
     <div class="flex items-start gap-3">
       <div class="w-10 h-10 rounded-2xl bg-accent/15 border border-accent/25 flex items-center justify-center shrink-0">
@@ -830,7 +847,7 @@
 </div>
 
 <!-- AI Proposals Diff 提案弹窗 -->
-<div id="diffModal" onclick="if(event.target===this) closeDiffModal()" aria-hidden="true">
+<div id="diffModal" onclick="if(event.target===this) closeDiffModal()" aria-hidden="true" inert>
   <div class="ui-modal bg-base-100 border border-base-content/5 rounded-box w-[560px] flex flex-col overflow-hidden shadow-2xl p-6" role="dialog" aria-modal="true" aria-labelledby="diff-modal-title">
     <div class="flex items-center justify-between mb-2">
       <h2 class="text-sm font-bold text-base-content flex items-center gap-2">
@@ -856,11 +873,11 @@
 
 <!-- 想法收集冲突种子聊天窗口 -->
 <div id="conflict-seed-chat">
-  <button type="button" onclick="toggleChatPanel()" aria-label="打开想法收集面板" class="w-12 h-12 bg-primary rounded-full text-white flex items-center justify-center shadow-lg hover:opacity-90 transition-all cursor-pointer">
+  <button id="chat-panel-trigger" type="button" onclick="toggleChatPanel()" aria-label="打开想法收集面板" aria-controls="chat-panel" aria-expanded="false" class="w-12 h-12 bg-primary rounded-full text-white flex items-center justify-center shadow-lg hover:opacity-90 transition-all cursor-pointer">
     <span class="material-symbols-outlined text-[24px]" aria-hidden="true">forum</span>
   </button>
 
-  <div class="chat-bubble-panel" id="chat-panel" role="dialog" aria-modal="false" aria-label="想法收集与冲突种子">
+  <div class="chat-bubble-panel" id="chat-panel" role="dialog" aria-modal="false" aria-label="想法收集与冲突种子" aria-hidden="true" inert>
     <div class="p-3 bg-primary border-b border-primary text-primary-content flex items-center justify-between shrink-0">
       <span class="text-xs font-bold flex items-center gap-1">
         <span class="material-symbols-outlined text-[14px]">auto_awesome</span> ✦ 想法收集与冲突种子
@@ -996,6 +1013,9 @@ const genId = (p) => p + (++idCounter);
 
 // AI 建议临时池
 let activeProposals = [];
+// Keyboard binding uses the same confirmation flow as drag and drop without
+// changing the persisted binding contract.
+let keyboardBindingSourceId = null;
 
 // ============ 工具函数 ============
 const itemById = (id) => items.find(i => i.id === id);
@@ -1015,6 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (document.getElementById('diffModal').classList.contains('open')) closeDiffModal();
       else if (document.getElementById('bindingModal').classList.contains('open')) closeBindingModal();
       else if (document.getElementById('dropConfirmModal').classList.contains('open')) closeDropConfirm();
+      else if (document.getElementById('chat-panel')?.classList.contains('open')) toggleChatPanel();
       else closeDrawer();
     }
   });
@@ -1162,8 +1183,10 @@ function renderSkeletonPanel() {
     const b = BOARDS[k];
     const stats = boardBindingStats(k);
     const active = currentProjection === k || (currentProjection === 'all' && k === 'geography');
-    const row = document.createElement('div');
+    const row = document.createElement('button');
+    row.type = 'button';
     row.className = `world-skeleton-row ${active ? 'active' : ''}`;
+    row.setAttribute('aria-pressed', String(active));
     row.style.borderLeftColor = b.color;
     row.onclick = () => switchProjection(k);
     row.innerHTML = `
@@ -1206,9 +1229,17 @@ function renderResourceDock() {
       candidates.forEach(it => {
         const card = document.createElement('div');
         card.className = 'drag-resource-card';
+        card.setAttribute('role', 'button');
+        card.tabIndex = 0;
+        card.setAttribute('aria-label', `打开资源设定：${it.title}`);
         card.draggable = true;
         card.ondragstart = (ev) => startResourceDrag(ev, it.id);
         card.onclick = () => openDetail(it.id);
+        card.onkeydown = (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          openDetail(it.id);
+        };
         card.style.borderLeft = `4px solid ${b.color}`;
         card.innerHTML = `
           <div class="flex items-center justify-between gap-2">
@@ -1220,7 +1251,20 @@ function renderResourceDock() {
           </div>
           <div class="text-[10px] opacity-50 mt-1 leading-snug">${esc(it.fields.usage_text || it.fields.leader_name || it.fields.monster_scale || it.ai?.note || '拖拽到地理区块建立归属关系')}</div>
         `;
-        wrap.appendChild(card);
+        const action = document.createElement('button');
+        action.type = 'button';
+        action.className = 'text-[10px] text-primary hover:underline text-left px-1';
+        action.textContent = keyboardBindingSourceId === it.id ? '取消绑定选择' : '选择用于键盘绑定';
+        action.setAttribute('aria-pressed', String(keyboardBindingSourceId === it.id));
+        action.onclick = (event) => {
+          event.stopPropagation();
+          keyboardBindingSourceId = keyboardBindingSourceId === it.id ? null : it.id;
+          renderCurrentView();
+        };
+        const itemWrap = document.createElement('div');
+        itemWrap.className = 'flex flex-col gap-0.5';
+        itemWrap.append(card, action);
+        wrap.appendChild(itemWrap);
       });
     }
     section.appendChild(wrap);
@@ -1288,6 +1332,7 @@ function renderGeographyCanvas(container) {
       </div>
       <p class="text-[11px] opacity-60 leading-relaxed mt-3 relative z-10">${esc(loc.fields.description || '拖入资源、势力或怪物，快速补全该区域的叙事内容。')}</p>
       <div class="mt-4 flex flex-wrap gap-1.5 relative z-10">
+        ${keyboardBindingSourceId && itemById(keyboardBindingSourceId) ? `<button type="button" class="zone-bind-chip text-primary" onclick="beginKeyboardBinding('${esc(keyboardBindingSourceId)}','${esc(loc.id)}')">将「${esc(itemById(keyboardBindingSourceId).title)}」绑定至此地</button>` : ''}
         ${related.length ? related.map(x => {
           const b = BOARDS[x.item.board];
           return `<button onclick="openDetail('${x.item.id}')" class="zone-bind-chip" title="${esc(x.bind.type)}"><span class="material-symbols-outlined text-[12px]" style="color:${b.color}">${b.icon}</span><span class="truncate max-w-[130px]">${esc(x.item.title)}</span><span class="opacity-45">${esc(x.bind.type)}</span></button>`;
@@ -1384,9 +1429,7 @@ function startResourceDrag(ev, itemId) {
   ev.dataTransfer.effectAllowed = 'move';
 }
 
-function handleDropOnGeo(ev, geoId) {
-  ev.preventDefault();
-  const itemId = ev.dataTransfer.getData('text/plain');
+function requestGeoBinding(itemId, geoId) {
   const it = itemById(itemId);
   const geo = itemById(geoId);
   if (!it || !geo || geo.board !== 'geography') return;
@@ -1409,13 +1452,25 @@ function handleDropOnGeo(ev, geoId) {
   document.getElementById('drop-bind-type').innerHTML = relationOptions.map(t => `<option value="${t}">${t}</option>`).join('');
   modalReturnFocus = document.activeElement;
   document.getElementById('dropConfirmModal').classList.add('open');
-  document.getElementById('dropConfirmModal').setAttribute('aria-hidden', 'false');
+  const modal = setWorldSurfaceOpen('dropConfirmModal', true);
+  focusWorldSurface(modal, '#drop-bind-type');
+}
+
+function handleDropOnGeo(ev, geoId) {
+  ev.preventDefault();
+  const itemId = ev.dataTransfer.getData('text/plain');
+  requestGeoBinding(itemId, geoId);
+}
+
+function beginKeyboardBinding(itemId, geoId) {
+  requestGeoBinding(itemId, geoId);
 }
 
 function closeDropConfirm() {
   const modal = document.getElementById('dropConfirmModal');
   if (modal) modal.classList.remove('open');
   modal?.setAttribute('aria-hidden', 'true');
+  modal?.setAttribute('inert', '');
   pendingDropBinding = null;
   const restore = modalReturnFocus;
   modalReturnFocus = null;
@@ -1427,6 +1482,7 @@ function confirmDropBinding() {
   const { geoId, itemId } = pendingDropBinding;
   const type = document.getElementById('drop-bind-type').value || relationTypeForBoard(itemById(itemId)?.board);
   bindings.push({ id: genId('b'), from: geoId, to: itemId, type, strength: 0.75, tags: ['拖拽绑定'] });
+  keyboardBindingSourceId = null;
   const geo = itemById(geoId), it = itemById(itemId);
   showToast(`已绑定：${geo?.title} ${type} ${it?.title}`, 'success');
   closeDropConfirm();
@@ -1583,18 +1639,25 @@ function renderDrawerBreadcrumbs() {
       container.appendChild(sep);
     }
 
-    const span = document.createElement('span');
+    const span = document.createElement(idx === pivotStack.length - 1 ? 'span' : 'button');
+    if (span instanceof HTMLButtonElement) {
+      span.type = 'button';
+      span.setAttribute('aria-label', `返回 ${it.title}`);
+    }
     span.className = "pivot-breadcrumb-item truncate max-w-[100px]";
     if (idx === pivotStack.length - 1) {
       span.classList.add('text-primary', 'font-bold');
+      span.setAttribute('aria-current', 'page');
     }
     span.textContent = it.title;
-    span.onclick = () => {
-      pivotStack = pivotStack.slice(0, idx + 1);
-      currentItemId = id;
-      renderDrawerContent();
-      if (viewMode === 'map') renderMap();
-    };
+    if (span instanceof HTMLButtonElement) {
+      span.onclick = () => {
+        pivotStack = pivotStack.slice(0, idx + 1);
+        currentItemId = id;
+        renderDrawerContent();
+        if (viewMode === 'map') renderMap();
+      };
+    }
     container.appendChild(span);
   });
 }
@@ -1645,6 +1708,22 @@ function collectFields(board) {
 }
 
 let drawerReturnFocus = null;
+let chatPanelReturnFocus = null;
+
+function setWorldSurfaceOpen(id, open) {
+  const surface = document.getElementById(id);
+  if (!surface) return null;
+  surface.setAttribute('aria-hidden', String(!open));
+  surface.toggleAttribute('inert', !open);
+  return surface;
+}
+
+function focusWorldSurface(surface, selector) {
+  window.setTimeout(() => {
+    const target = surface?.querySelector(selector) || surface?.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    target?.focus();
+  }, 0);
+}
 
 function openDrawer() {
   const drawer = document.getElementById('detailDrawer');
@@ -1655,8 +1734,8 @@ function openDrawer() {
   document.getElementById('detailDrawer')?.classList.add('open');
   document.getElementById('drawerBackdrop')?.classList.add('open');
   document.body.classList.add('overflow-hidden');
-  drawer?.setAttribute('aria-hidden', 'false');
-  window.setTimeout(() => document.querySelector('#detailDrawer .field-input:not([disabled])')?.focus(), 0);
+  setWorldSurfaceOpen('detailDrawer', true);
+  focusWorldSurface(drawer, '.field-input:not([disabled])');
 }
 
 function closeDrawer() {
@@ -1664,7 +1743,7 @@ function closeDrawer() {
   drawer?.classList.remove('open');
   document.getElementById('drawerBackdrop')?.classList.remove('open');
   document.body.classList.remove('overflow-hidden');
-  drawer?.setAttribute('aria-hidden', 'true');
+  setWorldSurfaceOpen('detailDrawer', false);
   const restore = drawerReturnFocus;
   drawerReturnFocus = null;
   if (restore?.isConnected && !restore.hasAttribute('disabled')) restore.focus();
@@ -1917,12 +1996,13 @@ function openBindingModal(fromId) {
   renderBindingForm();
   modalReturnFocus = document.activeElement;
   document.getElementById('bindingModal').classList.add('open');
-  document.getElementById('bindingModal').setAttribute('aria-hidden', 'false');
+  const modal = setWorldSurfaceOpen('bindingModal', true);
+  focusWorldSurface(modal, '.field-input:not([disabled])');
 }
 
 function closeBindingModal() {
   document.getElementById('bindingModal').classList.remove('open');
-  document.getElementById('bindingModal').setAttribute('aria-hidden', 'true');
+  setWorldSurfaceOpen('bindingModal', false);
   bindingDraft = null;
   const restore = modalReturnFocus;
   modalReturnFocus = null;
@@ -2048,11 +2128,12 @@ function saveBinding() {
 function openDiffModal() {
   modalReturnFocus = document.activeElement;
   document.getElementById('diffModal').classList.add('open');
-  document.getElementById('diffModal').setAttribute('aria-hidden', 'false');
+  const modal = setWorldSurfaceOpen('diffModal', true);
+  focusWorldSurface(modal, '#diff-list-container button');
 }
 function closeDiffModal() {
   document.getElementById('diffModal').classList.remove('open');
-  document.getElementById('diffModal').setAttribute('aria-hidden', 'true');
+  setWorldSurfaceOpen('diffModal', false);
   activeProposals = [];
   const restore = modalReturnFocus;
   modalReturnFocus = null;
@@ -2232,7 +2313,20 @@ function aiReconcile(r1Id, r2Id) {
 
 // ============ 想法收集聊天窗口与冲突种子 ============
 function toggleChatPanel() {
-  document.getElementById('chat-panel').classList.toggle('open');
+  const panel = document.getElementById('chat-panel');
+  const trigger = document.getElementById('chat-panel-trigger');
+  if (!panel) return;
+  const open = panel.classList.toggle('open');
+  panel.setAttribute('aria-hidden', String(!open));
+  panel.toggleAttribute('inert', !open);
+  trigger?.setAttribute('aria-expanded', String(open));
+  if (open) {
+    chatPanelReturnFocus = document.activeElement;
+    window.setTimeout(() => panel.querySelector('textarea, input, button')?.focus(), 0);
+  } else if (chatPanelReturnFocus?.isConnected) {
+    chatPanelReturnFocus.focus();
+    chatPanelReturnFocus = null;
+  }
 }
 
 function sendChatIdea() {
@@ -2437,7 +2531,7 @@ function showToast(msg, type = 'info') {
   const canSave = () => candidateWriteAvailable && !selectedIsReadOnly() && !incompleteAffordanceItems(items).length;
   const canConfirm = () => !bridge.frozen && bridge.selected?.state === 'candidate' && !incompleteAffordanceItems(bridge.snapshotItems).length;
   function applyFrozenControls() {
-    const mutationHandler = /(editWorldContext|openAddItemDrawer|batchAction|deleteCurrentItem|aiFillDrawer|aiExpandItem|saveDrawerItem|openBindingModal|aiFillBinding|saveBinding|confirmDropBinding|acceptAllProposals|sendChatIdea|removeBinding|aiReconcile|quickCreateTarget|acceptProposal|editProposal)/;
+    const mutationHandler = /(editWorldContext|openAddItemDrawer|batchAction|deleteCurrentItem|aiFillDrawer|aiExpandItem|saveDrawerItem|openBindingModal|aiFillBinding|saveBinding|confirmDropBinding|acceptAllProposals|sendChatIdea|removeBinding|aiReconcile|quickCreateTarget|acceptProposal|editProposal|beginKeyboardBinding)/;
     document.querySelectorAll('button[onclick]').forEach(control => {
       if (!mutationHandler.test(control.getAttribute('onclick') || '')) return;
       control.disabled = bridge.frozen;

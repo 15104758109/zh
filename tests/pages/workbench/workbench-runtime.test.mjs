@@ -7,7 +7,8 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const runtime = readFileSync(path.join(root, "apps", "web", "src", "pages", "workbench", "workbench-runtime.mjs"), "utf8");
 const page = readFileSync(path.join(root, "apps", "web", "src", "pages", "workbench", "index.html"), "utf8");
-const sharedTheme = readFileSync(path.join(root, "apps", "web", "src", "pages", "prototype", "common", "theme.js"), "utf8");
+const sharedThemeScript = readFileSync(path.join(root, "apps", "web", "src", "pages", "prototype", "common", "theme.js"), "utf8");
+const sharedThemeCss = readFileSync(path.join(root, "apps", "web", "src", "pages", "prototype", "common", "theme.css"), "utf8");
 
 test("workbench accepts a validated routed book scope without trusting it as an operator scope", () => {
   assert.match(runtime, /const operatorKey = "zhreplan\.local_operator_id\.v1"/);
@@ -114,20 +115,59 @@ test("workbench uses the local Material Symbols fallback and retains its configu
   assert.doesNotMatch(runtime, /header-tab:not\(\.active\)|skill\.href = "\/workbench"/);
 });
 
+test("workbench quick automation controls use native keyboard-accessible switches", () => {
+  for (const [id, key] of [["sw-auto-production", "auto_production"], ["sw-auto-audit", "auto_audit"], ["sw-auto-iteration", "auto_iteration"]]) {
+    assert.match(page, new RegExp(`<button id="${id}"[^>]+type="button"[^>]+role="switch"[^>]+data-key="${key}"`));
+  }
+  assert.match(sharedThemeCss, /\.settings-switch:focus-visible\s*\{/);
+});
+
+test("workbench keeps menus, dialogs, and the canvas keyboard-accessible", () => {
+  assert.match(page, /id="quick-settings-btn"[^>]+aria-expanded="false"[^>]+aria-controls="quick-settings-popover"/);
+  assert.match(page, /id="quick-settings-popover"[^>]+role="dialog"/);
+  assert.match(page, /id="canvasViewport"[^>]+role="region"[^>]+aria-label="流程图画布/);
+  assert.match(page, /id="newBookModal"[^>]+aria-hidden="true"/);
+  assert.match(page, /\.workbench-modal-backdrop\s*\{[^}]*overscroll-behavior:\s*contain/s);
+  assert.match(runtime, /function trapDialogFocus\(/);
+  assert.match(runtime, /\[\.\.\.main\.children\]/);
+  assert.match(runtime, /!\["modelSettingsModal", "newBookModal"\]\.includes\(child\.id\)/);
+  assert.match(runtime, /function closeStageDropdown\(/);
+  assert.match(runtime, /function setQuickSettingsOpen\(/);
+  assert.match(runtime, /event\.key === "ArrowLeft"/);
+  assert.match(runtime, /closeNewBookModal/);
+  assert.match(page, /\.workbench-model-modal \{ width: min\(700px, calc\(100vw - 32px\)\); height: min\(580px, calc\(100dvh - 32px\)\); \}/);
+  assert.match(page, /@media \(max-width: 560px\) \{[\s\S]*?\.workbench-model-modal \{ height: calc\(100dvh - 32px\); flex-direction: column; overflow-y: auto; \}/);
+  assert.match(page, /\.workbench-book-stats \{ width: 100%; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); gap: 12px 16px; \}/);
+  assert.match(page, /\.workbench-book-stats > \.btn \{ grid-column: 1 \/ -1; width: 100%; justify-content: center; margin-right: 0; \}/);
+});
+
+test("workbench keeps template controls reachable beside long active prompts", () => {
+  assert.match(page, /class="p-4 flex min-h-0 flex-col gap-4 flex-1 overflow-y-auto"/);
+  assert.match(page, /id="promptEditor"[^>]+h-\[280px\][^>]+max-h-\[320px\][^>]+overflow-y-auto/);
+  assert.match(page, /id="workbenchTemplateSelect"/);
+  assert.match(page, /workbench-config-panel w-\[340px\]/);
+  assert.match(page, /id="rightPanelTitle" class="truncate/);
+});
+
 test("workbench connectors and the primary book action use native visual semantics", () => {
   assert.match(page, /\.node-path\s*\{[^}]*fill:\s*none;[^}]*stroke:\s*color-mix\([^}]*vector-effect:\s*non-scaling-stroke;/s);
   assert.match(page, /\.node-path\.active\s*\{[^}]*stroke:\s*var\(--color-primary\)/s);
   assert.doesNotMatch(page, /btn-rainbow-glow/);
   assert.match(page, /onclick="openNewBookModal\(\)" class="[^"]*\bbtn\s+btn-neutral\b[^"]*"/);
+  assert.match(page, /#stageDropdownTrigger \{ background-color: var\(--color-base-100\); color: var\(--color-base-content\); opacity: 1; \}/);
+  assert.match(page, /\.workbench-book-primary \{ min-width: 320px; flex: 0 1 auto; \}/);
+  assert.match(page, /\.workbench-book-stats \{ min-width: 0; flex: 0 1 auto; display: grid; grid-template-columns: minmax\(180px, 230px\) repeat\(3, max-content\) max-content;/);
+  assert.match(page, /#currentBookChapter \{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; \}/);
+  assert.doesNotMatch(page, /workbench-book-primary flex items-center gap-4 relative z-10 shrink-0/);
 });
 
-test("workbench maps all 22 V7 LLM cards once and keeps runtime-pending cards bindable", () => {
+test("workbench maps all 21 V7 LLM cards once and keeps non-LLM relationships unbindable", () => {
   const expectedNodeCodes = [
     "FP001-03", "FP001-05", "FP002-04", "FP003-04", "FP004-01", "FP004-02", "FP004-05",
-    "FP005-01", "FP006-01", "FP007-01", "FP008-01", "FP008-02", "FP008-03", "FP009-01", "FP010-01", "FP011-01",
+    "FP005-01", "FP006-01", "FP007-01", "FP008-01", "FP008-02", "FP009-01", "FP010-01", "FP011-01",
     "FP011-02", "FP012-01", "FP012-03", "FP013-01", "FP014-01", "FP014-02",
   ];
-  assert.equal(expectedNodeCodes.length, 22);
+  assert.equal(expectedNodeCodes.length, 21);
   for (const nodeCode of expectedNodeCodes) {
     assert.equal((page.match(new RegExp(`data-node-code="${nodeCode}"`, "g")) || []).length, 1, nodeCode);
   }
@@ -136,12 +176,17 @@ test("workbench maps all 22 V7 LLM cards once and keeps runtime-pending cards bi
     assert.doesNotMatch(page, new RegExp(`id="${nodeId}"[^>]+data-contract-state="pending"`));
   }
   assert.equal((page.match(/可绑定 \/ 运行合同待接入/g) || []).length, 3);
-  assert.match(page, /id="node-fp008-checkpoint"[^>]+data-node-code="FP008-03"/);
-  assert.doesNotMatch(page, /id="node-fp008-checkpoint"[^>]+data-contract-state="relation"/);
-  for (const nodeId of ["node-ind-rating", "node-fp004-lock", "node-fp006-confirm", "node-fp008-store", "node-fp012-reject", "node-fp012-archive", "node-fp013-store", "node-fp014-pool"]) {
+  assert.doesNotMatch(page, /id="node-fp008-checkpoint"[^>]+data-node-code="FP008-03"/);
+  for (const nodeId of ["node-ind-rating", "node-fp004-lock", "node-fp006-confirm", "node-fp008-checkpoint", "node-fp008-store", "node-fp012-reject", "node-fp012-archive", "node-fp013-store", "node-fp014-pool"]) {
     assert.match(page, new RegExp(`id="${nodeId}"[^>]+(?:data-reference-only="true"|data-contract-state="relation")`));
   }
   assert.match(runtime, /node\.dataset\.contractState === "relation"/);
+  assert.match(runtime, /function isConfigurableNode\(node\)/);
+  const restrictionSource = runtime.match(/function nodeConfigurationRestriction\(node = activeNode\(\)\) \{([\s\S]*?)\n\}/)?.[1] || "";
+  assert.doesNotMatch(restrictionSource, /contractState === "pending"/);
+  const interactionSource = runtime.match(/document\.querySelectorAll\("\.workflow-node"\)\.forEach\(\(node\) => \{([\s\S]*?)\n  \}\);/g)?.at(-1) || "";
+  assert.match(interactionSource, /if \(!isConfigurableNode\(node\)\) \{[\s\S]*?node\.removeAttribute\("role"\)[\s\S]*?return;/);
+  assert.match(interactionSource, /node\.setAttribute\("role", "button"\)/);
   assert.match(page, /data-source="node-fp006-01" data-target="node-fp006-confirm"/);
   assert.match(page, /data-source="node-fp008-01" data-target="node-simulate"/);
   assert.match(page, /data-source="node-fp014-01" data-target="node-ind-prompt"/);
@@ -242,8 +287,8 @@ test("the prototype mock fallback is inert while the runtime owns canvas and mod
   assert.equal((page.match(/<script type="text\/plain" data-prototype-mock="disabled">/g) || []).length, 2);
   const activeInlineScripts = [...page.matchAll(/<script(?![^>]*\bsrc=)(?![^>]*\btype="text\/plain")[^>]*>([\s\S]*?)<\/script>/g)];
   assert.equal(activeInlineScripts.length, 0, "the shared sidebar owner is external to the page");
-  assert.match(sharedTheme, /window\.toggleSidebar = function\(\)/);
-  assert.doesNotMatch(sharedTheme, /defaultNodeTemplateMap|defaultTemplatesData|defaultNodePrompts|nodeTemplateMap|templatesData|loadNodePrompt|saveModalConfiguration|toggleAutoSwitch/);
+  assert.match(sharedThemeScript, /window\.toggleSidebar = function\(\)/);
+  assert.doesNotMatch(sharedThemeScript, /defaultNodeTemplateMap|defaultTemplatesData|defaultNodePrompts|nodeTemplateMap|templatesData|loadNodePrompt|saveModalConfiguration|toggleAutoSwitch/);
   assert.doesNotMatch(page, /src="\/pages\/workbench\/workbench\.mjs"/);
   assert.match(runtime, /function openModelSettings\(\)/);
   assert.match(runtime, /function installCanvasNavigation\(\)/);
@@ -252,9 +297,17 @@ test("the prototype mock fallback is inert while the runtime owns canvas and mod
 });
 
 test("an unconfigured node shows no prototype default prompt", () => {
-  assert.match(runtime, /if \(!prompt\?\.effective_value\?\.prompt_text\) \{\s*editor\.dataset\.empty = "true";\s*editor\.textContent = "尚无 active Prompt；双击填写后可保存为新的 active 版本。"/);
+  assert.match(runtime, /if \(!prompt\?\.effective_value\?\.prompt_text\) \{\s*editor\.dataset\.empty = "true";\s*editor\.textContent = "当前流程步骤尚未配置提示词。双击填写后可保存为新版本。"/);
   assert.doesNotMatch(runtime, /defaultNodePrompts/);
   assert.doesNotMatch(runtime, /node_prompt_/);
+});
+
+test("workbench gives user-facing configuration feedback without exposing internal IDs", () => {
+  assert.match(runtime, /“\$\{titleForNode\(\)\}”的提示词已保存为新版本/);
+  assert.match(runtime, /已为“\$\{titleForNode\(\)\}”绑定“\$\{templateType\}”模板/);
+  assert.doesNotMatch(runtime, /Prompt 已保存为 \$\{edit\.nodeCode\}/);
+  assert.doesNotMatch(runtime, /已将 \$\{nodeCode\} 绑定/);
+  assert.match(runtime, /const version = item\.version === null \|\| item\.version === undefined \? "当前版本" : `第 \$\{item\.version\} 版`/);
 });
 
 test("the workbench main area consumes the full desktop width beside the shared sidebar", () => {
