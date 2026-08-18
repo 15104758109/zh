@@ -7,4 +7,5 @@ export const legacyRouteNames = Object.freeze({
   "multi_agent_deduction.html": "deduction",
   "audit_review.html": "deduction-review",
   "audit_stage.html": "audit",
+  "iteration.html": "iteration",
 });

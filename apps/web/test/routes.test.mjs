@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const pageDirectories = ["workbench", "skill-library", "new-book", "world", "characters", "l1a", "production-stage", "multi-agent-deduction", "audit-review", "audit-stage"];
+const pageDirectories = ["workbench", "skill-library", "new-book", "world", "characters", "l1a", "production-stage", "multi-agent-deduction", "audit-review", "audit-stage", "iteration"];
 
-test("router registers all ten static restore routes", async () => {
+test("router registers all eleven static restore routes", async () => {
   const source = await readFile(new URL("../src/app/routes.mjs", import.meta.url), "utf8");
-  assert.equal((source.match(/page: "pages\//g) || []).length, 10);
+  assert.equal((source.match(/page: "pages\//g) || []).length, 11);
 });
 
 test("shared sidebar emits only canonical application routes", async () => {
@@ -15,7 +15,7 @@ test("shared sidebar emits only canonical application routes", async () => {
     readFile(new URL("../src/pages/prototype/common/theme.js", import.meta.url), "utf8"),
   ]);
   assert.match(sidebar, /path: "\/workbench"/);
-  for (const segment of ["world", "production", "audit"]) assert.match(sidebar, new RegExp(`segment: "${segment}"`));
+  for (const segment of ["world", "production", "audit", "iteration"]) assert.match(sidebar, new RegExp(`segment: "${segment}"`));
   assert.match(sidebar, /`\/books\/\$\{encodeURIComponent\(bookId\)\}\/\$\{item\.segment\}`/);
   assert.match(sidebar, /window\.location\.pathname\.match\(\/\^\\\/books\\\/\(\[\^\/\]\+\)\\\//);
   assert.match(sidebar, /decodeURIComponent\(routeMatch\[1\]\)/);

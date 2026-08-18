@@ -16,6 +16,7 @@ const routes = [
   `/books/${bookId}/deduction`,
   `/books/${bookId}/deduction-review`,
   `/books/${bookId}/audit`,
+  `/books/${bookId}/iteration`,
 ];
 
 function startServer(port) {

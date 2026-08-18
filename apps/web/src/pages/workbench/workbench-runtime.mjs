@@ -604,6 +604,7 @@ function setBookNavigation(bookId) {
     ["设计阶段：世界设定、角色设定、L1A剧情段", "world"],
     ["生产阶段：章节推演、多代理执行", "production"],
     ["审计阶段：正文审计、主编裁决", "audit"],
+    ["迭代管理：提示词优化、失败样本分析", "iteration"],
   ];
   for (const [label, segment] of routes) {
     const link = document.querySelector(`a[aria-label="${label}"]`);
@@ -619,12 +620,6 @@ function setBookNavigation(bookId) {
     link.setAttribute("aria-disabled", "true");
     link.title = "请先选择作品";
     link.classList.add("opacity-40", "pointer-events-none");
-  }
-  const iteration = document.querySelector('a[aria-label="迭代管理：提示词优化、失败样本分析"]');
-  if (iteration) {
-    iteration.href = "/workbench";
-    iteration.setAttribute("aria-disabled", "true");
-    iteration.title = "该页面尚未接入当前路由。";
   }
 }
 

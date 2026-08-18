@@ -97,6 +97,21 @@ test("malformed audit path returns 400 without reaching the PostgreSQL projectio
   }
 });
 
+test("malformed iteration path returns 400 without reaching the PostgreSQL projection", async () => {
+  const port = 43_200 + Math.floor(Math.random() * 1_000);
+  const child = await startServer(port);
+  try {
+    const malformed = await fetch(`http://127.0.0.1:${port}/api/books/%E0%A4%A/iteration?local_operator_id=bad`);
+    assert.equal(malformed.status, 400);
+    assert.equal((await malformed.json()).redacted_error.code, "INVALID_ITERATION_CONTEXT");
+
+    const followUp = await fetch(`http://127.0.0.1:${port}/books/00000000-0000-4000-8000-000000000000/iteration`);
+    assert.equal(followUp.status, 200);
+  } finally {
+    child.kill();
+  }
+});
+
 test("canonical book routes deliver their page and ESM context gate without HTML fallback", async () => {
   const port = 43_000 + Math.floor(Math.random() * 1_000);
   const child = await startServer(port);

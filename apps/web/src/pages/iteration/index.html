@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="garden">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>纵横叙事引擎 - 迭代管理</title>
+  <link href="/vendor/font-fallback.css" rel="stylesheet">
+  <link href="/vendor/daisyui-4.12.10-full.css" rel="stylesheet">
+  <link href="/pages/prototype/common/theme.css" rel="stylesheet">
+  <link href="/pages/prototype/common/sidebar.css" rel="stylesheet">
+  <link href="/pages/iteration/page.css" rel="stylesheet">
+  <script src="/vendor/tailwindcss-browser-4.js"></script>
+  <script src="/pages/prototype/common/theme.js"></script>
+  <script src="/pages/prototype/common/header.js"></script>
+  <script defer src="/pages/prototype/common/sidebar.js"></script>
+  <script type="module" src="/pages/iteration/index.mjs"></script>
+</head>
+<body class="bg-base-200 text-base-content">
+  <a class="skip-link" href="#main-content">跳到主内容</a>
+  <nav class="sidebar-glass" data-shared-sidebar data-sidebar-active="iteration" aria-label="主菜单"></nav>
+
+  <header class="header-glass iteration-header" aria-label="页面工具栏">
+    <div class="iteration-header-title">
+      <span class="material-symbols-outlined" aria-hidden="true">history</span>
+      <div>
+        <p class="eyebrow">FP014 · 迭代管理</p>
+        <h1>失败样本与提示词迭代</h1>
+      </div>
+    </div>
+    <div class="iteration-header-actions">
+      <div class="book-badge" aria-label="当前作品">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+        <span id="header-book-name">读取中</span>
+      </div>
+      <button id="quick-settings-btn" class="icon-button" type="button" aria-label="快速控制面板" aria-expanded="false" aria-controls="quick-settings-popover">
+        <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+      </button>
+      <div id="quick-settings-popover" class="settings-popover hidden" role="dialog" aria-label="快速控制面板">
+        <div class="popover-heading"><span>快速控制</span><span class="material-symbols-outlined" aria-hidden="true">bolt</span></div>
+        <div class="readonly-setting"><span>生产阶段自动化</span><button id="sw-auto-production" class="settings-switch" type="button" disabled aria-disabled="true"></button></div>
+        <div class="readonly-setting"><span>审计阶段自动化</span><button id="sw-auto-audit" class="settings-switch" type="button" disabled aria-disabled="true"></button></div>
+        <div class="readonly-setting"><span>提示词迭代自动化</span><button id="sw-auto-iteration" class="settings-switch" type="button" disabled aria-disabled="true"></button></div>
+        <p class="popover-note">自动化配置请在总控设置中修改。</p>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content" class="main-content iteration-main" data-iteration-page>
+    <section class="page-intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">提示词优化 · 失败样本分析</p>
+        <h2 id="page-title">迭代工作台</h2>
+        <p class="intro-copy">只展示当前作品中已由 V7 合同确认、可进入人工处理的样本。</p>
+      </div>
+      <button id="refresh-btn" class="ui-button ui-button-secondary" type="button">
+        <span class="material-symbols-outlined" aria-hidden="true">refresh</span><span>刷新数据</span>
+      </button>
+    </section>
+
+    <div id="iteration-status" class="ui-alert ui-alert-info" role="status" aria-live="polite">正在读取当前作品上下文…</div>
+
+    <nav class="stepper" aria-label="迭代步骤">
+      <button id="step-text-1" class="step-button" type="button" data-step="1" aria-current="step">样本分析</button>
+      <span aria-hidden="true">›</span>
+      <button id="step-text-2" class="step-button" type="button" data-step="2">选择样本</button>
+      <span aria-hidden="true">›</span>
+      <button id="step-text-3" class="step-button" type="button" data-step="3">提示词实验</button>
+      <span aria-hidden="true">›</span>
+      <button id="step-text-4" class="step-button" type="button" data-step="4">选择与采纳</button>
+    </nav>
+
+    <section class="metric-grid" aria-label="迭代状态摘要">
+      <article class="metric-card"><span class="metric-label">可用样本</span><strong id="metric-samples">—</strong><span class="metric-hint">pool / pending_review</span></article>
+      <article class="metric-card"><span class="metric-label">自动入池</span><strong id="metric-pooling">—</strong><span class="metric-hint">V7 合同状态</span></article>
+      <article class="metric-card"><span class="metric-label">当前作品</span><strong id="metric-book">—</strong><span class="metric-hint">book-scoped</span></article>
+      <article class="metric-card"><span class="metric-label">可执行动作</span><strong id="metric-actions">—</strong><span class="metric-hint">以真实后端合同为准</span></article>
+    </section>
+
+    <div class="iteration-grid">
+      <section id="select-sample-col" class="work-panel sample-panel" aria-labelledby="sample-heading">
+        <div class="panel-heading"><div><span class="eyebrow">STEP 01</span><h3 id="sample-heading">选择样本区</h3></div><span id="sample-count" class="panel-count">0</span></div>
+        <div id="sample-list" class="sample-list" aria-live="polite">
+          <div class="panel-empty"><span class="material-symbols-outlined" aria-hidden="true">inbox</span><p>正在读取样本…</p></div>
+        </div>
+      </section>
+
+      <section class="work-panel detail-panel" aria-labelledby="detail-heading">
+        <div class="panel-heading"><div><span class="eyebrow">STEP 02 · 03</span><h3 id="detail-heading">样本详情与实验</h3></div><span id="selected-sample-label" class="panel-count">未选择</span></div>
+        <div id="sample-detail" class="detail-body">
+          <div class="detail-empty"><span class="material-symbols-outlined" aria-hidden="true">ads_click</span><p>选择一个真实样本后查看快照。</p></div>
+        </div>
+        <div class="action-bar" aria-label="样本操作">
+          <button id="experiment-btn" class="ui-button ui-button-primary" type="button" disabled aria-disabled="true" title="当前 ZH07 实验触发合同未定义">
+            <span class="material-symbols-outlined" aria-hidden="true">science</span><span>开始实验</span>
+          </button>
+          <button id="discard-btn" class="ui-button ui-button-quiet" type="button" disabled aria-disabled="true" title="当前分类写入合同未由本页接入">
+            <span class="material-symbols-outlined" aria-hidden="true">delete</span><span>废弃样本</span>
+          </button>
+          <button id="adopt-btn" class="ui-button ui-button-success" type="button" disabled aria-disabled="true" title="提示词采纳必须经过 V7 审批合同">
+            <span class="material-symbols-outlined" aria-hidden="true">check_circle</span><span>采纳提示词</span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <section class="work-panel contract-panel" aria-labelledby="contract-heading">
+      <div class="contract-icon"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span></div>
+      <div><span class="eyebrow">V7 边界</span><h3 id="contract-heading">自动入池仍需可验证的第三次失败证据</h3><p id="contract-message">读取后端合同状态中…</p></div>
+    </section>
+
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+  </main>
+</body>
+</html>

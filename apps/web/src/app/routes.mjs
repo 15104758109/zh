@@ -9,6 +9,7 @@ const pageRoutes = Object.freeze([
   { id: "deduction", test: /^\/books\/[^/]+\/deduction\/?$/, page: "pages/multi-agent-deduction/index.html" },
   { id: "deduction-review", test: /^\/books\/[^/]+\/deduction-review\/?$/, page: "pages/audit-review/index.html" },
   { id: "audit", test: /^\/books\/[^/]+\/audit\/?$/, page: "pages/audit-stage/index.html" },
+  { id: "iteration", test: /^\/books\/[^/]+\/iteration\/?$/, page: "pages/iteration/index.html" },
 ]);
 
 export { pageRoutes };

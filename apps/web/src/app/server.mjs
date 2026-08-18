@@ -561,6 +561,60 @@ SELECT COALESCE(
   return executePostgresJson(sql, "Audit projection read");
 }
 
+async function readIterationProjection(bookId, localOperatorId) {
+  const book = uuidLiteral(bookId);
+  const operator = uuidLiteral(localOperatorId);
+  const sql = `
+WITH scoped_book AS (
+  SELECT id, title, auto_iteration
+  FROM public.book_project
+  WHERE id = ${book} AND local_operator_id = ${operator}
+), samples AS (
+  SELECT jsonb_build_object(
+    'id', i.id,
+    'book_id', i.book_id,
+    'source_fp', i.source_fp,
+    'iter_type', i.iter_type,
+    'review_status', i.review_status,
+    'exec_result', i.exec_result,
+    'root_debt_type', i.root_debt_type,
+    'attribution_evidence_json', i.attribution_evidence_json,
+    'snapshot_jsonb', i.snapshot_jsonb,
+    'before_metric_json', i.before_metric_json,
+    'after_metric_json', i.after_metric_json,
+    'before_prompt', i.before_prompt,
+    'after_prompt', i.after_prompt,
+    'created_at', i.created_at
+  ) AS row_json
+  FROM public.iteration_log AS i
+  JOIN scoped_book AS b ON b.id = i.book_id
+  WHERE i.local_operator_id = ${operator}
+    AND i.is_valid
+    AND i.review_status IN ('pool', 'pending_review')
+  ORDER BY i.created_at DESC, i.id DESC
+  LIMIT 100
+)
+SELECT COALESCE(
+  (
+    SELECT jsonb_build_object(
+      'ok', true,
+      'result', jsonb_build_object(
+        'book', jsonb_build_object('id', b.id, 'title', b.title, 'auto_iteration', b.auto_iteration),
+        'samples', COALESCE((SELECT jsonb_agg(row_json ORDER BY row_json->>'created_at' DESC) FROM samples), '[]'::jsonb),
+        'automatic_pooling', false,
+        'pooling_contract', jsonb_build_object(
+          'code', 'ITERATION_RETRY_CONTRACT_UNRESOLVED',
+          'message', 'V7 尚未定义可验证的第三次失败证据，系统不会自动把失败写入样本池。'
+        )
+      )
+    )
+    FROM scoped_book AS b
+  ),
+  public.v7_error('SCOPE_REJECTED', 'The selected book is unavailable.')
+);`;
+  return executePostgresJson(sql, "Iteration projection read");
+}
+
 async function readDeductionRuntime(databaseResult, localOperatorId) {
   const book = databaseResult?.result?.book;
   if (!book?.current_l1a_id) return null;
@@ -652,6 +706,23 @@ async function serveAuditApi(response, bookId, localOperatorId, chapterId, chapt
   }
 }
 
+async function serveIterationApi(response, bookId, localOperatorId) {
+  try {
+    const result = normalizeRpcEnvelope(await readIterationProjection(bookId, localOperatorId));
+    const status = result?.ok === true ? 200 : result?.redacted_error?.code === "SCOPE_REJECTED" ? 404 : 409;
+    return send(response, status, JSON.stringify(result));
+  } catch (error) {
+    const invalid = error?.message === "INVALID_UUID";
+    return send(response, invalid ? 400 : 503, JSON.stringify({
+      ok: false,
+      redacted_error: {
+        code: invalid ? "INVALID_ITERATION_CONTEXT" : "RPC_UNAVAILABLE",
+        message: invalid ? "当前作品上下文无效。" : "迭代样本服务暂时不可用。",
+      },
+    }));
+  }
+}
+
 async function serveFile(response, relative) {
   const file = join(root, relative);
   try {
@@ -702,6 +773,17 @@ createServer(async (request, response) => {
       url.searchParams.get("chapter_id"),
       url.searchParams.get("chapter_version_id"),
     );
+  }
+  const iterationApi = pathname.match(/^\/api\/books\/([^/]+)\/iteration\/?$/);
+  if (iterationApi) {
+    if (request.method !== "GET") return send(response, 405, JSON.stringify({ error: "METHOD_NOT_ALLOWED" }));
+    let bookId = "";
+    try {
+      bookId = decodeURIComponent(iterationApi[1]);
+    } catch {
+      // The API returns the same scoped validation error for malformed path encoding.
+    }
+    return serveIterationApi(response, bookId, url.searchParams.get("local_operator_id"));
   }
   if (pathname === "/api/skill-library") {
     if (!["GET", "POST"].includes(request.method || "")) return send(response, 405, JSON.stringify({ error: "METHOD_NOT_ALLOWED" }));
