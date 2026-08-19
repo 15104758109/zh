@@ -54,4 +54,23 @@ button:disabled,
     grid-column: 1 / -1;
     min-width: 0;
   }
+
+  [data-purpose="deduction-controls"] > .flex:last-child {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 12px;
+  }
+
+  [data-purpose="deduction-controls"] > .flex:last-child > .flex:last-child {
+    flex: 1 1 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  [data-purpose="deduction-controls"] [data-action="pause-resume-deduction"],
+  [data-purpose="deduction-controls"] [data-action="regenerate-deduction"] {
+    flex: 1 1 140px;
+    min-width: 0;
+    white-space: normal;
+  }
 }

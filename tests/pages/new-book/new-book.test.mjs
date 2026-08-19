@@ -479,6 +479,13 @@ test("the new-book character panel restores the prototype candidate-delete inter
   assert.match(page, /charCount\.textContent = `\$\{\(item\.characters \|\| \[\]\)\.length\} 人`/);
 });
 
+test("new-book character cards keep nested actions and support keyboard selection", () => {
+  assert.match(page, /class="char-card \$\{isActive \? "active" : ""\}" role="button" tabindex="0"/u);
+  assert.match(page, /onkeydown="if \(\(event\.key === 'Enter' \|\| event\.key === ' '\)/u);
+  assert.match(page, /\.char-card:focus-visible\s*\{\s*outline:/u);
+  assert.match(page, /event\.stopPropagation\(\);window\.deleteCharacter/);
+});
+
 test("preview request outcomes preserve the pre-request form and chat baseline", () => {
   const helperSource = bridge.slice(
     bridge.indexOf("function draftContainsBaseline"),

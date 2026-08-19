@@ -240,6 +240,9 @@ test("DEDUCTION retains prototype anchors while binding the approved read projec
   assert.doesNotMatch(html, /text-\[(?:8|9)px\]|bg-gradient-|tracking-(?:wide|wider|widest)/);
   assert.doesNotMatch(module, /text-\[(?:8|9)px\]|bg-gradient-|tracking-(?:wide|wider|widest)/);
   assert.match(css, /background:\s*var\(--color-base-200\)/);
+  assert.match(css, /\[data-purpose="deduction-controls"\]/u);
+  assert.match(css, /flex: 1 1 140px/);
+  assert.match(css, /white-space: normal/);
   assert.doesNotMatch(css, /rgb\(244 243 242 \/ 94%\)/);
 
   assert.match(module, /fetchDeductionProjection/);

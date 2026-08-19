@@ -4,7 +4,8 @@
     { id: "workbench", path: "/workbench", label: "总控设置", ariaLabel: "总控设置面板", icon: "dashboard" },
     { id: "design", segment: "world", label: "设计阶段", ariaLabel: "设计阶段：世界设定、角色设定、L1A剧情段", icon: "architecture" },
     { id: "production", segment: "production", label: "生产阶段", ariaLabel: "生产阶段：章节推演、多代理执行", icon: "precision_manufacturing" },
-    { id: "audit", segment: "audit", label: "审计阶段", ariaLabel: "审计阶段：正文审计、主编裁决", icon: "fact_check" },
+    // Audit requires a chapter/version scope; the review entry resolves that scope before /audit.
+    { id: "audit", segment: "audit", entrySegment: "deduction-review", label: "审计阶段", ariaLabel: "审计阶段：正文审计、主编裁决", icon: "fact_check" },
     { id: "iteration", segment: "iteration", label: "迭代管理", ariaLabel: "迭代管理：提示词优化、失败样本分析", icon: "history" }
   ];
 
@@ -69,7 +70,7 @@
           ? `/workbench?book_id=${encodeURIComponent(bookId)}`
           : item.path || (bookId && item.segment ? `/books/${encodeURIComponent(bookId)}/${item.segment}` : null);
       const hrefAttribute = href ? ` href="${href}"` : "";
-      const segmentAttribute = item.segment ? ` data-book-segment="${item.segment}"` : "";
+      const segmentAttribute = item.segment ? ` data-book-segment="${item.entrySegment || item.segment}"` : "";
       const disabledAttributes = href ? "" : ' aria-disabled="true" title="请先选择作品"';
       const classes = [item.id === active ? "active" : "", href ? "" : "opacity-40 pointer-events-none"].filter(Boolean).join(" ");
       const classAttribute = classes ? ` class="${classes}"` : "";

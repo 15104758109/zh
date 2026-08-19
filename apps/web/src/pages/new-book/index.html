@@ -713,6 +713,7 @@
       position: relative;
     }
     .char-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,.12); z-index: 5; }
+    .char-card:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
     .char-card.active {
       border-color: var(--color-accent); background: color-mix(in oklab, var(--color-accent) 8%, white);
       box-shadow: 0 4px 18px rgba(0,0,0,.16); z-index: 10;
@@ -2126,7 +2127,7 @@
         const isMale = char.gender && char.gender.includes('♂');
         const isFemale = char.gender && char.gender.includes('♀');
         return `
-          <div class="char-card ${isActive ? "active" : ""}" onclick="window.selectChar('${char.id}')">
+          <div class="char-card ${isActive ? "active" : ""}" role="button" tabindex="0" aria-pressed="${String(isActive)}" aria-label="选择角色 ${escapeHtml(char.name)}" onclick="window.selectChar('${char.id}')" onkeydown="if ((event.key === 'Enter' || event.key === ' ') && event.target === this) { event.preventDefault(); window.selectChar('${char.id}'); }">
             <div class="char-card-top" style="margin-bottom:2px">
               <span class="char-name">${escapeHtml(char.name)}</span>
               <button class="char-card-delete" type="button" aria-label="删除角色 ${escapeHtml(char.name)}" title="删除角色"
