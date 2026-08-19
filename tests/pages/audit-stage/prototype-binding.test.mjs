@@ -91,6 +91,9 @@ test("AUDIT_STAGE keeps prototype anchors and binds the scoped audit projection 
   assert.match(module, /function renderAuditTabs/);
   assert.match(module, /function renderAuditDetails/);
   assert.match(module, /function renderActions/);
+  assert.match(module, /当前页面只允许对服务端已返回的正式章节提交继续或退回/);
+  assert.match(module, /当前审计读取合同未返回叙事资产/);
+  assert.match(module, /function bindViewControls/);
   assert.match(module, /fetchAuditProjection/);
   assert.match(module, /sendAuditConfirmationIntent/);
   assert.match(module, /auditNextAction/);

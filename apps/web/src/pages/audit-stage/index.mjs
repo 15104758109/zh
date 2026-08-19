@@ -820,6 +820,10 @@ function renderActions(runtime) {
   const decisionPanel = root.querySelector("[data-purpose='editor-decision-panel']");
   const decisionCopy = decisionPanel?.querySelector("p:not([data-audit-stage-preview])");
   if (decisionCopy) decisionCopy.textContent = editorInstruction(projection);
+  const preview = decisionPanel?.querySelector("[data-audit-stage-preview]");
+  if (preview) {
+    preview.textContent = "当前页面只允许对服务端已返回的正式章节提交继续或退回。";
+  }
   const verdict = "主编已放行";
   const unavailableRouteMessage = "继续或退回所需的受控确认地址尚未返回。页面不会擅自跳转或写入；请刷新当前正式章节后重试。";
   const actionMessage = runtime.submittedAction === "return"
@@ -874,6 +878,18 @@ function bindViewControls(runtime) {
       ? "资产视图尚未接入此审计读取合同"
       : "当前为审计视图";
   }
+  const assetsList = runtime.root.ownerDocument.getElementById("assets-list-container");
+  if (assetsList) {
+    assetsList.replaceChildren(createNode(
+      assetsList.ownerDocument,
+      "p",
+      "px-3 py-2 text-xs text-base-content/60",
+      "当前审计读取合同未返回叙事资产。",
+    ));
+  }
+  runtime.root.ownerDocument.querySelectorAll("[data-audit-stage-static-preview]").forEach((node) => {
+    node.textContent = "当前审计读取合同未返回该内容。";
+  });
 }
 
 function renderAuditStage(runtime) {
