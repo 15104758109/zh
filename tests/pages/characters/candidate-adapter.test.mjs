@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildInitialMemoryConfirmation,
+  displayCharacterValue,
   normalizeCharacterCandidates,
   normalizeCharacterSnapshot,
 } from "../../../apps/web/src/pages/characters/candidate-adapter.mjs";
@@ -95,6 +96,40 @@ test("normalizes a persisted snapshot by stable IDs without synthesizing initial
   assert.deepEqual(lead.initialMemories, []);
   assert.deepEqual(lead.candidateRelations, [{ counterpart: "Rival", description: "A saved relationship event." }]);
   assert.equal(rival.snapshotState, "candidate");
+});
+
+test("preserves a formal V7 snapshot with scalar L0 values, L2 world slots, and L3 summaries", () => {
+  const [lead] = normalizeCharacterSnapshot({
+    state: "formal",
+    characters: [{
+      id: "33333333-3333-3333-3333-333333333333",
+      char_name: "江枫",
+      char_type: "protagonist",
+      five_layers_json: {
+        L0: { "底层信念": "只有公平才能延续文明", "复仇观": 0, "价值排序": ["公平", "生存"] },
+        L1: { "核心动机": "打造公平系统", "欲望": "重建秩序", "恐惧": "能量枯竭" },
+        L2: { "能力": "熔炼重构", "代价": "晶核消耗", "资源": "晶核" },
+        L3: { "同盟": ["叶凡"], "对立": [], "关系数值摘要": { trust: 50, common_goal: 70 } },
+      },
+      knowledge_boundary_json: { knows: ["晶核能量守恒"], unknown: [], false_belief: [], reasonable_suspect: [] },
+      arc_json: {},
+    }],
+    relations: [],
+    initial_memories: [{ char_id: "33333333-3333-3333-3333-333333333333", memory_content: "公开晶核余量。" }],
+  });
+
+  assert.equal(lead.snapshotState, "formal");
+  assert.equal(lead.l0["底层信念"], "只有公平才能延续文明");
+  assert.equal(lead.l0["复仇观"], 0);
+  assert.equal(lead.l1.innerDrive, "打造公平系统");
+  assert.equal(lead.l1.desire, "重建秩序");
+  assert.equal(lead.l1.fear, "能量枯竭");
+  assert.equal(lead.l2["能力"], "熔炼重构");
+  assert.deepEqual(lead.l3["同盟"], ["叶凡"]);
+  assert.deepEqual(lead.l3["关系数值摘要"], { trust: 50, common_goal: 70 });
+  assert.deepEqual(lead.initialMemories, ["公开晶核余量。"]);
+  assert.equal(displayCharacterValue(lead.l0["价值排序"]), "公平；生存");
+  assert.equal(displayCharacterValue(lead.l3["关系数值摘要"]), "trust：50；common_goal：70");
 });
 
 test("preserves V7 initial-memory metadata when preparing a character confirmation", () => {

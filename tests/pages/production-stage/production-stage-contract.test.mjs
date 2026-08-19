@@ -65,7 +65,7 @@ test("production gives an in-progress L1A its documented next step", async () =>
   const [html, module] = await Promise.all([readFile(pagePath, "utf8"), readFile(modulePath, "utf8")]);
   assert.match(html, /data-action="continue-deduction"/);
   assert.match(module, /selected\?\.status === "locked_for_deduction"/);
-  assert.match(module, /当前 L1A 正在多代理推演/);
+  assert.match(module, /当前 L1A 已进入多代理推演/);
   assert.match(module, /\/deduction`/);
 });
 
@@ -110,6 +110,8 @@ test("production page preserves prototype anchors and exposes only the approved 
   assert.match(module, /idempotency_key/);
   assert.match(module, /action, extras/);
   assert.match(module, /productionRequest\(runtime\.context, "read"\)/);
+  assert.match(module, /当前 L1A 已进入多代理推演/);
+  assert.doesNotMatch(module, /当前 L1A 正在多代理推演/);
   assert.match(module, /selectedL1aId/);
   assert.doesNotMatch(module, /localStorage\.setItem|static_mock|setTimeout|\/api\/books/);
   assert.match(css, /#production-state-overlay/);

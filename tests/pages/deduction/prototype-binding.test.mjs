@@ -243,8 +243,10 @@ test("DEDUCTION retains prototype anchors while binding the approved read projec
   assert.doesNotMatch(css, /rgb\(244 243 242 \/ 94%\)/);
 
   assert.match(module, /fetchDeductionProjection/);
-  assert.match(module, /navigateToReviewWhenComplete/);
-  assert.match(module, /"deduction-review"/);
+  assert.match(html, /data-action="navigate-to-review"/);
+  assert.doesNotMatch(module, /navigateToReviewWhenComplete/);
+  assert.doesNotMatch(module, /renderDeductionProjection\(runtime\);\s*if \(navigateToReviewWhenComplete/);
+  assert.match(module, /chapters\.every\(deductionReviewReady\)/);
   assert.match(module, /scrubPrototypeBusinessData/);
   assert.match(module, /function setDeductionContentVisible/);
   assert.match(module, /setDeductionContentVisible\(root, false\)/);

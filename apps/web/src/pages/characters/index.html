@@ -464,7 +464,7 @@
 <div id="v7-l2-relation-state" class="ui-accordion">
 <button type="button" class="ui-accordion__trigger" data-drawer-toggle="drawer-l2" aria-controls="drawer-l2" aria-expanded="false" onclick="toggleDrawer('drawer-l2')">
 <span class="material-symbols-outlined text-[18px] text-secondary">group</span>
-<span class="text-sm font-bold text-base-content flex-1 text-center">L2 · 关系层</span>
+<span class="text-sm font-bold text-base-content flex-1 text-center">L2 · 世界作用位</span>
 <span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-l2-icon">expand_more</span>
 </button>
 <div id="drawer-l2" class="px-5 pb-5">
@@ -494,7 +494,7 @@
 <div class="ui-accordion">
 <button type="button" class="ui-accordion__trigger" data-drawer-toggle="drawer-l3" aria-controls="drawer-l3" aria-expanded="false" onclick="toggleDrawer('drawer-l3')">
 <span class="material-symbols-outlined text-[18px] text-base-content opacity-60">history_edu</span>
-<span class="text-sm font-bold text-base-content flex-1 text-center">L3 · 事件记忆层</span>
+<span class="text-sm font-bold text-base-content flex-1 text-center">L3 · 关系作用位</span>
 <span class="material-symbols-outlined text-[16px] text-base-content opacity-60 transition-transform" id="drawer-l3-icon">expand_more</span>
 </button>
 <div id="drawer-l3" class="px-5 pb-5">
@@ -1397,7 +1397,7 @@
 </script>
 
 <script type="module">
-import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalizeCharacterSnapshot } from "./candidate-adapter.mjs";
+import { buildInitialMemoryConfirmation, displayCharacterValue, normalizeCharacterCandidates, normalizeCharacterSnapshot } from "./candidate-adapter.mjs";
 
 // V7 character page: source layout with live FP003-04 candidates only.
 (function () {
@@ -1416,6 +1416,10 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
     const l0Body = document.querySelector("#drawer-l0 tbody");
     const l0HeadTemplate = l0Head ? l0Head.innerHTML : "";
     const l0BodyTemplate = l0Body ? l0Body.innerHTML : "";
+    const l1Drawer = document.getElementById("drawer-l1");
+    const l2Drawer = document.getElementById("drawer-l2");
+    const l2Title = document.querySelector('[onclick="toggleDrawer(\'drawer-l2\')"] .flex-1');
+    const l2TitleText = l2Title ? l2Title.textContent : "";
     const l3Drawer = document.getElementById("drawer-l3");
     const l3Template = l3Drawer ? l3Drawer.innerHTML : "";
     const l3Title = document.querySelector('[onclick="toggleDrawer(\'drawer-l3\')"] .flex-1');
@@ -1438,7 +1442,7 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
     }
 
     function valueOrDash(value) {
-        return textValue(value) || "—";
+        return displayCharacterValue(value);
     }
 
     function listOrDash(values) {
@@ -1481,10 +1485,8 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
         if (relationCanvas) relationCanvas.hidden = false;
         document.getElementById("candidate-relation-evidence")?.remove();
         if (relationLegend) relationLegend.innerHTML = relationLegendTemplate;
-        const l2Drawer = document.getElementById("drawer-l2");
-        if (l2Drawer) {
-            l2Drawer.replaceChildren(createTextElement("div", "space-y-2 text-xs text-base-content opacity-60", "关系候选需由稳定读取合同提供。"));
-        }
+        if (l2Title) l2Title.textContent = l2TitleText;
+        if (l2Drawer) l2Drawer.replaceChildren(createTextElement("div", "space-y-2 text-xs text-base-content opacity-60", "当前角色快照尚未提供世界作用位。"));
     }
 
     function renderCandidateL0(l0) {
@@ -1504,10 +1506,10 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
             row.className = "border-b border-base-content/5";
             row.appendChild(createTextElement("td", "py-2 text-outline text-xs", dimension));
             row.appendChild(createTextElement("td", "py-2 text-center text-base-content opacity-60 text-xs", "—"));
-            row.appendChild(createTextElement("td", "py-2 text-center text-primary font-code-sm", valueOrDash(data.value)));
+            row.appendChild(createTextElement("td", "py-2 text-center text-primary font-code-sm break-words", valueOrDash(data.value ?? data.val ?? raw)));
             const delta = typeof data.delta === "number" ? `${data.delta > 0 ? "+" : ""}${data.delta}` : "—";
             row.appendChild(createTextElement("td", "py-2 text-center text-secondary text-xs", delta));
-            row.appendChild(createTextElement("td", "py-2 text-xs text-base-content break-words", valueOrDash(data.basis || raw)));
+            row.appendChild(createTextElement("td", "py-2 text-xs text-base-content break-words", valueOrDash(data.basis ?? data.desc)));
             l0Body.appendChild(row);
         });
         if (!entries.length) {
@@ -1518,27 +1520,47 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
         }
     }
 
-    function renderCandidateRelations(candidate) {
-        const l2Drawer = document.getElementById("drawer-l2");
-        if (!l2Drawer) return;
-        const relations = Array.isArray(candidate.candidateRelations) ? candidate.candidateRelations : [];
+    function renderCandidateL1(candidate) {
+        if (!l1Drawer) return;
         const list = document.createElement("div");
-        list.className = "space-y-2 text-xs";
-        if (!relations.length) {
-            list.appendChild(createTextElement("div", "bg-base-200/50 p-2 rounded border border-base-content/10 text-base-content opacity-60", "生成结果未提供该角色的关系候选。"));
-        }
-        relations.forEach((relation) => {
+        list.className = "grid grid-cols-2 gap-2 text-xs";
+        const entries = Object.entries(candidate.l1?.raw || {}).filter(([key]) => key !== "source");
+        entries.forEach(([label, value]) => {
             const card = document.createElement("div");
-            card.className = "bg-secondary/10 p-2 rounded border border-secondary/20";
-            card.appendChild(createTextElement("div", "text-secondary font-medium mb-1.5", `与 ${valueOrDash(relation.counterpart)} 的候选关系`));
-            card.appendChild(createTextElement("div", "text-base-content opacity-80 leading-relaxed break-words", valueOrDash(relation.description)));
+            card.className = "bg-base-200/50 p-2.5 rounded-lg border border-base-content/10";
+            card.append(
+                createTextElement("span", "text-base-content opacity-60 block mb-0.5", label),
+                createTextElement("span", label === "欲望" ? "text-primary break-words" : label === "恐惧" ? "text-error break-words" : "text-base-content break-words", valueOrDash(value)),
+            );
             list.appendChild(card);
         });
+        if (!entries.length) list.appendChild(createTextElement("div", "text-base-content opacity-60", "—"));
+        l1Drawer.replaceChildren(list);
+    }
+
+    function renderCandidateL2(candidate) {
+        if (!l2Drawer) return;
+        const list = document.createElement("div");
+        list.className = "space-y-2 text-xs";
+        if (l2Title) l2Title.textContent = "L2 · 世界作用位";
+        const entries = Object.entries(candidate.l2 || {}).filter(([key]) => key !== "source");
+        entries.forEach(([label, value]) => {
+            const card = document.createElement("div");
+            card.className = "bg-base-200/50 p-2.5 rounded-lg border border-base-content/10";
+            card.appendChild(createTextElement("span", "text-base-content opacity-60 block mb-0.5", label));
+            card.appendChild(createTextElement("span", "text-base-content break-words", valueOrDash(value)));
+            list.appendChild(card);
+        });
+        if (!entries.length) list.appendChild(createTextElement("div", "text-base-content opacity-60", "—"));
         l2Drawer.replaceChildren(list);
+    }
+
+    function renderCandidateRelations(candidate) {
+        const relations = Array.isArray(candidate.candidateRelations) ? candidate.candidateRelations : [];
 
         if (relationCanvas) relationCanvas.hidden = true;
         if (relationLegend) {
-            relationLegend.replaceChildren(createTextElement("span", "text-xs text-base-content opacity-60", "候选关系证据（未保存）"));
+            relationLegend.replaceChildren(createTextElement("span", "text-xs text-base-content opacity-60", relations.length ? "已读取关系记录" : "关系作用位已在 L3 展示"));
         }
         const relationRoot = relationCanvas && relationCanvas.parentElement ? relationCanvas.parentElement.parentElement : null;
         if (!relationRoot) return;
@@ -1548,7 +1570,7 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
         evidence.className = "w-full text-xs text-base-content opacity-80 leading-relaxed break-words";
         evidence.textContent = relations.length
             ? relations.map((relation) => `${valueOrDash(relation.counterpart)}：${valueOrDash(relation.description)}`).join("\n")
-            : "生成结果未提供量化关系；关系选择器保持禁用。";
+            : "当前角色快照未提供独立关系记录。";
         relationRoot.insertBefore(evidence, relationLegend || null);
     }
 
@@ -1604,7 +1626,7 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
         setText("char-stress-val", "");
         const stressBar = document.getElementById("char-stress-bar");
         if (stressBar) stressBar.style.width = "0%";
-        setText("cs-belief", candidate.l0?.["底层信念"]?.basis);
+        setText("cs-belief", candidate.l0?.["底层信念"]);
         setText("cs-desire", candidate.l1?.desire);
         const divergenceLabel = document.getElementById("cs-divergence-label");
         if (divergenceLabel) divergenceLabel.textContent = "关系纠葛：";
@@ -1624,17 +1646,11 @@ import { buildInitialMemoryConfirmation, normalizeCharacterCandidates, normalize
         if (!candidate?.isV7Character) return;
         renderCandidateBasicFields(candidate);
         renderCandidateL0(candidate.l0);
-        renderCandidateRelations(candidate);
+        renderCandidateL1(candidate);
+        renderCandidateL2(candidate);
         renderCandidateL3(candidate);
         renderKnowledgeEvidence(candidate);
-        [
-            ["l1-innerDrive", candidate.l1?.innerDrive],
-            ["l1-outerDrive", candidate.l1?.outerDrive],
-            ["l1-desire", candidate.l1?.desire],
-            ["l1-fear", candidate.l1?.fear],
-            ["l1-shame", candidate.l1?.shame],
-            ["l1-obsession", candidate.l1?.obsession],
-        ].forEach(([id, value]) => setText(id, value));
+        renderCandidateRelations(candidate);
     }
 
     function setStatus(text) {

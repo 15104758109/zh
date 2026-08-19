@@ -10,6 +10,25 @@ function firstText(...values) {
   return values.map(textValue).find(Boolean) || "";
 }
 
+export function displayCharacterValue(value) {
+  const scalar = textValue(value);
+  if (scalar) return scalar;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return value ? "是" : "否";
+  if (Array.isArray(value)) {
+    const values = value.map(displayCharacterValue).filter((item) => item !== "—");
+    return values.join("；") || "—";
+  }
+  const source = objectValue(value);
+  const entries = Object.entries(source)
+    .map(([key, item]) => {
+      const rendered = displayCharacterValue(item);
+      return rendered === "—" ? "" : `${key}：${rendered}`;
+    })
+    .filter(Boolean);
+  return entries.join("；") || "—";
+}
+
 function relationDescription(changeEvent) {
   if (typeof changeEvent === "string") return changeEvent.trim();
   const event = objectValue(changeEvent);

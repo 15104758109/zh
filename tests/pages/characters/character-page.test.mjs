@@ -64,6 +64,19 @@ test("character snapshots expose the documented role-arc direction in the existi
   assert.doesNotMatch(source, /setText\("char-target-val", ""\)/);
 });
 
+test("formal V7 layer values render through the existing drawers without treating scalars or arrays as absent", async () => {
+  const source = await page();
+
+  assert.match(source, /displayCharacterValue/);
+  assert.match(source, /data\.value \?\? data\.val \?\? raw/);
+  assert.match(source, /function renderCandidateL1\(candidate\)/);
+  assert.match(source, /function renderCandidateL2\(candidate\)/);
+  assert.match(source, /function renderCandidateL3\(candidate\)/);
+  assert.match(source, /setText\("cs-belief", candidate\.l0\?\.\["底层信念"\]\)/);
+  assert.match(source, /L2 · 世界作用位/);
+  assert.match(source, /L3 · 关系作用位/);
+});
+
 test("direct book routes load the formal character snapshot without an empty first interaction", async () => {
   const source = await page();
 

@@ -1107,35 +1107,14 @@ function stopPolling(runtime, { abort = false } = {}) {
 
 function schedulePolling(runtime) {
   stopPolling(runtime);
-  if (runtime.reviewNavigationStarted) return;
+  const chapters = asArray(runtime.result?.chapters);
+  if (chapters.length > 0 && chapters.every(deductionReviewReady)) return;
   const view = runtime.root.ownerDocument.defaultView;
   if (!view || runtime.root.ownerDocument.hidden) return;
   runtime.pollTimer = view.setTimeout(async () => {
     runtime.pollTimer = null;
     await loadProjection(runtime, { background: true, scheduleNext: true });
   }, 5000);
-}
-
-function navigateToReviewWhenComplete(runtime) {
-  const chapters = asArray(runtime.result.chapters);
-  const complete = chapters.length > 0 && chapters.every(deductionReviewReady);
-  if (!complete || runtime.reviewNavigationStarted) return false;
-  const chapter = selectedChapter(runtime) || chapters[0];
-  if (!chapter) return false;
-  const destination = buildDeductionPageUrl(runtime.context.bookId, "deduction-review", {
-    l1aUnitId: runtime.context.l1aUnitId,
-    chapterId: chapter.chapter_id,
-    chapterVersionId: chapter.candidate_version_id,
-  });
-  runtime.reviewNavigationStarted = true;
-  stopPolling(runtime, { abort: true });
-  if (typeof runtime.navigate === "function") runtime.navigate(destination);
-  else if (typeof runtime.locationLike?.assign === "function") runtime.locationLike.assign(destination);
-  else {
-    runtime.reviewNavigationStarted = false;
-    return false;
-  }
-  return true;
 }
 
 function navigateToCreatorReplanSuccessor(runtime, payload) {
@@ -1211,7 +1190,6 @@ async function loadProjection(runtime, { background = false, scheduleNext = fals
     setDeductionContentVisible(runtime.root, true);
     runtime.root.dataset.pageState = "ready";
     renderDeductionProjection(runtime);
-    if (navigateToReviewWhenComplete(runtime)) return;
     if (scheduleNext) schedulePolling(runtime);
   } catch (error) {
     if (error?.name === "AbortError") return;

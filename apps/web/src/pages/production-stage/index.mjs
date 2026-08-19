@@ -332,7 +332,7 @@ async function loadProjection(root) {
     clearProjection(root, hasProductionRange ? "候选方案尚未生成" : "当前作品没有可生产的正式锁定 L1A。");
     const selected = selectedL1a();
     if (selected?.status === "locked_for_deduction") {
-      setOverlay(root, "blocked", "当前 L1A 正在多代理推演", "本页不能重复生成呈现方案。请进入多代理推演，待推演完成后按页面提示继续。", false, true);
+      setOverlay(root, "blocked", "当前 L1A 已进入多代理推演", "本页不能重复生成呈现方案。请进入多代理推演查看当前进度或已完成结果。", false, true);
     } else if (hasProductionRange) {
       setOverlay(root, "ready", "", "");
     } else {
