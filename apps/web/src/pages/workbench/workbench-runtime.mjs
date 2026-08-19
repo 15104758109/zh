@@ -378,8 +378,11 @@ function renderBookDropdown() {
   }
 
   for (const book of books) {
-    const option = document.createElement("div");
-    option.className = "book-option-current rounded-md px-3 py-2 text-left";
+    const option = document.createElement("a");
+    option.href = `/books/${encodeURIComponent(book.id)}/world`;
+    option.className = "book-option-current block rounded-md px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50";
+    option.setAttribute("aria-current", "page");
+    option.setAttribute("aria-label", `选择作品：${book.title}`);
     const title = document.createElement("span");
     title.className = "block truncate text-sm font-semibold";
     title.textContent = book.title;
@@ -388,14 +391,6 @@ function renderBookDropdown() {
     subtitle.textContent = book.subtitle || "当前作品";
     option.append(title, subtitle);
     options.append(option);
-
-    // The workbench read contract only supplies the selected book. Give that
-    // one item a real destination instead of presenting a dead list row.
-    const entry = document.createElement("a");
-    entry.href = `/books/${encodeURIComponent(book.id)}/world`;
-    entry.className = "mt-1 flex items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-primary hover:bg-base-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50";
-    entry.textContent = "进入当前作品工作区";
-    options.append(entry);
   }
 }
 

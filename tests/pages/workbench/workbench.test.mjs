@@ -28,8 +28,9 @@ test("workbench describes its current book range without pretending to switch bo
   assert.doesNotMatch(page, /data-title="剑域神座"/);
   assert.doesNotMatch(page, /data-title="深渊降临"/);
   assert.match(page, /id="bookDropdown"[^>]*hidden/);
-  assert.match(runtime, /const entry = document\.createElement\("a"\);/);
-  assert.match(runtime, /entry\.href = `\/books\/\$\{encodeURIComponent\(book\.id\)\}\/world`;/);
+  assert.match(runtime, /const option = document\.createElement\("a"\);/);
+  assert.match(runtime, /option\.href = `\/books\/\$\{encodeURIComponent\(book\.id\)\}\/world`;/);
+  assert.match(runtime, /option\.setAttribute\("aria-label", `选择作品：\$\{book\.title\}`\);/);
 });
 
 test("workbench hands off its new-book modal data through the active new-book draft contract", () => {
