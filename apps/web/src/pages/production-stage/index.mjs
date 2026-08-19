@@ -151,9 +151,12 @@ function bindNavigation(root, context) {
   document.documentElement.dataset.bookId = context.bookId;
   const header = document.getElementById("header-book-name");
   if (header) header.textContent = `作品 ${context.bookId.slice(0, 8)}`;
-  document.querySelectorAll("a[href]").forEach((link) => {
-    const source = link.dataset.productionRouteTarget || link.getAttribute("href")?.split("?")[0].split("/").at(-1);
-    const target = legacyRouteNames[source];
+  document.querySelectorAll("a[data-book-segment], a[href]").forEach((link) => {
+    const source = link.dataset.productionRouteTarget
+      || link.dataset.bookSegment
+      || link.getAttribute("href")?.split("?")[0].split("/").at(-1);
+    const target = legacyRouteNames[source] || source;
+    if (!["workbench", "world", "characters", "l1a", "production", "deduction", "deduction-review", "audit", "iteration"].includes(target)) return;
     if (target) link.href = target === "workbench"
       ? `/workbench?book_id=${encodeURIComponent(context.bookId)}`
       : `/books/${encodeURIComponent(context.bookId)}/${target}`;

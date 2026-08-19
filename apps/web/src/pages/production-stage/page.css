@@ -6,6 +6,15 @@
   display: none !important;
 }
 
+/* The production state surface lives inside the prototype flex canvas rather
+ * than directly under #main-content. Keep it below the fixed shell so the
+ * route tabs remain usable while an L1A is blocked or loading. */
+#main-content #production-state-overlay {
+  position: fixed;
+  inset: 64px 0 0 var(--sidebar-w);
+  min-height: 0;
+}
+
 #production-state-overlay .ui-state-panel {
   display: flex;
   flex-direction: column;

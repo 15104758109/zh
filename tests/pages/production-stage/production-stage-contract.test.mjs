@@ -113,8 +113,11 @@ test("production page preserves prototype anchors and exposes only the approved 
   assert.match(module, /当前 L1A 已进入多代理推演/);
   assert.doesNotMatch(module, /当前 L1A 正在多代理推演/);
   assert.match(module, /selectedL1aId/);
+  assert.match(module, /querySelectorAll\("a\[data-book-segment\], a\[href\]"\)/);
+  assert.match(module, /link\.dataset\.bookSegment/);
   assert.doesNotMatch(module, /localStorage\.setItem|static_mock|setTimeout|\/api\/books/);
   assert.match(css, /#production-state-overlay/);
+  assert.match(css, /#main-content #production-state-overlay\s*\{[\s\S]*position:\s*fixed;[\s\S]*inset:\s*64px 0 0 var\(--sidebar-w\);/);
   assert.match(css, /\.production-l1a-option/);
   assert.match(css, /#regenerate-modal > div\s*\{[\s\S]*?width:\s*min\(460px, calc\(100vw - 32px\)\)[\s\S]*?overscroll-behavior:\s*contain;/);
   assert.match(module, /root\.setAttribute\("inert", ""\);/);
