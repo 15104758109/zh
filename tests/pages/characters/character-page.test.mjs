@@ -166,6 +166,15 @@ test("character page identifies the current Chinese product instead of the proto
   assert.doesNotMatch(source, /Cyber-Tech Narrative Engine/);
 });
 
+test("character page labels arc direction and unavailable live fields without implying data loss", async () => {
+  const source = await page();
+
+  assert.match(source, /<span class="text-base-content opacity-60 text-xs">发展方向<\/span>/);
+  assert.match(source, /正式角色快照未提供角色简介/);
+  assert.match(source, /活态压力未返回/);
+  assert.match(source, /char\.snapshotState === "formal" \? 'L0-L3 已锁定' : '候选快照'/);
+});
+
 test("character page removes duplicate stitch-only cursor and scroll overrides", async () => {
   const source = await page();
 

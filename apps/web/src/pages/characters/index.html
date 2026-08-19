@@ -344,7 +344,7 @@
 <span id="char-status-val" class="text-secondary font-code-sm flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 活跃，想当大将军</span>
 </div>
 <div class="bg-base-200/50 p-3 rounded-lg border border-base-content/10 flex flex-col gap-1">
-<span class="text-base-content opacity-60 text-xs">当前目标</span>
+<span class="text-base-content opacity-60 text-xs">发展方向</span>
 <span id="char-target-val" class="text-base-content font-code-sm truncate" title="寻找真相">寻找真相</span>
 </div>
 </div>
@@ -674,7 +674,7 @@
 
             // `pressure_level` is runtime state, not a character-design default.
             const hasStress = Number.isFinite(char.stress);
-            const stressText = hasStress ? `压: ${char.stress}/10` : "压: —";
+            const stressText = hasStress ? `压: ${char.stress}/10` : "活态压力未返回";
             const stressPercent = hasStress ? Math.min(100, Math.max(0, char.stress * 10)) : 0;
 
             const card = document.createElement('div');
@@ -710,7 +710,7 @@
                     <p class="text-[10px] text-base-content opacity-70 truncate">${escapeCharacterHtml(char.resource || '未提供')}</p>
                     <div class="flex flex-col gap-1 mt-1">
                         <div class="flex justify-between text-[9px] text-base-content opacity-70">
-                            <span>${escapeCharacterHtml((char.personalities || [])[0] || '未提供')}</span>
+                            <span>${escapeCharacterHtml((char.personalities || [])[0] || (char.snapshotState === "formal" ? 'L0-L3 已锁定' : '候选快照'))}</span>
                             <span>${escapeCharacterHtml(stressText)}</span>
                         </div>
                         <div class="h-1.5 w-full bg-neutral/5 rounded-full overflow-hidden">
@@ -1635,12 +1635,12 @@ import { buildInitialMemoryConfirmation, displayCharacterValue, normalizeCharact
         setText("char-target-val", arcDirectionText(candidate.arc));
         const description = document.getElementById("char-desc-val");
         if (description) {
-            description.textContent = valueOrDash(candidate.roleCharm);
+            description.textContent = textValue(candidate.roleCharm) || "正式角色快照未提供角色简介";
             description.title = textValue(candidate.roleCharm);
         }
         const statusValue = document.getElementById("char-status-val");
         if (statusValue) statusValue.textContent = candidate.snapshotState === "formal" ? "正式" : candidate.isTransientCandidate ? "候选（未保存）" : "候选（已保存）";
-        setText("char-stress-val", "");
+        setText("char-stress-val", "活态压力未返回");
         const stressBar = document.getElementById("char-stress-bar");
         if (stressBar) stressBar.style.width = "0%";
         setText("cs-belief", candidate.l0?.["底层信念"]);
