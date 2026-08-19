@@ -1379,7 +1379,9 @@
             if(el){
                 el.style.transition = 'max-height 0.3s ease';
                 if (id === 'drawer-l0') {
-                    el.style.maxHeight = el.scrollHeight + 'px';
+                    // Runtime data may arrive after this load handler. Do not
+                    // freeze an empty measurement at zero height.
+                    el.style.maxHeight = el.scrollHeight > 0 ? el.scrollHeight + 'px' : 'none';
                     el.style.overflow = 'visible';
                     el.style.paddingTop = '';
                     el.style.paddingBottom = '';
@@ -1574,6 +1576,21 @@ import { buildInitialMemoryConfirmation, displayCharacterValue, normalizeCharact
         relationRoot.insertBefore(evidence, relationLegend || null);
     }
 
+    function resizeOpenCharacterDrawer() {
+        const openDrawer = ["drawer-l0", "drawer-l1", "drawer-l2", "drawer-l3", "drawer-dialogue"]
+            .map((id) => ({
+                drawer: document.getElementById(id),
+                trigger: document.querySelector("[data-drawer-toggle=\"" + id + "\"]"),
+            }))
+            .find(({ drawer, trigger }) => drawer && (
+                trigger?.getAttribute("aria-expanded") === "true"
+                || (drawer.style.maxHeight && drawer.style.maxHeight !== "0px")
+            ))?.drawer;
+        if (openDrawer) {
+            openDrawer.style.maxHeight = String(openDrawer.scrollHeight) + "px";
+        }
+    }
+
     function renderCandidateL3(candidate) {
         if (!l3Drawer) return;
         if (l3Title) l3Title.textContent = "L3 · 关系作用位";
@@ -1651,6 +1668,8 @@ import { buildInitialMemoryConfirmation, displayCharacterValue, normalizeCharact
         renderCandidateL3(candidate);
         renderKnowledgeEvidence(candidate);
         renderCandidateRelations(candidate);
+        // The default-open L0 drawer is measured before the async snapshot arrives.
+        resizeOpenCharacterDrawer();
     }
 
     function setStatus(text) {
@@ -1972,7 +1991,7 @@ import { buildInitialMemoryConfirmation, displayCharacterValue, normalizeCharact
                 characterIds: Array.isArray(result?.character_candidate_ids) ? result.character_candidate_ids : [],
                 relationIds: Array.isArray(result?.relation_candidate_ids) ? result.relation_candidate_ids : [],
                 initialMemories: memories,
-                confirmable: memories.length > 0 && memoriesComplete
+                confirmable: memoriesComplete
             };
             if (!savedCandidate.confirmable) throw new Error("候选保存结果未返回可确认的角色映射。");
             transientCandidate = null;
@@ -2018,6 +2037,7 @@ import { buildInitialMemoryConfirmation, displayCharacterValue, normalizeCharact
                 throw new Error("角色快照未返回可展示的数据。");
             }
             materializeSnapshot(snapshot);
+            resizeOpenCharacterDrawer();
             if (kind === "candidate") {
                 savedCandidate = restoreSavedCandidateFromSnapshot(snapshot);
                 if (!savedCandidate.confirmable) throw new Error("候选快照缺少已定义的初始记忆来源，需重新生成候选后确认。");
@@ -2114,6 +2134,9 @@ import { buildInitialMemoryConfirmation, displayCharacterValue, normalizeCharact
             headerBookName.title = `当前作品标识：${scopedBookId}`;
         }
         const loaded = await readSnapshot("formal");
+        // Let the load-time prototype initializer finish before the runtime
+        // projection takes ownership of the expanded drawer height.
+        window.setTimeout(resizeOpenCharacterDrawer, 0);
         setCharacterState(loaded ? null : "error", loaded ? "" : "角色快照读取失败，请稍后重试。", !loaded);
     }
     document.querySelector("[data-state-retry]")?.addEventListener("click", bootstrapCharacterPage);

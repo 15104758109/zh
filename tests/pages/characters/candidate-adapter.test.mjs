@@ -132,6 +132,29 @@ test("preserves a formal V7 snapshot with scalar L0 values, L2 world slots, and 
   assert.equal(displayCharacterValue(lead.l3["关系数值摘要"]), "trust：50；common_goal：70");
 });
 
+test("accepts stable character and relation aliases from a formal read projection", () => {
+  const [lead] = normalizeCharacterSnapshot({
+    state: "formal",
+    characters: [{
+      character_id: "33333333-3333-3333-3333-333333333333",
+      char_name: "江枫",
+      char_type: "protagonist",
+      five_layers_json: { L0: { "底层信念": "公平" }, L1: { "欲望": "重建秩序" }, L2: { "资源": "晶核" }, L3: { "同盟": ["叶凡"] } },
+      knowledge_boundary_json: { knows: ["能量守恒"], unknown: [], false_belief: [], reasonable_suspect: [] },
+      arc_json: { direction: "成长" },
+    }],
+    relations: [],
+    initial_memories: [{ character_id: "33333333-3333-3333-3333-333333333333", memory_content: "公开晶核余量。" }],
+  });
+
+  assert.equal(lead.id, "33333333-3333-3333-3333-333333333333");
+  assert.equal(lead.l0["底层信念"], "公平");
+  assert.equal(lead.l1.desire, "重建秩序");
+  assert.equal(lead.l2["资源"], "晶核");
+  assert.deepEqual(lead.l3["同盟"], ["叶凡"]);
+  assert.deepEqual(lead.initialMemories, ["公开晶核余量。"]);
+});
+
 test("preserves V7 initial-memory metadata when preparing a character confirmation", () => {
   assert.deepEqual(
     buildInitialMemoryConfirmation([

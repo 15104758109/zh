@@ -127,22 +127,24 @@ export function normalizeCharacterSnapshot(snapshot) {
   const characters = Array.isArray(source.characters) ? source.characters : [];
   const relations = Array.isArray(source.relations) ? source.relations : [];
   const initialMemories = Array.isArray(source.initial_memories) ? source.initial_memories : [];
-  const namesById = new Map(characters.map((character) => [textValue(character?.id), textValue(character?.char_name)]));
+  const characterId = (character) => firstText(character?.id, character?.char_id, character?.character_id);
+  const namesById = new Map(characters.map((character) => [characterId(character), textValue(character?.char_name)]));
   const state = textValue(source.state);
 
   return characters.map((character, index) => {
-    const id = textValue(character?.id);
+    const id = characterId(character);
     const normalized = normalizeCharacterCandidates({
       characters: [{ ...character, client_ref: id || `snapshot-${index + 1}` }],
       relations: [],
       initial_memories: [],
     })[0];
     const candidateRelations = relations
-      .filter((relation) => textValue(relation?.char_a_id) === id || textValue(relation?.char_b_id) === id)
+      .filter((relation) => firstText(relation?.char_a_id, relation?.from_char_id, relation?.from_character_id) === id
+        || firstText(relation?.char_b_id, relation?.to_char_id, relation?.to_character_id) === id)
       .map((relation) => {
-        const counterpartId = textValue(relation?.char_a_id) === id
-          ? textValue(relation?.char_b_id)
-          : textValue(relation?.char_a_id);
+        const relationA = firstText(relation?.char_a_id, relation?.from_char_id, relation?.from_character_id);
+        const relationB = firstText(relation?.char_b_id, relation?.to_char_id, relation?.to_character_id);
+        const counterpartId = relationA === id ? relationB : relationA;
         return {
           counterpart: namesById.get(counterpartId) || counterpartId,
           description: relationDescription(relation?.change_event_json),
@@ -155,7 +157,7 @@ export function normalizeCharacterSnapshot(snapshot) {
       candidateId: id || normalized.id,
       snapshotState: state,
       initialMemories: initialMemories
-        .filter((memory) => textValue(memory?.char_id) === id)
+        .filter((memory) => firstText(memory?.char_id, memory?.character_id) === id)
         .map((memory) => textValue(memory?.memory_content))
         .filter(Boolean),
       candidateRelations,

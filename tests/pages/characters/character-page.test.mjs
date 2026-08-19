@@ -77,6 +77,16 @@ test("formal V7 layer values render through the existing drawers without treatin
   assert.match(source, /L3 · 关系作用位/);
 });
 
+test("async formal snapshot values resize the default-open drawer after rendering", async () => {
+  const source = await page();
+
+  assert.match(source, /function resizeOpenCharacterDrawer\(\) \{[\s\S]*?data-drawer-toggle[\s\S]*?openDrawer\.style\.maxHeight = String\(openDrawer\.scrollHeight\) \+ "px";/);
+  assert.match(source, /renderCandidateRelations\(candidate\);\s*\/\/ The default-open L0 drawer[\s\S]*?resizeOpenCharacterDrawer\(\);/);
+  assert.match(source, /materializeSnapshot\(snapshot\);\s*resizeOpenCharacterDrawer\(\);/);
+  assert.match(source, /el\.style\.maxHeight = el\.scrollHeight > 0 \? el\.scrollHeight \+ 'px' : 'none';/);
+  assert.match(source, /await readSnapshot\("formal"\);\s*\/\/ Let the load-time prototype initializer[\s\S]*?window\.setTimeout\(resizeOpenCharacterDrawer, 0\);/);
+});
+
 test("direct book routes load the formal character snapshot without an empty first interaction", async () => {
   const source = await page();
 
@@ -164,14 +174,15 @@ test("character page removes duplicate stitch-only cursor and scroll overrides",
   assert.doesNotMatch(source, /\*\{cursor:crosshair!important\}/);
 });
 
-test("immediate confirmation carries complete in-session memories while reloaded candidates fail closed", async () => {
+test("immediate confirmation carries complete in-session memories while allowing an empty memory list", async () => {
   const source = await page();
   const saveCandidate = source.match(/async function saveCandidate\(\) \{[\s\S]*?\r?\n    \}\r?\n\r?\n    function restoreSavedCandidateFromSnapshot/)?.[0] || "";
   const restore = source.match(/function restoreSavedCandidateFromSnapshot\(snapshot\) \{[\s\S]*?\r?\n    \}\r?\n\r?\n    async function readSnapshot/)?.[0] || "";
   const confirmCandidate = source.match(/async function confirmCandidate\(\) \{[\s\S]*?\r?\n    \}\r?\n\r?\n    function reportUnavailable/)?.[0] || "";
 
   assert.match(saveCandidate, /initialMemories: memories/);
-  assert.match(saveCandidate, /memories\.length > 0/);
+  assert.match(saveCandidate, /confirmable: memoriesComplete/);
+  assert.doesNotMatch(saveCandidate, /memories\.length > 0/);
   assert.doesNotMatch(saveCandidate, /initialMemories: \[\]/);
   assert.match(restore, /confirmable: false/);
   assert.match(confirmCandidate, /initial_memories: savedCandidate\.initialMemories/);
