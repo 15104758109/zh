@@ -38,3 +38,20 @@ button:disabled,
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
+
+@media (max-width: 767px) {
+  [data-deduction-runtime-content] {
+    padding: 16px;
+  }
+
+  [data-deduction-runtime-content] > .grid.grid-cols-12 {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  [data-deduction-runtime-content] > .grid.grid-cols-12 > .col-span-8,
+  [data-deduction-runtime-content] > .grid.grid-cols-12 > .col-span-4 {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+}

@@ -673,6 +673,7 @@ function closeReplanModal(runtime) {
   modal.classList.remove("flex");
   modal.classList.add("hidden");
   modal.setAttribute("aria-hidden", "true");
+  runtime.root.removeAttribute("inert");
   const submit = modal.querySelector("#submit-replan-btn");
   if (submit) delete submit.dataset.replanMode;
   const restore = runtime.replanReturnFocus;
@@ -708,6 +709,7 @@ function openFailureRecoveryModal(runtime) {
   modal.classList.remove("hidden");
   modal.classList.add("flex");
   modal.setAttribute("aria-hidden", "false");
+  runtime.root.setAttribute("inert", "");
   submit?.focus();
 }
 
@@ -735,6 +737,7 @@ function openCreatorReplanModal(runtime) {
   modal.classList.remove("hidden");
   modal.classList.add("flex");
   modal.setAttribute("aria-hidden", "false");
+  runtime.root.setAttribute("inert", "");
   direction?.focus();
 }
 
@@ -927,9 +930,24 @@ function bindDeductionFailureRecovery(runtime) {
   if (doc && !runtime.replanEscapeBound) {
     runtime.replanEscapeBound = true;
     doc.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
       const modal = doc.querySelector("#regenerate-modal");
-      if (modal && !modal.classList.contains("hidden")) closeReplanModal(runtime);
+      if (!modal || modal.classList.contains("hidden")) return;
+      if (event.key === "Escape") {
+        closeReplanModal(runtime);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = [...modal.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex='-1'])")];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && doc.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && doc.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     });
   }
 }

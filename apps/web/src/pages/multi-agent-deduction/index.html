@@ -28,10 +28,10 @@
 <div class="flex items-center gap-4 h-full">
 <nav class="flex h-full items-center ml-2">
 <!-- Outer capsule badge-outline container with spacing inside and expanded black inner shadow -->
-<div role="tablist" class="tabs tabs-box tabs-sm">
-<a data-book-segment="production" role="tab" class="tab">套路展开</a>
-<a data-book-segment="deduction" role="tab" class="tab tab-active" aria-current="page">多代理推演</a>
-<a data-book-segment="deduction-review" role="tab" class="tab" data-action="navigate-to-review">结果审核</a>
+<div class="tabs tabs-box tabs-sm" aria-label="生产流程导航">
+<a data-book-segment="production" class="tab">套路展开</a>
+<a data-book-segment="deduction" class="tab tab-active" aria-current="page">多代理推演</a>
+<a data-book-segment="deduction-review" class="tab" data-action="navigate-to-review">结果审核</a>
 </div>
 </nav>
 </div>
@@ -890,7 +890,7 @@
 <script type="module" src="/pages/multi-agent-deduction/index.mjs"></script>
 <!-- 重新生成模态弹窗 -->
 <div id="regenerate-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="regenerate-modal-title" aria-describedby="regenerate-modal-detail" aria-hidden="true">
-<div class="ui-modal bg-base-100 w-[460px] p-6 flex flex-col gap-4 shadow-2xl relative">
+<div class="ui-modal bg-base-100 w-[460px] max-w-[calc(100vw-32px)] max-h-[calc(100dvh-32px)] p-6 flex flex-col gap-4 shadow-2xl relative overflow-y-auto">
 <button class="absolute top-4 right-4 text-base-content opacity-60 hover:text-base-content transition-colors" onclick="closeRegenerateModal()">
 <span class="material-symbols-outlined text-[20px]">close</span>
 </button>

@@ -6,6 +6,16 @@
   display: none !important;
 }
 
+#production-state-overlay .ui-state-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#production-state-overlay .ui-state-panel > .ui-button {
+  align-self: flex-start;
+}
+
 .production-action-button {
   flex: 1 1 144px;
   min-width: 144px;
@@ -33,7 +43,7 @@
 button[aria-disabled="true"],
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.48;
+  opacity: 0.78;
 }
 
 a[aria-disabled="true"] {

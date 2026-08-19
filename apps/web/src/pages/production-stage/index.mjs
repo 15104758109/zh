@@ -128,7 +128,7 @@ function setButton(button, { icon, label, disabled, title }) {
   else button.append(document.createTextNode(` ${label}`));
 }
 
-function setOverlay(root, state, title, detail, retry = false) {
+function setOverlay(root, state, title, detail, retry = false, deductionRoute = false) {
   const overlay = root.querySelector("#production-state-overlay");
   if (!overlay) return;
   overlay.hidden = state === "ready";
@@ -139,6 +139,11 @@ function setOverlay(root, state, title, detail, retry = false) {
   setText(overlay, "[data-state-detail]", detail);
   const button = overlay.querySelector("[data-action='retry-production-state']");
   if (button) { button.hidden = !retry; button.disabled = !retry; }
+  const deductionLink = overlay.querySelector("[data-action='continue-deduction']");
+  if (deductionLink) {
+    deductionLink.hidden = !deductionRoute;
+    if (deductionRoute && runtime.context) deductionLink.href = `/books/${encodeURIComponent(runtime.context.bookId)}/deduction`;
+  }
 }
 
 function bindNavigation(root, context) {
@@ -323,8 +328,16 @@ async function loadProjection(root) {
     runtime.selectionKey = null;
     const header = root.ownerDocument.getElementById("header-book-name");
     if (header) header.textContent = text(projection.book.title, `作品 ${runtime.context.bookId.slice(0, 8)}`);
-    clearProjection(root, runtime.l1as.length ? "候选方案尚未生成" : "当前作品没有可生产的正式锁定 L1A。");
-    setOverlay(root, "ready", "", "");
+    const hasProductionRange = runtime.l1as.length > 0;
+    clearProjection(root, hasProductionRange ? "候选方案尚未生成" : "当前作品没有可生产的正式锁定 L1A。");
+    const selected = selectedL1a();
+    if (selected?.status === "locked_for_deduction") {
+      setOverlay(root, "blocked", "当前 L1A 正在多代理推演", "本页不能重复生成呈现方案。请进入多代理推演，待推演完成后按页面提示继续。", false, true);
+    } else if (hasProductionRange) {
+      setOverlay(root, "ready", "", "");
+    } else {
+      setOverlay(root, "empty", "暂无可生产的 L1A", "请先完成并锁定一个正式 L1A；完成后返回本页即可继续生产。", false);
+    }
   } catch (error) {
     runtime.projection = null;
     runtime.l1as = [];

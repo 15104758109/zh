@@ -69,8 +69,13 @@
         }
         @media (max-width: 560px) {
             .workbench-model-modal { height: calc(100dvh - 32px); flex-direction: column; overflow-y: auto; }
-            .workbench-model-modal > .workbench-template-sidebar { width: 100%; max-height: 148px; border-right: 0; border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent); }
+            .workbench-model-modal > .workbench-template-sidebar { width: 100%; max-height: 192px; border-right: 0; border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 8%, transparent); }
+            .workbench-template-sidebar #modalCategoryList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; overflow: visible; }
+            .workbench-template-sidebar #modalCategoryList button[data-category] { min-width: 0; padding: 7px 10px; }
+            .workbench-template-sidebar #addCategoryContainer { display: none; }
             .workbench-model-modal > form { min-height: 430px; padding: 1rem; }
+            .model-runtime-controls { flex-direction: column; gap: 1rem; }
+            .model-runtime-controls > * { width: 100%; }
         }
 </style>
 </head>
@@ -183,7 +188,7 @@
                 <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">最新章节</span><span id="currentBookChapter" class="text-xs font-bold text-warning">-</span><span id="currentBookChapterSummary" class="text-base-content opacity-50 text-[9px] max-w-32 truncate">等待有效投影</span></div>
                 <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">资产数量</span><span id="currentBookAi" class="text-lg font-bold text-success">-</span></div>
                 <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">总字数</span><span id="currentBookWords" class="text-lg font-bold text-base-content">-</span></div>
-                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">剧情段规划完成度</span><div class="flex items-baseline gap-1"><span id="currentBookL1a" class="text-xl font-bold text-primary">-</span><span id="currentBookL1aTarget" class="text-base-content opacity-50 text-xs font-mono">待有效投影</span></div></div>
+                <div class="flex flex-col"><span class="text-base-content opacity-70 text-xs font-medium mb-0.5">已锁定 L1A / 规划目标</span><div class="flex items-baseline gap-1"><span id="currentBookL1a" class="text-xl font-bold text-primary">-</span><span id="currentBookL1aTarget" class="text-base-content opacity-50 text-xs font-mono">待有效投影</span></div></div>
                 <!-- 五彩按钮 -->
                 <button onclick="openNewBookModal()" class="btn btn-neutral btn-sm ui-button ui-button-dark ui-button-small h-10 px-5 text-sm font-bold flex items-center gap-1.5 mr-16">
                     <span aria-hidden="true" class="material-symbols-outlined text-[18px]">add</span>新建书籍
@@ -566,7 +571,7 @@
         <button type="button" onclick="applyRecommendedModel('Prose-Master-72B')" class="text-primary hover:text-primary-hover font-mono hover:underline">Prose-Master-72B</button>
     </div>
 </div>
-<div class="flex gap-4">
+<div class="model-runtime-controls flex gap-4">
     <!-- Temperature (left col) -->
     <div class="flex-1 flex flex-col gap-1.5">
         <div class="flex justify-between items-center">
@@ -1503,7 +1508,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     <!-- New Book Modal HTML -->
     <div id="newBookModal" class="workbench-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center hidden" role="dialog" aria-modal="true" aria-labelledby="new-book-modal-title" aria-hidden="true">
-        <div class="ui-modal w-[550px] flex flex-col overflow-hidden p-6 relative">
+        <div class="ui-modal w-[550px] max-w-[calc(100vw-32px)] max-h-[calc(100dvh-32px)] flex flex-col overflow-hidden p-6 relative">
             <button onclick="closeNewBookModal()" class="ui-icon-button ui-button-quiet absolute top-4 right-4" aria-label="关闭新书构思弹窗">
                 <span aria-hidden="true" class="material-symbols-outlined text-[20px]">close</span>
             </button>

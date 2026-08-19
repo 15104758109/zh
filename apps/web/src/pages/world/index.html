@@ -2048,8 +2048,8 @@ function renderBindingForm() {
         <option value="">— 选择已有条目 —</option>
         ${candidates.map(c=>`<option value="${c.id}" ${c.id===d.to?'selected':''}>${esc(c.title)}</option>`).join('')}
       </select>
-      <button onclick="quickCreateTarget()" class="mt-1.5 text-[10px] text-primary hover:underline cursor-pointer flex items-center gap-0.5">
-        <span class="material-symbols-outlined" style="font-size:12px;">add</span>没有？快速新建一个「${BOARDS[d.toBoard].label}」设定条目并选中 (占位先行)
+      <button type="button" disabled aria-disabled="true" title="快捷新建尚未接入完整候选保存合同。请先在世界设定中新增并保存完整候选。" class="mt-1.5 text-[10px] text-base-content opacity-50 cursor-not-allowed flex items-center gap-0.5">
+        <span class="material-symbols-outlined" aria-hidden="true" style="font-size:12px;">add</span>请先新增并保存「${BOARDS[d.toBoard].label}」候选条目
       </button>
     </div>`;
 

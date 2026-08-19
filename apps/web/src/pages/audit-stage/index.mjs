@@ -7,6 +7,7 @@ import {
 } from "./wait-route.mjs";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+let replanReturnFocus = null;
 
 export class AuditStageError extends Error {
   constructor(code, message, status = 400) {
@@ -690,14 +691,48 @@ function closeReplanModal(root) {
   if (!modal) return;
   modal.classList.add("hidden");
   modal.classList.remove("flex");
+  modal.setAttribute("aria-hidden", "true");
+  root.removeAttribute("inert");
+  const restore = replanReturnFocus;
+  if (restore?.isConnected && !restore.hasAttribute("disabled")) restore.focus();
+  replanReturnFocus = null;
 }
 
 function openReplanModal(root) {
   const modal = root.ownerDocument.getElementById("replan-modal");
   if (!modal) return;
+  replanReturnFocus = root.ownerDocument.activeElement;
   modal.classList.remove("hidden");
   modal.classList.add("flex");
+  modal.setAttribute("aria-hidden", "false");
+  root.setAttribute("inert", "");
   root.ownerDocument.getElementById("replan-suggestion")?.focus();
+}
+
+function bindReplanDialog(root) {
+  if (root.dataset.replanDialogBound === "true") return;
+  root.dataset.replanDialogBound = "true";
+  root.ownerDocument.addEventListener("keydown", (event) => {
+    const modal = root.ownerDocument.getElementById("replan-modal");
+    if (!modal || modal.classList.contains("hidden")) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeReplanModal(root);
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = [...modal.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex='-1'])")];
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && root.ownerDocument.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && root.ownerDocument.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }, { capture: true });
 }
 
 async function submitAuditConfirmation(runtime) {
@@ -937,6 +972,7 @@ export async function bindAuditStagePage({
   if (!runtime) {
     runtime = { root, activeAuditKind: "objective", confirmed: false };
     pageRuntimes.set(root, runtime);
+    bindReplanDialog(root);
   }
   Object.assign(runtime, {
     context, navigate, fetchImpl, endpointBase, locationLike, sessionStorage,

@@ -183,7 +183,7 @@
 <h2 class="font-bold text-base-content opacity-85 text-xs flex items-center gap-1.5">L1A 选择</h2>
 </div>
 <div class="relative w-full" id="l1a-dropdown-container">
-<button type="button" class="flex w-full items-center bg-base-content/40 border border-base-content/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-primary/40 shadow-sm hover:shadow-md transition-all" id="l1a-dropdown-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="l1a-dropdown">
+<button type="button" class="flex w-full items-center bg-base-100 text-base-content border border-base-content/10 rounded-xl px-3 py-2.5 cursor-pointer hover:border-primary/40 shadow-sm hover:shadow-md transition-all" id="l1a-dropdown-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="l1a-dropdown">
 <span class="font-code-sm font-bold text-primary text-sm" id="l1a-current-label">读取中</span>
 <span class="text-[10px] text-base-content opacity-50 ml-2 truncate" id="l1a-current-title" data-full-text title="正在读取当前生产范围">正在读取当前生产范围</span>
 <span class="material-symbols-outlined text-base-content opacity-60 text-[16px] ml-auto">expand_more</span>
@@ -452,6 +452,7 @@
     <div class="ui-state-panel">
         <h2 class="ui-state-title" data-state-title>正在读取生产范围</h2>
         <p class="ui-state-detail" data-state-detail>正在读取当前作品已写入的 L1A 与候选章节范围。</p>
+        <a class="ui-button ui-button-quiet ui-button-small" data-action="continue-deduction" hidden>进入多代理推演</a>
         <button type="button" class="ui-button ui-button-primary ui-button-small" data-action="retry-production-state">重新载入</button>
     </div>
 </section>
@@ -523,7 +524,7 @@
         </p>
         <div class="flex flex-col gap-2">
             <label for="re-deduction-direction" class="font-label-caps text-[10px] text-base-content opacity-60/80">退回方向</label>
-            <textarea id="re-deduction-direction" name="re_deduction_direction" autocomplete="off" class="ui-textarea w-full h-28 bg-base-content/40 border border-base-content/10 rounded-lg p-3 text-xs text-base-content focus:border-primary/50 focus:ring-0 placeholder:text-base-content opacity-60/30 font-code-sm" placeholder="例如：强化冲突升级与角色目标的因果关系"></textarea>
+            <textarea id="re-deduction-direction" name="re_deduction_direction" autocomplete="off" class="ui-textarea w-full h-28 bg-base-100 border border-base-content/10 rounded-lg p-3 text-xs text-base-content focus:border-primary/50 focus:ring-0 placeholder:text-base-content opacity-60/30 font-code-sm" placeholder="例如：强化冲突升级与角色目标的因果关系"></textarea>
         </div>
 
         <div class="flex justify-end gap-2 mt-2">

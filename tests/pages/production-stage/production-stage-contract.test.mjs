@@ -54,6 +54,21 @@ test("production page does not make an empty chapter division approvable", () =>
   assert.equal(hasChapterDivision({ chapter_division: [{ chapter_seq: 1 }] }), true);
 });
 
+test("production keeps a successful empty range visibly blocked", async () => {
+  const module = await readFile(modulePath, "utf8");
+  assert.match(module, /const hasProductionRange = runtime\.l1as\.length > 0/);
+  assert.match(module, /setOverlay\(root, "empty", "暂无可生产的 L1A"/);
+  assert.doesNotMatch(module, /clearProjection\(root, runtime\.l1as\.length \?[^;]+;\s*setOverlay\(root, "ready"/s);
+});
+
+test("production gives an in-progress L1A its documented next step", async () => {
+  const [html, module] = await Promise.all([readFile(pagePath, "utf8"), readFile(modulePath, "utf8")]);
+  assert.match(html, /data-action="continue-deduction"/);
+  assert.match(module, /selected\?\.status === "locked_for_deduction"/);
+  assert.match(module, /当前 L1A 正在多代理推演/);
+  assert.match(module, /\/deduction`/);
+});
+
 test("production candidate display binds V7 runtime objects without treating L1A intent as a chapter boundary", () => {
   const display = productionCandidateDisplay({
     context: { characters: [{ character_id: "33333333-3333-4333-8333-333333333333", char_name: "江枫" }] },

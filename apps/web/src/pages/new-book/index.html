@@ -1490,6 +1490,7 @@
       const lockedSteps = new Set();
       let modalLocked = true;
       let confirmReturnFocus = null;
+      let confirmReturnStep = null;
       const uiGet = (id) => document.getElementById(id);
 
       function escapeHtml(value) {
@@ -1685,15 +1686,42 @@
 
       function setConfirmModalOpen(open) {
         const modal = uiGet("confirmModal");
+        const main = uiGet("main");
         if (!modal) return;
         modal.classList.toggle("open", open);
         modal.setAttribute("aria-hidden", String(!open));
         modal.toggleAttribute("inert", !open);
+        main?.toggleAttribute("inert", open);
         if (open) {
           window.setTimeout(() => uiGet("unlockButton")?.focus(), 0);
-        } else if (confirmReturnFocus?.isConnected) {
-          confirmReturnFocus.focus();
+        } else {
+          const restore = document.querySelector(`[data-step="${confirmReturnStep}"]`)
+            || confirmReturnFocus;
+          restore?.focus();
           confirmReturnFocus = null;
+          confirmReturnStep = null;
+        }
+      }
+
+      function trapConfirmModalFocus(event) {
+        const modal = uiGet("confirmModal");
+        if (!modal?.classList.contains("open")) return;
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setConfirmModalOpen(false);
+          return;
+        }
+        if (event.key !== "Tab") return;
+        const focusable = [...modal.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex='-1'])")];
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
         }
       }
 
@@ -2376,6 +2404,8 @@
       }
 
       function openEditor(index = current) {
+        confirmReturnFocus = document.activeElement;
+        confirmReturnStep = index;
         viewing = index;
         renderSteps();
         renderTimeline();
@@ -2394,7 +2424,6 @@
         if (confirmAction) confirmAction.innerHTML = `<span class="material-symbols-outlined">verified</span>确认锁死`;
         // 进行中步骤(viewing === current)默认可编辑;返回查看已完成步骤(viewing < current)默认锁定,需解锁
         setModalLock(viewing < current);
-        confirmReturnFocus = document.activeElement;
         setConfirmModalOpen(true);
       }
 
@@ -2621,6 +2650,7 @@
       }
 
       function bind() {
+        document.addEventListener("keydown", trapConfirmModalFocus);
         window.__openStageEditor = openEditor;
         window.closeConfirmModal = () => setConfirmModalOpen(false);
         window.openConfirmModal = () => openEditor(current);

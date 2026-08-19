@@ -20,6 +20,8 @@ function syncSidebarToggleState() {
     var icon = toggle.querySelector("#sidebarIcon, .sidebar-toggle-icon");
     if (icon) icon.textContent = collapsed ? "chevron_right" : "chevron_left";
     toggle.setAttribute("aria-expanded", String(!collapsed));
+    toggle.setAttribute("aria-label", collapsed ? "展开侧栏" : "折叠侧栏");
+    toggle.setAttribute("title", collapsed ? "展开侧栏" : "折叠侧栏");
   });
 }
 

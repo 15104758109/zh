@@ -27,11 +27,11 @@
   --fallback-b2: #d4d2d2;
   --fallback-b3: #bebdbd;
   --fallback-bc: #100f0f;
-  --fallback-p: #ec0b72;
+  --fallback-p: #c00055;
   --fallback-pc: #ffffff;
   --fallback-s: #7e6570;
   --fallback-sc: #fff7fb;
-  --fallback-a: #668a70;
+  --fallback-a: #28724d;
   --fallback-ac: #ffffff;
   --fallback-n: #302500;
   --fallback-nc: #f6f0df;
@@ -41,7 +41,7 @@
   --fallback-suc: #ffffff;
   --fallback-wa: #ffc000;
   --fallback-wac: #302500;
-  --fallback-er: #ff4d5f;
+  --fallback-er: #bf283a;
   --fallback-erc: #ffffff;
 
   /* Existing pages read these names directly. */
@@ -49,18 +49,18 @@
   --color-base-200: #d4d2d2;
   --color-base-300: #bebdbd;
   --color-base-content: #100f0f;
-  --color-primary: #ec0b72;
+  --color-primary: #c00055;
   --color-primary-content: #ffffff;
   --color-secondary: #7e6570;
   --color-secondary-content: #fff7fb;
-  --color-accent: #668a70;
+  --color-accent: #28724d;
   --color-accent-content: #ffffff;
   --color-neutral: #302500;
   --color-neutral-content: #f6f0df;
   --color-info: #12b3e8;
   --color-success: #00ad78;
   --color-warning: #ffc000;
-  --color-error: #ff4d5f;
+  --color-error: #bf283a;
 
   /* DaisyUI geometry is kept fixed; pages do not choose a second radius scale. */
   --rounded-box: 16px;
@@ -117,7 +117,7 @@ button, input, select, textarea { font: inherit; letter-spacing: 0; }
 button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
 :where(a, button, input, select, textarea, [role="button"], [role="switch"]):focus-visible {
-  outline: 2px solid #ec0b72;
+  outline: 2px solid #c00055;
   outline-offset: 2px;
 }
 
@@ -172,10 +172,10 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 }
 .ui-button:hover { filter: brightness(.98); box-shadow: 0 3px 10px rgba(16, 15, 15, .1); transform: translateY(-1px); }
 .ui-button:active { transform: translateY(0); box-shadow: none; }
-.ui-button-primary { color: #ffffff; background: #ec0b72; }
+.ui-button-primary { color: #ffffff; background: #c00055; }
 .ui-button-dark { color: #f6f0df; background: #302500; }
-.ui-button-success { color: #ffffff; background: #668a70; }
-.ui-button-danger { color: #ffffff; background: #ff4d5f; }
+.ui-button-success { color: #ffffff; background: #28724d; }
+.ui-button-danger { color: #ffffff; background: #bf283a; }
 .ui-button-quiet { color: #100f0f; background: transparent; border-color: #bebdbd; }
 .ui-button-block { width: 100%; }
 .ui-button-small { min-height: 32px; padding-inline: 12px; font-size: 12px; }
@@ -202,11 +202,11 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
   line-height: 1.2;
   white-space: nowrap;
 }
-.ui-badge-primary { color: #ffffff; border-color: #ec0b72; background: #ec0b72; }
+.ui-badge-primary { color: #ffffff; border-color: #c00055; background: #c00055; }
 .ui-badge-dark { color: #f6f0df; border-color: #302500; background: #302500; }
 .ui-badge-success { color: #063e2c; border-color: #00ad78; background: #00ad78; }
 .ui-badge-warning { color: #302500; border-color: #ffc000; background: #ffc000; }
-.ui-badge-error { color: #ffffff; border-color: #ff4d5f; background: #ff4d5f; }
+.ui-badge-error { color: #ffffff; border-color: #bf283a; background: #bf283a; }
 
 .ui-choice-chip {
   display: inline-flex;
@@ -223,8 +223,8 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
   font-weight: 700;
   line-height: 1;
 }
-.ui-choice-chip:hover { border-color: #668a70; background: #f1efef; }
-.ui-choice-chip[aria-pressed="true"] { color: #ffffff; border-color: #ec0b72; background: #ec0b72; box-shadow: 0 2px 8px rgba(236, 11, 114, .2); }
+.ui-choice-chip:hover { border-color: #28724d; background: #f1efef; }
+.ui-choice-chip[aria-pressed="true"] { color: #ffffff; border-color: #c00055; background: #c00055; box-shadow: 0 2px 8px rgba(236, 11, 114, .2); }
 .ui-choice-chip:disabled { color: #6d6b6b; background: #bebdbd; cursor: not-allowed; }
 
 .ui-field,
@@ -246,7 +246,7 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 .ui-textarea::placeholder { color: #6d6b6b; opacity: .75; }
 .ui-field:focus,
 .ui-select:focus,
-.ui-textarea:focus { outline: none; border-color: #ec0b72; box-shadow: 0 0 0 3px rgba(236, 11, 114, .13); }
+.ui-textarea:focus { outline: none; border-color: #c00055; box-shadow: 0 0 0 3px rgba(236, 11, 114, .13); }
 .ui-field:disabled,
 .ui-select:disabled,
 .ui-textarea:disabled { color: #6d6b6b; background: #bebdbd; opacity: .7; }
@@ -262,11 +262,11 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
   background: #f1efef;
   box-shadow: inset 0 1px 1px rgba(16, 15, 15, .03);
 }
-.ui-search-field:focus-within { border-color: #ec0b72; box-shadow: 0 0 0 3px rgba(236, 11, 114, .13); }
+.ui-search-field:focus-within { border-color: #c00055; box-shadow: 0 0 0 3px rgba(236, 11, 114, .13); }
 .ui-search-field__input { min-width: 0; border: 0; outline: 0; color: inherit; background: transparent; font: inherit; }
 .ui-search-field__input::placeholder { color: #6d6b6b; opacity: .75; }
 .ui-checkbox,
-.ui-radio { width: 18px; height: 18px; accent-color: #ec0b72; }
+.ui-radio { width: 18px; height: 18px; accent-color: #c00055; }
 
 /* WORLD uses field-input as a dynamic DOM hook; it remains a fixed field component. */
 .ui-page .field-input {
@@ -279,7 +279,7 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
   box-shadow: inset 0 1px 1px rgba(16, 15, 15, .03);
 }
 .ui-page textarea.field-input { min-height: 104px; padding: 10px 12px; }
-.ui-page .field-input:focus { border-color: #ec0b72; box-shadow: 0 0 0 3px rgba(236, 11, 114, .13); outline: none; }
+.ui-page .field-input:focus { border-color: #c00055; box-shadow: 0 0 0 3px rgba(236, 11, 114, .13); outline: none; }
 .ui-page .field-input:disabled,
 .ui-page .field-input[readonly] { color: #6d6b6b; background: #bebdbd; opacity: .7; }
 
@@ -292,7 +292,7 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
   box-shadow: inset 0 1px 1px rgba(16, 15, 15, .03);
 }
 .ui-page form :is(input:not([type]), input[type="text"], input[type="password"], input[type="url"], input[type="email"], textarea):focus {
-  border-color: #ec0b72;
+  border-color: #c00055;
   box-shadow: 0 0 0 3px rgba(236, 11, 114, .13);
   outline: none;
 }
@@ -307,7 +307,7 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
   vertical-align: middle;
   transition: background .15s ease, border-color .15s ease;
 }
-.ui-switch:checked { border-color: #ec0b72; background: #ec0b72; }
+.ui-switch:checked { border-color: #c00055; background: #c00055; }
 
 .ui-segmented,
 .ui-tabs {
@@ -349,8 +349,8 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 }
 .ui-alert-info { color: #06283a; border-color: #12b3e8; background: #12b3e8; }
 .ui-alert-success { color: #00825d; border-color: #00ad78; background: #e9e7e7; }
-.ui-alert-warning { color: #a06e00; border: 1px dashed #ffc000; background: #e9e7e7; }
-.ui-alert-error { color: #ef4b5b; border-color: #f1d4d8; background: #f1d4d8; }
+.ui-alert-warning { color: #7f5900; border: 1px dashed #ffc000; background: #e9e7e7; }
+.ui-alert-error { color: #9d2030; border-color: #f1d4d8; background: #f1d4d8; }
 
 .ui-progress {
   width: 100%;
@@ -379,10 +379,10 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 .ui-modal-wide { max-width: min(720px, calc(100vw - 32px)); }
 .ui-toast { padding: 12px 16px; color: #100f0f; background: #e9e7e7; border: 1px solid #bebdbd; border-radius: 12px; box-shadow: 0 8px 22px rgba(16, 15, 15, .12); }
 .ui-status-dot { display: inline-block; width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: #bebdbd; }
-.ui-status-dot-primary { background: #ec0b72; }
+.ui-status-dot-primary { background: #c00055; }
 .ui-status-dot-success { background: #00ad78; }
 .ui-status-dot-warning { background: #ffc000; }
-.ui-status-dot-error { background: #ff4d5f; }
+.ui-status-dot-error { background: #bf283a; }
 
 /* Full-content availability states use one deliberate surface instead of
  * page-specific cards that accidentally read as confirmation dialogs. */
@@ -469,11 +469,11 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 }
 .ui-page .btn:hover { filter: brightness(.98); box-shadow: 0 3px 10px rgba(16, 15, 15, .1); transform: translateY(-1px); }
 .ui-page .btn:active { transform: translateY(0); box-shadow: none; }
-.ui-page .btn-primary { color: #ffffff; border-color: #ec0b72; background: #ec0b72; }
+.ui-page .btn-primary { color: #ffffff; border-color: #c00055; background: #c00055; }
 .ui-page .btn-neutral { color: #f6f0df; border-color: #302500; background: #302500; }
 .ui-page .btn-accent,
-.ui-page .btn-success { color: #ffffff; border-color: #668a70; background: #668a70; }
-.ui-page .btn-error { color: #ffffff; border-color: #ff4d5f; background: #ff4d5f; }
+.ui-page .btn-success { color: #ffffff; border-color: #28724d; background: #28724d; }
+.ui-page .btn-error { color: #ffffff; border-color: #bf283a; background: #bf283a; }
 .ui-page .btn-outline { color: #100f0f; border-color: #bebdbd; background: transparent; }
 .ui-page .btn-ghost { color: #100f0f; background: transparent; }
 .ui-page .btn.btn-xs { min-height: 26px; padding-inline: 8px; font-size: 10px; }
@@ -484,6 +484,24 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 .ui-page .btn.btn-circle { border-radius: 50%; }
 .ui-page .btn:disabled,
 .ui-page .btn[aria-disabled="true"] { color: #6d6b6b; border-color: #bebdbd; background: #bebdbd; box-shadow: none; opacity: .7; transform: none; }
+
+.ui-page :is(button, a).bg-primary.text-white,
+.ui-page :is(button, a).bg-success.text-white,
+.ui-page :is(button, a).bg-error.text-white { color: #ffffff; }
+
+/* Semantic text utilities are used on the shared light work surface.  The
+ * DaisyUI palette's saturated values were designed for filled backgrounds;
+ * using them as small text on base-200 made status labels unreadable. */
+.ui-page :is(.text-warning, [class~="text-warning/70"], [class~="text-warning/80"], [class~="text-warning/85"]) { color: #8a5a00 !important; }
+.ui-page :is(.text-success, [class~="text-success/70"], [class~="text-success/80"], [class~="text-success/85"]) { color: #006b4f !important; }
+.ui-page :is(.text-info, [class~="text-info/70"], [class~="text-info/80"], [class~="text-info/85"]) { color: #00687f !important; }
+.ui-page :is(.text-error, [class~="text-error/70"], [class~="text-error/80"], [class~="text-error/85"]) { color: #b42333 !important; }
+.ui-page :is(.text-secondary, [class~="text-secondary/70"], [class~="text-secondary/80"], [class~="text-secondary/85"]) { color: #634a58 !important; }
+.ui-page .header-glass :is(.text-warning, [class*="text-warning/"]) { color: #ffc000 !important; }
+.ui-page .header-glass :is(.text-success, [class*="text-success/"]) { color: #00d49a !important; }
+.ui-page .header-glass :is(.text-info, [class*="text-info/"]) { color: #67d9f5 !important; }
+.ui-page .header-glass :is(.text-error, [class*="text-error/"]) { color: #ff8c98 !important; }
+.ui-page .header-glass :is(.text-secondary, [class*="text-secondary/"]) { color: #e9cfdf !important; }
 
 .ui-page .input,
 .ui-page .select,
@@ -498,12 +516,12 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 .ui-page .input:focus,
 .ui-page .select:focus,
 .ui-page .textarea:focus,
-.ui-page .file-input:focus { border-color: #ec0b72; box-shadow: 0 0 0 3px rgba(236, 11, 114, .13); outline: none; }
+.ui-page .file-input:focus { border-color: #c00055; box-shadow: 0 0 0 3px rgba(236, 11, 114, .13); outline: none; }
 .ui-page .input::placeholder,
 .ui-page .textarea::placeholder { color: #6d6b6b; opacity: .75; }
 .ui-page .checkbox,
-.ui-page .radio { accent-color: #ec0b72; }
-.ui-page .toggle:checked { color: #ffffff; background: #ec0b72; }
+.ui-page .radio { accent-color: #c00055; }
+.ui-page .toggle:checked { color: #ffffff; background: #c00055; }
 
 .ui-page .badge {
   min-height: 22px;
@@ -515,11 +533,11 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
   font-size: 11px;
   font-weight: 700;
 }
-.ui-page .badge-primary { color: #ffffff; border-color: #ec0b72; background: #ec0b72; }
+.ui-page .badge-primary { color: #ffffff; border-color: #c00055; background: #c00055; }
 .ui-page .badge-neutral { color: #f6f0df; border-color: #302500; background: #302500; }
 .ui-page .badge-success { color: #063e2c; border-color: #00ad78; background: #00ad78; }
 .ui-page .badge-warning { color: #302500; border-color: #ffc000; background: #ffc000; }
-.ui-page .badge-error { color: #ffffff; border-color: #ff4d5f; background: #ff4d5f; }
+.ui-page .badge-error { color: #ffffff; border-color: #bf283a; background: #bf283a; }
 
 .ui-page .tabs,
 .ui-page .tabs-box {
@@ -567,8 +585,8 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 .ui-page .alert { min-height: 48px; border-radius: 14px; font-size: 13px; font-weight: 700; }
 .ui-page .alert-info { color: #06283a; border-color: #12b3e8; background: #12b3e8; }
 .ui-page .alert-success { color: #00825d; border-color: #00ad78; background: #e9e7e7; }
-.ui-page .alert-warning { color: #a06e00; border: 1px dashed #ffc000; background: #e9e7e7; }
-.ui-page .alert-error { color: #ef4b5b; border-color: #f1d4d8; background: #f1d4d8; }
+.ui-page .alert-warning { color: #7f5900; border: 1px dashed #ffc000; background: #e9e7e7; }
+.ui-page .alert-error { color: #9d2030; border-color: #f1d4d8; background: #f1d4d8; }
 
 .ui-page .table { color: #100f0f; font-size: 13px; }
 .ui-page .table :where(th) { color: #6d6b6b; font-size: 11px; font-weight: 800; }
@@ -595,7 +613,7 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 .ui-page .character-card:hover,
 .ui-page .stage-card:hover,
 .ui-page .geo-zone-card:hover,
-.ui-page .drag-resource-card:hover { border-color: #668a70; box-shadow: 0 6px 16px rgba(16, 15, 15, .09); }
+.ui-page .drag-resource-card:hover { border-color: #28724d; box-shadow: 0 6px 16px rgba(16, 15, 15, .09); }
 .ui-page .projection-pill,
 .ui-page .canvas-mode-btn,
 .ui-page .tab-btn {
@@ -610,10 +628,10 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 }
 .ui-page .projection-pill:hover,
 .ui-page .canvas-mode-btn:hover,
-.ui-page .tab-btn:hover { border-color: #668a70; background: #f1efef; }
+.ui-page .tab-btn:hover { border-color: #28724d; background: #f1efef; }
 .ui-page .projection-pill.active,
 .ui-page .canvas-mode-btn.active,
-.ui-page .tab-btn.active { color: #ffffff; border-color: #ec0b72; background: #ec0b72; box-shadow: 0 2px 8px rgba(236, 11, 114, .2); }
+.ui-page .tab-btn.active { color: #ffffff; border-color: #c00055; background: #c00055; box-shadow: 0 2px 8px rgba(236, 11, 114, .2); }
 .ui-page .production-action-button {
   min-height: 40px;
   padding-inline: 14px;
@@ -624,10 +642,10 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
   font-size: 12px;
   font-weight: 700;
 }
-.ui-page .production-action-button.bg-primary { color: #ffffff; border-color: #ec0b72; background: #ec0b72; }
+.ui-page .production-action-button.bg-primary { color: #ffffff; border-color: #c00055; background: #c00055; }
 .ui-page .production-action-button:disabled { color: #6d6b6b; border-color: #bebdbd; background: #bebdbd; }
-.ui-page .btn-accent-glow { color: #ffffff; border-color: #668a70; background: #668a70; box-shadow: 0 3px 10px rgba(102, 138, 112, .2); }
-.ui-page .btn.btn-outline.btn-error { color: #ff4d5f; border-color: #ff4d5f; background: transparent; }
+.ui-page .btn-accent-glow { color: #ffffff; border-color: #28724d; background: #28724d; box-shadow: 0 3px 10px rgba(102, 138, 112, .2); }
+.ui-page .btn.btn-outline.btn-error { color: #bf283a; border-color: #bf283a; background: transparent; }
 
 /* Workspace components keep prototype utility classes from creating a second
  * visual language. Their geometry and semantic colors are fixed here. */
@@ -728,13 +746,13 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
 .ui-page .world-workspace .world-skeleton-row.active,
 .ui-page .world-workspace .drag-resource-card:hover {
   background: #f1efef;
-  border-color: #668a70;
+  border-color: #28724d;
   box-shadow: 0 3px 10px rgba(16, 15, 15, .08);
 }
 .ui-page .world-workspace .geo-zone-card { border-style: dashed; }
 .ui-page .world-workspace .geo-zone-card.drag-over {
   background: #f1efef;
-  border-color: #668a70;
+  border-color: #28724d;
   box-shadow: 0 0 0 3px rgba(102, 138, 112, .16);
 }
 .ui-page #detailDrawer {
@@ -752,10 +770,10 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
   border-radius: 12px;
   box-shadow: none;
 }
-.ui-page .ui-l1a-card:hover { border-color: #668a70; box-shadow: 0 3px 10px rgba(16, 15, 15, .08); }
-.ui-page .ui-l1a-card.is-active { border-color: #ec0b72; box-shadow: 0 0 0 2px rgba(236, 11, 114, .18); }
+.ui-page .ui-l1a-card:hover { border-color: #28724d; box-shadow: 0 3px 10px rgba(16, 15, 15, .08); }
+.ui-page .ui-l1a-card.is-active { border-color: #c00055; box-shadow: 0 0 0 2px rgba(236, 11, 114, .18); }
 .ui-page .ui-l1a-card.is-locked { border-left: 4px solid #302500; }
-.ui-page .ui-l1a-card.is-editable { border-left: 4px solid #668a70; }
+.ui-page .ui-l1a-card.is-editable { border-left: 4px solid #28724d; }
 .ui-page .ui-scene-row {
   display: flex;
   align-items: center;
@@ -796,7 +814,7 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
   box-shadow: 0 1px 3px rgba(16, 15, 15, .15);
   transition: transform .15s ease;
 }
-.settings-switch.on { background: #668a70; }
+.settings-switch.on { background: #28724d; }
 .settings-switch.on::after { transform: translateX(16px); }
 .settings-switch:focus-visible { outline: 2px solid var(--color-primary, #d81b77); outline-offset: 2px; }
 .settings-btn {
@@ -806,16 +824,16 @@ button, [role="button"], [role="switch"] { cursor: pointer; touch-action: manipu
   gap: 6px;
   min-height: 34px;
   padding: 0 16px;
-  border: 1px solid #668a70;
+  border: 1px solid #28724d;
   border-radius: 8px;
-  color: #668a70;
+  color: #28724d;
   background: transparent;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: background .15s ease, color .15s ease;
 }
-.settings-btn:hover { color: #ffffff; background: #668a70; }
+.settings-btn:hover { color: #ffffff; background: #28724d; }
 .settings-switch[aria-disabled="true"],
 .settings-btn[aria-disabled="true"] { opacity: .42; }
 .settings-switch:disabled,
