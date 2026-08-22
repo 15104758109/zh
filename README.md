@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/Architecture-6--Layers-orange?style=for-the-badge" alt="Architecture">
 </p>
 
-> **百万字小说不跑偏的 AI 叙事引擎。**
+> **用写作技巧组织AI百万字小说不跑偏的 AI 叙事引擎。**
 >
 > 💡好的AI小说一定包括人物刻画和引人入胜的情节，工程实现需要计划与灵活的兼容，让高价值剧情成为计划，角色在世界里活起来，再由导演维度收窄主角的选项，将具有剧情价值的内容文学呈现。
 
